@@ -6,6 +6,7 @@ import unittest
 
 from audi.cdap import StreamRestClient
 from audi.cdap import ClientRestClient
+from audi.cdap import DatasetRestClient
 
 
 class StreamAPITest(unittest.TestCase):
@@ -14,9 +15,9 @@ class StreamAPITest(unittest.TestCase):
         self.stream_id = 'testStream'
         self.stream = StreamRestClient()
         self.client = ClientRestClient()
+        self.dataset = DatasetRestClient()
 
-    @classmethod
-    def tearDownClass(self):
+    def tearDown(self):
         self.client.unrecoverable_reset()
 
     def preload_stream_with_events(self, stream_id):
@@ -101,9 +102,9 @@ class StreamAPITest(unittest.TestCase):
         ttl_before = json.loads(req.content)['ttl']
 
         # set ttl for stream
-        req = self.stream.set_ttl(self.stream_id, 1000)
+        req = self.stream.set_ttl(self.stream_id, ttl_before + 1)
         self.assertEquals(req.status_code, 200)
-        time.sleep(1)  # sleep before checking if stream is killed
+        time.sleep(1)
 
         # check for streams before ttl is set
         req = self.stream.get_info(self.stream_id)
