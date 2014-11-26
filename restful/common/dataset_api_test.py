@@ -3,6 +3,7 @@ import json
 import unittest
 
 from audi.cdap import DatasetRestClient
+from audi.cdap import ClientRestClient
 
 
 class DatasetAPITest(unittest.TestCase):
@@ -10,6 +11,7 @@ class DatasetAPITest(unittest.TestCase):
     def setUpClass(self):
         self.dataset_id = 'mydataset'
         self.datasets = DatasetRestClient()
+        self.client = ClientRestClient()
 
     @classmethod
     def tearDownClass(self):
