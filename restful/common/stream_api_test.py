@@ -5,6 +5,7 @@ import random
 import unittest
 
 from audi.cdap import StreamRestClient
+from audi.cdap import ClientRestClient
 
 
 class StreamAPITest(unittest.TestCase):
@@ -12,6 +13,7 @@ class StreamAPITest(unittest.TestCase):
     def setUpClass(self):
         self.stream_id = 'testStream'
         self.stream = StreamRestClient()
+        self.client = ClientRestClient()
 
     @classmethod
     def tearDownClass(self):

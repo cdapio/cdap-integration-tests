@@ -5,6 +5,7 @@ import unittest
 
 import audi
 from audi.cdap import QueryRestClient
+from audi.cdap import ClientRestClient
 
 
 class QueryAPITest(unittest.TestCase):
@@ -14,6 +15,7 @@ class QueryAPITest(unittest.TestCase):
         self.query = QueryRestClient()
 
         # deploy app
+        self.client = ClientRestClient()
         cdap_examples = audi.config['cdap']['examples']
         self.client.deploy_app(cdap_examples['Purchase'])
 
