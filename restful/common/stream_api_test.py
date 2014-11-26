@@ -13,6 +13,10 @@ class StreamAPITest(unittest.TestCase):
         self.stream_id = 'testStream'
         self.stream = StreamRestClient()
 
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
+
     def preload_stream_with_events(self, stream_id):
         # create streams
         req = self.stream.create(stream_id)
@@ -49,7 +53,7 @@ class StreamAPITest(unittest.TestCase):
 
     def test_send_event_to_stream(self):
         # create stream
-        req = self.stream.create(self.stream_id)
+        self.stream.create(self.stream_id)
 
         # test send event to stream and check status code
         data = 'chris bought 1 life for $1000000'

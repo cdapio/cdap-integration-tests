@@ -1,12 +1,14 @@
 #!/usr/bin/env python2
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
 from audi.cdap import ServiceRestClient
 
 
 class ServiceTest(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.app_id = 'PurchaseHistory'
         self.client = ClientRestClient()
         self.service = ServiceRestClient()
@@ -20,6 +22,14 @@ class ServiceTest(unittest.TestCase):
             'metrics.processor',
             'explore.service'
         ]
+
+        # deploy app
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['Purchase'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_service_status(self):
         # check individual service status

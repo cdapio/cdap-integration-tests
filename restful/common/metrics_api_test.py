@@ -2,6 +2,7 @@
 import time
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
 from audi.cdap import MetricsRestClient
 from audi.cdap import DatasetRestClient
@@ -20,6 +21,10 @@ class MetricsAPITest(unittest.TestCase):
         self.dataset = DatasetRestClient()
         self.client = ClientRestClient()
 
+        # deploy app
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['HelloWorld'])
+
         # start flow
         time.sleep(2)
         req = self.client.start_element(self.app_id, 'flows', self.flow_id)
@@ -33,6 +38,8 @@ class MetricsAPITest(unittest.TestCase):
         req = self.client.stop_element(self.app_id, 'flows', self.flow_id)
         if req.status_code != 200:
             raise RuntimeError('Failed to stop flow!')
+
+        self.client.unrecoverable_reset()
 
     def test_metric_request(self):
         # test system metric

@@ -2,15 +2,25 @@
 import time
 import unittest
 
-from audi.cdap import ProcedureRestClient
+import audi
 from audi.cdap import ClientRestClient
+from audi.cdap import ProcedureRestClient
 
 
 class ProcedureAPITest(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.app_id = 'WordCount'
         self.procedure = ProcedureRestClient()
         self.client = ClientRestClient()
+
+        # deploy app
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['WordCount'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_execute_procedures(self):
         app_id = 'WordCount'

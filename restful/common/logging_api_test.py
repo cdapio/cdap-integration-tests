@@ -3,6 +3,7 @@ import time
 import random
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
 from audi.cdap import StreamRestClient
 from audi.cdap import LoggingRestClient
@@ -22,9 +23,17 @@ class LoggingAPITest(unittest.TestCase):
         self.logging = LoggingRestClient()
         self.dataset = DatasetRestClient()
 
+        # deploy app
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['Purchase'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
+
     def setUp(self):
-        self.start = int(time.time())
         time.sleep(2)
+        self.start = int(time.time())
 
         # start flow
         resp = self.client.start_element(

@@ -3,6 +3,7 @@ import time
 import random
 import unittest
 
+import audi
 from audi.cdap import ServiceRestClient
 from audi.cdap import StreamRestClient
 from audi.cdap import ClientRestClient
@@ -19,6 +20,14 @@ class ServiceAPITest(unittest.TestCase):
 
         self.service = ServiceRestClient()
         self.client = ClientRestClient()
+
+        # deploy app
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['Purchase'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def setUp(self):
         # start flow

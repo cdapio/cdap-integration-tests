@@ -11,6 +11,10 @@ class DatasetAPITest(unittest.TestCase):
         self.dataset_id = 'mydataset'
         self.datasets = DatasetRestClient()
 
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
+
     def setUp(self):
         # remove if dataset exists
         self.datasets.delete(self.dataset_id)

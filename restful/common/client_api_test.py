@@ -3,6 +3,7 @@ import time
 import json
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
 
 
@@ -15,6 +16,12 @@ class ClientAPITest(unittest.TestCase):
         self.proc_id = 'Greeting'
 
         self.client = ClientRestClient()
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['HelloWorld'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_list_apps(self):
         req = self.client.list_apps()
@@ -168,7 +175,7 @@ class ClientAPITest(unittest.TestCase):
         # self.assertEquals(resp.status_code, 200)
 
         # start flow
-        time.sleep(2)
+        time.sleep(3)
         resp = self.client.start_element(
             'PurchaseHistory',
             'flows',

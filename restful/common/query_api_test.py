@@ -3,6 +3,7 @@ import time
 import json
 import unittest
 
+import audi
 from audi.cdap import QueryRestClient
 
 
@@ -11,6 +12,14 @@ class QueryAPITest(unittest.TestCase):
     def setUpClass(self):
         self.app_id = "PurchaseHistory"
         self.query = QueryRestClient()
+
+        # deploy app
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['Purchase'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_submit_query(self):
         req = self.query.submit('{"query": "SHOW TABLES"}')

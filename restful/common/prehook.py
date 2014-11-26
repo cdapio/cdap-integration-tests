@@ -17,7 +17,7 @@ print 'running pre-hook'
 cdap.build_examples(audi.config['cdap'].get('branch', 'develop'))
 
 # deploy apps
-cdap_examples = audi.config['cdap']['examples']
-cdap_deploy_app(cdap_examples['Purchase'])
-cdap_deploy_app(cdap_examples['HelloWorld'])
-cdap_deploy_app(cdap_examples['WordCount'])
+# cdap_examples = audi.config['cdap']['examples']
+# cdap_deploy_app(cdap_examples['Purchase'])
+# cdap_deploy_app(cdap_examples['HelloWorld'])
+# cdap_deploy_app(cdap_examples['WordCount'])

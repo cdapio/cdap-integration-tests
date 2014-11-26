@@ -2,14 +2,21 @@
 import time
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
-# from audi.cdap import DatasetRestClient
 
 
 class GenericAppTest(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.app_id = 'PurchaseHistory'
         self.client = ClientRestClient()
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['Purchase'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_flows(self):
         # check there is more than 1 app running

@@ -7,7 +7,8 @@ from audi.cdap import DatasetRestClient
 
 
 class DatasetTest(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.app_id = 'PurchaseHistory'
         self.flow_id = 'PurchaseFlow'
         self.mapreduce_id = 'PurchaseHistoryWorkflow_PurchaseHistoryBuilder'
@@ -16,6 +17,10 @@ class DatasetTest(unittest.TestCase):
 
         self.client = ClientRestClient()
         self.dataset = DatasetRestClient()
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_create_dataset(self):
         # should not create a dataset with invalid type

@@ -2,6 +2,7 @@
 import time
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
 
 
@@ -13,13 +14,18 @@ class PurchaseHistoryLifeCycleTest(unittest.TestCase):
         self.mapreduce_id = 'PurchaseHistoryWorkflow_PurchaseHistoryBuilder'
         self.procedure_id = 'PurchaseProcedure'
 
-        # deploy apps
         self.client = ClientRestClient()
+        cdap_examples = audi.config['cdap']['examples']
+        self.client.deploy_app(cdap_examples['Purchase'])
+
+    @classmethod
+    def tearDownClass(self):
+        self.client.unrecoverable_reset()
 
     def test_deploy_status(self):
         found_app = False
-        req = self.client.list_apps()
-        json_data = req.json()
+        resp = self.client.list_apps()
+        json_data = resp.json()
 
         for obj in json_data:
             if obj['name'] == self.app_id:
@@ -27,84 +33,83 @@ class PurchaseHistoryLifeCycleTest(unittest.TestCase):
                 break
 
         self.assertTrue(found_app)
-        self.assertEquals(req.status_code, 200)
-        self.assertTrue(len(json_data) > 1)
+        self.assertEquals(resp.status_code, 200)
 
     def test_flow(self):
         # start flow
-        time.sleep(2)
-        req = self.client.start_element(self.app_id, 'flows', self.flow_id)
-        self.assertEquals(req.status_code, 200)
+        time.sleep(10)
+        resp = self.client.start_element(self.app_id, 'flows', self.flow_id)
+        self.assertEquals(resp.status_code, 200)
 
         # start flow again
         time.sleep(2)
-        req = self.client.start_element(self.app_id, 'flows', self.flow_id)
-        self.assertEquals(req.status_code, 409)
+        resp = self.client.start_element(self.app_id, 'flows', self.flow_id)
+        self.assertEquals(resp.status_code, 409)
 
         # stop flow
         time.sleep(2)
-        req = self.client.stop_element(self.app_id, 'flows', self.flow_id)
-        self.assertEquals(req.status_code, 200)
+        resp = self.client.stop_element(self.app_id, 'flows', self.flow_id)
+        self.assertEquals(resp.status_code, 200)
 
         # stop flow again - should raise conflict
         time.sleep(2)
-        req = self.client.stop_element(self.app_id, 'flows', self.flow_id)
-        self.assertEquals(req.status_code, 409)
+        resp = self.client.stop_element(self.app_id, 'flows', self.flow_id)
+        self.assertEquals(resp.status_code, 409)
 
     def test_mapreduce(self):
         # start flow
-        req = self.client.start_element(
+        resp = self.client.start_element(
             self.app_id,
             'flows',
             self.flow_id
         )
-        self.assertEquals(req.status_code, 200)
+        self.assertEquals(resp.status_code, 200)
 
         # start map reduce job
         time.sleep(2)
-        req = self.client.start_element(
+        resp = self.client.start_element(
             self.app_id,
             'mapreduce',
             self.mapreduce_id
         )
-        self.assertEquals(req.status_code, 200)
+        self.assertEquals(resp.status_code, 200)
 
         # check status of map reduce job
-        time.sleep(20)
-        req = self.client.element_status(
+        time.sleep(5)
+        resp = self.client.element_status(
             self.app_id,
             'mapreduce',
             self.mapreduce_id
         )
-        self.assertEquals(req.json()['status'], 'RUNNING')
-        self.assertEquals(req.status_code, 200)
+        self.assertEquals(resp.json()['status'], 'RUNNING')
+        self.assertEquals(resp.status_code, 200)
 
         # start map reduce job - should raise conflict
-        time.sleep(2)
-        req = self.client.start_element(
+        time.sleep(5)
+        resp = self.client.start_element(
             self.app_id,
             'mapreduce',
             self.mapreduce_id
         )
-        self.assertEquals(req.status_code, 409)
+        self.assertEquals(resp.status_code, 409)
 
         # stop map reduce job
         time.sleep(2)
-        req = self.client.stop_element(
+        resp = self.client.stop_element(
             self.app_id,
             'mapreduce',
             self.mapreduce_id
         )
-        self.assertEquals(req.status_code, 200)
+        self.assertEquals(resp.status_code, 200)
 
         # stop map reduce job - should raise conflict
         time.sleep(2)
-        req = self.client.stop_element(
+        resp = self.client.stop_element(
             self.app_id,
             'mapreduce',
             self.mapreduce_id
         )
-        self.assertEquals(req.status_code, 409)
+        self.assertEquals(resp.status_code, 409)
 
     def test_procedure(self):
         # start procedure
