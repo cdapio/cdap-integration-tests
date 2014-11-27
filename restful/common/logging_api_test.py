@@ -29,7 +29,10 @@ class LoggingAPITest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        # stop app
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def setUp(self):
         time.sleep(2)
@@ -40,15 +43,6 @@ class LoggingAPITest(unittest.TestCase):
             self.app_id,
             'flows',
             self.flow_id
-        )
-        self.assertEquals(resp.status_code, 200)
-        time.sleep(2)
-
-        # start procedure
-        resp = self.client.start_element(
-            self.app_id,
-            'procedures',
-            self.procedure_id
         )
         self.assertEquals(resp.status_code, 200)
         time.sleep(2)
@@ -73,15 +67,6 @@ class LoggingAPITest(unittest.TestCase):
             self.app_id,
             'flows',
             self.flow_id
-        )
-        self.assertEquals(resp.status_code, 200)
-        time.sleep(2)
-
-        # stop procedure
-        resp = self.client.stop_element(
-            self.app_id,
-            'procedures',
-            self.procedure_id
         )
         self.assertEquals(resp.status_code, 200)
         time.sleep(2)

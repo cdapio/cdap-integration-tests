@@ -39,7 +39,10 @@ class MetricsAPITest(unittest.TestCase):
         if req.status_code != 200:
             raise RuntimeError('Failed to stop flow!')
 
+        # stop app
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_metric_request(self):
         # test system metric

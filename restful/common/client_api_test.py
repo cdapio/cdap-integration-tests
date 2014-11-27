@@ -18,10 +18,13 @@ class ClientAPITest(unittest.TestCase):
         self.client = ClientRestClient()
         cdap_examples = audi.config['cdap']['examples']
         self.client.deploy_app(cdap_examples['HelloWorld'])
+        self.client.deploy_app(cdap_examples['Purchase'])
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_list_apps(self):
         req = self.client.list_apps()
@@ -110,21 +113,6 @@ class ClientAPITest(unittest.TestCase):
         self.assertEquals(req.status_code, 200)
         self.assertEquals(json.loads(req.content)['instances'], 2)
 
-    def test_set_procedure_instances(self):
-        # query procedure instances - before scale
-        req = self.client.get_procedure_instances(self.app_id, self.proc_id)
-        self.assertEquals(req.status_code, 200)
-        self.assertEquals(json.loads(req.content)['instances'], 1)
-
-        # scale procedure instances
-        req = self.client.set_procedures(self.app_id, self.proc_id, 2)
-        self.assertEquals(req.status_code, 200)
-
-        # query procedure instances - after scale
-        req = self.client.get_procedure_instances(self.app_id, self.proc_id)
-        self.assertEquals(req.status_code, 200)
-        self.assertEquals(json.loads(req.content)['instances'], 2)
-
     def test_get_service_instances(self):
         app_id = 'PurchaseHistory'
         service_id = 'CatalogLookup'
@@ -165,15 +153,11 @@ class ClientAPITest(unittest.TestCase):
         # query run history
         time.sleep(2)
         req = self.client.get_run_history(self.app_id, 'flows', self.flow_id)
-        result = json.loads(req.content)
+        result = req.json()
         self.assertEquals(req.status_code, 200)
         self.assertEquals(len(result), 1)
 
     def test_flow_liveinfo(self):
-        # start debuggging for flow
-        # resp = self.client.flow_debug('PurchaseHistory', 'PurchaseFlow')
-        # self.assertEquals(resp.status_code, 200)
-
         # start flow
         time.sleep(3)
         resp = self.client.start_element(
@@ -204,48 +188,5 @@ class ClientAPITest(unittest.TestCase):
         # check status
         time.sleep(2)
         resp = self.client.flow_status('PurchaseHistory', 'PurchaseFlow')
-        self.assertEquals(resp.status_code, 200)
-        self.assertEquals(resp.json()['status'], 'STOPPED')
-
-    def test_procedure_liveinfo(self):
-        # resp = self.client.procedure_debug(
-        #     'PurchaseHistory',
-        #     'PurchaseProcedure'
-        # )
-        # self.assertEquals(resp.status_code, 200)
-
-        # start procedure
-        time.sleep(2)
-        resp = self.client.start_element(
-            'PurchaseHistory',
-            'procedures',
-            'PurchaseProcedure'
-        )
-        self.assertEquals(resp.status_code, 200)
-
-        # get liveinfo for procedure
-        resp = self.client.container_info(
-            'PurchaseHistory',
-            'procedures',
-            'PurchaseProcedure'
-        )
-        self.assertTrue(len(resp.content) > 0)
-        self.assertEquals(resp.status_code, 200)
-
-        # stop procedure
-        time.sleep(2)
-        resp = self.client.stop_element(
-            'PurchaseHistory',
-            'procedures',
-            'PurchaseProcedure'
-        )
-        self.assertEquals(resp.status_code, 200)
-
-        # check status
-        time.sleep(2)
-        resp = self.client.procedure_status(
-            'PurchaseHistory',
-            'PurchaseProcedure'
-        )
         self.assertEquals(resp.status_code, 200)
         self.assertEquals(resp.json()['status'], 'STOPPED')

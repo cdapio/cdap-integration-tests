@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 import json
+import time
 import unittest
 
 from audi.cdap import DatasetRestClient
@@ -16,6 +17,7 @@ class DatasetAPITest(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def setUp(self):
         # remove if dataset exists

@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+import time
 import unittest
 
 import audi
@@ -29,7 +30,9 @@ class ServiceTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_service_status(self):
         # check individual service status

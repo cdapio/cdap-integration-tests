@@ -27,7 +27,9 @@ class ServiceAPITest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def setUp(self):
         # start flow

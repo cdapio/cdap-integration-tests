@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 import unittest
 
 import audi
@@ -19,7 +20,9 @@ class MonitorAPITest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_list_all_services(self):
         resp = self.monitor.all_service_info()

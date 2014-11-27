@@ -19,6 +19,7 @@ class StreamAPITest(unittest.TestCase):
 
     def tearDown(self):
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def preload_stream_with_events(self, stream_id):
         # create streams
@@ -61,9 +62,7 @@ class StreamAPITest(unittest.TestCase):
         # test send event to stream and check status code
         data = 'chris bought 1 life for $1000000'
         req = self.stream.send_event(self.stream_id, data)
-        self.assertEquals(req.status_code, 202)
-        # 202 because the stream is not connected to a dataset, so it is not
-        # processed
+        self.assertEquals(req.status_code, 200)
 
     def test_read_events_from_stream(self):
         # preload stream with events
@@ -102,7 +101,7 @@ class StreamAPITest(unittest.TestCase):
         ttl_before = json.loads(req.content)['ttl']
 
         # set ttl for stream
-        req = self.stream.set_ttl(self.stream_id, ttl_before + 1)
+        req = self.stream.set_ttl(self.stream_id, ttl_before - 1)
         self.assertEquals(req.status_code, 200)
         time.sleep(1)
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env python2
 import json
+import time
 import unittest
 
+import audi
 from audi.cdap import ClientRestClient
 from audi.cdap import DatasetRestClient
 
@@ -20,7 +22,9 @@ class DatasetTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_create_dataset(self):
         # should not create a dataset with invalid type
