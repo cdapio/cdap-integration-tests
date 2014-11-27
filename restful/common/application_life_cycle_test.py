@@ -12,7 +12,7 @@ class PurchaseHistoryLifeCycleTest(unittest.TestCase):
         self.app_id = 'PurchaseHistory'
         self.flow_id = 'PurchaseFlow'
         self.mapreduce_id = 'PurchaseHistoryWorkflow_PurchaseHistoryBuilder'
-        self.procedure_id = 'PurchaseProcedure'
+        self.service_id = 'PurchaseHistoryService'
 
         self.client = ClientRestClient()
         cdap_examples = audi.config['cdap']['examples']
@@ -20,7 +20,9 @@ class PurchaseHistoryLifeCycleTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_deploy_status(self):
         found_app = False
@@ -75,13 +77,19 @@ class PurchaseHistoryLifeCycleTest(unittest.TestCase):
         self.assertEquals(resp.status_code, 200)
 
         # check status of map reduce job
-        time.sleep(5)
-        resp = self.client.element_status(
-            self.app_id,
-            'mapreduce',
-            self.mapreduce_id
-        )
-        self.assertEquals(resp.json()['status'], 'RUNNING')
+        status_is_good = False
+        for i in range(20):
+            resp = self.client.element_status(
+                self.app_id,
+                'mapreduce',
+                self.mapreduce_id
+            )
+            if resp.json()['status'] == 'RUNNING':
+                status_is_good = True
+                break
+            time.sleep(5)
+
+        self.assertTrue(status_is_good)
         self.assertEquals(resp.status_code, 200)
 
         # start map reduce job - should raise conflict
@@ -111,35 +119,43 @@ class PurchaseHistoryLifeCycleTest(unittest.TestCase):
         )
         self.assertEquals(resp.status_code, 409)
 
-    def test_procedure(self):
-        # start procedure
-        resp = self.client.start_element(
+        # stop flow
+        resp = self.client.stop_element(
             self.app_id,
-            'procedures',
-            self.procedure_id
+            'flows',
+            self.flow_id
         )
         self.assertEquals(resp.status_code, 200)
 
-        # start procedure again - should raise conflict
+    def test_services(self):
+        # start flow
         resp = self.client.start_element(
             self.app_id,
-            'procedures',
-            self.procedure_id
-        )
-        self.assertEquals(resp.status_code, 409)
-
-        # stop procedure
-        resp = self.client.stop_element(
-            self.app_id,
-            'procedures',
-            self.procedure_id
+            'flows',
+            self.flow_id
         )
         self.assertEquals(resp.status_code, 200)
 
-        # stop procedure again - should raise conflict
+        # start service
+        resp = self.client.start_element(
+            self.app_id,
+            'services',
+            self.service_id
+        )
+        self.assertEquals(resp.status_code, 200)
+
+        # stop service
         resp = self.client.stop_element(
             self.app_id,
-            'procedures',
-            self.procedure_id
+            'services',
+            self.service_id
         )
-        self.assertEquals(resp.status_code, 409)
+        self.assertEquals(resp.status_code, 200)
+
+        # stop flow
+        resp = self.client.stop_element(
+            self.app_id,
+            'flows',
+            self.flow_id
+        )
+        self.assertEquals(resp.status_code, 200)
