@@ -4,6 +4,7 @@ import unittest
 
 import audi
 from audi.cdap import ClientRestClient
+from audi.cdap import ServiceRestClient
 
 
 class GenericAppTest(unittest.TestCase):
@@ -11,17 +12,22 @@ class GenericAppTest(unittest.TestCase):
     def setUpClass(self):
         self.app_id = 'PurchaseHistory'
         self.client = ClientRestClient()
+        self.service = ServiceRestClient()
+
+        # deploy app
         cdap_examples = audi.config['cdap']['examples']
         self.client.deploy_app(cdap_examples['Purchase'])
 
     @classmethod
     def tearDownClass(self):
+        audi.stop_app(self.app_id)
         self.client.unrecoverable_reset()
+        time.sleep(5)
 
     def test_flows(self):
-        # check there is more than 1 app running
+        # check there are apps
         resp = self.client.list_apps()
-        self.assertTrue(len(resp.json()) > 1)
+        self.assertTrue(len(resp.json()) >= 1)
 
         # get flow details
         flow_ids = []
@@ -35,7 +41,11 @@ class GenericAppTest(unittest.TestCase):
 
         # start flow(s)
         for flow_id in flow_ids:
-            resp = self.client.start_element(self.app_id, 'flows', flow_id)
+            resp = self.client.start_element(
+                self.app_id,
+                'flows',
+                flow_id
+            )
             self.assertEquals(resp.status_code, 200)
 
         # check flow status
@@ -57,49 +67,51 @@ class GenericAppTest(unittest.TestCase):
             self.assertEquals(resp.status_code, 200)
             self.assertEquals(resp.json()['status'], 'STOPPED')
 
-    def test_procedures(self):
-        # check there is more than 1 app running
-        resp = self.client.list_apps()
-        self.assertTrue(len(resp.json()) > 1)
-
-        # get procedure details
-        procedure_ids = []
-        resp = self.client.procedures(self.app_id)
-        data = resp.json()
-        for el in data:
-            procedure_ids.append(el['id'])
-
+    def test_services(self):
+        resp = self.service.list_services(self.app_id)
+        services = resp.json()
         self.assertEquals(resp.status_code, 200)
-        self.assertEquals(procedure_ids, ['PurchaseProcedure'])
+        self.assertTrue(len(services) > 0)
 
-        # start procedure(s)
-        for procedure_id in procedure_ids:
+        # start services
+        for service in services:
             resp = self.client.start_element(
                 self.app_id,
-                'procedures',
-                procedure_id
+                'services',
+                service['name']
             )
             self.assertEquals(resp.status_code, 200)
 
-        # check procedure status
+        # start services - should raise conflict
+        for service in services:
+            resp = self.client.start_element(
+                self.app_id,
+                'services',
+                service['name']
+            )
+            self.assertEquals(resp.status_code, 409)
+
+        # check flow status
         time.sleep(5)
-        for procedure_id in procedure_ids:
-            resp = self.client.procedure_status(self.app_id, procedure_id)
+        for service in services:
+            resp = self.service.status(self.app_id, service['name'])
             self.assertEquals(resp.status_code, 200)
             self.assertEquals(resp.json()['status'], 'RUNNING')
 
-        # stop procedure(s)
-        for procedure_id in procedure_ids:
+        # stop services
+        for service in services:
             resp = self.client.stop_element(
                 self.app_id,
-                'procedures',
-                procedure_id
+                'services',
+                service['name']
             )
             self.assertEquals(resp.status_code, 200)
 
-        # check procedure status
-        time.sleep(5)
-        for procedure_id in procedure_ids:
-            resp = self.client.procedure_status(self.app_id, procedure_id)
-            self.assertEquals(resp.status_code, 200)
-            self.assertEquals(resp.json()['status'], 'STOPPED')
+        # stop services - should raise conflict
+        for service in services:
+            resp = self.client.stop_element(
+                self.app_id,
+                'services',
+                service['name']
+            )
+            self.assertEquals(resp.status_code, 409)
