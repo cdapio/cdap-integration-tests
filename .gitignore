@@ -19,5 +19,3 @@ out/
 ./lib/
 .idea
 
-# Python files
-*.pyc
