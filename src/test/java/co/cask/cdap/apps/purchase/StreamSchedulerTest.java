@@ -68,11 +68,10 @@ public class StreamSchedulerTest extends AudiTestBase {
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
                                 "RUNNING", 1, TimeUnit.MINUTES);
 
-    // TODO: revisit these numbers
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
-                                "STOPPED", 20, TimeUnit.MINUTES);
+                                "STOPPED", 5, TimeUnit.MINUTES);
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, "PurchaseHistoryWorkflow",
-                                "STOPPED", 20, TimeUnit.MINUTES);
+                                "STOPPED", 1, TimeUnit.MINUTES);
 
     // both the mapreduce and workflow should have 1 run
     List<RunRecord> workflowRuns =
@@ -96,8 +95,6 @@ public class StreamSchedulerTest extends AudiTestBase {
       streamClient.sendEvent(purchaseStream, bigData);
     }
 
-    // TODO: workflow should be stopped
-
     scheduleClient.resume(PurchaseApp.APP_NAME, "DataSchedule");
     Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(),
                         scheduleClient.getStatus(PurchaseApp.APP_NAME, "DataSchedule"));
@@ -107,11 +104,10 @@ public class StreamSchedulerTest extends AudiTestBase {
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
                                 "RUNNING", 1, TimeUnit.MINUTES);
 
-    // TODO: revisit these numbers
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
-                                "STOPPED", 20, TimeUnit.MINUTES);
+                                "STOPPED", 5, TimeUnit.MINUTES);
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, "PurchaseHistoryWorkflow",
-                                "STOPPED", 20, TimeUnit.MINUTES);
+                                "STOPPED", 1, TimeUnit.MINUTES);
   }
 
   private void assertSingleRun(List<RunRecord> runRecords, ProgramRunStatus expectedStatus) {

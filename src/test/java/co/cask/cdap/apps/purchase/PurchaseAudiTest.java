@@ -128,11 +128,10 @@ public class PurchaseAudiTest extends AudiTestBase {
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
                                 "RUNNING", 1, TimeUnit.MINUTES);
 
-    // TODO: revisit these numbers
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
-                                "STOPPED", 20, TimeUnit.MINUTES);
+                                "STOPPED", 5, TimeUnit.MINUTES);
     programClient.waitForStatus(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, "PurchaseHistoryWorkflow",
-                                "STOPPED", 20, TimeUnit.MINUTES);
+                                "STOPPED", 1, TimeUnit.MINUTES);
 
     // Ensure that the flow and services are still running
     Assert.assertTrue(purchaseFlow.isRunning());

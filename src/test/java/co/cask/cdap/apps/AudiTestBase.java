@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -56,6 +57,7 @@ public class AudiTestBase extends IntegrationTestBase {
       if (allOk = allOk()) {
         break;
       }
+      TimeUnit.SECONDS.sleep(5);
     }
     Assert.assertTrue("Expected all system services to be OK.", allOk);
     JsonArray jsonArray = new JsonParser().parse(response.getResponseBodyAsString()).getAsJsonArray();

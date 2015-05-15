@@ -100,8 +100,7 @@ public class FileSetTest extends AudiTestBase {
     // mapreduce should start and then complete
     programClient.waitForStatus("FileSetExample", ProgramType.MAPREDUCE, "WordCount", "RUNNING", 1, TimeUnit.MINUTES);
 
-    // TODO: revisit these numbers
-    programClient.waitForStatus("FileSetExample", ProgramType.MAPREDUCE, "WordCount", "STOPPED", 20, TimeUnit.MINUTES);
+    programClient.waitForStatus("FileSetExample", ProgramType.MAPREDUCE, "WordCount", "STOPPED", 5, TimeUnit.MINUTES);
 
     url = new URL(serviceURL, "counts?path=out.txt/part-r-00000");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
