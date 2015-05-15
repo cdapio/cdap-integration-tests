@@ -87,14 +87,4 @@ public class NamespacedStreamTest extends AudiTestBase {
                                                         Lists.<StreamEvent>newArrayList());
     Assert.assertTrue(events2.isEmpty());
   }
-
-  private long getNumProcessed(MetricsClient metricsClient, Map<String, String> streamTags,
-                               String metric) throws Exception {
-    MetricQueryResult metricQueryResult = metricsClient.query(metric, streamTags);
-    MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
-    if (series.length == 0) {
-      return 0;
-    }
-    return series[0].getData()[0].getValue();
-  }
 }
