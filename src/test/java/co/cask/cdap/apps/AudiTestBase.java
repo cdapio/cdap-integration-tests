@@ -19,7 +19,6 @@ package co.cask.cdap.apps;
 import co.cask.cdap.client.MonitorClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
