@@ -27,6 +27,7 @@ import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.StreamProperties;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -38,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 public class StreamSchedulerTest extends AudiTestBase {
 
   @Test
+  @Ignore // undo once finalized
   public void test() throws Exception {
     /**
      * Set notification threshold for stream PurchaseStream to 1MB

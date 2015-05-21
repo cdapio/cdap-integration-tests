@@ -23,6 +23,7 @@ import co.cask.cdap.common.exception.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -40,6 +41,7 @@ public class NamespaceTest extends AudiTestBase {
     new NamespaceMeta.Builder().setName(NS2).build();
 
   @Test
+  @Ignore // undo once finalized
   public void testNamespaces() throws Exception {
     NamespaceClient namespaceClient = new NamespaceClient(getClientConfig(), getRestClient());
 

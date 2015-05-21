@@ -18,12 +18,10 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
-import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import com.google.common.collect.Lists;
@@ -31,7 +29,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  *
@@ -41,6 +38,7 @@ public class NamespacedStreamTest extends AudiTestBase {
   private static final Id.Namespace NS2 = Id.Namespace.from("ns2");
 
   @Test
+//  @Ignore // undo once finalized
   public void testNamespacedStreams() throws Exception {
     // Even though getClientConfig currently returns new instance each call, copy the instance just incase.
     ClientConfig config1 = new ClientConfig.Builder(getClientConfig()).build();
