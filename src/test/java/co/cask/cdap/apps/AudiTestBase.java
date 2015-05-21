@@ -34,6 +34,8 @@ import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
@@ -44,11 +46,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class AudiTestBase extends IntegrationTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
+  private static final String CLUSTER_IP_FILE_NAME = "cdap-auto-ip.txt";
   private static RESTClient REST_CLIENT;
 
   @Before
   @Override
-  public void setUp() throws Exception {
+  public void setUp() throws Throwable {
     super.setUp();
 
     HttpResponse response = new RESTClient(getClientConfig()).execute(HttpMethod.GET, getClientConfig().resolveURLV3("config/cdap"), getClientConfig().getAccessToken());
@@ -92,6 +95,26 @@ public class AudiTestBase extends IntegrationTestBase {
       }
     });
   }
+
+  @Override
+  protected String getInstanceURI() {
+    File file = new File(CLUSTER_IP_FILE_NAME);
+    if (!file.exists()) {
+      LOG.warn("File does not exist: {}", file.getAbsolutePath());
+      return super.getInstanceURI();
+    }
+    try {
+      FileReader fileReader = new FileReader(file);
+      String clusterIp = IOUtils.toString(fileReader);
+      clusterIp = clusterIp.replaceAll("\n", "");
+      LOG.info("clusterIp: {}", clusterIp);
+      return clusterIp;
+    } catch (IOException ioe) {
+      LOG.error("Failed to get clusterIp from file.", ioe);
+      return super.getInstanceURI();
+    }
+  }
+
 
   private boolean allOk() throws Exception {
     Map<String, String> allSystemServiceStatus = new MonitorClient(getClientConfig()).getAllSystemServiceStatus();
