@@ -21,6 +21,8 @@ import co.cask.cdap.client.MonitorClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.common.exception.UnauthorizedException;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
@@ -31,7 +33,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import org.apache.commons.io.IOUtils;
-import org.junit.Assert;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -46,22 +48,29 @@ import java.util.concurrent.TimeUnit;
  */
 public class AudiTestBase extends IntegrationTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
-  private static RESTClient REST_CLIENT;
+  private RESTClient restClient;
 
   @Before
   @Override
   public void setUp() throws Exception {
+    // we need to setup the RestClient before anything happens even in IntegrationTestBase, so that any requests
+    // made can go through our RestClient
+    setupRestClient();
+
     super.setUp();
 
-    boolean allOk = false;
-    for (int i = 0; i < 10; i++) {
-      if (allOk = allOk()) {
-        break;
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        return allOk();
       }
-      TimeUnit.SECONDS.sleep(5);
-    }
-    Assert.assertTrue("Expected all system services to be OK.", allOk);
+    }, 20, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
+    assertUnrecoverableResetEnabled();
+  }
+
+  private void assertUnrecoverableResetEnabled() throws IOException, UnauthorizedException {
+    // TODO: use MetaClient#getCDAPConfig, once the method is available
     HttpResponse response = getRestClient().execute(HttpMethod.GET, getClientConfig().resolveURLV3("config/cdap"),
                                                     getClientConfig().getAccessToken());
     JsonArray jsonArray = new JsonParser().parse(response.getResponseBodyAsString()).getAsJsonArray();
@@ -76,6 +85,7 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   private boolean allOk() throws Exception {
+    // TODO: use MonitorClient#allSystemServicesOk, once the method is available
     Map<String, String> allSystemServiceStatus = new MonitorClient(getClientConfig()).getAllSystemServiceStatus();
     LOG.info(allSystemServiceStatus.toString());
     for (String status : allSystemServiceStatus.values()) {
@@ -98,15 +108,13 @@ public class AudiTestBase extends IntegrationTestBase {
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
   protected RESTClient getRestClient() {
-    if (REST_CLIENT == null) {
-      REST_CLIENT = constructRestClient();
-    }
-    return REST_CLIENT;
+    Preconditions.checkNotNull(restClient, "RestClient not yet initialized.");
+    return restClient;
   }
 
   // constructs a RestClient with logging upon each request
-  private RESTClient constructRestClient() {
-    RESTClient restClient = new RESTClient(getClientConfig());
+  private void setupRestClient() {
+    restClient = new RESTClient(getClientConfig());
     restClient.addListener(new RESTClient.Listener() {
       @Override
       public void onRequest(HttpRequest httpRequest, int i) {
@@ -128,6 +136,5 @@ public class AudiTestBase extends IntegrationTestBase {
                  httpResponse.getResponseCode(), httpResponse.getResponseBodyAsString());
       }
     });
-    return restClient;
   }
 }

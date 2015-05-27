@@ -35,66 +35,26 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- *
+ * Tests various methods of a stream such as create, ingest events, fetch events, properties.
  */
 public class StreamTest extends AudiTestBase {
+  private static final String NONEXISTENT_STREAM = "nonexistentStream";
+  private static final String STREAM_NAME = "testStream";
 
-  // TODO: If it's better that way, we can split this test case into two: invalid interactions and valid interactions
   @Test
   public void testStreams() throws Exception {
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-    // test interaction with nonexistent stream; should fail
-    String nonexistentStream = "nonexistentStream";
-    try {
-      streamClient.getConfig(nonexistentStream);
-      Assert.fail(String.format("Expected '%s' to not exist.", nonexistentStream));
-    } catch (StreamNotFoundException expected) {
-    }
-    try {
-      streamClient.sendEvent(nonexistentStream, "testEvent");
-      Assert.fail(String.format("Expected '%s' to not exist.", nonexistentStream));
-    } catch (StreamNotFoundException expected) {
-    }
-    try {
-      streamClient.getEvents(nonexistentStream, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
-                             Lists.<StreamEvent>newArrayList());
-      Assert.fail(String.format("Expected '%s' to not exist.", nonexistentStream));
-    } catch (StreamNotFoundException expected) {
-    }
-    try {
-      streamClient.truncate(nonexistentStream);
-      Assert.fail(String.format("Expected '%s' to not exist.", nonexistentStream));
-    } catch (StreamNotFoundException expected) {
-    }
 
-    // creation with invalid characters should fail
-    String streamName = "testStream";
-    try {
-      streamClient.create(streamName + "&");
-      Assert.fail();
-    } catch (BadRequestException expected) {
-      Assert.assertTrue(expected.getMessage().contains(
-        "Stream name can only contain alphanumeric, '-' and '_' characters"));
-    }
-    try {
-      streamClient.create(streamName + ".");
-      Assert.fail();
-    } catch (BadRequestException expected) {
-      Assert.assertTrue(expected.getMessage().contains(
-        "Stream name can only contain alphanumeric, '-' and '_' characters"));
-    }
-
-    // test valid scenarios
-    streamClient.create(streamName);
-    StreamProperties config = streamClient.getConfig(streamName);
+    streamClient.create(STREAM_NAME);
+    StreamProperties config = streamClient.getConfig(STREAM_NAME);
     Assert.assertNotNull(config);
 
     // create is idempotent
-    streamClient.create(streamName);
+    streamClient.create(STREAM_NAME);
 
-    streamClient.sendEvent(streamName, "");
-    streamClient.sendEvent(streamName, " a b ");
-    ArrayList<StreamEvent> events = streamClient.getEvents(streamName, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+    streamClient.sendEvent(STREAM_NAME, "");
+    streamClient.sendEvent(STREAM_NAME, " a b ");
+    ArrayList<StreamEvent> events = streamClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
     Assert.assertEquals(2, events.size());
     Assert.assertEquals("", Bytes.toString(events.get(0).getBody()));
@@ -103,15 +63,60 @@ public class StreamTest extends AudiTestBase {
     MetricsClient metricsClient = new MetricsClient(getClientConfig(), getRestClient());
 
 
-    ImmutableMap<String, String> streamTags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Constants.DEFAULT_NAMESPACE,
-                                                              Constants.Metrics.Tag.STREAM, streamName);
+    ImmutableMap<String, String> streamTags =
+      ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Constants.DEFAULT_NAMESPACE,
+                      Constants.Metrics.Tag.STREAM, STREAM_NAME);
     checkEventsProcessed(metricsClient, streamTags, "system.collect.events", 2, 10);
     checkEventsProcessed(metricsClient, streamTags, "system.collect.bytes", 5, 10);
 
-    streamClient.truncate(streamName);
-    events = streamClient.getEvents(streamName, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+    streamClient.truncate(STREAM_NAME);
+    events = streamClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                     Lists.<StreamEvent>newArrayList());
     Assert.assertEquals(0, events.size());
+  }
+
+  @Test
+  public void testNonexistentStreams() throws Exception {
+    StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
+
+    // test interaction with nonexistent stream; should fail
+    try {
+      streamClient.getConfig(NONEXISTENT_STREAM);
+      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
+    } catch (StreamNotFoundException expected) {
+    }
+    try {
+      streamClient.sendEvent(NONEXISTENT_STREAM, "testEvent");
+      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
+    } catch (StreamNotFoundException expected) {
+    }
+    try {
+      streamClient.getEvents(NONEXISTENT_STREAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+                             Lists.<StreamEvent>newArrayList());
+      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
+    } catch (StreamNotFoundException expected) {
+    }
+    try {
+      streamClient.truncate(NONEXISTENT_STREAM);
+      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
+    } catch (StreamNotFoundException expected) {
+    }
+
+    // creation with invalid characters should fail
+    try {
+      streamClient.create(STREAM_NAME + "&");
+      Assert.fail();
+    } catch (BadRequestException expected) {
+      Assert.assertTrue(expected.getMessage().contains(
+        "Stream name can only contain alphanumeric, '-' and '_' characters"));
+    }
+    try {
+      streamClient.create(STREAM_NAME + ".");
+      Assert.fail();
+    } catch (BadRequestException expected) {
+      Assert.assertTrue(expected.getMessage().contains(
+        "Stream name can only contain alphanumeric, '-' and '_' characters"));
+    }
   }
 
   private void checkEventsProcessed(MetricsClient metricsClient, Map<String, String> streamTags, String metric,
