@@ -23,6 +23,7 @@ import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.BadRequestException;
 import co.cask.cdap.common.exception.StreamNotFoundException;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.StreamProperties;
 import com.google.common.collect.ImmutableMap;
@@ -30,8 +31,9 @@ import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -54,8 +56,8 @@ public class StreamTest extends AudiTestBase {
 
     streamClient.sendEvent(STREAM_NAME, "");
     streamClient.sendEvent(STREAM_NAME, " a b ");
-    ArrayList<StreamEvent> events = streamClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
-                                                           Lists.<StreamEvent>newArrayList());
+    List<StreamEvent> events = streamClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+                                                      Lists.<StreamEvent>newArrayList());
     Assert.assertEquals(2, events.size());
     Assert.assertEquals("", Bytes.toString(events.get(0).getBody()));
     Assert.assertEquals(" a b ", Bytes.toString(events.get(1).getBody()));
@@ -63,11 +65,11 @@ public class StreamTest extends AudiTestBase {
     MetricsClient metricsClient = new MetricsClient(getClientConfig(), getRestClient());
 
 
-    ImmutableMap<String, String> streamTags =
+    Map<String, String> streamTags =
       ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Constants.DEFAULT_NAMESPACE,
                       Constants.Metrics.Tag.STREAM, STREAM_NAME);
-    checkEventsProcessed(metricsClient, streamTags, "system.collect.events", 2, 10);
-    checkEventsProcessed(metricsClient, streamTags, "system.collect.bytes", 5, 10);
+    checkMetric(metricsClient, streamTags, "system.collect.events", 2, 10);
+    checkMetric(metricsClient, streamTags, "system.collect.bytes", 5, 10);
 
     streamClient.truncate(STREAM_NAME);
     events = streamClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
@@ -119,21 +121,19 @@ public class StreamTest extends AudiTestBase {
     }
   }
 
-  private void checkEventsProcessed(MetricsClient metricsClient, Map<String, String> streamTags, String metric,
-                                    long expectedCount, int retries) throws Exception {
-    for (int i = 0; i < retries; i++) {
-      long numProcessed = getNumProcessed(metricsClient, streamTags, metric);
-      if (numProcessed == expectedCount) {
-        return;
+  private void checkMetric(final MetricsClient metricsClient, final Map<String, String> streamTags,
+                           final String metric, long expectedCount, int timeOutSeconds) throws Exception {
+    Tasks.waitFor(expectedCount, new Callable<Long>() {
+      @Override
+      public Long call() throws Exception {
+        return getMetricValue(metricsClient, streamTags, metric);
       }
-      TimeUnit.SECONDS.sleep(1);
-    }
-    Assert.assertEquals(expectedCount, getNumProcessed(metricsClient, streamTags, metric));
+    }, timeOutSeconds, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
   }
 
 
-  private long getNumProcessed(MetricsClient metricsClient, Map<String, String> streamTags,
-                               String metric) throws Exception {
+  private long getMetricValue(MetricsClient metricsClient, Map<String, String> streamTags,
+                              String metric) throws Exception {
     MetricQueryResult metricQueryResult = metricsClient.query(metric, streamTags);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {

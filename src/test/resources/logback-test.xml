@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-  Copyright © 2014-2015 Cask Data, Inc.
+  Copyright © 2015 Cask Data, Inc.
 
   Licensed under the Apache License, Version 2.0 (the "License"); you may not
   use this file except in compliance with the License. You may obtain a copy of
@@ -17,10 +17,9 @@
   -->
 
 <!--                                                                         -->
-<!-- AppFabric Logging Configuration                                         -->
+<!-- CDAP Integration Test Configuration                                     -->
 <!--                                                                         -->
-<!-- We use the LogBack project for logging in AppFabric. The manual for     -->
-<!-- Logback can be found here: http://logback.qos.ch/manual                 -->
+<!-- The manual for Logback can be found here: http://logback.qos.ch/manual  -->
 <!--                                                                         -->
 
 <configuration>
@@ -39,4 +38,9 @@
             <pattern>%d{ISO8601} - %-5p [%t:%C{1}@%L] - %m%n</pattern>
         </encoder>
     </appender>
+
+    <root level="DEBUG">
+      <appender-ref ref="CLOG"/>
+      <appender-ref ref="STDOUT"/>
+    </root>
 </configuration>

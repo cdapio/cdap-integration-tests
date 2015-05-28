@@ -27,12 +27,13 @@ import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
+import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import org.apache.commons.io.IOUtils;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,23 +49,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class AudiTestBase extends IntegrationTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
-  private RESTClient restClient;
+  private final RESTClient restClient;
+
+  public AudiTestBase() {
+    restClient = createRestClient();
+  }
 
   @Before
-  @Override
-  public void setUp() throws Exception {
-    // we need to setup the RestClient before anything happens even in IntegrationTestBase, so that any requests
-    // made can go through our RestClient
-    setupRestClient();
-
-    super.setUp();
-
+  public void before() throws Exception {
     Tasks.waitFor(true, new Callable<Boolean>() {
       @Override
       public Boolean call() throws Exception {
         return allOk();
       }
-    }, 20, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    }, 20, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
 
     assertUnrecoverableResetEnabled();
   }
@@ -108,26 +106,25 @@ public class AudiTestBase extends IntegrationTestBase {
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
   protected RESTClient getRestClient() {
-    Preconditions.checkNotNull(restClient, "RestClient not yet initialized.");
     return restClient;
   }
 
   // constructs a RestClient with logging upon each request
-  private void setupRestClient() {
-    restClient = new RESTClient(getClientConfig());
+  private RESTClient createRestClient() {
+    RESTClient restClient = new RESTClient(getClientConfig());
     restClient.addListener(new RESTClient.Listener() {
       @Override
       public void onRequest(HttpRequest httpRequest, int i) {
-        String body = null;
         try {
           InputSupplier<? extends InputStream> inputSupplier = httpRequest.getBody();
+          String body = null;
           if (inputSupplier != null) {
-            body = IOUtils.toString(inputSupplier.getInput());
+            body = CharStreams.toString(CharStreams.newReaderSupplier(inputSupplier, Charsets.UTF_8));
           }
+          LOG.info("Making request: {} {} - body: {}", httpRequest.getMethod(), httpRequest.getURL(), body);
         } catch (IOException e) {
-          e.printStackTrace();
+          LOG.error("Failed to get body from http request: {} {}", httpRequest.getMethod(), httpRequest.getURL(), e);
         }
-        LOG.info("Making request: {} {} - Body: {}", httpRequest.getMethod(), httpRequest.getURL(), body);
       }
 
       @Override
@@ -136,5 +133,6 @@ public class AudiTestBase extends IntegrationTestBase {
                  httpResponse.getResponseCode(), httpResponse.getResponseBodyAsString());
       }
     });
+    return restClient;
   }
 }
