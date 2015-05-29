@@ -23,24 +23,20 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.test.IntegrationTestBase;
-import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -60,7 +56,7 @@ public class AudiTestBase extends IntegrationTestBase {
     Tasks.waitFor(true, new Callable<Boolean>() {
       @Override
       public Boolean call() throws Exception {
-        return allOk();
+        return new MonitorClient(getClientConfig(), getRestClient()).allSystemServicesOk();
       }
     }, 20, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
 
@@ -68,30 +64,10 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   private void assertUnrecoverableResetEnabled() throws IOException, UnauthorizedException {
-    // TODO: use MetaClient#getCDAPConfig, once the method is available
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, getClientConfig().resolveURLV3("config/cdap"),
-                                                    getClientConfig().getAccessToken());
-    JsonArray jsonArray = new JsonParser().parse(response.getResponseBodyAsString()).getAsJsonArray();
-    boolean resetEnabled = Constants.Dangerous.DEFAULT_UNRECOVERABLE_RESET;
-    for (JsonElement jsonElement : jsonArray) {
-      if (Constants.Dangerous.UNRECOVERABLE_RESET.equals(jsonElement.getAsJsonObject().get("name").getAsString())) {
-        resetEnabled = jsonElement.getAsJsonObject().get("value").getAsBoolean();
-        break;
-      }
-    }
-    Preconditions.checkState(resetEnabled, "UnrecoverableReset not enabled.");
-  }
-
-  private boolean allOk() throws Exception {
-    // TODO: use MonitorClient#allSystemServicesOk, once the method is available
-    Map<String, String> allSystemServiceStatus = new MonitorClient(getClientConfig()).getAllSystemServiceStatus();
-    LOG.info(allSystemServiceStatus.toString());
-    for (String status : allSystemServiceStatus.values()) {
-      if (!"OK".equals(status)) {
-        return false;
-      }
-    }
-    return true;
+    ConfigEntry configEntry = getMetaClient().getCDAPConfig().get(Constants.Dangerous.UNRECOVERABLE_RESET);
+    Preconditions.checkNotNull(configEntry,
+                               "Missing key from CDAP Configuration: {}", Constants.Dangerous.UNRECOVERABLE_RESET);
+    Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "UnrecoverableReset not enabled.");
   }
 
   @Override
