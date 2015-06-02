@@ -18,13 +18,10 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
-import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.BadRequestException;
 import co.cask.cdap.common.exception.StreamNotFoundException;
-import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.StreamProperties;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -33,8 +30,6 @@ import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Tests various methods of a stream such as create, ingest events, fetch events, properties.
@@ -62,14 +57,12 @@ public class StreamTest extends AudiTestBase {
     Assert.assertEquals("", Bytes.toString(events.get(0).getBody()));
     Assert.assertEquals(" a b ", Bytes.toString(events.get(1).getBody()));
 
-    MetricsClient metricsClient = new MetricsClient(getClientConfig(), getRestClient());
-
 
     Map<String, String> streamTags =
       ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Constants.DEFAULT_NAMESPACE,
                       Constants.Metrics.Tag.STREAM, STREAM_NAME);
-    checkMetric(metricsClient, streamTags, "system.collect.events", 2, 10);
-    checkMetric(metricsClient, streamTags, "system.collect.bytes", 5, 10);
+    checkMetric(streamTags, "system.collect.events", 2, 10);
+    checkMetric(streamTags, "system.collect.bytes", 5, 10);
 
     streamClient.truncate(STREAM_NAME);
     events = streamClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
@@ -119,26 +112,5 @@ public class StreamTest extends AudiTestBase {
       Assert.assertTrue(expected.getMessage().contains(
         "Stream name can only contain alphanumeric, '-' and '_' characters"));
     }
-  }
-
-  private void checkMetric(final MetricsClient metricsClient, final Map<String, String> streamTags,
-                           final String metric, long expectedCount, int timeOutSeconds) throws Exception {
-    Tasks.waitFor(expectedCount, new Callable<Long>() {
-      @Override
-      public Long call() throws Exception {
-        return getMetricValue(metricsClient, streamTags, metric);
-      }
-    }, timeOutSeconds, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
-  }
-
-
-  private long getMetricValue(MetricsClient metricsClient, Map<String, String> streamTags,
-                              String metric) throws Exception {
-    MetricQueryResult metricQueryResult = metricsClient.query(metric, streamTags);
-    MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
-    if (series.length == 0) {
-      return 0;
-    }
-    return series[0].getData()[0].getValue();
   }
 }

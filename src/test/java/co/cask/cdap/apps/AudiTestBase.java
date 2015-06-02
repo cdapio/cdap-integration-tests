@@ -17,6 +17,7 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.client.ApplicationClient;
+import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.MonitorClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
@@ -24,11 +25,13 @@ import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.ConfigEntry;
+import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
 import org.junit.Before;
@@ -37,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -80,6 +84,10 @@ public class AudiTestBase extends IntegrationTestBase {
     return new ApplicationClient(getClientConfig(), getRestClient());
   }
 
+  protected MetricsClient getMetricsClient() {
+    return new MetricsClient(getClientConfig(), getRestClient());
+  }
+
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
   protected RESTClient getRestClient() {
     return restClient;
@@ -110,5 +118,28 @@ public class AudiTestBase extends IntegrationTestBase {
       }
     });
     return restClient;
+  }
+
+  protected void checkMetric(final Map<String, String> tags, final String metric,
+                             long expectedCount, int timeOutSeconds) throws Exception {
+    Tasks.waitFor(expectedCount, new Callable<Long>() {
+      @Override
+      public Long call() throws Exception {
+        return getMetricValue(tags, metric);
+      }
+    }, timeOutSeconds, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
+  }
+
+  private long getMetricValue(Map<String, String> streamTags, String metric) throws Exception {
+    MetricQueryResult metricQueryResult =
+      getMetricsClient().query(ImmutableList.of(metric), ImmutableList.<String>of(), streamTags);
+    MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
+    if (series.length == 0) {
+      return 0;
+    }
+    Preconditions.checkState(series.length == 1, "Metric TimeSeries has more than one TimeSeries: {}", series);
+    MetricQueryResult.TimeValue[] timeValues = series[0].getData();
+    Preconditions.checkState(timeValues.length == 1, "Metric TimeValues has more than one TimeValue: {}", timeValues);
+    return timeValues[0].getValue();
   }
 }
