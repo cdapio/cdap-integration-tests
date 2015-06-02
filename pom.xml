@@ -20,11 +20,15 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>co.cask.cdap.guides</groupId>
-  <artifactId>cdap-integration-tests</artifactId>
-  <name>cdap-integration-tests</name>
+  <groupId>co.cask.cdap.test</groupId>
+  <artifactId>integration-test</artifactId>
+  <name>integration-test</name>
   <version>1.0.0</version>
-  <packaging>jar</packaging>
+  <modules>
+    <module>integration-test-remote</module>
+    <module>integration-test-standalone</module>
+  </modules>
+  <packaging>pom</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
