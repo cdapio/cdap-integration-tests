@@ -51,12 +51,13 @@ public class FileSetTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
-    List<DatasetSpecificationSummary> list = datasetClient.list();
-    Assert.assertEquals(2, list.size());
-    for (DatasetSpecificationSummary datasetSpecificationSummary : list) {
+    List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list();
+    Assert.assertEquals(2, datasetSpecificationsList.size());
+    for (DatasetSpecificationSummary datasetSpecificationSummary : datasetSpecificationsList) {
       Assert.assertEquals(FileSet.class.getName(), datasetSpecificationSummary.getType());
       String datasetName = datasetSpecificationSummary.getName();
-      Assert.assertTrue("Dataset list consists of dataset other than 'lines' and 'count': " + new Gson().toJson(list),
+      Assert.assertTrue("Dataset list consists of dataset other than 'lines' and 'count': "
+                          + new Gson().toJson(datasetSpecificationsList),
                         "lines".equals(datasetName) || "counts".equals(datasetName));
     }
     ServiceManager fileSetService = applicationManager.startService("FileSetService");
@@ -89,9 +90,9 @@ public class FileSetTest extends AudiTestBase {
     Assert.assertEquals(400, response.getResponseCode());
 
 
-    MapReduceManager wordCountManager =
-      applicationManager.startMapReduce("WordCount", ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
-                                                                     "dataset.counts.output.path", "out.txt"));
+    MapReduceManager wordCountManager = applicationManager.getMapReduceManager("WordCount")
+      .start(ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
+                             "dataset.counts.output.path", "out.txt"));
 
     // mapreduce should start and then complete
     wordCountManager.waitForStatus(true, 60, 1);
@@ -105,20 +106,19 @@ public class FileSetTest extends AudiTestBase {
   private Map<String, Integer> computeResult(List<String> data) {
     Map<String, Integer> resultMap = Maps.newHashMap();
     for (String words : data) {
-      for (String word : words.split("\\ ")) {
-        Integer value = resultMap.get(word);
-        if (value == null) {
+      for (String word : words.split("\\s+")) {
+        if (!resultMap.containsKey(word)) {
           resultMap.put(word, 1);
         } else {
-          resultMap.put(word, value + 1);
+          resultMap.put(word, resultMap.get(word) + 1);
         }
       }
     }
     return resultMap;
   }
 
-  private void checkOutput(String s, Map<String, Integer> expectedMap) {
-    String[] parts = s.trim().split("\\n");
+  private void checkOutput(String output, Map<String, Integer> expectedMap) {
+    String[] parts = output.trim().split("\\n");
     Assert.assertEquals(expectedMap.keySet().size(), parts.length);
     for (String part : parts) {
       String[] keyVal = part.split(":");
