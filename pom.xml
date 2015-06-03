@@ -38,30 +38,24 @@
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>cdap-api</artifactId>
-      <version>${cdap.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>cdap-common</artifactId>
-      <version>${cdap.version}</version>
-    </dependency>
+    <!-- Use provided scope for example jars that pulled in for testing -->
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>FileSetExample</artifactId>
       <version>${cdap.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>Purchase</artifactId>
       <version>${cdap.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>WordCount</artifactId>
       <version>${cdap.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency> <!-- PurchaseHistory Dependency -->
       <groupId>org.apache.hadoop</groupId>
@@ -82,6 +76,17 @@
           <artifactId>slf4j-log4j12</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-api</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-common</artifactId>
+      <version>${cdap.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
@@ -127,13 +132,52 @@
           <target>1.7</target>
         </configuration>
       </plugin>
+      <!-- Copy example jars -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.10</version>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
+              <includeGroupIds>co.cask.cdap</includeGroupIds>
+              <excludeTransitive>true</excludeTransitive>
+              <stripVersion>true</stripVersion>
+              <includeScope>provided</includeScope>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.18.1</version>
         <configuration>
+          <argLine>-Xmx5000m -Djava.awt.headless=true -XX:MaxPermSize=256m -XX:+UseConcMarkSweepGC -XX:OnOutOfMemoryError="kill -9 %p"</argLine>
+          <systemPropertyVariables>
+            <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+          </systemPropertyVariables>
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*TestSuite.java</include>
+          </includes>
+          <!--
+            Needs to exclude all the example dependencies from the test classpath. Otherwise it pollute the classpath
+            that the standalone started in the test contains test classes in the system classpath.
+          -->
+          <classpathDependencyExcludes>
+            <classpathDependencyExcludes>co.cask.cdap:FileSetExample</classpathDependencyExcludes>
+            <classpathDependencyExcludes>co.cask.cdap:Purchase</classpathDependencyExcludes>
+            <classpathDependencyExcludes>co.cask.cdap:WordCount</classpathDependencyExcludes>
+          </classpathDependencyExcludes>
         </configuration>
       </plugin>
       <plugin>
@@ -180,4 +224,5 @@
       </plugin>
     </plugins>
   </build>
+
 </project>

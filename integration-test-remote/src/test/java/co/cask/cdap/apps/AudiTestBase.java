@@ -16,6 +16,7 @@
 
 package co.cask.cdap.apps;
 
+import co.cask.cdap.api.app.Application;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.MonitorClient;
@@ -23,9 +24,13 @@ import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.UnauthorizedException;
+import co.cask.cdap.common.lang.ProgramClassLoader;
+import co.cask.cdap.common.lang.jar.BundleJarUtil;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.ConfigEntry;
+import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
+import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -34,15 +39,19 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
+import com.google.common.io.Resources;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.Attributes;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -66,6 +75,25 @@ public class AudiTestBase extends IntegrationTestBase {
 
     assertUnrecoverableResetEnabled();
   }
+
+  protected ApplicationManager deployApplication(String applicationJarName) throws Exception {
+    return deployApplication(getClientConfig().getNamespace(), applicationJarName);
+  }
+
+  @SuppressWarnings("unchecked")
+  protected ApplicationManager deployApplication(Id.Namespace namespace, String applicationJarName) throws Exception {
+    URL jarURL = getClass().getClassLoader().getResource(applicationJarName);
+    Preconditions.checkNotNull(jarURL, "Application jar (%s) missing from classpath. " +
+      "May need to run 'mvn process-test-resources' if running test from IDE.", applicationJarName);
+
+    // Expand the jar and create a classloader from the directory
+    File dir = TEMP_FOLDER.newFolder();
+    BundleJarUtil.unpackProgramJar(Resources.newInputStreamSupplier(jarURL), dir);
+    ProgramClassLoader classLoader = ProgramClassLoader.create(dir, getClass().getClassLoader());
+    String mainClass = classLoader.getManifest().getMainAttributes().getValue(Attributes.Name.MAIN_CLASS);
+    return deployApplication(namespace, (Class<? extends Application>) classLoader.loadClass(mainClass));
+  }
+
 
   private void assertUnrecoverableResetEnabled() throws IOException, UnauthorizedException {
     ConfigEntry configEntry = getMetaClient().getCDAPConfig().get(Constants.Dangerous.UNRECOVERABLE_RESET);
