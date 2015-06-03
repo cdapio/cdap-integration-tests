@@ -19,12 +19,10 @@ package co.cask.cdap.apps.purchase;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.api.schedule.ScheduleSpecification;
 import co.cask.cdap.apps.AudiTestBase;
-import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.exception.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.proto.Id;
@@ -48,7 +46,6 @@ import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.List;
@@ -59,6 +56,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class PurchaseAudiTest extends AudiTestBase {
   private static final Gson GSON = new Gson();
+  private static final String PURCHASE_FLOW = "PurchaseFlow";
+  private static final String PURCHASE_HISTORY_SERVICE = "PurchaseHistoryService";
+  private static final String PURCHASE_USER_PROFILE_SERVICE = "UserProfileService";
+  private static final String PURCHASE_HISTORY_WORKFLOW = "PurchaseHistoryWorkflow";
+  private static final String PURCHASE_HISTORY_BUILDER = "PurchaseHistoryBuilder";
 
   @Test
   public void test() throws Exception {
@@ -68,27 +70,26 @@ public class PurchaseAudiTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
 
     // none of the programs should have any run records
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.FLOW,
-                                                           "PurchaseFlow",
+    Assert.assertEquals(0, programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.FLOW, PURCHASE_FLOW,
                                                            0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
     Assert.assertEquals(0, programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.SERVICE,
-                                                           "PurchaseHistoryService",
+                                                           PURCHASE_HISTORY_SERVICE,
                                                            0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
     Assert.assertEquals(0, programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.SERVICE,
-                                                           "UserProfileService",
+                                                           PURCHASE_USER_PROFILE_SERVICE,
                                                            0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
     Assert.assertEquals(0, programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.WORKFLOW,
-                                                           "PurchaseHistoryWorkflow",
+                                                           PURCHASE_HISTORY_WORKFLOW,
                                                            0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
 
     // PurchaseHistoryWorkflow should have two schedules
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
     List<ScheduleSpecification> workflowSchedules =
-      scheduleClient.list(PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");
+      scheduleClient.list(PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(2, workflowSchedules.size());
 
     // start PurchaseFlow and ingest an event
-    FlowManager purchaseFlow = applicationManager.startFlow("PurchaseFlow");
+    FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW).start();
     purchaseFlow.waitForStatus(true, 60, 1);
 
     StreamManager purchaseStream =
@@ -98,8 +99,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     RuntimeMetrics flowletMetrics = purchaseFlow.getFlowletMetrics("collector");
     flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
 
-    ServiceManager purchaseHistoryService = applicationManager.startService("PurchaseHistoryService");
-    ServiceManager userProfileService = applicationManager.startService("UserProfileService");
+    ServiceManager purchaseHistoryService = applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE).start();
+    ServiceManager userProfileService = applicationManager.getServiceManager(PURCHASE_USER_PROFILE_SERVICE).start();
 
     userProfileService.waitForStatus(true, 60, 1);
     purchaseHistoryService.waitForStatus(true, 60, 1);
@@ -119,8 +120,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(new JsonParser().parse(body), new JsonParser().parse(response.getResponseBodyAsString()));
 
-    WorkflowManager purchaseHistoryWorkflowManager = applicationManager.getWorkflowManager("PurchaseHistoryWorkflow");
-    MapReduceManager purchaseHistoryBuilderManager = applicationManager.getMapReduceManager("PurchaseHistoryBuilder");
+    WorkflowManager purchaseHistoryWorkflowManager = applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW);
+    MapReduceManager purchaseHistoryBuilderManager = applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER);
 
     purchaseHistoryWorkflowManager.start();
     purchaseHistoryWorkflowManager.waitForStatus(true, 60, 1);
@@ -140,22 +141,6 @@ public class PurchaseAudiTest extends AudiTestBase {
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());
 
-    // should not delete application when programs are running
-    ApplicationClient appClient = new ApplicationClient(getClientConfig(), restClient);
-    try {
-      appClient.delete(PurchaseApp.APP_NAME);
-      Assert.fail();
-    } catch (IOException expected) {
-      Assert.assertEquals("403: Program is still running", expected.getMessage());
-    }
-
-    // should not delete non-existing application (TODO: unrelated. move to a different test case?)
-    try {
-      appClient.delete("NoSuchApp");
-      Assert.fail();
-    } catch (ApplicationNotFoundException expected) {
-    }
-
     purchaseFlow.stop();
     purchaseHistoryService.stop();
     userProfileService.stop();
@@ -166,34 +151,34 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     // flow and services have 'KILLED' state because they were explicitly stopped
     List<RunRecord> purchaseFlowRuns =
-      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.FLOW, "PurchaseFlow",
+      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.FLOW, PURCHASE_FLOW,
                                       0, Long.MAX_VALUE, Integer.MAX_VALUE);
     assertSingleRun(purchaseFlowRuns, ProgramRunStatus.KILLED);
 
     List<RunRecord> purchaseHistoryServiceRuns =
-      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.SERVICE, "PurchaseHistoryService",
+      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.SERVICE, PURCHASE_HISTORY_SERVICE,
                                       0, Long.MAX_VALUE, Integer.MAX_VALUE);
     assertSingleRun(purchaseHistoryServiceRuns, ProgramRunStatus.KILLED);
 
     List<RunRecord> userProfileServiceRuns =
-      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.SERVICE, "UserProfileService",
+      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.SERVICE, PURCHASE_USER_PROFILE_SERVICE,
                                       0, Long.MAX_VALUE, Integer.MAX_VALUE);
     assertSingleRun(userProfileServiceRuns, ProgramRunStatus.KILLED);
 
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
     List<RunRecord> workflowRuns =
-      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, "PurchaseHistoryWorkflow",
+      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, PURCHASE_HISTORY_WORKFLOW,
                                       0, Long.MAX_VALUE, Integer.MAX_VALUE);
     assertSingleRun(workflowRuns, ProgramRunStatus.COMPLETED);
 
     List<RunRecord> mapReduceRuns =
-      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder",
+      programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, PURCHASE_HISTORY_BUILDER,
                                       0, Long.MAX_VALUE, Integer.MAX_VALUE);
     assertSingleRun(mapReduceRuns, ProgramRunStatus.COMPLETED);
 
     // TODO: have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
-    String path = String.format("apps/%s/workflows/%s/nextruntime", PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");
+    String path = String.format("apps/%s/workflows/%s/nextruntime", PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW);
     url = getClientConfig().resolveNamespacedURLV3(path);
     response = restClient.execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
 
