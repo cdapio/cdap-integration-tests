@@ -1,0 +1,54 @@
+CDAP Integration Tests
+======================
+
+Writing Tests
+-------------
+New test cases should be written in the ``integration-test-remote`` module, alongside the existing test cases.
+They can be within their own package, as long as it is a "sub-package" of ``co.cask.cdap.apps``.
+
+When writing an integration test, the same APIs are available as in CDAP unit tests.
+Note that some APIs are not available, such as the ``TestManager`` methods ``deployTemplate``, ``addTemplatePlugins``,
+and ``getDataset``.
+
+For instance, to compile and deploy an Application class and start a Flow of that application::
+
+  ApplicationManager applicationManager = deployApplication(WordCount.class);
+  applicationManager.getFlowManager("WordCounter").start()
+
+If additional APIs are needed that are not available in the CDAP unit tests framework,
+the CDAP clients library can be utilized to interact with the CDAP instance.
+
+For instance, example usage of StreamClient is in the StreamTest test class. Other clients can be
+instantiated in a similar manner::
+
+  StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
+  streamClient.create("TestStream");
+
+
+Running Tests
+-------------
+To run integration tests against a remote CDAP instance, execute::
+
+  mvn clean test -pl integration-test-remote -DargLine="-DinstanceUri=<HostAndPort>"
+
+To run integration tests against an automatically instantiated CDAP Standalone instance, execute::
+
+  mvn test -P standalone-test
+
+
+License and Trademarks
+======================
+
+Copyright © 2015 Cask Data, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+in compliance with the License. You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under the
+License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+either express or implied. See the License for the specific language governing permissions
+and limitations under the License.
+
+Cask is a trademark of Cask Data, Inc. All rights reserved.
