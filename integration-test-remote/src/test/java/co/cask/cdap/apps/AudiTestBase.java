@@ -36,7 +36,6 @@ import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
 import com.google.common.io.Resources;
@@ -158,9 +157,8 @@ public class AudiTestBase extends IntegrationTestBase {
     }, timeOutSeconds, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
   }
 
-  private long getMetricValue(Map<String, String> streamTags, String metric) throws Exception {
-    MetricQueryResult metricQueryResult =
-      getMetricsClient().query(ImmutableList.of(metric), ImmutableList.<String>of(), streamTags);
+  private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
+    MetricQueryResult metricQueryResult = getMetricsClient().query(tags, metric);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {
       return 0;

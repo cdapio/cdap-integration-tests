@@ -33,7 +33,7 @@ public class ApplicationTest extends AudiTestBase {
 
   @Test
   public void test() throws Exception {
-    ApplicationManager applicationManager = deployApplication("PurchaseApp.jar");
+    ApplicationManager applicationManager = deployApplication("Purchase.jar");
     FlowManager purchaseFlow = applicationManager.getFlowManager("PurchaseFlow").start();
     purchaseFlow.waitForStatus(true, 60, 1);
 
