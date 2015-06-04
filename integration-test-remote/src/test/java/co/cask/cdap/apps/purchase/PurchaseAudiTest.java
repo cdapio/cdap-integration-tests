@@ -67,7 +67,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     RESTClient restClient = getRestClient();
     ProgramClient programClient = getProgramClient();
 
-    ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
+    ApplicationManager applicationManager = deployApplication("PurchaseApp.jar");
 
     // none of the programs should have any run records
     Assert.assertEquals(0, programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.FLOW, PURCHASE_FLOW,
