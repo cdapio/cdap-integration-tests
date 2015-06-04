@@ -42,6 +42,7 @@ import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
@@ -138,8 +139,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     url = new URL(serviceURL, "history/Milo");
     response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
-    PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
-    Assert.assertEquals("Milo", purchaseHistory.getCustomer());
+    JsonObject purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), JsonObject.class);
+    Assert.assertEquals("Milo", purchaseHistory.get("customer").getAsString());
 
     purchaseFlow.stop();
     purchaseHistoryService.stop();
