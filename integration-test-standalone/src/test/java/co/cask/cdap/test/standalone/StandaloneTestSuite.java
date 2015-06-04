@@ -26,7 +26,7 @@ import org.junit.runner.RunWith;
  *
  */
 @RunWith(AutoSuiteRunner.class)
-@AutoSuiteRunner.Matches(packages = "co.cask.cdap.apps.wordcount")
+@AutoSuiteRunner.Matches(packages = "co.cask.cdap.apps")
 public class StandaloneTestSuite {
 
   @ClassRule
