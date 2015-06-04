@@ -29,11 +29,11 @@ Running Tests
 -------------
 To run integration tests against a remote CDAP instance, execute::
 
-  mvn clean test -pl integration-test-remote -DargLine="-DinstanceUri=<HostAndPort>"
+  mvn clean test -pl integration-test-remote -DinstanceUri=<HostAndPort>
 
 To run integration tests against an automatically instantiated CDAP Standalone instance, execute::
 
-  mvn test -P standalone-test
+  mvn clean test -P standalone-test
 
 
 License and Trademarks

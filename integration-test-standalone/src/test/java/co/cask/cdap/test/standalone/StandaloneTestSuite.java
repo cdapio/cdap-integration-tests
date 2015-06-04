@@ -13,22 +13,27 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package apps.wordcount;
+
+package co.cask.cdap.test.standalone;
 
 import co.cask.cdap.StandaloneTester;
-import co.cask.cdap.apps.wordcount.WordCountTest;
-import co.cask.cdap.examples.wordcount.WordCount;
+import co.cask.cdap.test.runner.AutoSuiteRunner;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.runner.RunWith;
 
 /**
- * Test for {@link WordCount}.
+ *
  */
-public class StandaloneWordCountTest extends WordCountTest {
+@RunWith(AutoSuiteRunner.class)
+@AutoSuiteRunner.Matches(packages = "co.cask.cdap.apps.wordcount")
+public class StandaloneTestSuite {
+
   @ClassRule
   public static final StandaloneTester STANDALONE = new StandaloneTester();
 
-  @Override
-  protected String getInstanceURI() {
-    return STANDALONE.getBaseURI().toString();
+  @BeforeClass
+  public static void init() {
+    System.setProperty("instanceUri", STANDALONE.getBaseURI().toString());
   }
 }
