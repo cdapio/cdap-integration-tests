@@ -57,7 +57,7 @@ public class StreamSchedulerTest extends AudiTestBase {
      * Suspend the DataSchedule and publish another 1MB of data
      * Ensure that the workflow is triggered after the suspended schedule is resumed
      */
-    ApplicationManager applicationManager = deployApplication("Purchase.jar");
+    ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
     String purchaseStream = "purchaseStream";
     StreamProperties purchaseStreamProperties = streamClient.getConfig(purchaseStream);

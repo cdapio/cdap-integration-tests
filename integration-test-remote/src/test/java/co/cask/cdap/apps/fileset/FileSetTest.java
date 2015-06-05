@@ -19,6 +19,7 @@ package co.cask.cdap.apps.fileset;
 import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.DatasetClient;
+import co.cask.cdap.examples.fileset.FileSetExample;
 import co.cask.cdap.proto.DatasetSpecificationSummary;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
@@ -48,7 +49,7 @@ public class FileSetTest extends AudiTestBase {
 
   @Test
   public void test() throws Exception {
-    ApplicationManager applicationManager = deployApplication("FileSetExample.jar");
+    ApplicationManager applicationManager = deployApplication(FileSetExample.class);
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
     List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list();
     Assert.assertEquals(2, datasetSpecificationsList.size());
