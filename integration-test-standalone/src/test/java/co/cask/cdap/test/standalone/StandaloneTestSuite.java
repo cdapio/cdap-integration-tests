@@ -91,21 +91,18 @@ public class StandaloneTestSuite {
 
       // A small hack is needed since we didn't make example application under different groupId and not prefixed
       // the artifactId with something special (cdap- and hive-)
-      boolean excluded = false;
       // Check for co/cask/cdap
       if (path.contains("/co/cask/cdap/")) {
         String artifactFile = Paths.get(path).getFileName().toString();
         if (!artifactFile.startsWith("cdap-") && !artifactFile.startsWith("hive-")) {
-          excluded = true;
+          continue;
         }
       }
 
-      if (!excluded) {
-        try {
-          urls.add(Paths.get(path).toUri().toURL());
-        } catch (MalformedURLException e) {
-          throw Throwables.propagate(e);
-        }
+      try {
+        urls.add(Paths.get(path).toUri().toURL());
+      } catch (MalformedURLException e) {
+        throw Throwables.propagate(e);
       }
     }
 
