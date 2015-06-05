@@ -22,10 +22,14 @@ import co.cask.cdap.common.exception.BadRequestException;
 import co.cask.cdap.common.exception.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.List;
+import javax.annotation.Nullable;
 
 /**
  * Tests functionalities of namespaces (create, get, list, delete, etc)
@@ -34,10 +38,14 @@ public class NamespaceTest extends AudiTestBase {
   private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
   private static final Id.Namespace NS2 = Id.Namespace.from("ns2");
 
-  private static final NamespaceMeta ns1Meta =
-    new NamespaceMeta.Builder().setName(NS1).setDescription("testDescription").build();
-  private static final NamespaceMeta ns2Meta =
-    new NamespaceMeta.Builder().setName(NS2).build();
+  private static final NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
+    .setName(NS1)
+    .setDescription("testDescription")
+    .setSchedulerQueueName("testSchedulerQueueName")
+    .build();
+  private static final NamespaceMeta ns2Meta = new NamespaceMeta.Builder()
+    .setName(NS2)
+    .build();
 
   @Test
   public void testNamespaces() throws Exception {
@@ -82,7 +90,17 @@ public class NamespaceTest extends AudiTestBase {
     list = namespaceClient.list();
     Assert.assertEquals(3, list.size());
     Assert.assertTrue(list.contains(ns1Meta));
+    NamespaceMeta retrievedNs1Meta = getById(list, NS1);
+    Assert.assertNotNull(String.format("Failed to find namespace with name %s in list: %s",
+                                       NS1, Joiner.on(", ").join(list)),
+                         retrievedNs1Meta);
+    Assert.assertEquals(ns1Meta, retrievedNs1Meta);
     Assert.assertTrue(list.contains(ns2Meta));
+    NamespaceMeta retrievedNs2Meta = getById(list, NS2);
+    Assert.assertNotNull(String.format("Failed to find namespace with name %s in list: %s",
+                                       NS2, Joiner.on(", ").join(list)),
+                         retrievedNs1Meta);
+    Assert.assertEquals(ns2Meta, retrievedNs2Meta);
     Assert.assertTrue(list.contains(Constants.DEFAULT_NAMESPACE_META));
 
     Assert.assertEquals(ns1Meta, namespaceClient.get(NS1.getId()));
@@ -99,5 +117,17 @@ public class NamespaceTest extends AudiTestBase {
     list = namespaceClient.list();
     Assert.assertEquals(1, list.size());
     Assert.assertEquals(Constants.DEFAULT_NAMESPACE_META, list.get(0));
+  }
+
+  // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
+  @Nullable
+  private NamespaceMeta getById(List<NamespaceMeta> namespaces, final Id.Namespace namespaceId) {
+    Iterable<NamespaceMeta> filter = Iterables.filter(namespaces, new Predicate<NamespaceMeta>() {
+      @Override
+      public boolean apply(@Nullable NamespaceMeta namespaceMeta) {
+        return namespaceMeta != null && namespaceId.getId().equals(namespaceMeta.getName());
+      }
+    });
+    return Iterables.getFirst(filter, null);
   }
 }
