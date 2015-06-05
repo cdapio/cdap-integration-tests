@@ -56,7 +56,7 @@ public class WordCountTest extends AudiTestBase {
      * 5) Repeat the steps 1 to 4
      * 6) check metrics between runs for aggregate.
      */
-    ApplicationManager applicationManager = deployApplication("WordCount.jar");
+    ApplicationManager applicationManager = deployApplication(WordCount.class);
     int numWordsProcessed = 0;
     int longestWordLengthAcrossRuns = Integer.MIN_VALUE;
 
