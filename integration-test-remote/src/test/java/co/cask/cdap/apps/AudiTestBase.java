@@ -73,21 +73,8 @@ public class AudiTestBase extends IntegrationTestBase {
     Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "UnrecoverableReset not enabled.");
   }
 
-  @Override
-  protected ProgramClient getProgramClient() {
-    return new ProgramClient(getClientConfig(), getRestClient(), getApplicationClient());
-  }
-
-  @Override
-  protected ApplicationClient getApplicationClient() {
-    return new ApplicationClient(getClientConfig(), getRestClient());
-  }
-
-  protected MetricsClient getMetricsClient() {
-    return new MetricsClient(getClientConfig(), getRestClient());
-  }
-
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
+  @Override
   protected RESTClient getRestClient() {
     return restClient;
   }
