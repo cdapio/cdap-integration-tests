@@ -14,6 +14,7 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.avro.file.DataFileStream;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
@@ -58,15 +59,15 @@ public class ConversionTestService extends AbstractService {
         Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
       org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser().parse(schema.toString());
 
-      DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(avroSchema);
-      List<GenericRecord> records = Lists.newArrayList();
+      DatumReader<GenericData.Record> datumReader = new GenericDatumReader<>(avroSchema);
+      List<GenericData.Record> records = Lists.newArrayList();
       if (!timePartitionDetailSet.isEmpty()) {
         TimePartitionDetail tpd = (TimePartitionDetail) (timePartitionDetailSet.toArray())[0];
         for (Location dayLoc : tpd.getLocation().list()) {
           String locName = dayLoc.getName();
 
           if (locName.endsWith(".avro")) {
-            DataFileStream<GenericRecord> fileStream =
+            DataFileStream<GenericData.Record> fileStream =
               new DataFileStream<>(dayLoc.getInputStream(), datumReader);
             Iterables.addAll(records, fileStream);
             fileStream.close();

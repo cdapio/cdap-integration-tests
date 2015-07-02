@@ -38,7 +38,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
-import org.apache.avro.generic.GenericData;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.List;
@@ -46,6 +46,36 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 public class IntegrationTest extends AudiTestBase {
+
+  private class IntegrationTestRecord {
+    long ts;
+    String ticker;
+    double price;
+    int num;
+
+    IntegrationTestRecord(long ts, String ticker, double price, int num) {
+      this.ticker = ticker;
+      this.ts = ts;
+      this.price = price;
+      this.num = num;
+    }
+
+    public long getTimestamp() {
+      return ts;
+    }
+
+    public double getPrice() {
+      return price;
+    }
+
+    public int getNum() {
+      return num;
+    }
+
+    public String getTicker() {
+      return ticker;
+    }
+  }
 
   private static final Schema BODY_SCHEMA = Schema.recordOf(
     "event",
@@ -88,7 +118,6 @@ public class IntegrationTest extends AudiTestBase {
         List<RunRecord> responseObject = ObjectResponse.<List<RunRecord>>fromJsonBody(
           response, new TypeToken<List<RunRecord>>() {
           }.getType()).getResponseObject();
-        System.out.println(responseObject);
         for (RunRecord runRecord : responseObject) {
           if ((ProgramRunStatus.COMPLETED).equals(runRecord.getStatus())) {
             return true;
@@ -98,16 +127,16 @@ public class IntegrationTest extends AudiTestBase {
       }
     }, 10, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
 
-    adapterClient.stop("test1");
-    adapterClient.delete("test1");
-
     RESTClient restClient = new RESTClient(getClientConfig());
     HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
       resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/tpfs?time=1"),
                                                getClientConfig().getAccessToken());
-    List<GenericData.Record> responseObject = ObjectResponse.<List<GenericData.Record>>fromJsonBody(
-      response, new TypeToken<List<GenericData.Record>>() { }.getType()).getResponseObject();
+    List<IntegrationTestRecord> responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
+      response, new TypeToken<List<IntegrationTestRecord>>() { }.getType()).getResponseObject();
+    Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
     serviceManager.stop();
+    adapterClient.stop("test1");
+    adapterClient.delete("test1");
   }
   private ETLBatchConfig constructETLBatchConfig(String fileSetName, String sinkType) {
     ETLStage source = new ETLStage("Stream", ImmutableMap.<String, String>builder()
