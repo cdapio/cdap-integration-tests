@@ -107,6 +107,15 @@ public class IntegrationTest extends AudiTestBase {
     adapterClient.create("test1", adapterConfig);
     adapterClient.start("test1");
 
+    String newFilesetName = filesetName + "_op";
+
+    adapterClient = new AdapterClient(getClientConfig());
+    etlBatchConfig = constructTPFSETLConfig(filesetName, newFilesetName);
+    adapterConfig = new AdapterConfig("description", TEMPLATE_ID.getId(),
+                                      GSON.toJsonTree(etlBatchConfig));
+    adapterClient.create("test2", adapterConfig);
+    adapterClient.start("test2");
+
     ApplicationManager applicationManager = deployApplication(ConversionTestExample.class);
     ServiceManager serviceManager = applicationManager.getServiceManager("ConversionTestService");
     serviceManager.start();
@@ -114,7 +123,8 @@ public class IntegrationTest extends AudiTestBase {
     Tasks.waitFor(true, new Callable<Boolean>() {
       public Boolean call() throws Exception {
         RESTClient restClient = new RESTClient(getClientConfig());
-        HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().resolveNamespacedURLV3("adapters/test1/runs"), getClientConfig().getAccessToken());
+        HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
+          resolveNamespacedURLV3("adapters/test1/runs"), getClientConfig().getAccessToken());
         List<RunRecord> responseObject = ObjectResponse.<List<RunRecord>>fromJsonBody(
           response, new TypeToken<List<RunRecord>>() {
           }.getType()).getResponseObject();
@@ -129,14 +139,44 @@ public class IntegrationTest extends AudiTestBase {
 
     RESTClient restClient = new RESTClient(getClientConfig());
     HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
-      resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/tpfs?time=1"),
+      resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/temp?time=1"),
                                                getClientConfig().getAccessToken());
     List<IntegrationTestRecord> responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
       response, new TypeToken<List<IntegrationTestRecord>>() { }.getType()).getResponseObject();
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
+
+
+
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      public Boolean call() throws Exception {
+        RESTClient restClient = new RESTClient(getClientConfig());
+        HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
+          resolveNamespacedURLV3("adapters/test2/runs"), getClientConfig().getAccessToken());
+        List<RunRecord> responseObject = ObjectResponse.<List<RunRecord>>fromJsonBody(
+          response, new TypeToken<List<RunRecord>>() {
+          }.getType()).getResponseObject();
+        for (RunRecord runRecord : responseObject) {
+          if ((ProgramRunStatus.COMPLETED).equals(runRecord.getStatus())) {
+            return true;
+          }
+        }
+        return false;
+      }
+    }, 10, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
+
+    restClient = new RESTClient(getClientConfig());
+    response = restClient.execute(HttpMethod.GET, getClientConfig().
+         resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/temp_op?time=1"),
+                                               getClientConfig().getAccessToken());
+    responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
+      response, new TypeToken<List<IntegrationTestRecord>>() { }.getType()).getResponseObject();
+    Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
+
     serviceManager.stop();
     adapterClient.stop("test1");
     adapterClient.delete("test1");
+    adapterClient.stop("test2");
+    adapterClient.delete("test2");
   }
   private ETLBatchConfig constructETLBatchConfig(String fileSetName, String sinkType) {
     ETLStage source = new ETLStage("Stream", ImmutableMap.<String, String>builder()
@@ -152,6 +192,23 @@ public class IntegrationTest extends AudiTestBase {
                                                  EVENT_SCHEMA.toString(),
                                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, fileSetName));
     ETLStage transform = new ETLStage("Projection", ImmutableMap.<String, String>of("drop", "headers"));
+    return new ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
+  }
+
+  private ETLBatchConfig constructTPFSETLConfig(String filesetName, String newFilesetName) {
+    ETLStage source = new ETLStage("TPFSAvro",
+                                   ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA,
+                                                   EVENT_SCHEMA.toString(),
+                                                   Properties.TimePartitionedFileSetDataset.TPFS_NAME, filesetName,
+                                                   Properties.TimePartitionedFileSetDataset.DELAY, "0d",
+                                                   Properties.TimePartitionedFileSetDataset.DURATION, "10m"));
+    ETLStage sink = new ETLStage("TPFSAvro",
+                                 ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA,
+                                                 EVENT_SCHEMA.toString(),
+                                                 Properties.TimePartitionedFileSetDataset.TPFS_NAME,
+                                                 newFilesetName));
+
+    ETLStage transform = new ETLStage("Projection", ImmutableMap.<String, String>of());
     return new ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
   }
 }

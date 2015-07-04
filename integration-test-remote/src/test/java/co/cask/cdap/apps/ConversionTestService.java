@@ -2,6 +2,7 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.api.annotation.UseDataSet;
 import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.api.data.DatasetInstantiationException;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.api.dataset.lib.TimePartitionDetail;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 
 public class ConversionTestService extends AbstractService {
@@ -44,13 +46,25 @@ public class ConversionTestService extends AbstractService {
     @UseDataSet("temp")
     private TimePartitionedFileSet temp;
 
-    @GET
-    @Path("tpfs")
-    public void readTPFS(HttpServiceRequest request, HttpServiceResponder responder,
-                         @QueryParam("time") long time) throws IOException {
+    @UseDataSet("temp_op")
+    private TimePartitionedFileSet temp_op;
 
-      Set<TimePartitionDetail> timePartitionDetailSet = temp.getPartitionsByTime(time, System.currentTimeMillis()
-        + TimeUnit.MINUTES.toMillis(1));
+    @GET
+    @Path("{fileSet}")
+    public void readTPFS(HttpServiceRequest request, HttpServiceResponder responder,
+                         @PathParam("fileSet") String set, @QueryParam("time") long time) throws IOException {
+
+      Set<TimePartitionDetail> timePartitionDetailSet;
+      TimePartitionedFileSet tpfs;
+      try {
+      tpfs = getContext().getDataset(set);
+      } catch (DatasetInstantiationException e) {
+        responder.sendError(400, String.format("Invalid file set name '%s'", set));
+        return;
+      }
+      timePartitionDetailSet = tpfs.getPartitionsByTime(time, System.currentTimeMillis()
+          + TimeUnit.MINUTES.toMillis(1));
+
       Schema schema = Schema.recordOf(
         "streamEvent",
         Schema.Field.of("ts", Schema.of(Schema.Type.LONG)),
