@@ -60,18 +60,6 @@ public class IntegrationTest extends AudiTestBase {
       this.num = num;
     }
 
-    public long getTimestamp() {
-      return ts;
-    }
-
-    public double getPrice() {
-      return price;
-    }
-
-    public int getNum() {
-      return num;
-    }
-
     public String getTicker() {
       return ticker;
     }
@@ -90,31 +78,33 @@ public class IntegrationTest extends AudiTestBase {
     Schema.Field.of("num", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
 
-  protected final Id.ApplicationTemplate TEMPLATE_ID = Id.ApplicationTemplate.from("ETLBatch");
+  protected static final Id.ApplicationTemplate TEMPLATE_ID = Id.ApplicationTemplate.from("ETLBatch");
+  protected static final Gson GSON = new Gson();
 
   @Test
   public void testAdapter() throws Exception {
+
     StreamClient streamClient = new StreamClient(getClientConfig());
     streamClient.create("stream1");
     streamClient.sendEvent("stream1", "AAPL|10|500.32");
 
     AdapterClient adapterClient = new AdapterClient(getClientConfig());
     String filesetName = "temp";
+    String newFilesetName = filesetName + "TPFS";
+    String adapterName = "test1";
+    String newAdapterName = "test2";
     ETLBatchConfig etlBatchConfig = constructETLBatchConfig(filesetName, "TPFSAvro");
-    final Gson GSON = new Gson();
     AdapterConfig adapterConfig = new AdapterConfig("description", TEMPLATE_ID.getId(),
                                                     GSON.toJsonTree(etlBatchConfig));
-    adapterClient.create("test1", adapterConfig);
-    adapterClient.start("test1");
-
-    String newFilesetName = filesetName + "_op";
+    adapterClient.create(adapterName, adapterConfig);
+    adapterClient.start(adapterName);
 
     adapterClient = new AdapterClient(getClientConfig());
     etlBatchConfig = constructTPFSETLConfig(filesetName, newFilesetName);
     adapterConfig = new AdapterConfig("description", TEMPLATE_ID.getId(),
                                       GSON.toJsonTree(etlBatchConfig));
-    adapterClient.create("test2", adapterConfig);
-    adapterClient.start("test2");
+    adapterClient.create(newAdapterName, adapterConfig);
+    adapterClient.start(newAdapterName);
 
     ApplicationManager applicationManager = deployApplication(ConversionTestExample.class);
     ServiceManager serviceManager = applicationManager.getServiceManager("ConversionTestService");
@@ -135,7 +125,7 @@ public class IntegrationTest extends AudiTestBase {
         }
         return false;
       }
-    }, 10, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
+    }, 5, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
 
     RESTClient restClient = new RESTClient(getClientConfig());
     HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
@@ -144,8 +134,6 @@ public class IntegrationTest extends AudiTestBase {
     List<IntegrationTestRecord> responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
       response, new TypeToken<List<IntegrationTestRecord>>() { }.getType()).getResponseObject();
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
-
-
 
     Tasks.waitFor(true, new Callable<Boolean>() {
       public Boolean call() throws Exception {
@@ -162,22 +150,23 @@ public class IntegrationTest extends AudiTestBase {
         }
         return false;
       }
-    }, 10, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
+    }, 5, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
 
     restClient = new RESTClient(getClientConfig());
     response = restClient.execute(HttpMethod.GET, getClientConfig().
-         resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/temp_op?time=1"),
+         resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/tempTPFS?time=1"),
                                                getClientConfig().getAccessToken());
     responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
       response, new TypeToken<List<IntegrationTestRecord>>() { }.getType()).getResponseObject();
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
 
     serviceManager.stop();
-    adapterClient.stop("test1");
-    adapterClient.delete("test1");
-    adapterClient.stop("test2");
-    adapterClient.delete("test2");
+    adapterClient.stop(adapterName);
+    adapterClient.delete(adapterName);
+    adapterClient.stop(newAdapterName);
+    adapterClient.delete(newAdapterName);
   }
+
   private ETLBatchConfig constructETLBatchConfig(String fileSetName, String sinkType) {
     ETLStage source = new ETLStage("Stream", ImmutableMap.<String, String>builder()
       .put(Properties.Stream.NAME, "stream1")
