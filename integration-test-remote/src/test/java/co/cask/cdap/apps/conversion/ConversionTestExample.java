@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps;
+package co.cask.cdap.apps.conversion;
 
 import co.cask.cdap.api.app.AbstractApplication;
 

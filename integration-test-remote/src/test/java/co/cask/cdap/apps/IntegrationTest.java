@@ -18,6 +18,7 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.apps.conversion.ConversionTestExample;
 import co.cask.cdap.client.AdapterClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.util.RESTClient;
@@ -45,25 +46,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-public class IntegrationTest extends AudiTestBase {
-
-  private class IntegrationTestRecord {
-    long ts;
-    String ticker;
-    double price;
-    int num;
-
-    IntegrationTestRecord(long ts, String ticker, double price, int num) {
-      this.ticker = ticker;
-      this.ts = ts;
-      this.price = price;
-      this.num = num;
-    }
-
-    public String getTicker() {
-      return ticker;
-    }
-  }
+public class IntegrationTest extends AudiTestBase { // rename
 
   private static final Schema BODY_SCHEMA = Schema.recordOf(
     "event",
@@ -84,11 +67,11 @@ public class IntegrationTest extends AudiTestBase {
   @Test
   public void testAdapter() throws Exception {
 
-    StreamClient streamClient = new StreamClient(getClientConfig());
+    StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
     streamClient.create("stream1");
     streamClient.sendEvent("stream1", "AAPL|10|500.32");
 
-    AdapterClient adapterClient = new AdapterClient(getClientConfig());
+    final AdapterClient adapterClient = new AdapterClient(getClientConfig(), getRestClient());
     String filesetName = "temp";
     String newFilesetName = filesetName + "TPFS";
     String adapterName = "test1";
@@ -99,7 +82,6 @@ public class IntegrationTest extends AudiTestBase {
     adapterClient.create(adapterName, adapterConfig);
     adapterClient.start(adapterName);
 
-    adapterClient = new AdapterClient(getClientConfig());
     etlBatchConfig = constructTPFSETLConfig(filesetName, newFilesetName);
     adapterConfig = new AdapterConfig("description", TEMPLATE_ID.getId(),
                                       GSON.toJsonTree(etlBatchConfig));
@@ -112,47 +94,41 @@ public class IntegrationTest extends AudiTestBase {
 
     Tasks.waitFor(true, new Callable<Boolean>() {
       public Boolean call() throws Exception {
-        RESTClient restClient = new RESTClient(getClientConfig());
-        HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
-          resolveNamespacedURLV3("adapters/test1/runs"), getClientConfig().getAccessToken());
-        List<RunRecord> responseObject = ObjectResponse.<List<RunRecord>>fromJsonBody(
-          response, new TypeToken<List<RunRecord>>() {
-          }.getType()).getResponseObject();
-        for (RunRecord runRecord : responseObject) {
-          if ((ProgramRunStatus.COMPLETED).equals(runRecord.getStatus())) {
+        List<RunRecord> completedRuns =
+          adapterClient.getRuns("test1", ProgramRunStatus.COMPLETED, 0, Long.MAX_VALUE, null);
+        // return !completedRuns.isEmpty();
+        for (RunRecord runRecord : completedRuns) {
+          if (ProgramRunStatus.COMPLETED.equals(runRecord.getStatus())) {
             return true;
           }
         }
         return false;
       }
-    }, 5, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
+    }, 10, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
 
-    RESTClient restClient = new RESTClient(getClientConfig());
+    RESTClient restClient = getRestClient();
     HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
       resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/temp?time=1"),
                                                getClientConfig().getAccessToken());
     List<IntegrationTestRecord> responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
       response, new TypeToken<List<IntegrationTestRecord>>() { }.getType()).getResponseObject();
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
+    adapterClient.stop(adapterName);
 
     Tasks.waitFor(true, new Callable<Boolean>() {
       public Boolean call() throws Exception {
-        RESTClient restClient = new RESTClient(getClientConfig());
-        HttpResponse response = restClient.execute(HttpMethod.GET, getClientConfig().
-          resolveNamespacedURLV3("adapters/test2/runs"), getClientConfig().getAccessToken());
-        List<RunRecord> responseObject = ObjectResponse.<List<RunRecord>>fromJsonBody(
-          response, new TypeToken<List<RunRecord>>() {
-          }.getType()).getResponseObject();
-        for (RunRecord runRecord : responseObject) {
-          if ((ProgramRunStatus.COMPLETED).equals(runRecord.getStatus())) {
+        List<RunRecord> completedRuns =
+          adapterClient.getRuns("test2", ProgramRunStatus.COMPLETED, 0, Long.MAX_VALUE, null);
+        // return !completedRuns.isEmpty();
+        for (RunRecord runRecord : completedRuns) {
+          if (ProgramRunStatus.COMPLETED.equals(runRecord.getStatus())) {
             return true;
           }
         }
         return false;
       }
-    }, 5, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
+    }, 10, TimeUnit.MINUTES, 1, TimeUnit.SECONDS);
 
-    restClient = new RESTClient(getClientConfig());
     response = restClient.execute(HttpMethod.GET, getClientConfig().
          resolveNamespacedURLV3("apps/ConversionTestExample/services/ConversionTestService/methods/tempTPFS?time=1"),
                                                getClientConfig().getAccessToken());
@@ -161,7 +137,6 @@ public class IntegrationTest extends AudiTestBase {
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
 
     serviceManager.stop();
-    adapterClient.stop(adapterName);
     adapterClient.delete(adapterName);
     adapterClient.stop(newAdapterName);
     adapterClient.delete(newAdapterName);
@@ -198,6 +173,25 @@ public class IntegrationTest extends AudiTestBase {
                                                  newFilesetName));
 
     ETLStage transform = new ETLStage("Projection", ImmutableMap.<String, String>of());
-    return new ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
+    return new ETLBatchConfig("*/5 * * * *", source, sink, Lists.newArrayList(transform));
   }
+
+  private class IntegrationTestRecord { // move this bottom
+    long ts;
+    String ticker;
+    double price;
+    int num;
+
+    IntegrationTestRecord(long ts, String ticker, double price, int num) {
+      this.ticker = ticker;
+      this.ts = ts;
+      this.price = price;
+      this.num = num;
+    }
+
+    public String getTicker() {
+      return ticker;
+    }
+  }
+
 }

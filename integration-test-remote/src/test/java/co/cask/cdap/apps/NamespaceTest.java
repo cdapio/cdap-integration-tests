@@ -18,8 +18,8 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.exception.BadRequestException;
-import co.cask.cdap.common.exception.NamespaceNotFoundException;
+import co.cask.cdap.common.BadRequestException;
+import co.cask.cdap.common.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import com.google.common.base.Joiner;
