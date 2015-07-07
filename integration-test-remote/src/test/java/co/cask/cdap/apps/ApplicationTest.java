@@ -17,7 +17,7 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.client.ApplicationClient;
-import co.cask.cdap.common.exception.ApplicationNotFoundException;
+import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
