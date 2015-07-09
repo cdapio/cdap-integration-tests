@@ -19,15 +19,23 @@ package co.cask.cdap.apps;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.StreamClient;
+import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.StreamNotFoundException;
+import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamProperties;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
@@ -35,8 +43,8 @@ import java.util.Map;
  * Tests various methods of a stream such as create, ingest events, fetch events, properties.
  */
 public class StreamTest extends AudiTestBase {
-  private static final String NONEXISTENT_STREAM = "nonexistentStream";
-  private static final String STREAM_NAME = "testStream";
+  private static final Id.Stream NONEXISTENT_STREAM = Id.Stream.from(TEST_NAMESPACE, "nonexistentStream");
+  private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "testStream");
 
   @Test
   public void testStreams() throws Exception {
@@ -59,8 +67,8 @@ public class StreamTest extends AudiTestBase {
 
 
     Map<String, String> streamTags =
-      ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Constants.DEFAULT_NAMESPACE,
-                      Constants.Metrics.Tag.STREAM, STREAM_NAME);
+      ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, STREAM_NAME.getNamespaceId(),
+                      Constants.Metrics.Tag.STREAM, STREAM_NAME.getId());
     checkMetric(streamTags, "system.collect.events", 2, 10);
     checkMetric(streamTags, "system.collect.bytes", 5, 10);
 
@@ -99,18 +107,30 @@ public class StreamTest extends AudiTestBase {
 
     // creation with invalid characters should fail
     try {
-      streamClient.create(STREAM_NAME + "&");
+      createStream(STREAM_NAME.getId() + "&");
       Assert.fail();
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(
         "Stream name can only contain alphanumeric, '-' and '_' characters"));
     }
     try {
-      streamClient.create(STREAM_NAME + ".");
+      createStream(STREAM_NAME.getId() + ".");
       Assert.fail();
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(
         "Stream name can only contain alphanumeric, '-' and '_' characters"));
+    }
+  }
+
+  // We have to use RestClient directly to attempt to create a stream with an invalid name (negative test against the
+  // StreamHandler), because the StreamClient throws an IllegalArgumentException when passing in an invalid stream name.
+  private void createStream(String streamName) throws BadRequestException, IOException, UnauthorizedException {
+    ClientConfig clientConfig = getClientConfig();
+    URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, String.format("streams/%s", streamName));
+    HttpResponse response = getRestClient().execute(HttpMethod.PUT, url, clientConfig.getAccessToken(),
+                                                    HttpURLConnection.HTTP_BAD_REQUEST);
+    if (response.getResponseCode() == HttpURLConnection.HTTP_BAD_REQUEST) {
+      throw new BadRequestException("Bad request: " + response.getResponseBodyAsString());
     }
   }
 }

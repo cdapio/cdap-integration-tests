@@ -20,7 +20,6 @@ import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.StreamClient;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.Id;
@@ -41,12 +40,10 @@ import javax.annotation.Nullable;
  * Tests the functionality of workflows triggered by stream data.
  */
 public class StreamSchedulerTest extends AudiTestBase {
-  private static final Id.Program PURCHASE_HISTORY_WORKFLOW =
-    Id.Program.from(Constants.DEFAULT_NAMESPACE_ID, PurchaseApp.APP_NAME,
-                    ProgramType.WORKFLOW, "PurchaseHistoryWorkflow");
+  private static final Id.Workflow PURCHASE_HISTORY_WORKFLOW =
+    Id.Workflow.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER =
-    Id.Program.from(Constants.DEFAULT_NAMESPACE_ID, PurchaseApp.APP_NAME,
-                    ProgramType.MAPREDUCE, "PurchaseHistoryBuilder");
+    Id.Program.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder");
 
   @Test
   public void test() throws Exception {
@@ -59,7 +56,7 @@ public class StreamSchedulerTest extends AudiTestBase {
      */
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-    String purchaseStream = "purchaseStream";
+    Id.Stream purchaseStream = Id.Stream.from(TEST_NAMESPACE, "purchaseStream");
     StreamProperties purchaseStreamProperties = streamClient.getConfig(purchaseStream);
     StreamProperties streamPropertiesToSet =
       new StreamProperties(purchaseStreamProperties.getTTL(), purchaseStreamProperties.getFormat(), 1);
@@ -85,16 +82,15 @@ public class StreamSchedulerTest extends AudiTestBase {
     assertRuns(1, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
 
     // schedule actions
+    Id.Schedule dataSchedule = Id.Schedule.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "DataSchedule");
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), getRestClient());
-    scheduleClient.suspend(PurchaseApp.APP_NAME, "DataSchedule");
-    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(),
-                        scheduleClient.getStatus(PurchaseApp.APP_NAME, "DataSchedule"));
+    scheduleClient.suspend(dataSchedule);
+    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
 
     multipleStreamSend(streamClient, purchaseStream, bigData, 12);
 
-    scheduleClient.resume(PurchaseApp.APP_NAME, "DataSchedule");
-    Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(),
-                        scheduleClient.getStatus(PurchaseApp.APP_NAME, "DataSchedule"));
+    scheduleClient.resume(dataSchedule);
+    Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
     purchaseHistoryWorkflow.waitForStatus(true, 60, 1);
     purchaseHistoryBuilder.waitForStatus(true, 60, 1);
@@ -105,19 +101,17 @@ public class StreamSchedulerTest extends AudiTestBase {
     assertRuns(2, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
   }
 
-  private void multipleStreamSend(StreamClient streamClient, String streamName, String event,
+  private void multipleStreamSend(StreamClient streamClient, Id.Stream streamId, String event,
                                   int count) throws Exception {
     for (int i = 0; i < count; i++) {
-      streamClient.sendEvent(streamName, event);
+      streamClient.sendEvent(streamId, event);
     }
   }
 
   // {@param} expectedStatus can be null if count is 0
   private void assertRuns(int count, ProgramClient programClient, Id.Program programId,
                           @Nullable ProgramRunStatus expectedStatus) throws Exception {
-    List<RunRecord> runRecords =
-      programClient.getAllProgramRuns(programId.getApplicationId(), programId.getType(), programId.getId(),
-                                      0, Long.MAX_VALUE, Integer.MAX_VALUE);
+    List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
     Assert.assertEquals(count, runRecords.size());
     for (int i = 0; i < count; i++) {
       Assert.assertEquals(expectedStatus, runRecords.get(i).getStatus());

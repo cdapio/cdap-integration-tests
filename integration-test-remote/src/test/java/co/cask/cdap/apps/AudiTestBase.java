@@ -22,6 +22,7 @@ import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.ConfigEntry;
+import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpRequest;
@@ -44,6 +45,7 @@ import java.util.concurrent.TimeUnit;
  * Custom wrapper around IntegrationTestBase
  */
 public class AudiTestBase extends IntegrationTestBase {
+  protected static final Id.Namespace TEST_NAMESPACE = Constants.DEFAULT_NAMESPACE_ID;
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
 
