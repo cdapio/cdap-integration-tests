@@ -19,7 +19,6 @@ import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.ApplicationRecord;
 import co.cask.cdap.proto.Id;
@@ -63,11 +62,11 @@ public class WordCountTest extends AudiTestBase {
     ApplicationClient appClient = getApplicationClient();
     ProgramClient programClient = getProgramClient();
 
-    Id.Program flowId = Id.Program.from(Constants.DEFAULT_NAMESPACE, "WordCount", ProgramType.FLOW, "WordCounter");
+    Id.Program flowId = Id.Program.from(TEST_NAMESPACE, "WordCount", ProgramType.FLOW, "WordCounter");
     Map<String, String> flowTags = getFlowTags(flowId);
     String longestWordLengthMetric = "user.longest.word.length";
 
-    List<ApplicationRecord> deployedApps = appClient.list();
+    List<ApplicationRecord> deployedApps = appClient.list(TEST_NAMESPACE);
     Assert.assertEquals(1, deployedApps.size());
     Assert.assertEquals("WordCount", deployedApps.get(0).getName());
 
@@ -76,8 +75,7 @@ public class WordCountTest extends AudiTestBase {
       // TODO: make an AbstractRemoteProgramManager which has default timeouts
       flowManager.waitForStatus(true, 30, 1);
       List<RunRecord> runningRecords =
-        programClient.getProgramRuns(flowId.getApplicationId(), flowId.getType(), flowId.getId(),
-                                     "RUNNING", 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+        programClient.getProgramRuns(flowId, ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
       //There should only be one run that is running
       Assert.assertEquals(1, runningRecords.size());
       RunRecord runRecord = runningRecords.get(0);
@@ -85,7 +83,7 @@ public class WordCountTest extends AudiTestBase {
       String runId = runRecord.getPid();
 
       StreamManager wordStream =
-        getTestManager().getStreamManager(Id.Stream.from(Constants.DEFAULT_NAMESPACE, "wordStream"));
+        getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
       wordStream.send(wordEvents[i]);
       // make sure we processed the sent event, before starting the workflow
       numWordsProcessed += wordEvents[i].split(" ").length;

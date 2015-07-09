@@ -51,7 +51,7 @@ public class FileSetTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
-    List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list();
+    List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list(TEST_NAMESPACE);
     Assert.assertEquals(2, datasetSpecificationsList.size());
     for (DatasetSpecificationSummary datasetSpecificationSummary : datasetSpecificationsList) {
       Assert.assertEquals(FileSet.class.getName(), datasetSpecificationSummary.getType());
@@ -60,7 +60,7 @@ public class FileSetTest extends AudiTestBase {
                           + new Gson().toJson(datasetSpecificationsList),
                         "lines".equals(datasetName) || "counts".equals(datasetName));
     }
-    ServiceManager fileSetService = applicationManager.startService("FileSetService");
+    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
 
     fileSetService.waitForStatus(true, 60, 1);
 
