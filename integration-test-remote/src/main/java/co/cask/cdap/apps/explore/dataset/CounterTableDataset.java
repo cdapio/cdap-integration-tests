@@ -61,7 +61,7 @@ public class CounterTableDataset extends AbstractDataset implements CounterTable
   }
 
   @Override
-  public void write(CounterTable.Count record) throws IOException {
+  public void write(Count record) throws IOException {
     write(record.getWord(), record.getCount());
   }
 
@@ -72,19 +72,19 @@ public class CounterTableDataset extends AbstractDataset implements CounterTable
 
   @Override
   public Type getRecordType() {
-    return CounterTable.Count.class;
+    return Count.class;
   }
 
   @Override
-  public RecordScanner<CounterTable.Count> createSplitRecordScanner(Split split) {
+  public RecordScanner<Count> createSplitRecordScanner(Split split) {
     return Scannables.splitRecordScanner(createSplitReader(split), COUNT_ROW_MAKER);
   }
 
-  private final Scannables.RecordMaker<String, Long, CounterTable.Count> COUNT_ROW_MAKER =
-    new Scannables.RecordMaker<String, Long, CounterTable.Count>() {
+  private final Scannables.RecordMaker<String, Long, Count> COUNT_ROW_MAKER =
+    new Scannables.RecordMaker<String, Long, Count>() {
       @Override
-      public CounterTable.Count makeRecord(String s, Long aLong) {
-        return new CounterTable.Count(s, aLong);
+      public Count makeRecord(String s, Long aLong) {
+        return new Count(s, aLong);
       }
     };
 }

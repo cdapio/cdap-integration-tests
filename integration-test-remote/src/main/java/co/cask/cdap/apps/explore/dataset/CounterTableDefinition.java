@@ -36,7 +36,7 @@ public class CounterTableDefinition
   @Override
   public DatasetAdmin getAdmin(DatasetContext datasetContext, DatasetSpecification spec,
                                ClassLoader cl) throws IOException {
-    return tableDef.getAdmin(datasetContext, spec, cl);
+    return tableDef.getAdmin(datasetContext, spec.getSpecification("table"), cl);
   }
 
   @Override
