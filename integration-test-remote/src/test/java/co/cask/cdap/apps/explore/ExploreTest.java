@@ -80,7 +80,7 @@ public class ExploreTest extends AudiTestBase {
     streamClient.sendEvent(wordsStreamId, "Jada has iPad.");
     streamClient.sendEvent(words2StreamId, "foo bar foo foobar barbar foobarbar");
 
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "KeyValueApp");
+    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "WordCountApplication");
     Id.Flow keyValueFlowId = Id.Flow.from(appId, "KeyValueFlow");
 
     // verify processed count

@@ -64,7 +64,6 @@ public class WordCountApplication extends AbstractApplication {
 
   @Override
   public void configure() {
-    setName("KeyValueApp");
     setDescription("Simple app with table dataset");
     addStream(new Stream("words"));
     addStream(new Stream("words2"));
