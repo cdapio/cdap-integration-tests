@@ -8,7 +8,6 @@ import co.cask.cdap.api.dataset.DatasetSpecification;
 import co.cask.cdap.api.dataset.lib.AbstractDatasetDefinition;
 import co.cask.cdap.api.dataset.table.Table;
 import com.google.common.base.Objects;
-import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,7 +18,6 @@ import java.util.Map;
  */
 public class KeyStructValueTableDefinition
   extends AbstractDatasetDefinition<KeyStructValueTable, DatasetAdmin> {
-  private static final Gson GSON = new Gson();
 
   private final DatasetDefinition<? extends Table, ?> tableDef;
 
@@ -120,6 +118,4 @@ public class KeyStructValueTableDefinition
       }
     }
   }
-
-
 }
