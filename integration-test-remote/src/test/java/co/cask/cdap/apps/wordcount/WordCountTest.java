@@ -102,7 +102,7 @@ public class WordCountTest extends AudiTestBase {
     }
 
     // Check user metrics sum aggregated across runs
-    checkMetric(flowTags, longestWordLengthMetric, longestWordLengthAcrossRuns, 10);
+    checkMetric(flowTags, longestWordLengthMetric, longestWordLengthAcrossRuns, 30);
   }
 
   private Map<String, String> getFlowTags(Id.Program flowId) {
