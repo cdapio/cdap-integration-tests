@@ -86,6 +86,9 @@ public class WordCountApplication extends AbstractApplication {
     addFlow(new KeyValueFlow());
   }
 
+  /**
+   *
+   */
   private class KeyValueFlow implements Flow {
     @Override
     public FlowSpecification configure() {
@@ -97,6 +100,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
+  /**
+   *
+   */
   private class WordSplitterFlowlet extends AbstractFlowlet {
     @UseDataSet("kvTable")
     private KeyStructValueTable kvTable;
@@ -122,7 +128,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
-
+  /**
+   *
+   */
   public static class ExtendedWordCountFlow implements Flow {
     @Override
     public FlowSpecification configure() {
@@ -134,6 +142,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
+  /**
+   *
+   */
   public static class ExtendedWordCountFlowlet extends AbstractFlowlet {
     @UseDataSet("extendedWordCounts")
     private ExtendedCounterTable extendedWordCounts;
@@ -149,6 +160,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
+  /**
+   *
+   */
   public static class WordCountFlow implements Flow {
     @Override
     public FlowSpecification configure() {
@@ -160,6 +174,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
+  /**
+   *
+   */
   public static class WordCountFlowlet extends AbstractFlowlet {
     @UseDataSet("wordCounts")
     private CounterTable wordCounts;
@@ -175,7 +192,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
-
+  /**
+   *
+   */
   public static class WordCountService extends AbstractService {
 
     @Override
@@ -185,6 +204,9 @@ public class WordCountApplication extends AbstractApplication {
       this.addHandler(new WordCountHandler());
     }
 
+    /**
+     *
+     */
     public static final class WordCountHandler extends AbstractHttpServiceHandler {
 
       @UseDataSet("wordCounts")
@@ -225,7 +247,9 @@ public class WordCountApplication extends AbstractApplication {
     }
   }
 
-
+  /**
+   *
+   */
   public static class CountTotalsJob extends AbstractMapReduce {
     @Override
     public void configure() {
@@ -244,6 +268,9 @@ public class WordCountApplication extends AbstractApplication {
       job.setReducerClass(MyReducer.class);
     }
 
+    /**
+     *
+     */
     public static class MyMapper extends Mapper<String, Long, BytesWritable, LongWritable> {
       @Override
       protected void map(String key, Long value, Context context) throws IOException, InterruptedException {
@@ -251,6 +278,9 @@ public class WordCountApplication extends AbstractApplication {
       }
     }
 
+    /**
+     *
+     */
     public static class MyReducer extends Reducer<BytesWritable, LongWritable, String, Long> {
       @Override
       protected void reduce(BytesWritable key, Iterable<LongWritable> values, Context context)
@@ -265,5 +295,4 @@ public class WordCountApplication extends AbstractApplication {
       }
     }
   }
-
 }
