@@ -17,6 +17,8 @@
 package co.cask.cdap.apps.explore;
 
 import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.api.data.format.FormatSpecification;
+import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.apps.AudiTestBase;
@@ -30,12 +32,16 @@ import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryStatus;
+import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -55,6 +61,7 @@ import javax.annotation.Nullable;
  */
 public class ExploreTest extends AudiTestBase {
 
+  private static final Gson GSON = new Gson();
   private static final Logger LOG = LoggerFactory.getLogger(ExploreTest.class);
 
   @Test
@@ -67,6 +74,7 @@ public class ExploreTest extends AudiTestBase {
     waitForStatus(true, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
 
     sendInputData();
+
     testEqualityJoin();
     testLeftOuterJoin();
     testRightOuterJoin();
@@ -76,6 +84,11 @@ public class ExploreTest extends AudiTestBase {
     testAvgLeftOuterJoin();
     testMinRightOuterJoin();
     testMaxRightOuterJoin();
+
+    testCheckKVTable();
+    testSubqueryInWhereClause();
+
+    testStream();
   }
 
   private void sendInputData() throws Exception {
@@ -398,6 +411,139 @@ public class ExploreTest extends AudiTestBase {
     Assert.assertEquals("max", resultSchema.get(0).getName());
     Assert.assertEquals("BIGINT", resultSchema.get(0).getType());
     Assert.assertEquals(1, resultSchema.get(0).getPosition());
+  }
+
+  private void testCheckKVTable() throws Exception {
+    QueryClient client = new QueryClient(getClientConfig());
+    ExploreExecutionResult results = client.execute(
+      Id.Namespace.DEFAULT,
+      "select * from dataset_kvtable order by key").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+    List<List<Object>> rows = executionResult2Rows(results);
+    Assert.assertEquals(4, rows.size());
+
+    Assert.assertEquals("Jada", rows.get(0).get(0));
+    JsonObject json = GSON.fromJson((String) rows.get(0).get(1), JsonObject.class);
+    Assert.assertEquals("Jada", json.get("name").getAsString());
+    Assert.assertEquals("[]", GSON.toJson(json.get("ints").getAsJsonArray()));
+
+    Assert.assertEquals("Mike", rows.get(1).get(0));
+    json = GSON.fromJson((String) rows.get(1).get(1), JsonObject.class);
+    Assert.assertEquals("Mike", json.get("name").getAsString());
+    Assert.assertEquals("[12,32,0]", GSON.toJson(json.get("ints").getAsJsonArray()));
+
+    Assert.assertEquals("Spike", rows.get(2).get(0));
+    json = GSON.fromJson((String) rows.get(2).get(1), JsonObject.class);
+    Assert.assertEquals("Spike", json.get("name").getAsString());
+    Assert.assertEquals("[8023,334,0,34]", GSON.toJson(json.get("ints").getAsJsonArray()));
+
+    Assert.assertEquals("iPad", rows.get(3).get(0));
+    json = GSON.fromJson((String) rows.get(3).get(1), JsonObject.class);
+    Assert.assertEquals("iPad", json.get("name").getAsString());
+    Assert.assertEquals("[902,332,2286]", GSON.toJson(json.get("ints").getAsJsonArray()));
+
+    List<ColumnDesc> resultSchema = results.getResultSchema();
+    Assert.assertEquals(2, resultSchema.size());
+
+    Assert.assertEquals("STRING", resultSchema.get(0).getType());
+    Assert.assertEquals(1, resultSchema.get(0).getPosition());
+
+    Assert.assertEquals("struct<name:string,ints:array<int>>", resultSchema.get(1).getType());
+    Assert.assertEquals(2, resultSchema.get(1).getPosition());
+  }
+
+  private void testSubqueryInWhereClause() throws Exception {
+    QueryClient client = new QueryClient(getClientConfig());
+    String subquery = "select key from dataset_kvtable t2 where t1.word = t2.key";
+    ExploreExecutionResult results = client.execute(
+      Id.Namespace.DEFAULT,
+      "select * from dataset_wordcounts t1 where exists (" + subquery + ") order by t1.word").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+    List<List<Object>> rows = executionResult2Rows(results);
+    Assert.assertEquals(3, rows.size());
+
+    Assert.assertEquals("Jada", rows.get(0).get(0));
+    Assert.assertEquals(1L, rows.get(0).get(1));
+    Assert.assertEquals("Mike", rows.get(1).get(0));
+    Assert.assertEquals(2L, rows.get(1).get(1));
+    Assert.assertEquals("iPad", rows.get(2).get(0));
+    Assert.assertEquals(2L, rows.get(2).get(1));
+
+    List<ColumnDesc> resultSchema = results.getResultSchema();
+    Assert.assertEquals(2, resultSchema.size());
+
+    Assert.assertEquals("t1.word", resultSchema.get(0).getName());
+    Assert.assertEquals("STRING", resultSchema.get(0).getType());
+    Assert.assertEquals(1, resultSchema.get(0).getPosition());
+
+    Assert.assertEquals("t1.count", resultSchema.get(1).getName());
+    Assert.assertEquals("BIGINT", resultSchema.get(1).getType());
+    Assert.assertEquals(2, resultSchema.get(1).getPosition());
+  }
+
+  private void testStream() throws Exception {
+    StreamClient streamClient = getStreamClient();
+
+    // send stream events for stream explore testing
+    Id.Stream tradesStreamId = Id.Stream.from(Id.Namespace.DEFAULT, "trades");
+    streamClient.create(tradesStreamId);
+    streamClient.sendEvent(tradesStreamId, "AAPL,50,112.98");
+    streamClient.sendEvent(tradesStreamId, "AAPL,100,112.87");
+    streamClient.sendEvent(tradesStreamId, "AAPL,8,113.02");
+    streamClient.sendEvent(tradesStreamId, "NFLX,10,437.45");
+
+    QueryClient client = new QueryClient(getClientConfig());
+    ExploreExecutionResult results = client.execute(Id.Namespace.DEFAULT, "select * from stream_trades").get();
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+    List<List<Object>> rows = executionResult2Rows(results);
+    Assert.assertEquals(4, rows.size());
+
+    Assert.assertEquals("AAPL,50,112.98", rows.get(0).get(2));
+    Assert.assertEquals("AAPL,100,112.87", rows.get(1).get(2));
+    Assert.assertEquals("AAPL,8,113.02", rows.get(2).get(2));
+    Assert.assertEquals("NFLX,10,437.45", rows.get(3).get(2));
+
+    // set stream format trades csv "ticker string, num_traded int, price double"
+    FormatSpecification formatSpecification = new FormatSpecification(
+      "csv", Schema.parseSQL("ticker string, num_traded int, price double"), ImmutableMap.<String, String>of());
+
+    StreamProperties currentProperties = streamClient.getConfig(tradesStreamId);
+    StreamProperties streamProperties = new StreamProperties(currentProperties.getTTL(),
+                                                             formatSpecification,
+                                                             currentProperties.getNotificationThresholdMB());
+    streamClient.setStreamProperties(tradesStreamId, streamProperties);
+
+    results = client.execute(
+      Id.Namespace.DEFAULT,
+      "select ticker, count(*) as transactions, sum(num_traded) as volume from stream_trades " +
+        "group by ticker order by volume desc").get();
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+    rows = executionResult2Rows(results);
+    Assert.assertEquals(2, rows.size());
+
+    Assert.assertEquals("AAPL", rows.get(0).get(0));
+    Assert.assertEquals(3L, rows.get(0).get(1));
+    Assert.assertEquals(158L, rows.get(0).get(2));
+    Assert.assertEquals("NFLX", rows.get(1).get(0));
+    Assert.assertEquals(1L, rows.get(1).get(1));
+    Assert.assertEquals(10L, rows.get(1).get(2));
+
+    List<ColumnDesc> resultSchema = results.getResultSchema();
+    Assert.assertEquals(3, resultSchema.size());
+
+    Assert.assertEquals("ticker", resultSchema.get(0).getName());
+    Assert.assertEquals("STRING", resultSchema.get(0).getType());
+    Assert.assertEquals(1, resultSchema.get(0).getPosition());
+
+    Assert.assertEquals("transactions", resultSchema.get(1).getName());
+    Assert.assertEquals("BIGINT", resultSchema.get(1).getType());
+    Assert.assertEquals(2, resultSchema.get(1).getPosition());
+
+    Assert.assertEquals("volume", resultSchema.get(2).getName());
+    Assert.assertEquals("BIGINT", resultSchema.get(2).getType());
+    Assert.assertEquals(3, resultSchema.get(2).getPosition());
   }
 
   private List<List<Object>> executionResult2Rows(ExploreExecutionResult executionResult) {
