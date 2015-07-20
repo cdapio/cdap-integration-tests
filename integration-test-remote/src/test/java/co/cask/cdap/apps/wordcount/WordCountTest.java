@@ -16,12 +16,16 @@
 package co.cask.cdap.apps.wordcount;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
+import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.TestCoverageUtility;
+import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.ApplicationRecord;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
@@ -31,8 +35,11 @@ import co.cask.cdap.test.StreamManager;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +51,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class WordCountTest extends AudiTestBase {
   private static final String[] wordEvents = {"hello world", "good morning"};
+
+  private static final Logger LOG = LoggerFactory.getLogger(ApplicationTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(WordCountTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void test() throws Exception {

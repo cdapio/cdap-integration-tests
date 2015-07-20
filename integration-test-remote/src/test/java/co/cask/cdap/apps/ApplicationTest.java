@@ -20,10 +20,14 @@ import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -31,6 +35,19 @@ import java.io.IOException;
  * Tests functionality of Applications
  */
 public class ApplicationTest extends AudiTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(ApplicationTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(ApplicationTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void test() throws Exception {
@@ -53,5 +70,7 @@ public class ApplicationTest extends AudiTestBase {
       Assert.fail();
     } catch (ApplicationNotFoundException expected) {
     }
+
+
   }
 }

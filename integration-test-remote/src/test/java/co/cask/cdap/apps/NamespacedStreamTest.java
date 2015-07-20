@@ -18,14 +18,18 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
+import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import com.google.common.collect.Lists;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -35,6 +39,20 @@ import java.util.List;
 public class NamespacedStreamTest extends AudiTestBase {
   private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
   private static final Id.Namespace NS2 = Id.Namespace.from("ns2");
+
+  private static final Logger LOG = LoggerFactory.getLogger(NamespacedStreamTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(NamespacedStreamTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void testNamespacedStreams() throws Exception {

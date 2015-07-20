@@ -17,12 +17,14 @@
 package co.cask.cdap.apps.purchase;
 
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.TestCoverageUtility;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
@@ -30,8 +32,11 @@ import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import javax.annotation.Nullable;
@@ -44,6 +49,19 @@ public class StreamSchedulerTest extends AudiTestBase {
     Id.Workflow.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER =
     Id.Program.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, "PurchaseHistoryBuilder");
+  private static final Logger LOG = LoggerFactory.getLogger(StreamSchedulerTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(StreamSchedulerTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void test() throws Exception {

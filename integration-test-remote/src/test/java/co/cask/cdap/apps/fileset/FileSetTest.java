@@ -18,9 +18,12 @@ package co.cask.cdap.apps.fileset;
 
 import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.TestCoverageUtility;
+import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.examples.fileset.FileSetExample;
 import co.cask.cdap.proto.DatasetSpecificationSummary;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
@@ -31,8 +34,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.util.List;
@@ -46,6 +52,19 @@ public class FileSetTest extends AudiTestBase {
   private static final List<String> DATA_LIST =
     Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");
   private static final String DATA_UPLOAD = Joiner.on("\n").join(DATA_LIST);
+  private static final Logger LOG = LoggerFactory.getLogger(FileSetTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(FileSetTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void test() throws Exception {

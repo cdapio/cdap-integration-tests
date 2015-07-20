@@ -19,12 +19,15 @@ package co.cask.cdap.apps.purchase;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.api.schedule.ScheduleSpecification;
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.TestCoverageUtility;
+import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
@@ -42,8 +45,11 @@ import co.cask.common.http.ObjectResponse;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonParser;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.net.URL;
@@ -63,6 +69,19 @@ public class PurchaseAudiTest extends AudiTestBase {
                                                                                 "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER = Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE,
                                                                              "PurchaseHistoryBuilder");
+  private static final Logger LOG = LoggerFactory.getLogger(PurchaseAudiTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(PurchaseAudiTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void test() throws Exception {

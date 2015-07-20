@@ -22,6 +22,7 @@ import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.TestCoverageUtility;
 import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.client.StreamClient;
@@ -31,6 +32,7 @@ import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.test.ApplicationManager;
@@ -42,6 +44,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -63,6 +66,18 @@ public class ExploreTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();
   private static final Logger LOG = LoggerFactory.getLogger(ExploreTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(ExploreTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void test() throws Exception {

@@ -1,3 +1,19 @@
+/*
+ * Copyright © 2015 Cask Data, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package co.cask.cdap.apps;
 
 import co.cask.cdap.api.dataset.module.DatasetDefinitionRegistry;
@@ -71,6 +87,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.reflect.TypeToken;
 import com.google.inject.Guice;
@@ -107,30 +124,32 @@ import javax.ws.rs.Path;
  */
 public class TestCoverageUtility {
 
-  private final Logger LOG = LoggerFactory.getLogger(TestCoverageUtility.class);
-  private final PatternPathRouterWithGroups<HttpResourceModel> patternRouter =
-    PatternPathRouterWithGroups.create();
+  private static final Logger LOG = LoggerFactory.getLogger(TestCoverageUtility.class);
   private Set<String> handlerEndpointsCovered;
   private Set<String> handlerEndpoints;
+  private final Map<String, PatternPathRouterWithGroups<HttpResourceModel>> mapHandlerToPatternRouter;
 
-
+  public TestCoverageUtility() {
+    handlerEndpoints = Sets.newHashSet();
+    handlerEndpointsCovered = Sets.newHashSet();
+    mapHandlerToPatternRouter = Maps.newHashMap();
+  }
   public Set<String> getAllHandlerEndpoints() {
     populateHandlerEndpoints();
     return handlerEndpoints;
   }
 
   private void populateHandlerEndpoints() {
-    handlerEndpoints = Sets.newHashSet();
-    handlerEndpointsCovered = Sets.newHashSet();
-    final Injector injector = Guice.createInjector(createPersistentModules(CConfiguration.create(), new Configuration()));
+    final Injector injector = Guice.createInjector(createPersistentModules(CConfiguration.create(),
+                                                                           new Configuration()));
+    Set<HttpHandler> handlers = Sets.newHashSet();
     // app-fabric handlers
-    Set<HttpHandler> handlers = (Set<HttpHandler>) injector.getInstance(Key.get(new TypeToken<Set<HttpHandler>>() {
+    Set<HttpHandler> appFabrichandlers = (Set<HttpHandler>) injector.getInstance(Key.get(new TypeToken<Set<HttpHandler>>() {
     }.getType(), Names.named(Constants.AppFabric.HANDLERS_BINDING)));
-    populateHandlerEndpoints(handlers);
 
+    handlers.addAll(appFabrichandlers);
 
     // explore handlers - since explore binding handlers set is in private module, we cannot access them directly.
-    handlers = Sets.newHashSet();
     handlers.add(injector.getInstance(NamespacedQueryExecutorHttpHandler.class));
     handlers.add(injector.getInstance(QueryExecutorHttpHandler.class));
     handlers.add(injector.getInstance(NamespacedExploreMetadataHttpHandler.class));
@@ -216,6 +235,8 @@ public class TestCoverageUtility {
 
   private void populateHandlerEndpoints(Set<HttpHandler> handlers) {
     for (HttpHandler handler : handlers) {
+      PatternPathRouterWithGroups<HttpResourceModel> patternRouter = PatternPathRouterWithGroups.create();
+      String handlerName = handler.getClass().getSimpleName();
       String basePath = "";
       if (handler.getClass().isAnnotationPresent(Path.class)) {
         basePath = handler.getClass().getAnnotation(Path.class).value();
@@ -246,6 +267,7 @@ public class TestCoverageUtility {
                     method.getName(), method.getParameterTypes());
         }
       }
+      mapHandlerToPatternRouter.put(handlerName, patternRouter);
     }
   }
 
@@ -319,37 +341,52 @@ public class TestCoverageUtility {
     return builder.build();
   }
 
-  public void printCoveredEndpoints() throws Exception {
+  public void printCoveredEndpoints(String testClass) throws Exception {
     MetricsClient metricsClient = new MetricsClient(getClientConfig(), new RESTClient(getClientConfig()));
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Constants.SYSTEM_NAMESPACE,
-                                               Constants.Metrics.Tag.COMPONENT, "*",
-                                               Constants.Metrics.Tag.HANDLER, "*");
+    for (Map.Entry<String,
+      PatternPathRouterWithGroups<HttpResourceModel>> entry : mapHandlerToPatternRouter.entrySet()) {
 
-    List<MetricTagValue> tagValues = metricsClient.searchTags(tags);
-    for (MetricTagValue tagValue : tagValues) {
-      if (tagValue.getName().equals("method") && tagValue.getValue() != null) {
-        String[] request = tagValue.getValue().split(":");
-        if (request.length != 2) {
-          continue;
-        }
-        String method = request[0];
-        String path = request[1];
-        List<PatternPathRouterWithGroups.RoutableDestination<HttpResourceModel>> routableDestinations
-          = patternRouter.getDestinations(path);
+      LOG.info("GGGG SEARCHING FOR HANDLER {}", entry.getKey());
+      Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, "hack",
+                                                 Constants.Metrics.Tag.COMPONENT, "*",
+                                                 Constants.Metrics.Tag.HANDLER, entry.getKey());
 
-        PatternPathRouterWithGroups.RoutableDestination<HttpResourceModel> matchedDestination =
-          getMatchedDestination(routableDestinations, HttpMethod.valueOf(method), path);
+      List<MetricTagValue> tagValues = metricsClient.searchTags(tags);
+      for (MetricTagValue tagValue : tagValues) {
+        if (tagValue.getName().equals("method") && tagValue.getValue() != null) {
+          String[] request = tagValue.getValue().split(":");
+          if (request.length != 2) {
+            continue;
+          }
+          String method = request[0];
+          // get url and strip query params
+          String path = request[1];
+          if (path.contains("?")) {
+            path = path.split("\\?")[0];
+          }
 
-        if (matchedDestination != null) {
-          //Found a httpresource route to it.
-          HttpResourceModel httpResourceModel = matchedDestination.getDestination();
-          handlerEndpointsCovered.add(method + ":" + httpResourceModel.getPath());
+          List<PatternPathRouterWithGroups.RoutableDestination<HttpResourceModel>> routableDestinations
+            = entry.getValue().getDestinations(path);
 
+          PatternPathRouterWithGroups.RoutableDestination<HttpResourceModel> matchedDestination =
+            getMatchedDestination(routableDestinations, HttpMethod.valueOf(method), path);
+
+          if (matchedDestination != null) {
+            //Found a httpresource route to it.
+            HttpResourceModel httpResourceModel = matchedDestination.getDestination();
+            handlerEndpointsCovered.add(method + ":" + httpResourceModel.getPath());
+
+          }
         }
       }
     }
 
-    File coveredEndpoints = new File("/tmp/covered-endpoints.txt");
+    File dir = new File("/tmp/test-coverage");
+    if (!dir.exists()) {
+      dir.mkdir();
+    }
+
+    File coveredEndpoints = new File("/tmp/test-coverage/covered-endpoints-" + testClass + System.currentTimeMillis() + ".txt");
     try (PrintStream out = new PrintStream(new FileOutputStream(coveredEndpoints))) {
       for (String endpoint : handlerEndpointsCovered) {
         out.println(endpoint);

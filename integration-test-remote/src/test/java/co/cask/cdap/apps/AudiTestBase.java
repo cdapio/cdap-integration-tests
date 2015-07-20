@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -49,13 +48,9 @@ public class AudiTestBase extends IntegrationTestBase {
   protected static final Id.Namespace TEST_NAMESPACE = Constants.DEFAULT_NAMESPACE_ID;
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
-  protected final TestCoverageUtility testCoverageUtility;
-  protected final Set<String> allHandlerEndpoints;
 
   public AudiTestBase() {
-    testCoverageUtility = new TestCoverageUtility();
     restClient = createRestClient();
-    allHandlerEndpoints = testCoverageUtility.getAllHandlerEndpoints();
   }
 
   @Before

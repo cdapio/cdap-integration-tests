@@ -25,13 +25,17 @@ import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -45,6 +49,19 @@ import java.util.Map;
 public class StreamTest extends AudiTestBase {
   private static final Id.Stream NONEXISTENT_STREAM = Id.Stream.from(TEST_NAMESPACE, "nonexistentStream");
   private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "testStream");
+  private static final Logger LOG = LoggerFactory.getLogger(StreamTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(StreamTest.class.getName());
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   @Test
   public void testStreams() throws Exception {

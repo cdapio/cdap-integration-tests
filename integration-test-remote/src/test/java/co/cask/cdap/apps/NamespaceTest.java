@@ -25,8 +25,11 @@ import co.cask.cdap.proto.NamespaceMeta;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import javax.annotation.Nullable;
@@ -37,6 +40,20 @@ import javax.annotation.Nullable;
 public class NamespaceTest extends AudiTestBase {
   private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
   private static final Id.Namespace NS2 = Id.Namespace.from("ns2");
+  private static final Logger LOG = LoggerFactory.getLogger(NamespaceTest.class);
+
+  @After
+  public void printCoverage() {
+    try {
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
+      testCoverageUtility.printCoveredEndpoints(NamespaceTest.class.getName());
+
+    } catch (Exception e) {
+      LOG.error("Exception While logging handler endpoints coverage");
+    }
+  }
 
   private static final NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
     .setName(NS1)

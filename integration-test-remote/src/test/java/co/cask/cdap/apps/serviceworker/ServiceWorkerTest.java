@@ -18,7 +18,9 @@ package co.cask.cdap.apps.serviceworker;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.TestCoverageUtility;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
@@ -40,14 +42,13 @@ public class ServiceWorkerTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(ServiceWorkerTest.class);
 
   @After
-  public void printCoverage() {
-    try {
+  public void printCoverage() throws Exception {
       // can just printAllHandlerEndpoints just once in a test suite
+      getNamespaceClient().create(new NamespaceMeta.Builder().setName("hack").build());
+      TestCoverageUtility testCoverageUtility = new TestCoverageUtility();
+      testCoverageUtility.getAllHandlerEndpoints();
       testCoverageUtility.printAllHandlerEndpoints();
-      testCoverageUtility.printCoveredEndpoints();
-    } catch (Exception e) {
-      LOG.error("Exception While logging handler endpoints coverage");
-    }
+      testCoverageUtility.printCoveredEndpoints(ServiceWorkerTest.class.getName());
   }
 
   @Test
