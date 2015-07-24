@@ -20,14 +20,11 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
-import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.apps.AudiTestBase;
-import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthorizedException;
-import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
 import co.cask.cdap.proto.Id;
@@ -44,16 +41,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicMarkableReference;
 import javax.annotation.Nullable;
 
 /**
@@ -62,17 +53,9 @@ import javax.annotation.Nullable;
 public class ExploreTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();
-  private static final Logger LOG = LoggerFactory.getLogger(ExploreTest.class);
 
   @Test
   public void test() throws Exception {
-    ApplicationManager app = deployApplication(WordCountApplication.class);
-    FlowManager wordCountFlow = app.getFlowManager("WordCountFlow").start();
-    FlowManager extendedWordCountFlow = app.getFlowManager("ExtendedWordCountFlow").start();
-    FlowManager keyValueFlow = app.getFlowManager("KeyValueFlow").start();
-    ServiceManager wordCountService = app.getServiceManager("WordCountService").start();
-    waitForStatus(true, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
-
     sendInputData();
 
     testEqualityJoin();
@@ -92,6 +75,13 @@ public class ExploreTest extends AudiTestBase {
   }
 
   private void sendInputData() throws Exception {
+    ApplicationManager app = deployApplication(WordCountApplication.class);
+    FlowManager wordCountFlow = app.getFlowManager("WordCountFlow").start();
+    FlowManager extendedWordCountFlow = app.getFlowManager("ExtendedWordCountFlow").start();
+    FlowManager keyValueFlow = app.getFlowManager("KeyValueFlow").start();
+    ServiceManager wordCountService = app.getServiceManager("WordCountService").start();
+    waitForStatus(true, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
+
     Id.Stream listsStreamId = Id.Stream.from(Id.Namespace.DEFAULT, "lists");
     Id.Stream wordsStreamId = Id.Stream.from(Id.Namespace.DEFAULT, "words");
     Id.Stream words2StreamId = Id.Stream.from(Id.Namespace.DEFAULT, "words2");
@@ -106,45 +96,21 @@ public class ExploreTest extends AudiTestBase {
     streamClient.sendEvent(wordsStreamId, "Jada has iPad.");
     streamClient.sendEvent(words2StreamId, "foo bar foo foobar barbar foobarbar");
 
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "WordCountApplication");
-    Id.Flow keyValueFlowId = Id.Flow.from(appId, "KeyValueFlow");
-
-    // verify processed count
-
-    MetricsClient metricsClient = getMetricsClient();
-    final RuntimeMetrics wordSplitterMetrics = metricsClient.getFlowletMetrics(keyValueFlowId, "wordSplitter");
-    assertWithRetry(new Callable<Void>() {
-      @Override
-      public Void call() throws Exception {
-        Assert.assertEquals(4, wordSplitterMetrics.getProcessed());
-        return null;
-      }
-    }, 15, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-
-    Id.Flow wordCountFlowId = Id.Flow.from(appId, "WordCountFlow");
-    final RuntimeMetrics wordCounterMetrics = metricsClient.getFlowletMetrics(wordCountFlowId, "wordCounter");
-    assertWithRetry(new Callable<Void>() {
-      @Override
-      public Void call() throws Exception {
-        Assert.assertEquals(3, wordCounterMetrics.getProcessed());
-        return null;
-      }
-    }, 15, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-
-    Id.Flow extWordCountFlowId = Id.Flow.from(appId, "ExtendedWordCountFlow");
-    final RuntimeMetrics extWordCounterMetrics = metricsClient.getFlowletMetrics(extWordCountFlowId, "wordCounter");
-    assertWithRetry(new Callable<Void>() {
-      @Override
-      public Void call() throws Exception {
-        Assert.assertEquals(1, extWordCounterMetrics.getProcessed());
-        return null;
-      }
-    }, 15, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-
     // verify stream content
     assertStreamEvents(listsStreamId, "Mike 12 32 0", "iPad 902 332 2286", "Jada", "Spike 8023 334 0 34");
     assertStreamEvents(wordsStreamId, "Mike has macbook.", "Mike has iPad.", "Jada has iPad.");
     assertStreamEvents(words2StreamId, "foo bar foo foobar barbar foobarbar");
+
+    // verify processed count
+    keyValueFlow.getFlowletMetrics("wordSplitter").waitForProcessed(4, 2, TimeUnit.MINUTES);
+    wordCountFlow.getFlowletMetrics("wordCounter").waitForProcessed(3, 2, TimeUnit.MINUTES);
+    extendedWordCountFlow.getFlowletMetrics("wordCounter").waitForProcessed(1, 2, TimeUnit.MINUTES);
+
+    wordCountFlow.stop();
+    extendedWordCountFlow.stop();
+    keyValueFlow.stop();
+    wordCountService.stop();
+    waitForStatus(false, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
   }
 
   private void testEqualityJoin() throws Exception {
@@ -575,24 +541,4 @@ public class ExploreTest extends AudiTestBase {
     }
   }
 
-  private <T> T assertWithRetry(final Callable<T> callable, long timeout, TimeUnit timeoutUnit,
-                                long sleepDelay, TimeUnit sleepDelayUnit)
-    throws InterruptedException, ExecutionException, TimeoutException {
-
-    final AtomicMarkableReference<T> result = new AtomicMarkableReference<>(null, false);
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        public Boolean call() throws Exception {
-          try {
-            result.set(callable.call(), true);
-          } catch (AssertionError e) {
-            LOG.warn("Assertion failed", e);
-            // retry
-            return false;
-          }
-          return true;
-        }
-      }, timeout, timeoutUnit, sleepDelay, sleepDelayUnit);
-    Assert.assertTrue(result.isMarked());
-    return result.getReference();
-  }
 }
