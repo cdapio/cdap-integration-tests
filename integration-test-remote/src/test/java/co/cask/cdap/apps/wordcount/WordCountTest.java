@@ -57,7 +57,7 @@ public class WordCountTest extends AudiTestBase {
      */
     ApplicationManager applicationManager = deployApplication(WordCount.class);
     int numWordsProcessed = 0;
-    int longestWordLengthAcrossRuns = Integer.MIN_VALUE;
+    int longestWordLengthAcrossRuns = 0;
 
     ApplicationClient appClient = getApplicationClient();
     ProgramClient programClient = getProgramClient();
@@ -93,7 +93,7 @@ public class WordCountTest extends AudiTestBase {
       counterMetrics.waitForProcessed(numWordsProcessed, 1, TimeUnit.MINUTES);
 
       int longestWordLength = longestString(wordEvents[i].split(" ")).length();
-      longestWordLengthAcrossRuns = Math.max(longestWordLengthAcrossRuns, longestWordLength);
+      longestWordLengthAcrossRuns += longestWordLength;
       TimeUnit.SECONDS.sleep(1);
       checkMetric(addToTags(flowTags, ImmutableMap.of("run", runId)), longestWordLengthMetric, longestWordLength, 10);
 
