@@ -17,11 +17,18 @@ package co.cask.cdap.apps;
 
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.DatasetMeta;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.FlowManager;
+import co.cask.cdap.test.ServiceManager;
+import co.cask.cdap.test.StreamManager;
 import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
@@ -31,7 +38,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -42,16 +51,28 @@ import java.util.concurrent.TimeUnit;
 public class DatasetTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();
+  private static final Id.Application WORD_COUNT_APP = Id.Application.from(TEST_NAMESPACE, "WordCount");
+  private static final Id.Service WORD_COUNT_SERVICE = Id.Service.from(WORD_COUNT_APP,
+                                                                       RetrieveCounts.SERVICE_NAME);
 
   @Test
   public void test() throws Exception {
 
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
+    RESTClient restClient = getRestClient();
 
     // there should be no datasets in the test namespace
     Assert.assertEquals(datasetClient.list(TEST_NAMESPACE).size(), 0);
 
-    deployApplication(WordCount.class);
+    ApplicationManager applicationManager = deployApplication(WordCount.class);
+
+    FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
+    flowManager.waitForStatus(true, 30, 1);
+    ServiceManager wordCountService = applicationManager.getServiceManager(WORD_COUNT_SERVICE.getId()).start();
+    wordCountService.waitForStatus(true, 60, 1);
+
+    StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
+    wordStream.send("hello world");
 
     // number of datasets which were created by the wordcount app
     int appDatasetCount = datasetClient.list(TEST_NAMESPACE).size();
@@ -80,8 +101,14 @@ public class DatasetTest extends AudiTestBase {
     Assert.assertEquals("mango", newMeta.getSpec().getProperties().get("fruit"));
     Assert.assertEquals("1", newMeta.getSpec().getProperties().get("one"));
 
+    // verify through service that there are 2 words
+    Map<String, Object> responseMap = getWordCountStats(restClient, wordCountService);
+    Assert.assertEquals(2.0, ((double) responseMap.get("totalWords")), 0);
     // test truncating a dataset with existing dataset
-    makeRequest(String.format("data/datasets/%s/admin/truncate", "wordStats"), HttpMethod.POST);
+    datasetClient.truncate(Id.DatasetInstance.from(TEST_NAMESPACE, "wordStats"));
+    // after truncating there should be 0 word
+    responseMap = getWordCountStats(restClient, wordCountService);
+    Assert.assertEquals(0, ((double) responseMap.get("totalWords")), 0);
 
     // test deleting a datatset
     datasetClient.delete(testDatasetinstance);
@@ -115,22 +142,32 @@ public class DatasetTest extends AudiTestBase {
                                                      "nonExistingDataset")).size());
   }
 
+  private Map<String, Object> getWordCountStats(RESTClient restClient, ServiceManager wordCountService)
+                                                throws IOException, UnauthorizedException {
+    URL url = new URL(wordCountService.getServiceURL(), "stats");
+    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
+    return GSON.fromJson(response.getResponseBodyAsString(),
+                         new TypeToken<Map<String, Object>>() {
+                         }.getType());
+  }
+
   private Set<Id.Program> getPrograms(String endPoint) throws IOException, UnauthorizedException {
-    HttpResponse response = makeRequest(endPoint, HttpMethod.GET);
+    HttpResponse response = makeRequest(endPoint);
     return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.Program>>() {
     }.getType());
   }
 
   private Set<Id.DatasetInstance> getDatasetInstances(String endPoint) throws IOException, UnauthorizedException {
-    HttpResponse response = makeRequest(endPoint, HttpMethod.GET);
+    HttpResponse response = makeRequest(endPoint);
     return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.DatasetInstance>>() {
     }.getType());
   }
 
-  private HttpResponse makeRequest(String endPoint, HttpMethod httpMethod) throws IOException, UnauthorizedException {
+  private HttpResponse makeRequest(String endPoint) throws IOException, UnauthorizedException {
     ClientConfig clientConfig = getClientConfig();
     URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, endPoint);
-    HttpResponse response = getRestClient().execute(httpMethod, url, clientConfig.getAccessToken());
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, clientConfig.getAccessToken());
     Assert.assertEquals(response.getResponseCode(), HttpURLConnection.HTTP_OK);
     return response;
   }
