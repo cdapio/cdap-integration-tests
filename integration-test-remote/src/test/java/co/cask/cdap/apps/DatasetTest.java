@@ -15,6 +15,7 @@
  */
 package co.cask.cdap.apps;
 
+import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
@@ -38,7 +39,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 import java.util.Set;
@@ -51,9 +51,6 @@ import java.util.concurrent.TimeUnit;
 public class DatasetTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();
-  private static final Id.Application WORD_COUNT_APP = Id.Application.from(TEST_NAMESPACE, "WordCount");
-  private static final Id.Service WORD_COUNT_SERVICE = Id.Service.from(WORD_COUNT_APP,
-                                                                       RetrieveCounts.SERVICE_NAME);
 
   @Test
   public void test() throws Exception {
@@ -66,23 +63,30 @@ public class DatasetTest extends AudiTestBase {
 
     ApplicationManager applicationManager = deployApplication(WordCount.class);
 
+    // number of datasets which were created by the wordcount app
+    int appDatasetsCount = datasetClient.list(TEST_NAMESPACE).size();
+
     FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
     flowManager.waitForStatus(true, 30, 1);
-    ServiceManager wordCountService = applicationManager.getServiceManager(WORD_COUNT_SERVICE.getId()).start();
+    ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
     wordCountService.waitForStatus(true, 60, 1);
 
     StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
     wordStream.send("hello world");
 
-    // number of datasets which were created by the wordcount app
-    int appDatasetCount = datasetClient.list(TEST_NAMESPACE).size();
+    RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
+    flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
+
+    // the above will create a system.queue in the namespace
+    int datatsetsInNS = appDatasetsCount + 1;
 
     // test creating dataset
     Id.DatasetInstance testDatasetinstance = Id.DatasetInstance.from(TEST_NAMESPACE, "testDataset");
     datasetClient.create(testDatasetinstance, "table");
+    datatsetsInNS++;
 
     // one more dataset should have been added
-    Assert.assertEquals(datasetClient.list(TEST_NAMESPACE).size(), appDatasetCount + 1);
+    Assert.assertEquals(datasetClient.list(TEST_NAMESPACE).size(), datatsetsInNS);
 
     // test that properties there is nothing in properties in the new dataset created above
     DatasetMeta oldMeta = datasetClient.get(testDatasetinstance);
@@ -113,10 +117,11 @@ public class DatasetTest extends AudiTestBase {
     // test deleting a datatset
     datasetClient.delete(testDatasetinstance);
     datasetClient.waitForDeleted(testDatasetinstance, 10, TimeUnit.SECONDS);
-    Assert.assertEquals(appDatasetCount, datasetClient.list(TEST_NAMESPACE).size());
+    datatsetsInNS--;
+    Assert.assertEquals(datatsetsInNS, datasetClient.list(TEST_NAMESPACE).size());
 
     // test the number of datasets used by an app with existing app
-    Assert.assertEquals(appDatasetCount, getDatasetInstances(String.format("apps/%s/datasets",
+    Assert.assertEquals(appDatasetsCount, getDatasetInstances(String.format("apps/%s/datasets",
                                                                            WordCount.class.getSimpleName())).size());
 
     // test the number of datasets used by an app with non existing app
@@ -124,14 +129,14 @@ public class DatasetTest extends AudiTestBase {
 
 
     // test datasets used by a program with an existing program
-    Assert.assertEquals(appDatasetCount, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",
+    Assert.assertEquals(appDatasetsCount, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",
                                                                            WordCount.class.getSimpleName(),
                                                                            "WordCounter")).size());
 
     // test datasets used by a program with a non existing program
     Assert.assertEquals(0, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",
                                                              WordCount.class.getSimpleName(),
-                                                             "nonExisitngProgram")).size());
+                                                             "nonExistingProgram")).size());
 
     // test programs using a dataset with existing dataset name
     Assert.assertEquals(2, getPrograms(String.format("data/datasets/%s/programs", "wordStats")).size());
