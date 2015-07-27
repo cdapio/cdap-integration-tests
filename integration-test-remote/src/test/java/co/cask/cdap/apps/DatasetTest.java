@@ -59,34 +59,19 @@ public class DatasetTest extends AudiTestBase {
     RESTClient restClient = getRestClient();
 
     // there should be no datasets in the test namespace
-    Assert.assertEquals(datasetClient.list(TEST_NAMESPACE).size(), 0);
+    Assert.assertEquals(0, datasetClient.list(TEST_NAMESPACE).size());
 
     ApplicationManager applicationManager = deployApplication(WordCount.class);
 
     // number of datasets which were created by the wordcount app
     int appDatasetsCount = datasetClient.list(TEST_NAMESPACE).size();
 
-    FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-    flowManager.waitForStatus(true, 30, 1);
-    ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
-    wordCountService.waitForStatus(true, 60, 1);
-
-    StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
-    wordStream.send("hello world");
-
-    RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
-    flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
-
-    // the above will create a system.queue in the namespace
-    int datatsetsInNS = appDatasetsCount + 1;
-
     // test creating dataset
     Id.DatasetInstance testDatasetinstance = Id.DatasetInstance.from(TEST_NAMESPACE, "testDataset");
     datasetClient.create(testDatasetinstance, "table");
-    datatsetsInNS++;
 
     // one more dataset should have been added
-    Assert.assertEquals(datasetClient.list(TEST_NAMESPACE).size(), datatsetsInNS);
+    Assert.assertEquals(appDatasetsCount + 1, datasetClient.list(TEST_NAMESPACE).size());
 
     // test that properties there is nothing in properties in the new dataset created above
     DatasetMeta oldMeta = datasetClient.get(testDatasetinstance);
@@ -105,6 +90,22 @@ public class DatasetTest extends AudiTestBase {
     Assert.assertEquals("mango", newMeta.getSpec().getProperties().get("fruit"));
     Assert.assertEquals("1", newMeta.getSpec().getProperties().get("one"));
 
+    // test deleting a datatset
+    datasetClient.delete(testDatasetinstance);
+    datasetClient.waitForDeleted(testDatasetinstance, 10, TimeUnit.SECONDS);
+    Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
+
+    FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
+    flowManager.waitForStatus(true, 30, 1);
+    ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
+    wordCountService.waitForStatus(true, 60, 1);
+
+    StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
+    wordStream.send("hello world");
+
+    RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
+    flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
+
     // verify through service that there are 2 words
     Map<String, Object> responseMap = getWordCountStats(restClient, wordCountService);
     Assert.assertEquals(2.0, ((double) responseMap.get("totalWords")), 0);
@@ -113,12 +114,6 @@ public class DatasetTest extends AudiTestBase {
     // after truncating there should be 0 word
     responseMap = getWordCountStats(restClient, wordCountService);
     Assert.assertEquals(0, ((double) responseMap.get("totalWords")), 0);
-
-    // test deleting a datatset
-    datasetClient.delete(testDatasetinstance);
-    datasetClient.waitForDeleted(testDatasetinstance, 10, TimeUnit.SECONDS);
-    datatsetsInNS--;
-    Assert.assertEquals(datatsetsInNS, datasetClient.list(TEST_NAMESPACE).size());
 
     // test the number of datasets used by an app with existing app
     Assert.assertEquals(appDatasetsCount, getDatasetInstances(String.format("apps/%s/datasets",
