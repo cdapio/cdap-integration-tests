@@ -17,6 +17,7 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.client.MonitorClient;
+import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.conf.Constants;
@@ -24,6 +25,8 @@ import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
+import co.cask.cdap.proto.ProgramRunStatus;
+import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -31,15 +34,18 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
+import org.junit.Assert;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -125,5 +131,15 @@ public class AudiTestBase extends IntegrationTestBase {
     MetricQueryResult.TimeValue[] timeValues = series[0].getData();
     Preconditions.checkState(timeValues.length == 1, "Metric TimeValues has more than one TimeValue: {}", timeValues);
     return timeValues[0].getValue();
+  }
+
+  // {@param} expectedStatus can be null if count is 0
+  protected void assertRuns(int count, ProgramClient programClient,  Id.Program programId,
+                            @Nullable ProgramRunStatus expectedStatus) throws Exception {
+    List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+    Assert.assertEquals(count, runRecords.size());
+    for (int i = 0; i < count; i++) {
+      Assert.assertEquals(expectedStatus, runRecords.get(i).getStatus());
+    }
   }
 }

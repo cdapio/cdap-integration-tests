@@ -27,11 +27,11 @@ import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
-import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.ScheduledRuntime;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.MapReduceManager;
+import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -63,6 +63,10 @@ public class PurchaseAudiTest extends AudiTestBase {
                                                                                 "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER = Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE,
                                                                              "PurchaseHistoryBuilder");
+  private enum ProgramAction {
+    START,
+    STOP
+  }
 
   @Test
   public void test() throws Exception {
@@ -123,6 +127,9 @@ public class PurchaseAudiTest extends AudiTestBase {
     MapReduceManager purchaseHistoryBuilderManager =
       applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getId());
 
+    // need to stop the services and flow, so we have enough resources for running workflow
+    startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
+
     purchaseHistoryWorkflowManager.start();
     purchaseHistoryWorkflowManager.waitForStatus(true, 60, 1);
     purchaseHistoryBuilderManager.waitForStatus(true, 60, 1);
@@ -130,6 +137,9 @@ public class PurchaseAudiTest extends AudiTestBase {
     purchaseHistoryWorkflowManager.waitForStatus(false, 60, 1);
 
     // Ensure that the flow and services are still running
+    startStopServices(ProgramAction.START, purchaseFlow, purchaseHistoryService, userProfileService);
+    // TODO: better way to wait for service to be up.
+    TimeUnit.SECONDS.sleep(60);
     Assert.assertTrue(purchaseFlow.isRunning());
     Assert.assertTrue(purchaseHistoryService.isRunning());
     Assert.assertTrue(userProfileService.isRunning());
@@ -141,35 +151,16 @@ public class PurchaseAudiTest extends AudiTestBase {
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());
 
-    purchaseFlow.stop();
-    purchaseHistoryService.stop();
-    userProfileService.stop();
-
-    purchaseFlow.waitForStatus(false, 60, 1);
-    purchaseHistoryService.waitForStatus(false, 60, 1);
-    userProfileService.waitForStatus(false, 60, 1);
+    startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
 
     // flow and services have 'KILLED' state because they were explicitly stopped
-    List<RunRecord> purchaseFlowRuns =
-      programClient.getAllProgramRuns(PURCHASE_FLOW, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(purchaseFlowRuns, ProgramRunStatus.KILLED);
-
-    List<RunRecord> purchaseHistoryServiceRuns =
-      programClient.getAllProgramRuns(PURCHASE_HISTORY_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(purchaseHistoryServiceRuns, ProgramRunStatus.KILLED);
-
-    List<RunRecord> userProfileServiceRuns =
-      programClient.getAllProgramRuns(PURCHASE_USER_PROFILE_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(userProfileServiceRuns, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, PURCHASE_FLOW, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, PURCHASE_HISTORY_SERVICE, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, PURCHASE_USER_PROFILE_SERVICE, ProgramRunStatus.KILLED);
 
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
-    List<RunRecord> workflowRuns =
-      programClient.getAllProgramRuns(PURCHASE_HISTORY_WORKFLOW, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(workflowRuns, ProgramRunStatus.COMPLETED);
-
-    List<RunRecord> mapReduceRuns =
-      programClient.getAllProgramRuns(PURCHASE_HISTORY_BUILDER, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(mapReduceRuns, ProgramRunStatus.COMPLETED);
+    assertRuns(1, programClient, PURCHASE_HISTORY_WORKFLOW, ProgramRunStatus.COMPLETED);
+    assertRuns(1, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
 
     // TODO: have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
@@ -185,8 +176,19 @@ public class PurchaseAudiTest extends AudiTestBase {
     Assert.assertEquals(1, scheduledRuntimes.size());
   }
 
-  private void assertSingleRun(List<RunRecord> runRecords, ProgramRunStatus expectedStatus) {
-    Assert.assertEquals(1, runRecords.size());
-    Assert.assertEquals(expectedStatus, runRecords.get(0).getStatus());
+  private void startStopServices(ProgramAction action, ProgramManager... programs) throws InterruptedException {
+    boolean waitCondition = action == ProgramAction.START;
+    for (ProgramManager program : programs) {
+      if (action.equals(ProgramAction.START)) {
+        program.start();
+      } else {
+        program.stop();
+      }
+    }
+
+    for (ProgramManager program : programs) {
+      program.waitForStatus(waitCondition, 60, 1);
+    }
   }
+
 }
