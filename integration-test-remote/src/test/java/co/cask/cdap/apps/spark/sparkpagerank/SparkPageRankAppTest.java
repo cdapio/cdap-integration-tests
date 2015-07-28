@@ -81,17 +81,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(SparkPageRankApp.class);
 
     // none of the programs should have any run records
-    Assert.assertEquals(0, programClient.getAllProgramRuns(RANKS_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(GOOGLE_TYPE_PR_SERVICE,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(TOTAL_PAGES_PR_SERVICE,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PAGE_RANK_WORKFLOW,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(RANKS_COUNTER_PROGRAM,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PAGE_RANK_PROGRAM,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
+    assertRuns(0, programClient, null, RANKS_SERVICE, GOOGLE_TYPE_PR_SERVICE,
+               TOTAL_PAGES_PR_SERVICE, PAGE_RANK_WORKFLOW, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
 
     // PageRankWorkflow should have no schedules
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
@@ -177,31 +168,12 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ranksServiceManager.waitForStatus(false, 60, 1);
     totalPagesServiceManager.waitForStatus(false, 60, 1);
 
-    // services should 'KILLED' state because they were explicitly stopped
-    List<RunRecord> serviceRuns = programClient.getAllProgramRuns(RANKS_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(serviceRuns, ProgramRunStatus.KILLED);
+    // services should 'KILLED' state because they were explicitly stopped with a single run
+    assertRuns(1, programClient, ProgramRunStatus.KILLED, RANKS_SERVICE, GOOGLE_TYPE_PR_SERVICE,
+               TOTAL_PAGES_PR_SERVICE);
 
-    serviceRuns = programClient.getAllProgramRuns(GOOGLE_TYPE_PR_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(serviceRuns, ProgramRunStatus.KILLED);
-
-    serviceRuns = programClient.getAllProgramRuns(TOTAL_PAGES_PR_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(serviceRuns, ProgramRunStatus.KILLED);
-
-    // workflow, mapreduce and spark should have 'COMPLETED' state because they complete on their own
-    List<RunRecord> programRuns = programClient.getAllProgramRuns(PAGE_RANK_WORKFLOW, 0, Long.MAX_VALUE,
-                                                                  Integer.MAX_VALUE);
-    assertSingleRun(programRuns, ProgramRunStatus.COMPLETED);
-
-    programRuns = programClient.getAllProgramRuns(RANKS_COUNTER_PROGRAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(programRuns, ProgramRunStatus.COMPLETED);
-
-    programRuns = programClient.getAllProgramRuns(PAGE_RANK_PROGRAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(programRuns, ProgramRunStatus.COMPLETED);
-
-  }
-
-  private void assertSingleRun(List<RunRecord> runRecords, ProgramRunStatus expectedStatus) {
-    Assert.assertEquals(1, runRecords.size());
-    Assert.assertEquals(expectedStatus, runRecords.get(0).getStatus());
+    // workflow, mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
+    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PAGE_RANK_WORKFLOW, RANKS_COUNTER_PROGRAM,
+               PAGE_RANK_PROGRAM);
   }
 }
