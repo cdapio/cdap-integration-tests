@@ -25,16 +25,12 @@ import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
-import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.List;
-import javax.annotation.Nullable;
 
 /**
  * Tests the functionality of workflows triggered by stream data.
@@ -108,13 +104,4 @@ public class StreamSchedulerTest extends AudiTestBase {
     }
   }
 
-  // {@param} expectedStatus can be null if count is 0
-  private void assertRuns(int count, ProgramClient programClient, Id.Program programId,
-                          @Nullable ProgramRunStatus expectedStatus) throws Exception {
-    List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(count, runRecords.size());
-    for (int i = 0; i < count; i++) {
-      Assert.assertEquals(expectedStatus, runRecords.get(i).getStatus());
-    }
-  }
 }

@@ -27,7 +27,6 @@ import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
-import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.ScheduledRuntime;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
@@ -155,26 +154,13 @@ public class PurchaseAudiTest extends AudiTestBase {
     startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
 
     // flow and services have 'KILLED' state because they were explicitly stopped
-    List<RunRecord> purchaseFlowRuns =
-      programClient.getAllProgramRuns(PURCHASE_FLOW, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertRuns(2, purchaseFlowRuns, ProgramRunStatus.KILLED);
-
-    List<RunRecord> purchaseHistoryServiceRuns =
-      programClient.getAllProgramRuns(PURCHASE_HISTORY_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertRuns(2, purchaseHistoryServiceRuns, ProgramRunStatus.KILLED);
-
-    List<RunRecord> userProfileServiceRuns =
-      programClient.getAllProgramRuns(PURCHASE_USER_PROFILE_SERVICE, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertRuns(2, userProfileServiceRuns, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, PURCHASE_FLOW, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, PURCHASE_HISTORY_SERVICE, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, PURCHASE_USER_PROFILE_SERVICE, ProgramRunStatus.KILLED);
 
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
-    List<RunRecord> workflowRuns =
-      programClient.getAllProgramRuns(PURCHASE_HISTORY_WORKFLOW, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertRuns(1, workflowRuns, ProgramRunStatus.COMPLETED);
-
-    List<RunRecord> mapReduceRuns =
-      programClient.getAllProgramRuns(PURCHASE_HISTORY_BUILDER, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertRuns(1, mapReduceRuns, ProgramRunStatus.COMPLETED);
+    assertRuns(1, programClient, PURCHASE_HISTORY_WORKFLOW, ProgramRunStatus.COMPLETED);
+    assertRuns(1, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
 
     // TODO: have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
@@ -205,10 +191,4 @@ public class PurchaseAudiTest extends AudiTestBase {
     }
   }
 
-  private void assertRuns(int expectedSize, List<RunRecord> runRecords, ProgramRunStatus expectedStatus) {
-    Assert.assertEquals(expectedSize, runRecords.size());
-    for (RunRecord record : runRecords) {
-      Assert.assertEquals(expectedStatus, record.getStatus());
-    }
-  }
 }
