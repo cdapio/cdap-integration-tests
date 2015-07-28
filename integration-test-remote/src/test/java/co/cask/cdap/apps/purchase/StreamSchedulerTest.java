@@ -74,8 +74,7 @@ public class StreamSchedulerTest extends AudiTestBase {
 
     // both the mapreduce and workflow should have 1 run
     ProgramClient programClient = getProgramClient();
-    assertRuns(1, programClient, PURCHASE_HISTORY_WORKFLOW, ProgramRunStatus.COMPLETED);
-    assertRuns(1, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
+    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
     // schedule actions
     Id.Schedule dataSchedule = Id.Schedule.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "DataSchedule");
@@ -93,8 +92,7 @@ public class StreamSchedulerTest extends AudiTestBase {
     purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
     purchaseHistoryWorkflow.waitForStatus(false, 60, 1);
 
-    assertRuns(2, programClient, PURCHASE_HISTORY_WORKFLOW, ProgramRunStatus.COMPLETED);
-    assertRuns(2, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
+    assertRuns(2, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
   }
 
   private void multipleStreamSend(StreamClient streamClient, Id.Stream streamId, String event,

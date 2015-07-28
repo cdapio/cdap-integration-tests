@@ -76,13 +76,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
 
     // none of the programs should have any run records
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PURCHASE_FLOW, 0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PURCHASE_HISTORY_SERVICE,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PURCHASE_USER_PROFILE_SERVICE,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
-    Assert.assertEquals(0, programClient.getAllProgramRuns(PURCHASE_HISTORY_WORKFLOW,
-                                                           0, Long.MAX_VALUE, Integer.MAX_VALUE).size());
+    assertRuns(0, programClient, null, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE, PURCHASE_USER_PROFILE_SERVICE,
+               PURCHASE_HISTORY_WORKFLOW);
 
     // PurchaseHistoryWorkflow should have two schedules
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
@@ -154,13 +149,11 @@ public class PurchaseAudiTest extends AudiTestBase {
     startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
 
     // flow and services have 'KILLED' state because they were explicitly stopped
-    assertRuns(2, programClient, PURCHASE_FLOW, ProgramRunStatus.KILLED);
-    assertRuns(2, programClient, PURCHASE_HISTORY_SERVICE, ProgramRunStatus.KILLED);
-    assertRuns(2, programClient, PURCHASE_USER_PROFILE_SERVICE, ProgramRunStatus.KILLED);
+    assertRuns(2, programClient, ProgramRunStatus.KILLED, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE,
+               PURCHASE_USER_PROFILE_SERVICE);
 
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
-    assertRuns(1, programClient, PURCHASE_HISTORY_WORKFLOW, ProgramRunStatus.COMPLETED);
-    assertRuns(1, programClient, PURCHASE_HISTORY_BUILDER, ProgramRunStatus.COMPLETED);
+    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
     // TODO: have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
@@ -190,5 +183,4 @@ public class PurchaseAudiTest extends AudiTestBase {
       program.waitForStatus(waitCondition, 60, 1);
     }
   }
-
 }
