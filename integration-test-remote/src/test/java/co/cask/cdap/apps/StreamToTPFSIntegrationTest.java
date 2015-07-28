@@ -55,8 +55,8 @@ public class StreamToTPFSIntegrationTest extends AudiTestBase {
     Schema.Field.of("num", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
 
-  protected static final Id.ApplicationTemplate TEMPLATE_ID = Id.ApplicationTemplate.from("ETLBatch");
-  protected static final Gson GSON = new Gson();
+  private static final Id.ApplicationTemplate TEMPLATE_ID = Id.ApplicationTemplate.from("ETLBatch");
+  private static final Gson GSON = new Gson();
 
   @Test
   public void testAdapter() throws Exception {
@@ -141,7 +141,7 @@ public class StreamToTPFSIntegrationTest extends AudiTestBase {
                                  ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA,
                                                  ConversionTestService.EVENT_SCHEMA.toString(),
                                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, fileSetName));
-    ETLStage transform = new ETLStage("Projection", ImmutableMap.<String, String>of("drop", "headers"));
+    ETLStage transform = new ETLStage("Projection", ImmutableMap.of("drop", "headers"));
     return new ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
   }
 
