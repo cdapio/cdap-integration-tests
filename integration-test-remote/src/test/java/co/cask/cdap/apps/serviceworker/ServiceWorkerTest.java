@@ -48,14 +48,13 @@ public class ServiceWorkerTest extends AudiTestBase {
     serviceManager.waitForStatus(true, 60, 1);
 
 
-    // TODO: better way to wait for service to be up.
-    TimeUnit.SECONDS.sleep(60);
     URL serviceURL = serviceManager.getServiceURL();
     URL url = new URL(serviceURL, "read/" + DatasetWorker.WORKER_DATASET_TEST_KEY);
-    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
 
+    // we have to make the first handler call after service starts with a retry
     // hit the service endpoint, get for worker_key, should return 204 (null)
-    Assert.assertEquals(204, response.getResponseCode());
+    retryRestCalls(HttpURLConnection.HTTP_NO_CONTENT, HttpRequest.get(url).build(),
+                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
@@ -64,7 +63,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     workerManager.waitForStatus(false, 60, 1);
 
     // check if the worker's write to the table was successful
-    response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals("\"" + DatasetWorker.WORKER_DATASET_TEST_VALUE + "\"",
                         Bytes.toString(response.getResponseBody()));

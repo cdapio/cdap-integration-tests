@@ -25,6 +25,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -34,6 +35,7 @@ import com.google.gson.Gson;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -64,17 +66,13 @@ public class FileSetTest extends AudiTestBase {
 
     fileSetService.waitForStatus(true, 60, 1);
 
-    // TODO: better way to wait for service to be up.
-    TimeUnit.SECONDS.sleep(20);
-
     URL serviceURL = fileSetService.getServiceURL();
     URL url = new URL(serviceURL, "lines?path=myFile.txt");
-    HttpResponse response =
-      getRestClient().execute(HttpMethod.PUT, url, DATA_UPLOAD, null, getClientConfig().getAccessToken());
-    // check for 200 shouldn't be necessary? (restClient already checks 200<=x<300
-    Assert.assertEquals(200, response.getResponseCode());
 
-    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    // we have to make the first handler call after service starts with a retry
+    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
+                                           HttpRequest.post(url).withBody(DATA_UPLOAD).build(),
+                                           getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(DATA_UPLOAD, response.getResponseBodyAsString());
 
