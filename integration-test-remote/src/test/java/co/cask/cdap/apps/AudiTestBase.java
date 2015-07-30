@@ -28,6 +28,7 @@ import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.IntegrationTestBase;
+import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
@@ -41,6 +42,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -143,5 +146,17 @@ public class AudiTestBase extends IntegrationTestBase {
         Assert.assertEquals(expectedStatus, runRecord.getStatus());
       }
     }
+  }
+
+  protected void retryRestCalls(final HttpRequest request, final int expectedStatusCode, long timeout,
+                                final RESTClient restClient, TimeUnit timeoutUnit, long sleepDeley,
+                                TimeUnit sleepDelayUnit) throws Exception {
+
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        return restClient.execute(request, getClientConfig().getAccessToken()).getResponseCode() == expectedStatusCode;
+      }
+    }, timeout, timeoutUnit, sleepDeley, sleepDelayUnit);
   }
 }

@@ -46,6 +46,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.reflect.Type;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -102,18 +103,16 @@ public class PurchaseAudiTest extends AudiTestBase {
     userProfileService.waitForStatus(true, 60, 1);
     purchaseHistoryService.waitForStatus(true, 60, 1);
 
-    // TODO: better way to wait for service to be up.
-    TimeUnit.SECONDS.sleep(60);
     URL serviceURL = userProfileService.getServiceURL();
     URL url = new URL(serviceURL, "user");
     String body = "{\"id\":\"Milo\",\"firstName\":\"Milo\",\"lastName\":\"Bernard\",\"categories\":[\"drink\"]}";
-    // TODO: retries? Because service handler may not be ready, even though program status is 'RUNNING'
-    HttpResponse response =
-      restClient.execute(HttpRequest.post(url).withBody(body).build(), getClientConfig().getAccessToken());
-    Assert.assertEquals(200, response.getResponseCode());
+
+    // we have to make the first handler call after service starts with a retry
+    retryRestCalls(HttpRequest.builder(HttpMethod.POST, url).withBody(body).build(),
+                   HttpURLConnection.HTTP_OK, 120, restClient, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     url = new URL(serviceURL, "user/Milo");
-    response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(new JsonParser().parse(body), new JsonParser().parse(response.getResponseBodyAsString()));
 
@@ -133,14 +132,15 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     // Ensure that the flow and services are still running
     startStopServices(ProgramAction.START, purchaseFlow, purchaseHistoryService, userProfileService);
-    // TODO: better way to wait for service to be up.
-    TimeUnit.SECONDS.sleep(60);
     Assert.assertTrue(purchaseFlow.isRunning());
     Assert.assertTrue(purchaseHistoryService.isRunning());
     Assert.assertTrue(userProfileService.isRunning());
 
     serviceURL = purchaseHistoryService.getServiceURL();
     url = new URL(serviceURL, "history/Milo");
+    // we have to make the first handler call after service starts with a retry
+    retryRestCalls(HttpRequest.builder(HttpMethod.GET, url).build(), HttpURLConnection.HTTP_OK, 120, restClient,
+                   TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
