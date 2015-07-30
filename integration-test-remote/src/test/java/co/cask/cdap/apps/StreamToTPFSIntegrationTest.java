@@ -41,12 +41,16 @@ import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+// TODO : Ignoring this test case as StandaloneTester is unable to setup plugin classes properly right now.
+// once that is fixed, we can remove this ignore.
+@Ignore
 public class StreamToTPFSIntegrationTest extends AudiTestBase {
 
   private static final Schema BODY_SCHEMA = Schema.recordOf(

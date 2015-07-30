@@ -71,8 +71,11 @@ public class FileSetTest extends AudiTestBase {
 
     // we have to make the first handler call after service starts with a retry
     HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                                           HttpRequest.post(url).withBody(DATA_UPLOAD).build(),
+                                           HttpRequest.put(url).withBody(DATA_UPLOAD).build(),
                                            getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    Assert.assertEquals(200, response.getResponseCode());
+
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(DATA_UPLOAD, response.getResponseBodyAsString());
 
