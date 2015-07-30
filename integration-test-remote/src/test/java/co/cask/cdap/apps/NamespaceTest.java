@@ -26,6 +26,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -34,6 +35,7 @@ import javax.annotation.Nullable;
 /**
  * Tests functionalities of namespaces (create, get, list, delete, etc)
  */
+@Ignore
 public class NamespaceTest extends AudiTestBase {
   private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
   private static final Id.Namespace NS2 = Id.Namespace.from("ns2");

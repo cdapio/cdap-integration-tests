@@ -32,6 +32,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Test for {@link WordCount}.
  */
+@Ignore
 public class WordCountTest extends AudiTestBase {
   private static final String[] wordEvents = {"hello world", "good morning"};
 

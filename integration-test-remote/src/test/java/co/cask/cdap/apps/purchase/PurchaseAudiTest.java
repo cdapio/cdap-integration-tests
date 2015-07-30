@@ -43,6 +43,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonParser;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.Type;
@@ -53,6 +54,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests the functionality demonstrated in PurchaseApp
  */
+@Ignore
 public class PurchaseAudiTest extends AudiTestBase {
   private static final Gson GSON = new Gson();
   private static final Id.Application PURCHASE_APP = Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME);

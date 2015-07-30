@@ -31,6 +31,7 @@ import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -42,6 +43,7 @@ import java.util.Map;
 /**
  * Tests various methods of a stream such as create, ingest events, fetch events, properties.
  */
+@Ignore
 public class StreamTest extends AudiTestBase {
   private static final Id.Stream NONEXISTENT_STREAM = Id.Stream.from(TEST_NAMESPACE, "nonexistentStream");
   private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "testStream");

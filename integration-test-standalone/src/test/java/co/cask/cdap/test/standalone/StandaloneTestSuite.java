@@ -16,11 +16,17 @@
 
 package co.cask.cdap.test.standalone;
 
-import co.cask.cdap.StandaloneTester;
 import co.cask.cdap.common.lang.ClassLoaders;
+import co.cask.cdap.template.etl.batch.ETLBatchTemplate;
+import co.cask.cdap.template.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
+import co.cask.cdap.template.etl.batch.source.StreamBatchSource;
+import co.cask.cdap.template.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
+import co.cask.cdap.template.etl.realtime.ETLRealtimeTemplate;
 import co.cask.cdap.test.runner.AutoSuiteRunner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.ExternalResource;
@@ -32,6 +38,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -106,10 +113,17 @@ public class StandaloneTestSuite {
       }
     }
 
+    Multimap<Class<?>, Class<?>> templateToPlugin = ArrayListMultimap.create();
+    templateToPlugin.putAll(ETLBatchTemplate.class, new ArrayList(Arrays.asList(
+      StreamBatchSource.class,
+      TimePartitionedFileSetDatasetAvroSource.class,
+      TimePartitionedFileSetDatasetAvroSink.class)));
+    templateToPlugin.putAll(ETLRealtimeTemplate.class, new ArrayList<Class<?>>());
     URLClassLoader classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), null);
     try {
-      Class<?> clz = classLoader.loadClass(StandaloneTester.class.getName());
-      return clz.getConstructor(Class[].class).newInstance(new Object[]{new Class[0]});
+//      Class<?> clz = classLoader.loadClass(StandaloneTester.class.getName());
+//      return clz.getConstructor(Class[].class).newInstance(templateToPlugin);
+      return new StandaloneTester(templateToPlugin);
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }

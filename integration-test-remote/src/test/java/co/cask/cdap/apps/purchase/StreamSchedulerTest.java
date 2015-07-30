@@ -30,11 +30,13 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  * Tests the functionality of workflows triggered by stream data.
  */
+@Ignore
 public class StreamSchedulerTest extends AudiTestBase {
   private static final Id.Workflow PURCHASE_HISTORY_WORKFLOW =
     Id.Workflow.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");

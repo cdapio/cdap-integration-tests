@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -48,6 +49,7 @@ import java.util.concurrent.TimeUnit;
  * Integration tests for {link Dataset} which tests all the rest endpoints of dataset
  */
 //TODO: Add test for datasets used by an adapter
+@Ignore
 public class DatasetTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();

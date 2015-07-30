@@ -25,6 +25,7 @@ import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -32,6 +33,7 @@ import java.util.List;
 /**
  * Tests isolation of streams across namespaces.
  */
+@Ignore
 public class NamespacedStreamTest extends AudiTestBase {
   private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
   private static final Id.Namespace NS2 = Id.Namespace.from("ns2");

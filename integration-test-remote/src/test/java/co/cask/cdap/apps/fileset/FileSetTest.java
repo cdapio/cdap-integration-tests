@@ -32,6 +32,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.URL;
@@ -42,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests the functionality of {@link co.cask.cdap.data2.dataset2.lib.file.FileSetDataset}
  */
+@Ignore
 public class FileSetTest extends AudiTestBase {
   private static final List<String> DATA_LIST =
     Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");

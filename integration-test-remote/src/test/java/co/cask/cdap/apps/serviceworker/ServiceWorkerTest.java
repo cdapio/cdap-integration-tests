@@ -25,6 +25,7 @@ import co.cask.cdap.test.WorkerManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Test worker that writes to dataset and service that reads from it.
  */
+@Ignore
 public class ServiceWorkerTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(ServiceWorkerTest.class);
 

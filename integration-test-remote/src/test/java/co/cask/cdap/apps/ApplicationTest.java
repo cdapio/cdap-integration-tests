@@ -23,6 +23,7 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ import java.io.IOException;
 /**
  * Tests functionality of Applications
  */
+@Ignore
 public class ApplicationTest extends AudiTestBase {
 
   @Test
