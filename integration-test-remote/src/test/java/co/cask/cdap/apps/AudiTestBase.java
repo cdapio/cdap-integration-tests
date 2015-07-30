@@ -152,10 +152,10 @@ public class AudiTestBase extends IntegrationTestBase {
                                 final RESTClient restClient, TimeUnit timeoutUnit, long sleepDeley,
                                 TimeUnit sleepDelayUnit) throws Exception {
 
-    Tasks.waitFor(true, new Callable<Boolean>() {
+    Tasks.waitFor(expectedStatusCode, new Callable<Integer>() {
       @Override
-      public Boolean call() throws Exception {
-        return restClient.execute(request, getClientConfig().getAccessToken()).getResponseCode() == expectedStatusCode;
+      public Integer call() throws Exception {
+        return restClient.execute(request, getClientConfig().getAccessToken()).getResponseCode();
       }
     }, timeout, timeoutUnit, sleepDeley, sleepDelayUnit);
   }
