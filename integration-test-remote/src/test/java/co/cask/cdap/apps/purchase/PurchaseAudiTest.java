@@ -108,8 +108,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     String body = "{\"id\":\"Milo\",\"firstName\":\"Milo\",\"lastName\":\"Bernard\",\"categories\":[\"drink\"]}";
 
     // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpRequest.builder(HttpMethod.POST, url).withBody(body).build(),
-                   HttpURLConnection.HTTP_OK, 120, restClient, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(url).withBody(body).build(),
+                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     url = new URL(serviceURL, "user/Milo");
     HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
@@ -139,9 +139,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     serviceURL = purchaseHistoryService.getServiceURL();
     url = new URL(serviceURL, "history/Milo");
     // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpRequest.builder(HttpMethod.GET, url).build(), HttpURLConnection.HTTP_OK, 120, restClient,
-                   TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-    response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
+                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());

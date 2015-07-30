@@ -70,10 +70,9 @@ public class FileSetTest extends AudiTestBase {
     URL url = new URL(serviceURL, "lines?path=myFile.txt");
 
     // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpRequest.builder(HttpMethod.PUT, url).withBody(DATA_UPLOAD).build(),
-                   HttpURLConnection.HTTP_OK, 120, getRestClient(), TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
+                                           HttpRequest.post(url).withBody(DATA_UPLOAD).build(),
+                                           getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(DATA_UPLOAD, response.getResponseBodyAsString());
 

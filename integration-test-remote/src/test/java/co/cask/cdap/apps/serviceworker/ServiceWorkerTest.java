@@ -22,7 +22,6 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
-import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import org.junit.Assert;
@@ -54,8 +53,8 @@ public class ServiceWorkerTest extends AudiTestBase {
 
     // we have to make the first handler call after service starts with a retry
     // hit the service endpoint, get for worker_key, should return 204 (null)
-    retryRestCalls(HttpRequest.builder(HttpMethod.GET, url).build(), 204, 120, restClient,
-                   TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    retryRestCalls(HttpURLConnection.HTTP_NO_CONTENT, HttpRequest.get(url).build(),
+                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();

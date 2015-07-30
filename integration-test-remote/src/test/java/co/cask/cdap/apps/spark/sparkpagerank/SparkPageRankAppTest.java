@@ -34,7 +34,6 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -145,20 +144,16 @@ public class SparkPageRankAppTest extends AudiTestBase {
     URL url = new URL(totalPagesServiceManager.getServiceURL(),
                       SparkPageRankApp.TotalPagesHandler.TOTAL_PAGES_PATH + "/" + RANK);
 
-    retryRestCalls(HttpRequest.builder(HttpMethod.GET, url).build(), HttpURLConnection.HTTP_OK, 120, restClient,
-                   TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
+                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
 
     url = new URL(ranksServiceManager.getServiceURL(), SparkPageRankApp.RanksServiceHandler.RANKS_SERVICE_PATH);
-    retryRestCalls(HttpRequest.builder(HttpMethod.POST, url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
-                   HttpURLConnection.HTTP_OK, 120, restClient, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    response = retryRestCalls(HttpURLConnection.HTTP_OK,
+                              HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
+                              getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
-    response = restClient.execute(HttpRequest
-                                    .post(url)
-                                    .withBody("{\"url\":\"" + URL_1 + "\"}")
-                                    .build(), getClientConfig().getAccessToken());
 
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
