@@ -69,9 +69,11 @@ public class ExploreTest extends AudiTestBase {
     testMaxRightOuterJoin();
 
     testCheckKVTable();
-    testSubqueryInWhereClause();
-
     testStream();
+
+    // Hive 0.12 doesn't support subqueries in the WHERE clause
+    // TODO: run only when running against Hive >=0.13
+    testSubqueryInWhereClause();
   }
 
   private void sendInputData() throws Exception {
