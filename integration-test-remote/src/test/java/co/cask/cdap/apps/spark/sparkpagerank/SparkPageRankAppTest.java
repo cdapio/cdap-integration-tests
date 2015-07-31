@@ -114,9 +114,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getId());
 
-    pageRankWorkflowManager.start();
+    pageRankManager.start();
 
-    pageRankWorkflowManager.waitForStatus(true, 60, 1);
     // wait until the spark program is running or completes. It completes too fast on standalone to rely on
     // programManager#waitForStatus(true, ...)
     Tasks.waitFor(true, new Callable<Boolean>() {
@@ -132,9 +131,9 @@ public class SparkPageRankAppTest extends AudiTestBase {
       }
     }, 60, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     pageRankManager.waitForStatus(false, 10 * 60, 1);
+    ranksCounterManager.start();
     ranksCounterManager.waitForStatus(true, 60, 1);
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
-    pageRankWorkflowManager.waitForStatus(false, 60, 1);
 
     // Ensure that the services are still running
     Assert.assertTrue(transformServiceManager.isRunning());
@@ -172,8 +171,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     assertRuns(1, programClient, ProgramRunStatus.KILLED, RANKS_SERVICE, GOOGLE_TYPE_PR_SERVICE,
                TOTAL_PAGES_PR_SERVICE);
 
-    // workflow, mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
-    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PAGE_RANK_WORKFLOW, RANKS_COUNTER_PROGRAM,
-               PAGE_RANK_PROGRAM);
+    // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
+    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
   }
 }
