@@ -16,6 +16,7 @@
 
 package co.cask.cdap.apps;
 
+import co.cask.cdap.apps.adapters.ETLStageProvider;
 import co.cask.cdap.client.MonitorClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
@@ -55,9 +56,18 @@ public class AudiTestBase extends IntegrationTestBase {
   protected static final Id.Namespace TEST_NAMESPACE = Constants.DEFAULT_NAMESPACE_ID;
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
+  private final ETLStageProvider etlStageProvider;
 
   public AudiTestBase() {
     restClient = createRestClient();
+    etlStageProvider = new ETLStageProvider();
+  }
+
+  /**
+   * @return {@link ETLStageProvider} which can be used to get different sources, sinks and transform
+   */
+  public ETLStageProvider getEtlStageProvider() {
+    return etlStageProvider;
   }
 
   @Before

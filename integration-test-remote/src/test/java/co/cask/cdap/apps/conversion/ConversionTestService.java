@@ -26,6 +26,7 @@ import co.cask.cdap.api.service.AbstractService;
 import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
+import co.cask.cdap.apps.adapters.StreamTPFSTransformTest;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -56,18 +57,17 @@ public class ConversionTestService extends AbstractService {
 
   @Override
   protected void configure() {
-    setName("ConversionTestService");
     setDescription("A Service to read the TPFS files");
     addHandler(new TPFSHandler());
   }
 
   public static class TPFSHandler extends AbstractHttpServiceHandler {
 
-    @UseDataSet("temp")
-    private TimePartitionedFileSet temp;
+    @UseDataSet(StreamTPFSTransformTest.TPFS_1)
+    private TimePartitionedFileSet tpfs1;
 
-    @UseDataSet("tempTPFS")
-    private TimePartitionedFileSet tempTPFS;
+    @UseDataSet(StreamTPFSTransformTest.TPFS_2)
+    private TimePartitionedFileSet tpfs2;
 
     @GET
     @Path("{fileSet}")
