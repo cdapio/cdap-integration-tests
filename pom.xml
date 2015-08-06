@@ -27,6 +27,7 @@
   <modules>
     <module>integration-test-remote</module>
     <module>integration-test-standalone</module>
+    <module>upgrade-test</module>
   </modules>
   <packaging>pom</packaging>
 
@@ -40,6 +41,11 @@
 
   <dependencies>
     <!-- Use provided scope for example jars that pulled in for testing -->
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>HelloWorld</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>FileSetExample</artifactId>

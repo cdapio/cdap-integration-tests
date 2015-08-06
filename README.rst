@@ -29,13 +29,25 @@ Running Tests
 -------------
 To run integration tests against a remote CDAP instance, execute::
 
-  mvn clean test -DinstanceUri=<HostAndPort>
+  mvn clean test -P remote-test -DinstanceUri=<HostAndPort>
 
 Note that the CDAP instance against which the integration tests are run must have unrecoverable reset enabled.
 
 To run integration tests against an automatically instantiated CDAP Standalone instance, execute::
 
   mvn clean test -P standalone-test
+
+
+CDAP Upgrade Tests
+------------------
+To run upgrade tests, execute the following steps:
+Run the pre stage against an older version of CDAP.
+Upgrade the CDAP instance to the newer version.
+Run the post stage against an newer version of CDAP.
+
+To run a particular stage, execute the following from the commandline::
+
+  mvn test -P upgrade-test -DinstanceUri=<HostAndPort> -Dstage=post|pre
 
 
 License and Trademarks
