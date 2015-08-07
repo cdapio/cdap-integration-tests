@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * Test base to test cdap functionality after an upgrade.
  */
 public abstract class UpgradeTestBase extends AudiTestBase {
   protected static final Logger LOG = LoggerFactory.getLogger(UpgradeTestBase.class);

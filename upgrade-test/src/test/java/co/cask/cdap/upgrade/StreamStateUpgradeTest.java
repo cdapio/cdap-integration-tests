@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- *
+ * Tests that a flow consuming from a stream works after an upgrade (for events ingested before and after the upgrade).
  */
 public class StreamStateUpgradeTest extends UpgradeTestBase {
   @Override

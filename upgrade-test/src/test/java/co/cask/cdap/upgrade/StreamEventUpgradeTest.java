@@ -27,7 +27,7 @@ import org.junit.Assert;
 import java.util.List;
 
 /**
- *
+ * Tests that stream events ingested before an upgrade can be retrieved after an upgrade.
  */
 public class StreamEventUpgradeTest extends UpgradeTestBase {
   private static final Id.Stream FOO_STREAM = Id.Stream.from(TEST_NAMESPACE, "fooStream");

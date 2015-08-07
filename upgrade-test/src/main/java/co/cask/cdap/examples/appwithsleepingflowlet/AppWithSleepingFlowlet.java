@@ -27,7 +27,8 @@ import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import java.util.concurrent.TimeUnit;
 
 /**
- * This is a simple application with a flow
+ * This is a simple application with a flow that contains a flowlet that sleeps as it processes events.
+ * The purpose of this sleep is to make it so that the flowlet has pending events on the queue it processes from.
  */
 public class AppWithSleepingFlowlet extends AbstractApplication {
 
@@ -67,7 +68,7 @@ public class AppWithSleepingFlowlet extends AbstractApplication {
   }
 
   /**
-   * Flowlet that sleeps each time it processes an element
+   * Flowlet that sleeps each time it processes an element.
    */
   public static final class SleepingFlowlet extends AbstractFlowlet {
 

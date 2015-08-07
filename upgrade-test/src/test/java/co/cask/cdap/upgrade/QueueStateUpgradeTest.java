@@ -27,7 +27,7 @@ import org.junit.Assert;
 import java.util.concurrent.TimeUnit;
 
 /**
- *
+ * Tests that queue consuming state is consistent and flows consuming from queues works after an upgrade.
  */
 public class QueueStateUpgradeTest extends UpgradeTestBase {
   private static final int EVENT_COUNT = 20;
