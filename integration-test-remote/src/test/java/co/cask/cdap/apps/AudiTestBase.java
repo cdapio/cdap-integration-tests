@@ -52,7 +52,7 @@ import javax.annotation.Nullable;
  * Custom wrapper around IntegrationTestBase
  */
 public class AudiTestBase extends IntegrationTestBase {
-  protected static final Id.Namespace TEST_NAMESPACE = Constants.DEFAULT_NAMESPACE_ID;
+  protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
 

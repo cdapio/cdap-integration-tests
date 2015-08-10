@@ -19,7 +19,6 @@ package co.cask.cdap.apps;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.NamespaceNotFoundException;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import com.google.common.base.Joiner;
@@ -54,17 +53,19 @@ public class NamespaceTest extends AudiTestBase {
     // initially, there should only be the default namespace
     List<NamespaceMeta> list = namespaceClient.list();
     Assert.assertEquals(1, list.size());
-    Assert.assertEquals(Constants.DEFAULT_NAMESPACE_META, list.get(0));
+    Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
 
     try {
       namespaceClient.get(NS1.getId());
       Assert.fail("Expected namespace not to exist: " + NS1);
     } catch (NamespaceNotFoundException expected) {
+      // expected
     }
     try {
       namespaceClient.get(NS2.getId());
       Assert.fail("Expected namespace not to exist: " + NS2);
     } catch (NamespaceNotFoundException expected) {
+      // expected
     }
 
     // namespace create should work with or without description
@@ -73,17 +74,17 @@ public class NamespaceTest extends AudiTestBase {
 
     // shouldn't allow creation of default or system namespace
     try {
-      namespaceClient.create(Constants.DEFAULT_NAMESPACE_META);
+      namespaceClient.create(NamespaceMeta.DEFAULT);
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     Constants.DEFAULT_NAMESPACE)));
+                                                                     Id.Namespace.DEFAULT.getId())));
     }
 
     try {
-      namespaceClient.create(new NamespaceMeta.Builder().setName(Constants.SYSTEM_NAMESPACE).build());
+      namespaceClient.create(new NamespaceMeta.Builder().setName(Id.Namespace.SYSTEM).build());
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     Constants.SYSTEM_NAMESPACE)));
+                                                                     Id.Namespace.SYSTEM.getId())));
     }
 
     // list should contain the default namespace as well as the two explicitly created
@@ -101,14 +102,14 @@ public class NamespaceTest extends AudiTestBase {
                                        NS2, Joiner.on(", ").join(list)),
                          retrievedNs1Meta);
     Assert.assertEquals(ns2Meta, retrievedNs2Meta);
-    Assert.assertTrue(list.contains(Constants.DEFAULT_NAMESPACE_META));
+    Assert.assertTrue(list.contains(NamespaceMeta.DEFAULT));
 
     Assert.assertEquals(ns1Meta, namespaceClient.get(NS1.getId()));
     Assert.assertEquals(ns2Meta, namespaceClient.get(NS2.getId()));
 
     // default namespace should still exist after delete of it
-    namespaceClient.delete(Constants.DEFAULT_NAMESPACE);
-    namespaceClient.get(Constants.DEFAULT_NAMESPACE);
+    namespaceClient.delete(Id.Namespace.DEFAULT.getId());
+    namespaceClient.get(Id.Namespace.DEFAULT.getId());
 
     // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
     namespaceClient.delete(NS1.getId());
@@ -116,7 +117,7 @@ public class NamespaceTest extends AudiTestBase {
 
     list = namespaceClient.list();
     Assert.assertEquals(1, list.size());
-    Assert.assertEquals(Constants.DEFAULT_NAMESPACE_META, list.get(0));
+    Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
   }
 
   // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
