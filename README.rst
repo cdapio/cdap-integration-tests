@@ -29,7 +29,7 @@ Running Tests
 -------------
 To run integration tests against a remote CDAP instance, execute::
 
-  mvn clean test -P remote-test -DinstanceUri=<HostAndPort>
+  mvn clean test -DinstanceUri=<HostAndPort>
 
 Note that the CDAP instance against which the integration tests are run must have unrecoverable reset enabled.
 
