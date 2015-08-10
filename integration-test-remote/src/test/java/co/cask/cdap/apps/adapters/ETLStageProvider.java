@@ -18,6 +18,7 @@ package co.cask.cdap.apps.adapters;
 
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.template.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
+import co.cask.cdap.template.etl.batch.source.KVTableSource;
 import co.cask.cdap.template.etl.batch.source.StreamBatchSource;
 import co.cask.cdap.template.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
 import co.cask.cdap.template.etl.common.ETLStage;
@@ -86,5 +87,23 @@ public final class ETLStageProvider {
    */
   public ETLStage getEmptyProjectionTranform() {
     return new ETLStage("Projection", ImmutableMap.<String, String>of());
+  }
+
+  /**
+   * Returns an {@link ETLStage} of for {@link KVTableSource}
+   * For parameters details see {@link KVTableSource}
+   */
+  public ETLStage getTableSource(String tableName, @Nullable String keyField, @Nullable String valueField) {
+
+    ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
+    builder.put(Properties.BatchReadableWritable.NAME, tableName);
+    if (keyField != null) {
+      builder.put(Properties.KeyValueTable.KEY_FIELD, keyField);
+    }
+    if (valueField != null) {
+      builder.put(Properties.KeyValueTable.VALUE_FIELD, valueField);
+    }
+
+    return new ETLStage("KVTable", builder.build());
   }
 }

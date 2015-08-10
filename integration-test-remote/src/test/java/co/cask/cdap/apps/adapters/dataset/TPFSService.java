@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.conversion;
+package co.cask.cdap.apps.adapters.dataset;
 
 import co.cask.cdap.api.annotation.UseDataSet;
 import co.cask.cdap.api.common.Bytes;
@@ -26,7 +26,6 @@ import co.cask.cdap.api.service.AbstractService;
 import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
-import co.cask.cdap.apps.adapters.StreamTPFSTransformTest;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -37,6 +36,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.twill.filesystem.Location;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
@@ -46,8 +46,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 
-public class ConversionTestService extends AbstractService {
+public class TPFSService extends AbstractService {
 
+  public static final String TPFS_PATH = "tpfs";
+  public static final String TPFS_1 = TPFS_PATH + "1";
+  public static final String TPFS_2 = TPFS_PATH + "2";
   public static final Schema EVENT_SCHEMA = Schema.recordOf(
     "streamEvent",
     Schema.Field.of("ts", Schema.of(Schema.Type.LONG)),
@@ -63,29 +66,30 @@ public class ConversionTestService extends AbstractService {
 
   public static class TPFSHandler extends AbstractHttpServiceHandler {
 
-    @UseDataSet(StreamTPFSTransformTest.TPFS_1)
+    @UseDataSet(TPFS_1)
     private TimePartitionedFileSet tpfs1;
 
-    @UseDataSet(StreamTPFSTransformTest.TPFS_2)
+    @UseDataSet(TPFS_2)
     private TimePartitionedFileSet tpfs2;
 
     @GET
-    @Path("{fileSet}")
+    @Path(TPFS_PATH + "/{tpfsName}")
     public void readTPFS(HttpServiceRequest request, HttpServiceResponder responder,
-                         @PathParam("fileSet") String set, @QueryParam("time") long time) throws IOException {
+                         @PathParam("tpfsName") String tpfsName, @QueryParam("time") long time) throws IOException {
 
       Set<TimePartitionDetail> timePartitionDetailSet;
       TimePartitionedFileSet tpfs;
       try {
-        tpfs = getContext().getDataset(set);
+        tpfs = getContext().getDataset(tpfsName);
       } catch (DatasetInstantiationException e) {
-        responder.sendError(400, String.format("Invalid file set name '%s'", set));
+        responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, String.format("Invalid file set name '%s'", tpfsName));
         return;
       }
       timePartitionDetailSet = tpfs.getPartitionsByTime(time, System.currentTimeMillis()
-          + TimeUnit.MINUTES.toMillis(1));
+                                                                                        + TimeUnit.MINUTES.toMillis(1));
 
-      org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser().parse(EVENT_SCHEMA.toString());
+      org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser()
+        .parse(TPFSService.EVENT_SCHEMA.toString());
 
       DatumReader<GenericData.Record> datumReader = new GenericDatumReader<>(avroSchema);
       List<GenericData.Record> records = Lists.newArrayList();
@@ -102,8 +106,8 @@ public class ConversionTestService extends AbstractService {
           }
         }
       }
-      responder.send(200, ByteBuffer.wrap(Bytes.toBytes(records.toString())), "application/octet-stream",
-                     ImmutableMultimap.<String, String>of());
+      responder.send(HttpURLConnection.HTTP_OK, ByteBuffer.wrap(Bytes.toBytes(records.toString())),
+                     "application/octet-stream", ImmutableMultimap.<String, String>of());
     }
   }
 }

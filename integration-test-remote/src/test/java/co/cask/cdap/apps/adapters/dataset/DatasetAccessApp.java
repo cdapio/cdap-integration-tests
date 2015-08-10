@@ -14,14 +14,15 @@
  * the License.
  */
 
-package co.cask.cdap.apps.conversion;
+package co.cask.cdap.apps.adapters.dataset;
 
 import co.cask.cdap.api.app.AbstractApplication;
 
-public class ConversionTestExample extends AbstractApplication {
+public class DatasetAccessApp extends AbstractApplication {
   @Override
   public void configure() {
-    setDescription("Application used to test ETL conversions");
-    addService(new ConversionTestService());
+    setDescription("Application used to access datasets from integration tests");
+    addService(new TPFSService());
+    addService(new KVTableService());
   }
 }
