@@ -159,14 +159,16 @@ public class StreamTPFSTransformTest extends AudiTestBase {
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
   }
 
-  private ETLBatchConfig constructStreamToTPFSConfig(ETLStageProvider etlStageProvider, String sourceName, String sinkName) {
+  private ETLBatchConfig constructStreamToTPFSConfig(ETLStageProvider etlStageProvider, String sourceName,
+                                                     String sinkName) {
     ETLStage source = etlStageProvider.getStreamBatchSource(sourceName, "10m", "0d", Formats.CSV, BODY_SCHEMA, "|");
     ETLStage sink = etlStageProvider.getTPFS(ConversionTestService.EVENT_SCHEMA, sinkName, null, null, null);
     ETLStage transform = new ETLStage("Projection", ImmutableMap.of("drop", "headers"));
     return new ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
   }
 
-  private ETLBatchConfig constructTPFSToTPFSConfig(ETLStageProvider etlStageProvider, String filesetName, String newFilesetName) {
+  private ETLBatchConfig constructTPFSToTPFSConfig(ETLStageProvider etlStageProvider, String filesetName,
+                                                   String newFilesetName) {
     ETLStage source = etlStageProvider.getTPFS(ConversionTestService.EVENT_SCHEMA, filesetName, null, "10m", "0d");
     ETLStage sink = etlStageProvider.getTPFS(ConversionTestService.EVENT_SCHEMA, newFilesetName, null, null, null);
     ETLStage transform = etlStageProvider.getEmptyProjectionTranform();
