@@ -14,7 +14,7 @@ import javax.annotation.Nullable;
 /**
  * A class which provides different Source, Sinks and Transforms
  */
-public class ETLStageProvider {
+public final class ETLStageProvider {
 
   /**
    * Return a {@link ETLStage} for {@link StreamBatchSource}
