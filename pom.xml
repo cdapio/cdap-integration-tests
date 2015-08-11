@@ -98,6 +98,12 @@
       <groupId>co.cask.cdap</groupId>
       <artifactId>cdap-etl-lib</artifactId>
       <version>${cdap.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
