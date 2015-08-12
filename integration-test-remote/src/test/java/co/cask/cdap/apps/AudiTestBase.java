@@ -56,18 +56,9 @@ public class AudiTestBase extends IntegrationTestBase {
   protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
-  private final ETLStageProvider etlStageProvider;
 
   public AudiTestBase() {
     restClient = createRestClient();
-    etlStageProvider = new ETLStageProvider();
-  }
-
-  /**
-   * @return {@link ETLStageProvider} which can be used to get different sources, sinks and transform
-   */
-  public ETLStageProvider getEtlStageProvider() {
-    return etlStageProvider;
   }
 
   @Before

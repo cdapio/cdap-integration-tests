@@ -40,7 +40,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-// TODO : Ignoring this test case as StandaloneTester is unable to setup plugin classes properly right now.
+// TODO CDAP-3364: Ignoring this test case as StandaloneTester is unable to setup plugin classes properly right now.
 // once that is fixed, we can remove this ignore.
 
 /**
@@ -69,7 +69,7 @@ public class KVTableWithProjectionTest extends AdaptersTestBase {
     ETLBatchConfig etlBatchConfig = constructStreamToTableConfig();
     runAndWait(TEMPLATE_ID, streamToKVTableAdapterId, etlBatchConfig);
 
-    verifyKVTableData();
+    verifyKVTableData(serviceManager);
 
     serviceManager.stop();
     adapterClient.delete(streamToKVTableAdapterId);
@@ -83,16 +83,12 @@ public class KVTableWithProjectionTest extends AdaptersTestBase {
     return new ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
   }
 
-  private void verifyKVTableData() throws IOException, UnauthorizedException {
-    URL tpfsURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
-                                                           String.format("apps/%s/services/%s/methods/%s/%s?%s=%s",
-                                                                         DatasetAccessApp.class.getSimpleName(),
-                                                                         KVTableService.class.getSimpleName(),
-                                                                         KVTableService.KVTABLE_PATH,
-                                                                         KVTableService.KV_TABLE_NAME,
-                                                                         KVTableService.KEY, "AAPL"));
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, tpfsURL, getClientConfig().getAccessToken());
+  private void verifyKVTableData(ServiceManager serviceManager) throws IOException, UnauthorizedException {
+
+    URL url = new URL(serviceManager.getServiceURL(), KVTableService.KV_TABLE_PATH +
+      String.format("/%s?%s=%s", KVTableService.KV_TABLE_NAME, KVTableService.KEY, "AAPL"));
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
-    Assert.assertEquals(500.32, Bytes.toDouble(Bytes.toBytes(response.getResponseBodyAsString())), 0.001);
+    Assert.assertEquals(500.32, Bytes.toDouble(response.getResponseBody()), 0.001);
   }
 }

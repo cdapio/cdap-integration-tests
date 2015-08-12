@@ -32,7 +32,6 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.template.etl.batch.config.ETLBatchConfig;
 import com.google.gson.Gson;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
@@ -42,8 +41,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * An abstract class for writing Adapters integration tests. Extending classes should provide an implementation to
- * {@link #testAdapters()} method
+ * An abstract class for writing Adapters integration tests. Tests for adapters should extend this class.
  */
 public abstract class AdaptersTestBase extends AudiTestBase {
 
@@ -61,12 +59,9 @@ public abstract class AdaptersTestBase extends AudiTestBase {
 
   protected AdaptersTestBase() {
     adapterClient = new AdapterClient(getClientConfig(), getRestClient());
-    etlStageProvider = getEtlStageProvider();
+    etlStageProvider = new ETLStageProvider();
     streamClient = getStreamClient();
   }
-
-  @Test
-  public abstract void testAdapters() throws Exception;
 
   /**
    * Runs an adapter, wait for its completion and stops it after its completion

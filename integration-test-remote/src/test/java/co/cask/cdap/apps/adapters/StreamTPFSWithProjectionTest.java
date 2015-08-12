@@ -43,7 +43,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 
-// TODO : Ignoring this test case as StandaloneTester is unable to setup plugin classes properly right now.
+// TODO CDAP-3364: Ignoring this test case as StandaloneTester is unable to setup plugin classes properly right now.
 // once that is fixed, we can remove this ignore.
 /**
  * Integration test which tests the following:
@@ -85,21 +85,19 @@ public class StreamTPFSWithProjectionTest extends AdaptersTestBase {
     // both the adapters needs to run first so that the TPFS gets created and the service can access it.
 
     // 5. Verify data in TPFS
-    verifyTPFSData(TPFSService.TPFS_1);
-    verifyTPFSData(TPFSService.TPFS_2);
+    verifyTPFSData(serviceManager, TPFSService.TPFS_1);
+    verifyTPFSData(serviceManager, TPFSService.TPFS_2);
 
     serviceManager.stop();
     adapterClient.delete(streamToTPFSAdapterId);
     adapterClient.delete(tpfsToTPFSAdapterId);
   }
 
-  private void verifyTPFSData(String tpfsName) throws IOException, UnauthorizedException {
-    URL tpfsURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
-                                                           String.format("apps/%s/services/%s/methods/%s/%s?time=1",
-                                                                         DatasetAccessApp.class.getSimpleName(),
-                                                                         TPFSService.class.getSimpleName(),
-                                                                         TPFSService.TPFS_PATH,
-                                                                         tpfsName));
+  private void verifyTPFSData(ServiceManager serviceManager, String tpfsName) throws IOException,
+    UnauthorizedException {
+
+    URL tpfsURL = new URL(serviceManager.getServiceURL(), TPFSService.TPFS_PATH +
+      String.format("/%s?time=1", tpfsName));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, tpfsURL, getClientConfig().getAccessToken());
     List<IntegrationTestRecord> responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
       response, new TypeToken<List<IntegrationTestRecord>>() {

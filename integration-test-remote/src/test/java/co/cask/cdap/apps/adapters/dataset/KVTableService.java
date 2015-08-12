@@ -34,7 +34,7 @@ import javax.ws.rs.QueryParam;
 
 public class KVTableService extends AbstractService {
 
-  public static final String KVTABLE_PATH = "kvtable";
+  public static final String KV_TABLE_PATH = "kvtable";
   public static final String KV_TABLE_NAME = "kvtable1";
   public static final String KEY = "key";
 
@@ -50,7 +50,7 @@ public class KVTableService extends AbstractService {
     private KeyValueTable kvTableName;
 
     @GET
-    @Path(KVTABLE_PATH + "/{tableName}")
+    @Path(KV_TABLE_PATH + "/{tableName}")
     public void readKVTable(HttpServiceRequest request, HttpServiceResponder responder,
                             @PathParam("tableName") String tableName, @QueryParam(KEY) String key) throws IOException {
 
