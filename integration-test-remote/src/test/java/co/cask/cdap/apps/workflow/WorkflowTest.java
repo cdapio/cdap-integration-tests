@@ -56,7 +56,8 @@ public class WorkflowTest extends AudiTestBase {
     // Setup input streams with test data
     createTestData();
 
-    WorkflowManager workflowManager = applicationManager.getWorkflowManager(WikipediaPipelineWorkflow.NAME);
+    WorkflowManager workflowManager =
+      applicationManager.getWorkflowManager(WikipediaPipelineWorkflow.class.getSimpleName());
     // Test with default threshold. Workflow should not proceed beyond first condition.
     testWorkflow(workflowManager);
 
@@ -122,7 +123,7 @@ public class WorkflowTest extends AudiTestBase {
     if (threshold == null) {
       workflowManager.start();
     } else {
-      workflowManager.start(ImmutableMap.of("min.page.threshold", String.valueOf(threshold)));
+      workflowManager.start(ImmutableMap.of("min.pages.threshold", String.valueOf(threshold)));
     }
     workflowManager.waitForFinish(5, TimeUnit.MINUTES);
     String pid = getLatestPid(workflowManager.getHistory());
