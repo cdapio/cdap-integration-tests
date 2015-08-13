@@ -38,6 +38,24 @@ To run integration tests against an automatically instantiated CDAP Standalone i
   mvn clean test -P standalone-test
 
 
+CDAP Upgrade Tests
+------------------
+The upgrade test cases consist of a ``pre`` stage and a ``post`` stage. The pre stage is test code which
+is designed to set up the CDAP instance with applications and data. The post stage is then intended to run after
+upgrading the CDAP instance to assert that the upgrade was successful.
+
+To run upgrade tests, execute the following steps::
+
+  1. Run the pre stage against an older version of CDAP.
+  2. Upgrade the CDAP instance to the newer version.
+  3. Run the post stage against an newer version of CDAP.
+
+
+To run a particular stage, execute the following from the commandline::
+
+  mvn test -P upgrade-test -DinstanceUri=<HostAndPort> -Dstage=post|pre
+
+
 License and Trademarks
 ======================
 

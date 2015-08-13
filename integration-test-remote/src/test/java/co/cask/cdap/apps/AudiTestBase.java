@@ -17,13 +17,9 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.apps.adapters.ETLStageProvider;
-import co.cask.cdap.client.MonitorClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.UnauthorizedException;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.ProgramRunStatus;
@@ -36,7 +32,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
 import org.junit.Assert;
-import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,25 +54,6 @@ public class AudiTestBase extends IntegrationTestBase {
 
   public AudiTestBase() {
     restClient = createRestClient();
-  }
-
-  @Before
-  public void before() throws Exception {
-    Tasks.waitFor(true, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        return new MonitorClient(getClientConfig(), getRestClient()).allSystemServicesOk();
-      }
-    }, 20, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
-
-    assertUnrecoverableResetEnabled();
-  }
-
-  private void assertUnrecoverableResetEnabled() throws IOException, UnauthorizedException {
-    ConfigEntry configEntry = getMetaClient().getCDAPConfig().get(Constants.Dangerous.UNRECOVERABLE_RESET);
-    Preconditions.checkNotNull(configEntry,
-                               "Missing key from CDAP Configuration: {}", Constants.Dangerous.UNRECOVERABLE_RESET);
-    Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "UnrecoverableReset not enabled.");
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.

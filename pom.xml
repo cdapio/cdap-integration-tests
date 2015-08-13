@@ -27,6 +27,7 @@
   <modules>
     <module>integration-test-remote</module>
     <module>integration-test-standalone</module>
+    <module>upgrade-test</module>
   </modules>
   <packaging>pom</packaging>
 
@@ -36,10 +37,20 @@
     <junit.version>4.11</junit.version>
     <hadoop.version>2.3.0</hadoop.version>
     <snappy.version>1.1.1.7</snappy.version>
+
+    <!-- Skip all test cases by default. The different test cases are enabled in the profiles defined below -->
+    <skip.remote.test>true</skip.remote.test>
+    <skip.standalone.test>true</skip.standalone.test>
+    <skip.upgrade.test>true</skip.upgrade.test>
   </properties>
 
   <dependencies>
     <!-- Use provided scope for example jars that pulled in for testing -->
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>HelloWorld</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>FileSetExample</artifactId>
@@ -221,5 +232,31 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>remote-test</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <skip.remote.test>false</skip.remote.test>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>standalone-test</id>
+      <properties>
+        <skip.standalone.test>false</skip.standalone.test>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>upgrade-test</id>
+      <properties>
+        <skip.upgrade.test>false</skip.upgrade.test>
+      </properties>
+    </profile>
+  </profiles>
 
 </project>
