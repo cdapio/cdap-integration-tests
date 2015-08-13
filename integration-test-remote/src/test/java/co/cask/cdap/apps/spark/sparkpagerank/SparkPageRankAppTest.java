@@ -33,7 +33,6 @@ import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.StreamManager;
-import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -109,8 +108,6 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ranksServiceManager.waitForStatus(true, 60, 1);
     totalPagesServiceManager.waitForStatus(true, 60, 1);
 
-    WorkflowManager pageRankWorkflowManager = applicationManager.getWorkflowManager(PAGE_RANK_WORKFLOW.getId());
-
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getId());
 
@@ -144,7 +141,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
                       SparkPageRankApp.TotalPagesHandler.TOTAL_PAGES_PATH + "/" + RANK);
 
     HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
-                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                                           getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
 

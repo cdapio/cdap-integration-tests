@@ -35,6 +35,7 @@
     <cdap.version>3.2.0-SNAPSHOT</cdap.version>
     <junit.version>4.11</junit.version>
     <hadoop.version>2.3.0</hadoop.version>
+    <snappy.version>1.1.1.7</snappy.version>
   </properties>
 
   <dependencies>
@@ -109,6 +110,11 @@
       <groupId>co.cask.cdap</groupId>
       <artifactId>cdap-common</artifactId>
       <version>${cdap.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial.snappy</groupId>
+      <artifactId>snappy-java</artifactId>
+      <version>${snappy.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
