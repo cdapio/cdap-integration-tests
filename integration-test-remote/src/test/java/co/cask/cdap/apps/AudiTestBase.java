@@ -150,7 +150,7 @@ public class AudiTestBase extends IntegrationTestBase {
   protected HttpResponse retryRestCalls(final int expectedStatusCode, final HttpRequest request,
                                         final RESTClient restClient, long timeout, TimeUnit timeoutUnit,
                                         long pollInterval, TimeUnit pollIntervalUnit) throws Exception {
-    final AtomicReference<HttpResponse> ref = new AtomicReference();
+    final AtomicReference<HttpResponse> ref = new AtomicReference<>();
     Tasks.waitFor(expectedStatusCode, new Callable<Integer>() {
       @Override
       public Integer call() throws Exception {
