@@ -37,12 +37,8 @@ public abstract class UpgradeTestBase extends AudiTestBase {
 
   @Before
   public void setUp() throws Exception {
-    // TODO: make it wait until system services are up and ready
-    // TODO: make UpgradeTest work against secure clusters
-    // Note that the above two tasks can be made possible by simply making the `checkSystemServices` method accessible
-    // from IntegrationTestBase
-
     // override super to avoid calls to assertUnrecoverableResetEnabled and assertIsClear
+    checkSystemServices();
   }
 
   @After
