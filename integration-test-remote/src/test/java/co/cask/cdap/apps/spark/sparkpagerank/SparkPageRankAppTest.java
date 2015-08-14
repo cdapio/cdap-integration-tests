@@ -97,20 +97,11 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // Start GoogleTypePR
     ServiceManager transformServiceManager = applicationManager.getServiceManager(GOOGLE_TYPE_PR_SERVICE
                                                                                     .getId()).start();
-    // Start RanksService
-    ServiceManager ranksServiceManager = applicationManager.getServiceManager(RANKS_SERVICE
-                                                                                .getId()).start();
-    // Start TotalPagesPRService
-    ServiceManager totalPagesServiceManager = applicationManager.getServiceManager(TOTAL_PAGES_PR_SERVICE
-                                                                                     .getId()).start();
-    // Wait for services to start
     transformServiceManager.waitForStatus(true, 60, 1);
-    ranksServiceManager.waitForStatus(true, 60, 1);
-    totalPagesServiceManager.waitForStatus(true, 60, 1);
+    Assert.assertTrue(transformServiceManager.isRunning());
 
-    MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
+    // Start Spark Page Rank and await completion
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getId());
-
     pageRankManager.start();
 
     // wait until the spark program is running or completes. It completes too fast on standalone to rely on
@@ -128,47 +119,53 @@ public class SparkPageRankAppTest extends AudiTestBase {
       }
     }, 60, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     pageRankManager.waitForStatus(false, 10 * 60, 1);
+
+    transformServiceManager.stop();
+    transformServiceManager.waitForStatus(false, 60, 1);
+
+    // Start mapreduce and await completion
+    MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
     ranksCounterManager.start();
     ranksCounterManager.waitForStatus(true, 60, 1);
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
 
+    // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
+    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
+
+    // Wait for services to start
+    // Start TotalPagesPRService
+    ServiceManager totalPagesServiceManager = applicationManager.getServiceManager(TOTAL_PAGES_PR_SERVICE
+                                                                                     .getId()).start();
+    totalPagesServiceManager.waitForStatus(true, 60, 1);
     // Ensure that the services are still running
-    Assert.assertTrue(transformServiceManager.isRunning());
-    Assert.assertTrue(ranksServiceManager.isRunning());
     Assert.assertTrue(totalPagesServiceManager.isRunning());
 
     URL url = new URL(totalPagesServiceManager.getServiceURL(),
                       SparkPageRankApp.TotalPagesHandler.TOTAL_PAGES_PATH + "/" + RANK);
-
     HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
                                            getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
+    totalPagesServiceManager.stop();
+    totalPagesServiceManager.waitForStatus(false, 60, 1);
 
+    // Start RanksService
+    ServiceManager ranksServiceManager = applicationManager.getServiceManager(RANKS_SERVICE
+                                                                                .getId()).start();
+    ranksServiceManager.waitForStatus(true, 60, 1);
+    Assert.assertTrue(ranksServiceManager.isRunning());
     url = new URL(ranksServiceManager.getServiceURL(), SparkPageRankApp.RanksServiceHandler.RANKS_SERVICE_PATH);
     response = retryRestCalls(HttpURLConnection.HTTP_OK,
                               HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
                               getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-
-
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
-
-    // stop all services
     ranksServiceManager.stop();
-    totalPagesServiceManager.stop();
-    transformServiceManager.stop();
-
-    // Wait for services to stop
-    transformServiceManager.waitForStatus(false, 60, 1);
     ranksServiceManager.waitForStatus(false, 60, 1);
-    totalPagesServiceManager.waitForStatus(false, 60, 1);
+
 
     // services should 'KILLED' state because they were explicitly stopped with a single run
     assertRuns(1, programClient, ProgramRunStatus.KILLED, RANKS_SERVICE, GOOGLE_TYPE_PR_SERVICE,
                TOTAL_PAGES_PR_SERVICE);
-
-    // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
-    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
   }
 }
