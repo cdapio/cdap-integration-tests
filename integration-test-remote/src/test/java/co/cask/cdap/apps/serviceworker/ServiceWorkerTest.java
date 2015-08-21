@@ -26,8 +26,6 @@ import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -37,14 +35,12 @@ import java.util.concurrent.TimeUnit;
  * Test worker that writes to dataset and service that reads from it.
  */
 public class ServiceWorkerTest extends AudiTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(ServiceWorkerTest.class);
-
   @Test
   public void test() throws Exception {
     RESTClient restClient = getRestClient();
     ApplicationManager applicationManager = deployApplication(ServiceApplication.class);
 
-    ServiceManager serviceManager = applicationManager.getServiceManager(ServiceApplication.SERVICE_NAME).start();
+    ServiceManager serviceManager = applicationManager.startService(ServiceApplication.SERVICE_NAME);
     serviceManager.waitForStatus(true, 60, 1);
 
 
@@ -57,7 +53,7 @@ public class ServiceWorkerTest extends AudiTestBase {
                    getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     // start the worker
-    WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
+    WorkerManager workerManager = applicationManager.startWorker(ServiceApplication.WORKER_NAME);
     workerManager.waitForStatus(true, 60, 1);
     // worker will stop automatically
     workerManager.waitForStatus(false, 60, 1);
@@ -71,7 +67,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     // try starting the service , while its running, should throw IllegalArgumentException
     boolean alreadyRunning = false;
     try {
-      serviceManager.start();
+      applicationManager.startService(ServiceApplication.SERVICE_NAME);
     } catch (Exception e) {
       alreadyRunning = (e instanceof IllegalStateException);
     }

@@ -16,7 +16,7 @@
 
 package co.cask.cdap.apps;
 
-import co.cask.cdap.apps.adapters.ETLStageProvider;
+import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.utils.Tasks;
@@ -57,7 +57,6 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
-  @Override
   protected RESTClient getRestClient() {
     return restClient;
   }
@@ -100,7 +99,7 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
-    MetricQueryResult metricQueryResult = getMetricsClient().query(tags, metric);
+    MetricQueryResult metricQueryResult = new MetricsClient(getClientConfig(), getRestClient()).query(metric, tags);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {
       return 0;
@@ -115,7 +114,9 @@ public class AudiTestBase extends IntegrationTestBase {
   protected void assertRuns(int count, ProgramClient programClient,
                             @Nullable ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
     for (Id.Program programId : programIds) {
-      List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+      List<RunRecord> runRecords =
+        programClient.getAllProgramRuns(programId.getApplicationId(), programId.getType(), programId.getId(),
+                                        0, Long.MAX_VALUE, Integer.MAX_VALUE);
       Assert.assertEquals(count, runRecords.size());
       for (RunRecord runRecord : runRecords) {
         Assert.assertEquals(expectedStatus, runRecord.getStatus());

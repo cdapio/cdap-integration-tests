@@ -27,7 +27,7 @@ import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.StreamManager;
+import co.cask.cdap.test.StreamWriter;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -66,24 +66,25 @@ public class WordCountTest extends AudiTestBase {
     Map<String, String> flowTags = getFlowTags(flowId);
     String longestWordLengthMetric = "user.longest.word.length";
 
-    List<ApplicationRecord> deployedApps = appClient.list(TEST_NAMESPACE);
+    List<ApplicationRecord> deployedApps = appClient.list();
     Assert.assertEquals(1, deployedApps.size());
     Assert.assertEquals("WordCount", deployedApps.get(0).getName());
 
     for (int i = 0; i < wordEvents.length; i++) {
-      FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
+      FlowManager flowManager = applicationManager.startFlow("WordCounter");
       // TODO: make an AbstractRemoteProgramManager which has default timeouts
-      flowManager.waitForStatus(true, 30, 1);
+      getProgramClient().waitForStatus(flowId.getApplicationId(), flowId.getType(), flowId.getId(),
+                                       "RUNNING", 30, TimeUnit.SECONDS);
       List<RunRecord> runningRecords =
-        programClient.getProgramRuns(flowId, ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+        programClient.getProgramRuns(flowId.getApplicationId(), flowId.getType(), flowId.getId(),
+                                     ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
       //There should only be one run that is running
       Assert.assertEquals(1, runningRecords.size());
       RunRecord runRecord = runningRecords.get(0);
       Assert.assertEquals(ProgramRunStatus.RUNNING, runRecord.getStatus());
       String runId = runRecord.getPid();
 
-      StreamManager wordStream =
-        getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
+      StreamWriter wordStream = applicationManager.getStreamWriter("wordStream");
       wordStream.send(wordEvents[i]);
       // make sure we processed the sent event, before starting the workflow
       numWordsProcessed += wordEvents[i].split(" ").length;
@@ -98,7 +99,8 @@ public class WordCountTest extends AudiTestBase {
       checkMetric(addToTags(flowTags, ImmutableMap.of("run", runId)), longestWordLengthMetric, longestWordLength, 10);
 
       flowManager.stop();
-      flowManager.waitForStatus(false, 30, 1);
+      getProgramClient().waitForStatus(flowId.getApplicationId(), flowId.getType(), flowId.getId(),
+                                       "STOPPED", 30, TimeUnit.SECONDS);
     }
 
     // Check user metrics sum aggregated across runs

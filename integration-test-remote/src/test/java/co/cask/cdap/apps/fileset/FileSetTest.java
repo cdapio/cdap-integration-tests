@@ -53,7 +53,7 @@ public class FileSetTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
-    List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list(TEST_NAMESPACE);
+    List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list();
     Assert.assertEquals(2, datasetSpecificationsList.size());
     for (DatasetSpecificationSummary datasetSpecificationSummary : datasetSpecificationsList) {
       Assert.assertEquals(FileSet.class.getName(), datasetSpecificationSummary.getType());
@@ -62,7 +62,7 @@ public class FileSetTest extends AudiTestBase {
                           + new Gson().toJson(datasetSpecificationsList),
                         "lines".equals(datasetName) || "counts".equals(datasetName));
     }
-    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
+    ServiceManager fileSetService = applicationManager.startService("FileSetService");
 
     fileSetService.waitForStatus(true, 60, 1);
 
@@ -91,13 +91,12 @@ public class FileSetTest extends AudiTestBase {
     Assert.assertEquals(400, response.getResponseCode());
 
 
-    MapReduceManager wordCountManager = applicationManager.getMapReduceManager("WordCount")
-      .start(ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
-                             "dataset.counts.output.path", "out.txt"));
+    MapReduceManager wordCountManager =
+      applicationManager.startMapReduce("WordCount",
+                                        ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
+                                                        "dataset.counts.output.path", "out.txt"));
 
-    // mapreduce should start and then complete
-    wordCountManager.waitForStatus(true, 60, 1);
-    wordCountManager.waitForStatus(false, 5 * 60, 1);
+    wordCountManager.waitForFinish(5, TimeUnit.MINUTES);
 
     url = new URL(serviceURL, "counts?path=out.txt/part-r-00000");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());

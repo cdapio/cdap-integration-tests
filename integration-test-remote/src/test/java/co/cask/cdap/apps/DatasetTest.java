@@ -19,19 +19,18 @@ import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
-import co.cask.cdap.proto.DatasetMeta;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ServiceManager;
-import co.cask.cdap.test.StreamManager;
+import co.cask.cdap.test.StreamWriter;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import org.junit.Assert;
@@ -54,53 +53,36 @@ public class DatasetTest extends AudiTestBase {
 
   @Test
   public void test() throws Exception {
-
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
     RESTClient restClient = getRestClient();
 
     // there should be no datasets in the test namespace
-    Assert.assertEquals(0, datasetClient.list(TEST_NAMESPACE).size());
+    Assert.assertEquals(0, datasetClient.list().size());
 
     ApplicationManager applicationManager = deployApplication(WordCount.class);
 
     // number of datasets which were created by the wordcount app
-    int appDatasetsCount = datasetClient.list(TEST_NAMESPACE).size();
+    int appDatasetsCount = datasetClient.list().size();
 
     // test creating dataset
-    Id.DatasetInstance testDatasetinstance = Id.DatasetInstance.from(TEST_NAMESPACE, "testDataset");
+    String testDatasetinstance = "testDataset";
     datasetClient.create(testDatasetinstance, "table");
 
     // one more dataset should have been added
-    Assert.assertEquals(appDatasetsCount + 1, datasetClient.list(TEST_NAMESPACE).size());
-
-    // test that properties there is nothing in properties in the new dataset created above
-    DatasetMeta oldMeta = datasetClient.get(testDatasetinstance);
-    Assert.assertEquals(0, oldMeta.getSpec().getProperties().size());
-
-    // update the dataset properties
-    datasetClient.update(testDatasetinstance, ImmutableMap.of("fruit", "mango", "one", "1"));
-
-    // test if properties in meta got updated
-    DatasetMeta newMeta = datasetClient.get(testDatasetinstance);
-    Assert.assertEquals(2, newMeta.getSpec().getProperties().size());
-
-    // test if properties in meta is correct
-    Assert.assertTrue(newMeta.getSpec().getProperties().containsKey("fruit"));
-    Assert.assertTrue(newMeta.getSpec().getProperties().containsKey("one"));
-    Assert.assertEquals("mango", newMeta.getSpec().getProperties().get("fruit"));
-    Assert.assertEquals("1", newMeta.getSpec().getProperties().get("one"));
+    Assert.assertEquals(appDatasetsCount + 1, datasetClient.list().size());
 
     // test deleting a datatset
     datasetClient.delete(testDatasetinstance);
     datasetClient.waitForDeleted(testDatasetinstance, 10, TimeUnit.SECONDS);
-    Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
+    Assert.assertEquals(appDatasetsCount, datasetClient.list().size());
 
-    FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-    flowManager.waitForStatus(true, 30, 1);
-    ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
+    FlowManager flowManager = applicationManager.startFlow("WordCounter");
+    getProgramClient().waitForStatus(WordCount.class.getSimpleName(), ProgramType.FLOW,
+                                     "WordCounter", "RUNNING", 30, TimeUnit.SECONDS);
+    ServiceManager wordCountService = applicationManager.startService(RetrieveCounts.SERVICE_NAME);
     wordCountService.waitForStatus(true, 60, 1);
 
-    StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
+    StreamWriter wordStream = applicationManager.getStreamWriter("wordStream");
     wordStream.send("hello world");
 
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
@@ -110,14 +92,14 @@ public class DatasetTest extends AudiTestBase {
     Map<String, Object> responseMap = getWordCountStats(restClient, wordCountService);
     Assert.assertEquals(2.0, ((double) responseMap.get("totalWords")), 0);
     // test truncating a dataset with existing dataset
-    datasetClient.truncate(Id.DatasetInstance.from(TEST_NAMESPACE, "wordStats"));
+    datasetClient.truncate("wordStats");
     // after truncating there should be 0 word
     responseMap = getWordCountStats(restClient, wordCountService);
     Assert.assertEquals(0, ((double) responseMap.get("totalWords")), 0);
 
     // test the number of datasets used by an app with existing app
     Assert.assertEquals(appDatasetsCount, getDatasetInstances(String.format("apps/%s/datasets",
-                                                                           WordCount.class.getSimpleName())).size());
+                                                                            WordCount.class.getSimpleName())).size());
 
     // test the number of datasets used by an app with non existing app
     Assert.assertEquals(0, getDatasetInstances(String.format("apps/%s/datasets", "nonExistingApp")).size());
@@ -168,7 +150,7 @@ public class DatasetTest extends AudiTestBase {
 
   private HttpResponse makeRequest(String endPoint) throws IOException, UnauthorizedException {
     ClientConfig clientConfig = getClientConfig();
-    URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, endPoint);
+    URL url = clientConfig.resolveNamespacedURLV3(endPoint);
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, clientConfig.getAccessToken());
     Assert.assertEquals(response.getResponseCode(), HttpURLConnection.HTTP_OK);
     return response;

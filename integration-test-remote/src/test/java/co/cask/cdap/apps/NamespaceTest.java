@@ -17,8 +17,9 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.client.NamespaceClient;
-import co.cask.cdap.common.BadRequestException;
-import co.cask.cdap.common.NamespaceNotFoundException;
+import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.common.exception.BadRequestException;
+import co.cask.cdap.common.exception.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import com.google.common.base.Joiner;
@@ -53,7 +54,7 @@ public class NamespaceTest extends AudiTestBase {
     // initially, there should only be the default namespace
     List<NamespaceMeta> list = namespaceClient.list();
     Assert.assertEquals(1, list.size());
-    Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
+    Assert.assertEquals(Constants.DEFAULT_NAMESPACE_META, list.get(0));
 
     try {
       namespaceClient.get(NS1.getId());
@@ -74,17 +75,17 @@ public class NamespaceTest extends AudiTestBase {
 
     // shouldn't allow creation of default or system namespace
     try {
-      namespaceClient.create(NamespaceMeta.DEFAULT);
+      namespaceClient.create(Constants.DEFAULT_NAMESPACE_META);
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
                                                                      Id.Namespace.DEFAULT.getId())));
     }
 
     try {
-      namespaceClient.create(new NamespaceMeta.Builder().setName(Id.Namespace.SYSTEM).build());
+      namespaceClient.create(new NamespaceMeta.Builder().setName(Constants.SYSTEM_NAMESPACE).build());
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     Id.Namespace.SYSTEM.getId())));
+                                                                     Constants.SYSTEM_NAMESPACE)));
     }
 
     // list should contain the default namespace as well as the two explicitly created
@@ -102,7 +103,7 @@ public class NamespaceTest extends AudiTestBase {
                                        NS2, Joiner.on(", ").join(list)),
                          retrievedNs1Meta);
     Assert.assertEquals(ns2Meta, retrievedNs2Meta);
-    Assert.assertTrue(list.contains(NamespaceMeta.DEFAULT));
+    Assert.assertTrue(list.contains(Constants.DEFAULT_NAMESPACE_META));
 
     Assert.assertEquals(ns1Meta, namespaceClient.get(NS1.getId()));
     Assert.assertEquals(ns2Meta, namespaceClient.get(NS2.getId()));
@@ -117,7 +118,7 @@ public class NamespaceTest extends AudiTestBase {
 
     list = namespaceClient.list();
     Assert.assertEquals(1, list.size());
-    Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
+    Assert.assertEquals(Constants.DEFAULT_NAMESPACE_META, list.get(0));
   }
 
   // From a list of NamespaceMeta, finds the element that matches a given namespaceId.

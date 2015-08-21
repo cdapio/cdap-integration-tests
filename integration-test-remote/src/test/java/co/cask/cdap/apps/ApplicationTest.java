@@ -17,15 +17,15 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.client.ApplicationClient;
-import co.cask.cdap.common.ApplicationNotFoundException;
+import co.cask.cdap.common.exception.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
-import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.FlowManager;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Tests functionality of Applications
@@ -35,13 +35,14 @@ public class ApplicationTest extends AudiTestBase {
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
-    FlowManager purchaseFlow = applicationManager.getFlowManager("PurchaseFlow").start();
-    purchaseFlow.waitForStatus(true, 60, 1);
+    applicationManager.startFlow("PurchaseFlow");
+    getProgramClient().waitForStatus(PurchaseApp.APP_NAME, ProgramType.FLOW, "PurchaseFlow",
+                                     "RUNNING", 60, TimeUnit.SECONDS);
 
     // should not delete application when programs are running
     ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
     try {
-      appClient.delete(Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME));
+      appClient.delete(PurchaseApp.APP_NAME);
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertEquals("403: Program is still running", expected.getMessage());
@@ -49,7 +50,7 @@ public class ApplicationTest extends AudiTestBase {
 
     // should not delete non-existing application
     try {
-      appClient.delete(Id.Application.from(TEST_NAMESPACE, "NoSuchApp"));
+      appClient.delete("NoSuchApp");
       Assert.fail();
     } catch (ApplicationNotFoundException expected) {
     }
