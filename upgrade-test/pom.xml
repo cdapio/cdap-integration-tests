@@ -27,16 +27,6 @@
 
   <artifactId>upgrade-test</artifactId>
 
-  <dependencies>
-    <dependency>
-      <groupId>co.cask.cdap.test</groupId>
-      <artifactId>integration-test-remote</artifactId>
-      <version>${project.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
   <build>
     <plugins>
       <plugin>

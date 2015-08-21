@@ -16,7 +16,6 @@
 
 package co.cask.cdap.upgrade;
 
-import co.cask.cdap.apps.AudiTestBase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,7 +37,7 @@ public abstract class UpgradeTestBase extends AudiTestBase {
   @Before
   public void setUp() throws Exception {
     // override super to avoid calls to assertUnrecoverableResetEnabled and assertIsClear
-    checkSystemServices();
+//    checkSystemServices();
   }
 
   @After

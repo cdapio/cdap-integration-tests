@@ -19,7 +19,8 @@ package co.cask.cdap.examples.appwithsleepingflowlet;
 import co.cask.cdap.api.annotation.ProcessInput;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.data.stream.Stream;
-import co.cask.cdap.api.flow.AbstractFlow;
+import co.cask.cdap.api.flow.Flow;
+import co.cask.cdap.api.flow.FlowSpecification;
 import co.cask.cdap.api.flow.flowlet.AbstractFlowlet;
 import co.cask.cdap.api.flow.flowlet.OutputEmitter;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
@@ -42,16 +43,21 @@ public class AppWithSleepingFlowlet extends AbstractApplication {
   /**
    * Sample Flow.
    */
-  public static final class FlowWithSleepingFlowlet extends AbstractFlow {
+  public static final class FlowWithSleepingFlowlet implements Flow {
+
 
     @Override
-    protected void configureFlow() {
-      setName("FlowWithSleepingFlowlet");
-      setDescription("A flow that collects names");
-      addFlowlet("streamFlowlet", new StreamFlowlet());
-      addFlowlet("sleepingFlowlet", new SleepingFlowlet());
-      connectStream("ingestStream", "streamFlowlet");
-      connect("streamFlowlet", "sleepingFlowlet");
+    public FlowSpecification configure() {
+      return FlowSpecification.Builder.with()
+        .setName("FlowWithSleepingFlowlet")
+        .setDescription("--")
+        .withFlowlets()
+        .add("streamFlowlet", new StreamFlowlet())
+        .add("sleepingFlowlet", new SleepingFlowlet())
+        .connect()
+        .fromStream("ingestStream").to("streamFlowlet")
+        .from("streamFlowlet").to("sleepingFlowlet")
+        .build();
     }
   }
 

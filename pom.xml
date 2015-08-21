@@ -25,15 +25,13 @@
   <name>integration-test</name>
   <version>1.0.0</version>
   <modules>
-    <module>integration-test-remote</module>
-    <module>integration-test-standalone</module>
     <module>upgrade-test</module>
   </modules>
   <packaging>pom</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>3.2.0-SNAPSHOT</cdap.version>
+    <cdap.version>3.0.3</cdap.version>
     <junit.version>4.11</junit.version>
     <hadoop.version>2.3.0</hadoop.version>
     <snappy.version>1.1.1.7</snappy.version>
@@ -69,11 +67,6 @@
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>WordCount</artifactId>
-      <version>${cdap.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>WikipediaPipeline</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency> <!-- PurchaseHistory Dependency -->

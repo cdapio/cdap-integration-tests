@@ -18,10 +18,9 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.appwithsleepingflowlet.AppWithSleepingFlowlet;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.StreamManager;
+import co.cask.cdap.test.StreamWriter;
 import org.junit.Assert;
 
 import java.util.concurrent.TimeUnit;
@@ -35,29 +34,30 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
   @Override
   protected void preStage() throws Exception {
     ApplicationManager appManager = deployApplication(AppWithSleepingFlowlet.class);
-    FlowManager flowManager = appManager.getFlowManager("FlowWithSleepingFlowlet").start();
-    flowManager.waitForStatus(true, 60, 1);
+    FlowManager flowManager = appManager.startFlow("FlowWithSleepingFlowlet");
+    TimeUnit.SECONDS.sleep(60);
 
     RuntimeMetrics streamFlowlet = flowManager.getFlowletMetrics("streamFlowlet");
     RuntimeMetrics sleepingFlowlet = flowManager.getFlowletMetrics("sleepingFlowlet");
 
-    StreamManager streamManager = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "ingestStream"));
+    StreamWriter streamWriter = appManager.getStreamWriter("ingestStream");
 
     // wait for all the flowlet containers to get processing
-    streamManager.send("event0");
+    streamWriter.send("event0");
     streamFlowlet.waitForProcessed(1, 60, TimeUnit.SECONDS);
     sleepingFlowlet.waitForProcessed(1, 60, TimeUnit.SECONDS);
 
     // start at i = 1, because we already sent initial event above
     for (int i = 1; i < EVENT_COUNT; i++) {
-      streamManager.send("event" + i);
+      streamWriter.send("event" + i);
     }
 
     // wait for the first flowlet to process all the events and place them on the inter-flowlet queue
     streamFlowlet.waitForProcessed(EVENT_COUNT, 60, TimeUnit.SECONDS);
 
     flowManager.stop();
-    flowManager.waitForFinish(60, TimeUnit.SECONDS);
+    TimeUnit.SECONDS.sleep(60);
+
 
     // after stopping the flow, the second flowlet has not processed all the events yet because of the sleep in its
     // process method
@@ -71,7 +71,7 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
   @Override
   protected void postStage() throws Exception {
     ApplicationManager appManager = deployApplication(AppWithSleepingFlowlet.class);
-    FlowManager flowManager = appManager.getFlowManager("FlowWithSleepingFlowlet");
+    FlowManager flowManager = appManager.startFlow("FlowWithSleepingFlowlet");
 
     RuntimeMetrics streamFlowlet = flowManager.getFlowletMetrics("streamFlowlet");
     RuntimeMetrics sleepingFlowlet = flowManager.getFlowletMetrics("sleepingFlowlet");
@@ -80,15 +80,14 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(EVENT_COUNT, streamFlowlet.getProcessed());
     Assert.assertNotEquals(EVENT_COUNT, sleepingFlowlet.getProcessed());
 
-    flowManager.start();
-    flowManager.waitForStatus(true, 60, 1);
+    TimeUnit.SECONDS.sleep(60);
 
     // after starting the flow, it should process the events that were on the inter-flowlet queue
     sleepingFlowlet.waitForProcessed(EVENT_COUNT, 60, TimeUnit.SECONDS);
 
     // it should also be able to process new events
-    StreamManager streamManager = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "ingestStream"));
-    streamManager.send("event0");
+    StreamWriter streamWriter = appManager.getStreamWriter("ingestStream");
+    streamWriter.send("event0");
     streamFlowlet.waitForProcessed(EVENT_COUNT + 1, 60, TimeUnit.SECONDS);
     sleepingFlowlet.waitForProcessed(EVENT_COUNT + 1, 60, TimeUnit.SECONDS);
     flowManager.stop();

@@ -18,10 +18,9 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.helloworld.HelloWorld;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.StreamManager;
+import co.cask.cdap.test.StreamWriter;
 import org.junit.Assert;
 
 import java.util.concurrent.TimeUnit;
@@ -34,11 +33,11 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
   @Override
   protected void preStage() throws Exception {
     ApplicationManager applicationManager = deployApplication(HelloWorld.class);
-    StreamManager whoStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "who"));
+    StreamWriter whoStream = applicationManager.getStreamWriter("who");
     whoStream.send("test1");
 
-    FlowManager flowManager = applicationManager.getFlowManager("WhoFlow").start();
-    flowManager.waitForStatus(true, 60, 1);
+    FlowManager flowManager = applicationManager.startFlow("WhoFlow");
+    TimeUnit.SECONDS.sleep(60);
 
     // it should process the stream event
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("saver");
@@ -51,7 +50,7 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
     }
 
     flowManager.stop();
-    flowManager.waitForFinish(60, TimeUnit.SECONDS);
+    TimeUnit.SECONDS.sleep(60);
 
     // send an additional event, which should be processed after the upgrade
     whoStream.send("test2");
@@ -61,13 +60,12 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
   protected void postStage() throws Exception {
     ApplicationManager applicationManager = deployApplication(HelloWorld.class);
 
-    FlowManager flowManager = applicationManager.getFlowManager("WhoFlow");
+    FlowManager flowManager = applicationManager.startFlow("WhoFlow");
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("saver");
     // currently has processed 1
     Assert.assertEquals(1, flowletMetrics.getProcessed());
 
-    flowManager.start();
-    flowManager.waitForStatus(true, 60, 1);
+    TimeUnit.SECONDS.sleep(60);
 
     // it should process the second stream event
     flowletMetrics.waitForProcessed(2, 60, TimeUnit.SECONDS);
@@ -78,13 +76,13 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
     } catch (TimeoutException expected) {
     }
 
-    StreamManager whoStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "who"));
+    StreamWriter whoStream = applicationManager.getStreamWriter("who");
     whoStream.send("test3");
 
     // it should process the third (new) stream event
     flowletMetrics.waitForProcessed(3, 60, TimeUnit.SECONDS);
 
     flowManager.stop();
-    flowManager.waitForFinish(60, TimeUnit.SECONDS);
+    TimeUnit.SECONDS.sleep(60);
   }
 }

@@ -19,7 +19,6 @@ package co.cask.cdap.upgrade;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.StreamClient;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamDetail;
 import com.clearspring.analytics.util.Lists;
 import org.junit.Assert;
@@ -30,16 +29,16 @@ import java.util.List;
  * Tests that stream events ingested before an upgrade can be retrieved after an upgrade.
  */
 public class StreamEventUpgradeTest extends UpgradeTestBase {
-  private static final Id.Stream FOO_STREAM = Id.Stream.from(TEST_NAMESPACE, "fooStream");
+  private static final String FOO_STREAM = "fooStream";
   private static final int MSG_COUNT = 50;
 
   @Override
   protected void preStage() throws Exception {
     StreamClient streamClient = getStreamClient();
-    List<String> initialStreams = toStringList(streamClient.list(TEST_NAMESPACE));
+    List<String> initialStreams = toStringList(streamClient.list());
     Assert.assertFalse(String.format("Stream %s was expected not to exist. Stream list: %s",
                                      FOO_STREAM, initialStreams),
-                       initialStreams.contains(FOO_STREAM.getId()));
+                       initialStreams.contains(FOO_STREAM));
     streamClient.create(FOO_STREAM);
 
     // Ingest MSG_COUNT events to the stream
@@ -51,10 +50,10 @@ public class StreamEventUpgradeTest extends UpgradeTestBase {
   @Override
   protected void postStage() throws Exception {
     StreamClient streamClient = getStreamClient();
-    List<String> streams = toStringList(streamClient.list(TEST_NAMESPACE));
+    List<String> streams = toStringList(streamClient.list());
     Assert.assertTrue(String.format("Stream %s was expected to exist. Stream list: %s",
                                     FOO_STREAM, streams),
-                      streams.contains(FOO_STREAM.getId()));
+                      streams.contains(FOO_STREAM));
 
     // Verify that events fetched from the stream are the same as the ones sent in
     List<StreamEvent> events =
