@@ -16,14 +16,11 @@
 
 package co.cask.cdap.apps;
 
-import co.cask.cdap.apps.adapters.ETLStageProvider;
-import co.cask.cdap.client.ProgramClient;
+import co.cask.cdap.client.MetricsClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
-import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.IntegrationTestBase;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -31,18 +28,14 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.Nullable;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -57,7 +50,6 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
-  @Override
   protected RESTClient getRestClient() {
     return restClient;
   }
@@ -100,7 +92,7 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
-    MetricQueryResult metricQueryResult = getMetricsClient().query(tags, metric);
+    MetricQueryResult metricQueryResult = new MetricsClient(getClientConfig(), getRestClient()).query(metric, tags);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {
       return 0;
@@ -109,33 +101,5 @@ public class AudiTestBase extends IntegrationTestBase {
     MetricQueryResult.TimeValue[] timeValues = series[0].getData();
     Preconditions.checkState(timeValues.length == 1, "Metric TimeValues has more than one TimeValue: {}", timeValues);
     return timeValues[0].getValue();
-  }
-
-  // {@param} expectedStatus can be null if count is 0
-  protected void assertRuns(int count, ProgramClient programClient,
-                            @Nullable ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
-    for (Id.Program programId : programIds) {
-      List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-      Assert.assertEquals(count, runRecords.size());
-      for (RunRecord runRecord : runRecords) {
-        Assert.assertEquals(expectedStatus, runRecord.getStatus());
-      }
-    }
-  }
-
-  protected HttpResponse retryRestCalls(final int expectedStatusCode, final HttpRequest request,
-                                        final RESTClient restClient, long timeout, TimeUnit timeoutUnit,
-                                        long pollInterval, TimeUnit pollIntervalUnit) throws Exception {
-    final AtomicReference<HttpResponse> ref = new AtomicReference<>();
-    Tasks.waitFor(expectedStatusCode, new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        HttpResponse response = restClient.execute(request, getClientConfig().getAccessToken());
-        ref.set(response);
-        return response.getResponseCode();
-      }
-    }, timeout, timeoutUnit, pollInterval, pollIntervalUnit);
-    Preconditions.checkNotNull(ref.get(), "No Httprequest was attempted.");
-    return ref.get();
   }
 }
