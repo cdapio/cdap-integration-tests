@@ -58,18 +58,13 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
   private static final Id.Application SPARK_PAGE_RANK_APP = Id.Application.from(TEST_NAMESPACE, "SparkPageRank");
   private static final Id.Stream STREAM = Id.Stream.from(TEST_NAMESPACE, SparkPageRankApp.BACKLINK_URL_STREAM);
-  private static final Id.Service RANKS_SERVICE = Id.Service.from(
-    SPARK_PAGE_RANK_APP, SparkPageRankApp.RANKS_SERVICE_NAME);
-  private static final Id.Service GOOGLE_TYPE_PR_SERVICE = Id.Service.from(
-    SPARK_PAGE_RANK_APP, SparkPageRankApp.GOOGLE_TYPE_PR_SERVICE_NAME);
-  private static final Id.Service TOTAL_PAGES_PR_SERVICE = Id.Service.from(
-    SPARK_PAGE_RANK_APP, SparkPageRankApp.TOTAL_PAGES_PR_SERVICE_NAME);
-  private static final Id.Workflow PAGE_RANK_WORKFLOW = Id.Workflow.from(
-    SPARK_PAGE_RANK_APP, SparkPageRankApp.PageRankWorkflow.class.getSimpleName());
+  private static final Id.Service PAGE_RANK_SERVICE = Id.Service.from(
+    SPARK_PAGE_RANK_APP, SparkPageRankApp.SERVICE_HANDLERS);
   private static final Id.Program RANKS_COUNTER_PROGRAM = Id.Program.from(
     SPARK_PAGE_RANK_APP, ProgramType.MAPREDUCE, SparkPageRankApp.RanksCounter.class.getSimpleName());
   private static final Id.Program PAGE_RANK_PROGRAM = Id.Program.from(SPARK_PAGE_RANK_APP, ProgramType.SPARK,
-                                                                      SparkPageRankProgram.class.getSimpleName());
+                                                                      SparkPageRankApp.PageRankSpark.class
+                                                                        .getSimpleName());
 
 
   @Test
@@ -80,13 +75,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(SparkPageRankApp.class);
 
     // none of the programs should have any run records
-    assertRuns(0, programClient, null, RANKS_SERVICE, GOOGLE_TYPE_PR_SERVICE,
-               TOTAL_PAGES_PR_SERVICE, PAGE_RANK_WORKFLOW, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
-
-    // PageRankWorkflow should have no schedules
-    ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
-    List<ScheduleSpecification> workflowSchedules = scheduleClient.list(PAGE_RANK_WORKFLOW);
-    Assert.assertEquals(0, workflowSchedules.size());
+    assertRuns(0, programClient, null, PAGE_RANK_SERVICE, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
 
     StreamManager backlinkURLStream = getTestManager().getStreamManager(STREAM);
     backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_2));
@@ -94,11 +83,10 @@ public class SparkPageRankAppTest extends AudiTestBase {
     backlinkURLStream.send(Joiner.on(" ").join(URL_2, URL_1));
     backlinkURLStream.send(Joiner.on(" ").join(URL_3, URL_1));
 
-    // Start GoogleTypePR
-    ServiceManager transformServiceManager = applicationManager.getServiceManager(GOOGLE_TYPE_PR_SERVICE
-                                                                                    .getId()).start();
-    transformServiceManager.waitForStatus(true, 60, 1);
-    Assert.assertTrue(transformServiceManager.isRunning());
+    // Start service
+    ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getId()).start();
+    serviceManager.waitForStatus(true, 60, 1);
+    Assert.assertTrue(serviceManager.isRunning());
 
     // Start Spark Page Rank and await completion
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getId());
@@ -120,8 +108,6 @@ public class SparkPageRankAppTest extends AudiTestBase {
     }, 60, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     pageRankManager.waitForStatus(false, 10 * 60, 1);
 
-    transformServiceManager.stop();
-    transformServiceManager.waitForStatus(false, 60, 1);
 
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
@@ -132,40 +118,25 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
 
-    // Wait for services to start
-    // Start TotalPagesPRService
-    ServiceManager totalPagesServiceManager = applicationManager.getServiceManager(TOTAL_PAGES_PR_SERVICE
-                                                                                     .getId()).start();
-    totalPagesServiceManager.waitForStatus(true, 60, 1);
-    // Ensure that the services are still running
-    Assert.assertTrue(totalPagesServiceManager.isRunning());
-
-    URL url = new URL(totalPagesServiceManager.getServiceURL(),
-                      SparkPageRankApp.TotalPagesHandler.TOTAL_PAGES_PATH + "/" + RANK);
+    URL url = new URL(serviceManager.getServiceURL(),
+                      SparkPageRankApp.SparkPageRankServiceHandler.TOTAL_PAGES_PATH + "/" + RANK);
     HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
                                            getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-    Assert.assertEquals(200, response.getResponseCode());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
-    totalPagesServiceManager.stop();
-    totalPagesServiceManager.waitForStatus(false, 60, 1);
 
-    // Start RanksService
-    ServiceManager ranksServiceManager = applicationManager.getServiceManager(RANKS_SERVICE
-                                                                                .getId()).start();
-    ranksServiceManager.waitForStatus(true, 60, 1);
-    Assert.assertTrue(ranksServiceManager.isRunning());
-    url = new URL(ranksServiceManager.getServiceURL(), SparkPageRankApp.RanksServiceHandler.RANKS_SERVICE_PATH);
+    url = new URL(serviceManager.getServiceURL(), SparkPageRankApp.SparkPageRankServiceHandler.RANKS_PATH);
     response = retryRestCalls(HttpURLConnection.HTTP_OK,
                               HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
                               getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
-    ranksServiceManager.stop();
-    ranksServiceManager.waitForStatus(false, 60, 1);
+
+    serviceManager.stop();
+    serviceManager.waitForStatus(false, 60, 1);
 
 
     // services should 'KILLED' state because they were explicitly stopped with a single run
-    assertRuns(1, programClient, ProgramRunStatus.KILLED, RANKS_SERVICE, GOOGLE_TYPE_PR_SERVICE,
-               TOTAL_PAGES_PR_SERVICE);
+    assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE);
   }
 }
