@@ -56,13 +56,13 @@ public class NamespaceTest extends AudiTestBase {
     Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
 
     try {
-      namespaceClient.get(NS1.getId());
+      namespaceClient.get(NS1);
       Assert.fail("Expected namespace not to exist: " + NS1);
     } catch (NamespaceNotFoundException expected) {
       // expected
     }
     try {
-      namespaceClient.get(NS2.getId());
+      namespaceClient.get(NS2);
       Assert.fail("Expected namespace not to exist: " + NS2);
     } catch (NamespaceNotFoundException expected) {
       // expected
@@ -104,16 +104,16 @@ public class NamespaceTest extends AudiTestBase {
     Assert.assertEquals(ns2Meta, retrievedNs2Meta);
     Assert.assertTrue(list.contains(NamespaceMeta.DEFAULT));
 
-    Assert.assertEquals(ns1Meta, namespaceClient.get(NS1.getId()));
-    Assert.assertEquals(ns2Meta, namespaceClient.get(NS2.getId()));
+    Assert.assertEquals(ns1Meta, namespaceClient.get(NS1));
+    Assert.assertEquals(ns2Meta, namespaceClient.get(NS2));
 
     // default namespace should still exist after delete of it
-    namespaceClient.delete(Id.Namespace.DEFAULT.getId());
-    namespaceClient.get(Id.Namespace.DEFAULT.getId());
+    namespaceClient.delete(Id.Namespace.DEFAULT);
+    namespaceClient.get(Id.Namespace.DEFAULT);
 
     // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
-    namespaceClient.delete(NS1.getId());
-    namespaceClient.delete(NS2.getId());
+    namespaceClient.delete(NS1);
+    namespaceClient.delete(NS2);
 
     list = namespaceClient.list();
     Assert.assertEquals(1, list.size());
