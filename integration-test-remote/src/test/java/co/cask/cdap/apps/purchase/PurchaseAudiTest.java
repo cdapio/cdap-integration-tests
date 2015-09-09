@@ -24,6 +24,7 @@ import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
+import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
@@ -80,10 +81,14 @@ public class PurchaseAudiTest extends AudiTestBase {
     assertRuns(0, programClient, null, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE, PURCHASE_USER_PROFILE_SERVICE,
                PURCHASE_HISTORY_WORKFLOW);
 
-    // PurchaseHistoryWorkflow should have two schedules
+    // PurchaseHistoryWorkflow should have two schedules in suspended state
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
     List<ScheduleSpecification> workflowSchedules = scheduleClient.list(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(2, workflowSchedules.size());
+    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(),
+                        scheduleClient.getStatus(getSchedueleId(workflowSchedules.get(0).getSchedule().getName())));
+    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(),
+                        scheduleClient.getStatus(getSchedueleId(workflowSchedules.get(1).getSchedule().getName())));
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
@@ -166,6 +171,10 @@ public class PurchaseAudiTest extends AudiTestBase {
       ObjectResponse.<List<ScheduledRuntime>>fromJsonBody(response, scheduledRuntimeListType, GSON)
         .getResponseObject();
     Assert.assertEquals(1, scheduledRuntimes.size());
+  }
+
+  private Id.Schedule getSchedueleId (String scheduleName) {
+    return Id.Schedule.from(PURCHASE_APP, scheduleName);
   }
 
   private void startStopServices(ProgramAction action, ProgramManager... programs) throws InterruptedException {
