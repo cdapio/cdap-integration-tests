@@ -22,6 +22,8 @@ import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.NotFoundException;
+import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
@@ -46,6 +48,7 @@ import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -85,10 +88,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
     List<ScheduleSpecification> workflowSchedules = scheduleClient.list(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(2, workflowSchedules.size());
-    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(),
-                        scheduleClient.getStatus(getSchedueleId(workflowSchedules.get(0).getSchedule().getName())));
-    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(),
-                        scheduleClient.getStatus(getSchedueleId(workflowSchedules.get(1).getSchedule().getName())));
+    checkScheduleState(scheduleClient, Scheduler.ScheduleState.SUSPENDED, workflowSchedules);
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
@@ -173,8 +173,12 @@ public class PurchaseAudiTest extends AudiTestBase {
     Assert.assertEquals(1, scheduledRuntimes.size());
   }
 
-  private Id.Schedule getSchedueleId (String scheduleName) {
-    return Id.Schedule.from(PURCHASE_APP, scheduleName);
+  private void checkScheduleState(ScheduleClient scheduleClient, Scheduler.ScheduleState state,
+                                  List<ScheduleSpecification> schedules) throws Exception {
+    for (ScheduleSpecification schedule : schedules) {
+      Assert.assertEquals(state.name(),
+                          scheduleClient.getStatus(Id.Schedule.from(PURCHASE_APP, schedule.getSchedule().getName())));
+    }
   }
 
   private void startStopServices(ProgramAction action, ProgramManager... programs) throws InterruptedException {
