@@ -61,6 +61,13 @@ public class StreamSchedulerTest extends AudiTestBase {
     Assert.assertEquals(streamPropertiesToSet, purchaseStreamProperties);
     Assert.assertEquals((Integer) 1, purchaseStreamProperties.getNotificationThresholdMB());
 
+    // schedule actions: Initially schedules are suspended so resume them
+    Id.Schedule dataSchedule = Id.Schedule.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "DataSchedule");
+    ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), getRestClient());
+    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
+    scheduleClient.resume(dataSchedule);
+    Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
+
     String bigData = new String(new char[100000]);
     multipleStreamSend(streamClient, purchaseStream, bigData, 12);
 
@@ -76,9 +83,7 @@ public class StreamSchedulerTest extends AudiTestBase {
     ProgramClient programClient = getProgramClient();
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
-    // schedule actions
-    Id.Schedule dataSchedule = Id.Schedule.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "DataSchedule");
-    ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), getRestClient());
+    // schedule actions suspend, send more data and resume the schedule
     scheduleClient.suspend(dataSchedule);
     Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
 
