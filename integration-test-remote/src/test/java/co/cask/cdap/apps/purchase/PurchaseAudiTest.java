@@ -159,7 +159,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
-    // TODO: have a nextRuntime method in ScheduleClient?
+    // TODO: CDAP-3616 have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
     String path = String.format("apps/%s/workflows/%s/nextruntime",
                                 PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW.getId());
