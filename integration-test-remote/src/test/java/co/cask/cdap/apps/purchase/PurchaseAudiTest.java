@@ -22,8 +22,11 @@ import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.NotFoundException;
+import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
+import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
@@ -45,6 +48,7 @@ import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -80,10 +84,11 @@ public class PurchaseAudiTest extends AudiTestBase {
     assertRuns(0, programClient, null, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE, PURCHASE_USER_PROFILE_SERVICE,
                PURCHASE_HISTORY_WORKFLOW);
 
-    // PurchaseHistoryWorkflow should have two schedules
+    // PurchaseHistoryWorkflow should have two schedules in suspended state
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
     List<ScheduleSpecification> workflowSchedules = scheduleClient.list(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(2, workflowSchedules.size());
+    checkScheduleState(scheduleClient, Scheduler.ScheduleState.SUSPENDED, workflowSchedules);
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
@@ -154,7 +159,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
-    // TODO: have a nextRuntime method in ScheduleClient?
+    // TODO: CDAP-3616 have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
     String path = String.format("apps/%s/workflows/%s/nextruntime",
                                 PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW.getId());
@@ -166,6 +171,14 @@ public class PurchaseAudiTest extends AudiTestBase {
       ObjectResponse.<List<ScheduledRuntime>>fromJsonBody(response, scheduledRuntimeListType, GSON)
         .getResponseObject();
     Assert.assertEquals(1, scheduledRuntimes.size());
+  }
+
+  private void checkScheduleState(ScheduleClient scheduleClient, Scheduler.ScheduleState state,
+                                  List<ScheduleSpecification> schedules) throws Exception {
+    for (ScheduleSpecification schedule : schedules) {
+      Assert.assertEquals(state.name(),
+                          scheduleClient.getStatus(Id.Schedule.from(PURCHASE_APP, schedule.getSchedule().getName())));
+    }
   }
 
   private void startStopServices(ProgramAction action, ProgramManager... programs) throws InterruptedException {
