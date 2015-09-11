@@ -19,6 +19,7 @@ package co.cask.cdap.apps.etl;
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.data.stream.Stream;
+import co.cask.cdap.app.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.DatasetClient;
@@ -29,7 +30,6 @@ import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
-import co.cask.cdap.template.etl.batch.config.ETLBatchConfig;
 
 import java.io.IOException;
 

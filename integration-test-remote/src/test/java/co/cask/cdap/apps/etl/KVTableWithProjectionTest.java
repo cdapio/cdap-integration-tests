@@ -17,11 +17,11 @@
 package co.cask.cdap.apps.etl;
 
 import co.cask.cdap.api.data.format.Formats;
+import co.cask.cdap.app.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.apps.etl.dataset.DatasetAccessApp;
 import co.cask.cdap.apps.etl.dataset.KVTableService;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.template.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.template.etl.batch.source.KVTableSource;
 import co.cask.cdap.template.etl.common.ETLStage;
 import co.cask.cdap.template.etl.common.Properties;
