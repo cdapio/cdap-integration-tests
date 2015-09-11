@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.adapters;
+package co.cask.cdap.apps.etl;
 
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.template.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
