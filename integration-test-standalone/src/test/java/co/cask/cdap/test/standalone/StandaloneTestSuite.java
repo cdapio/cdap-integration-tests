@@ -111,7 +111,7 @@ public class StandaloneTestSuite {
     URLClassLoader classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), null);
     try {
       Class<?> clz = classLoader.loadClass(StandaloneTester.class.getName());
-      return clz.getConstructor(Class[].class).newInstance(new Object[]{new Class[0]});
+      return clz.getConstructor().newInstance();
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
