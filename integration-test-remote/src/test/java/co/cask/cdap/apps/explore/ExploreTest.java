@@ -41,6 +41,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -51,29 +53,162 @@ import javax.annotation.Nullable;
  * Tests Explore functionality using {@link WordCountApplication}.
  */
 public class ExploreTest extends AudiTestBase {
-
+  private static final Logger LOG = LoggerFactory.getLogger(ExploreTest.class);
   private static final Gson GSON = new Gson();
 
   @Test
   public void test() throws Exception {
+    LOG.info("Sending input data.");
     sendInputData();
 
+    LOG.info("Testing insert query.");
+    testInsertQuery();
+    LOG.info("Testing equality join.");
     testEqualityJoin();
+    LOG.info("Testing left outer join.");
     testLeftOuterJoin();
+    LOG.info("Testing right outer join.");
     testRightOuterJoin();
+    LOG.info("Testing full outer join.");
     testFullOuterJoin();
+    LOG.info("Testing count equality join.");
     testCountEqualityJoin();
+    LOG.info("Testing sum left outer join.");
     testSumLeftOuterJoin();
+    LOG.info("Testing avg left outer join.");
     testAvgLeftOuterJoin();
+    LOG.info("Testing min right outer join.");
     testMinRightOuterJoin();
+    LOG.info("Testing max right outer join.");
     testMaxRightOuterJoin();
 
+    LOG.info("Testing check KV Table.");
     testCheckKVTable();
-    testStream();
+    LOG.info("Testing stream query.");
+    testStreamQuery();
 
     // Hive 0.12 doesn't support subqueries in the WHERE clause
     // TODO: run only when running against Hive >=0.13
+    LOG.info("Testing subquery in where clause.");
     testSubqueryInWhereClause();
+  }
+
+  private void testInsertQuery() throws Exception {
+    QueryClient client = new QueryClient(getClientConfig());
+
+    // Query: insert into other dataset, different type
+    ExploreExecutionResult results = client.execute(
+      Id.Namespace.DEFAULT,
+      "insert into table dataset_wordcounts2 select word,count from dataset_extendedwordcounts").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+
+    results = client.execute(
+      Id.Namespace.DEFAULT,
+      "select * from dataset_wordcounts2 order by word").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+
+    List<List<Object>> rows = executionResult2Rows(results);
+    Assert.assertEquals(5, rows.size());
+
+    Assert.assertEquals("bar", rows.get(0).get(0));
+    Assert.assertEquals(1L, rows.get(0).get(1));
+    Assert.assertEquals("barbar", rows.get(1).get(0));
+    Assert.assertEquals(1L, rows.get(1).get(1));
+    Assert.assertEquals("foo", rows.get(2).get(0));
+    Assert.assertEquals(2L, rows.get(2).get(1));
+    Assert.assertEquals("foobar", rows.get(3).get(0));
+    Assert.assertEquals(1L, rows.get(3).get(1));
+    Assert.assertEquals("foobarbar", rows.get(4).get(0));
+    Assert.assertEquals(1L, rows.get(4).get(1));
+
+    List<ColumnDesc> resultSchema = results.getResultSchema();
+    Assert.assertEquals(2, resultSchema.size());
+
+    Assert.assertEquals("STRING", resultSchema.get(0).getType());
+    Assert.assertEquals(1, resultSchema.get(0).getPosition());
+
+    Assert.assertEquals("BIGINT", resultSchema.get(1).getType());
+    Assert.assertEquals(2, resultSchema.get(1).getPosition());
+
+
+    // Query: insert into other dataset, same type
+    results = client.execute(
+      Id.Namespace.DEFAULT,
+      "insert into table dataset_wordcounts2 select * from dataset_wordcounts").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+
+    results = client.execute(
+      Id.Namespace.DEFAULT,
+      "select * from dataset_wordcounts2 order by word").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+
+    rows = executionResult2Rows(results);
+    Assert.assertEquals(10, rows.size());
+
+    Assert.assertEquals("Jada", rows.get(0).get(0));
+    Assert.assertEquals(1L, rows.get(0).get(1));
+    Assert.assertEquals("Mike", rows.get(1).get(0));
+    Assert.assertEquals(2L, rows.get(1).get(1));
+    Assert.assertEquals("bar", rows.get(2).get(0));
+    Assert.assertEquals(1L, rows.get(2).get(1));
+    Assert.assertEquals("barbar", rows.get(3).get(0));
+    Assert.assertEquals(1L, rows.get(3).get(1));
+    Assert.assertEquals("foo", rows.get(4).get(0));
+    Assert.assertEquals(2L, rows.get(4).get(1));
+    Assert.assertEquals("foobar", rows.get(5).get(0));
+    Assert.assertEquals(1L, rows.get(5).get(1));
+    Assert.assertEquals("foobarbar", rows.get(6).get(0));
+    Assert.assertEquals(1L, rows.get(6).get(1));
+    Assert.assertEquals("has", rows.get(7).get(0));
+    Assert.assertEquals(3L, rows.get(7).get(1));
+    Assert.assertEquals("iPad", rows.get(8).get(0));
+    Assert.assertEquals(2L, rows.get(8).get(1));
+    Assert.assertEquals("macbook", rows.get(9).get(0));
+    Assert.assertEquals(1L, rows.get(9).get(1));
+
+
+    // insert into cdap_user_wordcounts from itself
+    results = client.execute(
+      Id.Namespace.DEFAULT,
+      "insert into table dataset_wordcounts2 select * from dataset_wordcounts2").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+
+    results = client.execute(
+      Id.Namespace.DEFAULT,
+      "select * from dataset_wordcounts2 order by word").get();
+
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
+
+    rows = executionResult2Rows(results);
+    Assert.assertEquals(10, rows.size());
+
+    // NOTE: because of the nature of the wordCounts dataset,
+    // writing to itself will double the values of the existing keys
+    Assert.assertEquals("Jada", rows.get(0).get(0));
+    Assert.assertEquals(2L, rows.get(0).get(1));
+    Assert.assertEquals("Mike", rows.get(1).get(0));
+    Assert.assertEquals(4L, rows.get(1).get(1));
+    Assert.assertEquals("bar", rows.get(2).get(0));
+    Assert.assertEquals(2L, rows.get(2).get(1));
+    Assert.assertEquals("barbar", rows.get(3).get(0));
+    Assert.assertEquals(2L, rows.get(3).get(1));
+    Assert.assertEquals("foo", rows.get(4).get(0));
+    Assert.assertEquals(4L, rows.get(4).get(1));
+    Assert.assertEquals("foobar", rows.get(5).get(0));
+    Assert.assertEquals(2L, rows.get(5).get(1));
+    Assert.assertEquals("foobarbar", rows.get(6).get(0));
+    Assert.assertEquals(2L, rows.get(6).get(1));
+    Assert.assertEquals("has", rows.get(7).get(0));
+    Assert.assertEquals(6L, rows.get(7).get(1));
+    Assert.assertEquals("iPad", rows.get(8).get(0));
+    Assert.assertEquals(4L, rows.get(8).get(1));
+    Assert.assertEquals("macbook", rows.get(9).get(0));
+    Assert.assertEquals(2L, rows.get(9).get(1));
   }
 
   private void sendInputData() throws Exception {
@@ -451,7 +586,7 @@ public class ExploreTest extends AudiTestBase {
     Assert.assertEquals(2, resultSchema.get(1).getPosition());
   }
 
-  private void testStream() throws Exception {
+  private void testStreamQuery() throws Exception {
     StreamClient streamClient = getStreamClient();
 
     // send stream events for stream explore testing
