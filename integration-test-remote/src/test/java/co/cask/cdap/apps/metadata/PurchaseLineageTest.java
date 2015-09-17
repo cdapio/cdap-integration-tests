@@ -30,6 +30,11 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.codec.NamespacedIdCodec;
+import co.cask.cdap.proto.metadata.MetadataRecord;
+import co.cask.cdap.proto.metadata.MetadataScope;
+import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
+import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.MapReduceManager;
@@ -39,22 +44,30 @@ import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Tests the lineage functionality using PurchaseApp
  */
 public class PurchaseLineageTest extends AudiTestBase {
-  private static final Gson GSON = new Gson();
+  private static final Gson GSON = new GsonBuilder().
+    registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec()).create();
+
   private static final Id.Application PURCHASE_APP = Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME);
   private static final Id.Flow PURCHASE_FLOW = Id.Flow.from(PURCHASE_APP, "PurchaseFlow");
   private static final Id.Service PURCHASE_HISTORY_SERVICE = Id.Service.from(PURCHASE_APP, "PurchaseHistoryService");
@@ -62,6 +75,10 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                                                 "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER = Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE,
                                                                              "PurchaseHistoryBuilder");
+  private static final Type SET_METADATA_RECORD_TYPE = new TypeToken<Set<MetadataRecord>>() { }.getType();
+  private static final Type SET_METADATA_SEARCH_RESULT_TYPE =
+    new TypeToken<Set<MetadataSearchResultRecord>>() { }.getType();
+
   private enum ProgramAction {
     START,
     STOP
@@ -131,7 +148,39 @@ public class PurchaseLineageTest extends AudiTestBase {
     ServiceManager purchaseHistoryService =
       applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getId());
 
-    makePurchaseHistoryServiceCall(purchaseHistoryService);
+    // add tag for the dataset
+    URL datasetTagURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "datasets/history/metadata/tags");
+    getRestClient().execute(HttpRequest.post(datasetTagURL).withBody("[\"dsTag1\"]").build(),
+                            getClientConfig().getAccessToken());
+
+    // add tag for the service
+    URL serviceTagURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                      String.format("apps/%s/services/%s/metadata/tags",
+                                                                    PURCHASE_APP.getId(),
+                                                                    PURCHASE_HISTORY_SERVICE.getId()));
+
+    getRestClient().execute(HttpRequest.post(serviceTagURL).withBody("[\"serviceTag1\"]").build(),
+                            getClientConfig().getAccessToken());
+
+    // add metadata properties
+    URL servicePropertiesURL =
+      getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, String.format("apps/%s/services/%s/metadata/properties",
+                                                                             PURCHASE_APP.getId(),
+                                                                             PURCHASE_HISTORY_SERVICE.getId()));
+    URL appPropertiesURL =
+      getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, String.format("apps/%s/metadata/properties",
+                                                                             PURCHASE_APP.getId()));
+
+
+    Map<String, String> serviceProperties = ImmutableMap.of("spKey1", "spValue1");
+    getRestClient().execute(HttpRequest.post(servicePropertiesURL).withBody(GSON.toJson(serviceProperties)).build(),
+                            getClientConfig().getAccessToken());
+
+    Map<String, String> appProperties = ImmutableMap.of("spKey1", "spApp1");
+    getRestClient().execute(HttpRequest.post(appPropertiesURL).withBody(GSON.toJson(appProperties)).build(),
+                            getClientConfig().getAccessToken());
+
+    String firstServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
     Id.DatasetInstance historyDs = Id.DatasetInstance.from(TEST_NAMESPACE, "history");
     List<RunRecord> mrRanRecords =
@@ -164,7 +213,19 @@ public class PurchaseLineageTest extends AudiTestBase {
 
     testLineage(url, expected);
 
-    makePurchaseHistoryServiceCall(purchaseHistoryService);
+    // add more tags
+    getRestClient().execute(HttpRequest.post(datasetTagURL).withBody("[\"dsTag2\"]").build(),
+                            getClientConfig().getAccessToken());
+
+    getRestClient().execute(HttpRequest.post(serviceTagURL).withBody("[\"serviceTag2\"]").build(),
+                            getClientConfig().getAccessToken());
+
+    serviceProperties = ImmutableMap.of("spKey2", "spValue2");
+    getRestClient().execute(HttpRequest.post(servicePropertiesURL).withBody(GSON.toJson(serviceProperties)).build(),
+                            getClientConfig().getAccessToken());
+
+    String secondServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
+
     serviceRuns = programClient.getProgramRuns(PURCHASE_HISTORY_SERVICE,
                                                ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
     Assert.assertEquals(2, serviceRuns.size());
@@ -191,11 +252,97 @@ public class PurchaseLineageTest extends AudiTestBase {
 
     testLineage(url, expected);
 
+    // get tags for service runs
+    URL serivceFirstRunURL = getClientConfig().resolveNamespacedURLV3(
+      TEST_NAMESPACE, String.format("apps/%s/services/%s/runs/%s/metadata",
+                                    PURCHASE_APP.getId(), PURCHASE_HISTORY_SERVICE.getId(), firstServiceRunId));
+
+    URL serivceSecondRunURL = getClientConfig().resolveNamespacedURLV3(
+      TEST_NAMESPACE, String.format("apps/%s/services/%s/runs/%s/metadata",
+                                    PURCHASE_APP.getId(), PURCHASE_HISTORY_SERVICE.getId(), secondServiceRunId));
+
+
+    HttpResponse response = restClient.execute(HttpRequest.get(serivceFirstRunURL).build(),
+                                                    getClientConfig().getAccessToken());
+    Assert.assertEquals(200, response.getResponseCode());
+    Set<MetadataRecord> metadataRecordsFirst = GSON.fromJson(response.getResponseBodyAsString(),
+                                                             SET_METADATA_RECORD_TYPE);
+
+    Set<MetadataRecord> expectedTagsFirst =
+      ImmutableSet.of(
+        new MetadataRecord(PURCHASE_APP, MetadataScope.USER, ImmutableMap.of("spKey1", "spApp1"),
+                           ImmutableSet.<String>of()),
+        new MetadataRecord(PURCHASE_HISTORY_SERVICE, MetadataScope.USER, ImmutableMap.of("spKey1", "spValue1"),
+                           ImmutableSet.<String>of("serviceTag1")),
+        new MetadataRecord(historyDs, MetadataScope.USER, ImmutableMap.<String, String>of(),
+                           ImmutableSet.<String>of("dsTag1"))
+      );
+
+    Assert.assertEquals(expectedTagsFirst, metadataRecordsFirst);
+
+    response = restClient.execute(HttpRequest.get(serivceSecondRunURL).build(),
+                                               getClientConfig().getAccessToken());
+    Assert.assertEquals(200, response.getResponseCode());
+    Set<MetadataRecord> metadataRecordsSecond = GSON.fromJson(response.getResponseBodyAsString(),
+                                                              SET_METADATA_RECORD_TYPE);
+    Set<MetadataRecord> expectedTagsSecond =
+      ImmutableSet.of(
+        new MetadataRecord(PURCHASE_APP, MetadataScope.USER, ImmutableMap.of("spKey1", "spApp1"),
+                           ImmutableSet.<String>of()),
+        new MetadataRecord(PURCHASE_HISTORY_SERVICE, MetadataScope.USER,
+                           ImmutableMap.of("spKey1", "spValue1", "spKey2", "spValue2"),
+                           ImmutableSet.<String>of("serviceTag1", "serviceTag2")),
+        new MetadataRecord(historyDs, MetadataScope.USER,
+                           ImmutableMap.<String, String>of(),
+                           ImmutableSet.<String>of("dsTag1", "dsTag2"))
+      );
+
+    Assert.assertEquals(expectedTagsSecond, metadataRecordsSecond);
+
     // check dataset lineage
     URL datasetURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
                                                               String.format("datasets/%s/lineage?start=%s&end=%s",
                                                                             "history", startTime, Long.MAX_VALUE));
     testLineage(datasetURL, expected);
+
+    // verify search tags
+    URL searchURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                             String.format("metadata/search?query=%s&target=%s",
+                                                                           "service", "PROGRAM"));
+    Set<MetadataSearchResultRecord> expectedSearchResults =
+      ImmutableSet.of(
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE, MetadataSearchTargetType.PROGRAM)
+      );
+
+    verifySearchResult(searchURL, expectedSearchResults);
+
+    // search metadata properties
+    searchURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                         String.format("metadata/search?query=%s&target=%s",
+                                                                       "spKey1:spVal", "PROGRAM"));
+    verifySearchResult(searchURL, expectedSearchResults);
+
+    searchURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                         String.format("metadata/search?query=%s&target=%s",
+                                                                       "spKey1:sp", "ALL"));
+    expectedSearchResults =
+      ImmutableSet.of(
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE, MetadataSearchTargetType.PROGRAM),
+        new MetadataSearchResultRecord(PURCHASE_APP, MetadataSearchTargetType.APP)
+      );
+
+    verifySearchResult(searchURL, expectedSearchResults);
+
+  }
+
+  private void verifySearchResult(URL searchURL, Set<MetadataSearchResultRecord> expectedResults)
+    throws IOException, UnauthorizedException {
+    HttpResponse response = getRestClient().execute(HttpRequest.get(searchURL).build(),
+                                  getClientConfig().getAccessToken());
+    Assert.assertEquals(200, response.getResponseCode());
+    Set<MetadataSearchResultRecord> searchResults = GSON.fromJson(response.getResponseBodyAsString(),
+                                                                  SET_METADATA_SEARCH_RESULT_TYPE);
+    Assert.assertEquals(expectedResults, searchResults);
   }
 
   private void testLineage(URL url, LineageRecord expected) throws IOException, UnauthorizedException {
@@ -204,21 +351,26 @@ public class PurchaseLineageTest extends AudiTestBase {
     Assert.assertEquals(expected, lineageRecord);
   }
 
-  private void makePurchaseHistoryServiceCall(ServiceManager purchaseHistoryService) throws Exception {
+
+  // starts service, makes a handler call, stops it and finally returns the runId of the completed run
+  private String makePurchaseHistoryServiceCallAndReturnRunId(ServiceManager purchaseHistoryService) throws Exception {
     purchaseHistoryService.start();
     purchaseHistoryService.waitForStatus(true, 60, 1);
 
     URL historyURL = new URL(purchaseHistoryService.getServiceURL(), "history/Milo");
 
     // we have to make the first handler call after service starts with a retry
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build(),
+    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build(),
                               getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
-    // check service call to retrieve from a dataset is successful
-    Assert.assertEquals(200, response.getResponseCode());
+    List<RunRecord> runRecords =
+      getProgramClient().getProgramRuns(PURCHASE_HISTORY_SERVICE, ProgramRunStatus.RUNNING.name(), 0,
+                                        Long.MAX_VALUE, Integer.MAX_VALUE);
 
+    Assert.assertEquals(1, runRecords.size());
     purchaseHistoryService.stop();
     purchaseHistoryService.waitForStatus(false, 60, 1);
+    return runRecords.get(0).getPid();
   }
 
   private void startStopServices(ProgramAction action, ProgramManager... programs) throws InterruptedException {
