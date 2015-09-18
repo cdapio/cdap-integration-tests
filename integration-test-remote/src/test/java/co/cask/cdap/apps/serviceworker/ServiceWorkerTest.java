@@ -54,7 +54,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     // we have to make the first handler call after service starts with a retry
     // hit the service endpoint, get for worker_key, should return 204 (null)
     retryRestCalls(HttpURLConnection.HTTP_NO_CONTENT, HttpRequest.get(url).build(),
-                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                   120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
