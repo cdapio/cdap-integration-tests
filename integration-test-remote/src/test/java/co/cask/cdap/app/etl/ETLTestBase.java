@@ -27,9 +27,12 @@ import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
+import co.cask.cdap.etl.realtime.ETLRealtimeApplication;
+import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
+import com.google.common.base.Throwables;
 
 import java.io.IOException;
 
@@ -65,14 +68,18 @@ public abstract class ETLTestBase extends AudiTestBase {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-batch", getVersion(), ArtifactScope.SYSTEM), config);
   }
 
-  protected AppRequest<ETLBatchConfig> getRealtimeAppRequest(ETLBatchConfig config)
+  protected AppRequest<ETLRealtimeConfig> getRealtimeAppRequest(ETLRealtimeConfig config)
     throws IOException, UnauthorizedException {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", getVersion(), ArtifactScope.SYSTEM), config);
   }
 
-  protected String getVersion() throws IOException, UnauthorizedException {
+  protected String getVersion() {
     if (version == null) {
-      version = metaClient.getVersion().getVersion();
+      try {
+        version = metaClient.getVersion().getVersion();
+      } catch (Exception e) {
+        Throwables.propagate(e);
+      }
     }
     return version;
   }

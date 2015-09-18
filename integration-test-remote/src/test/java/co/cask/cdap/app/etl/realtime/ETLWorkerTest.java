@@ -20,6 +20,7 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
+import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.common.Properties;
@@ -52,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests for {@link co.cask.cdap.etl.realtime.ETLRealtimeApplication}.
  */
-public class ETLWorkerTest extends BaseETLRealtimeTest {
+public class ETLWorkerTest extends ETLTestBase {
 
   @Test
   public void testEmptyProperties() throws Exception {
@@ -62,7 +63,7 @@ public class ETLWorkerTest extends BaseETLRealtimeTest {
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testAdap");
-    AppRequest<ETLRealtimeConfig> appRequest = new AppRequest<>(APP_ARTIFACT, etlConfig);
+    AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
     Assert.assertNotNull(appManager);
   }
@@ -81,7 +82,7 @@ public class ETLWorkerTest extends BaseETLRealtimeTest {
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(1, source, sinks, null, null);
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testToStream");
-    AppRequest<ETLRealtimeConfig> appRequest = new AppRequest<>(APP_ARTIFACT, etlConfig);
+    AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     long startTime = System.currentTimeMillis();
@@ -120,7 +121,7 @@ public class ETLWorkerTest extends BaseETLRealtimeTest {
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testToStream");
-    AppRequest<ETLRealtimeConfig> appRequest = new AppRequest<>(APP_ARTIFACT, etlConfig);
+    AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     WorkerManager workerManager = appManager.getWorkerManager(ETLWorker.NAME);
