@@ -17,13 +17,13 @@
 package co.cask.cdap.apps.etl;
 
 import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.template.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
-import co.cask.cdap.template.etl.batch.source.KVTableSource;
-import co.cask.cdap.template.etl.batch.source.StreamBatchSource;
-import co.cask.cdap.template.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
-import co.cask.cdap.template.etl.common.ETLStage;
-import co.cask.cdap.template.etl.common.Properties;
-import co.cask.cdap.template.etl.transform.ProjectionTransform;
+import co.cask.cdap.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
+import co.cask.cdap.etl.batch.source.KVTableSource;
+import co.cask.cdap.etl.batch.source.StreamBatchSource;
+import co.cask.cdap.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
+import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Properties;
+import co.cask.cdap.etl.transform.ProjectionTransform;
 import com.google.common.collect.ImmutableMap;
 
 import javax.annotation.Nullable;

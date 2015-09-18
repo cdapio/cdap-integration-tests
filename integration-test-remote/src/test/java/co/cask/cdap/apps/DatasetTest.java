@@ -18,7 +18,6 @@ package co.cask.cdap.apps;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.config.ClientConfig;
-import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
@@ -56,7 +55,6 @@ public class DatasetTest extends AudiTestBase {
   public void test() throws Exception {
 
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
-    RESTClient restClient = getRestClient();
 
     // there should be no datasets in the test namespace
     Assert.assertEquals(0, datasetClient.list(TEST_NAMESPACE).size());
@@ -107,12 +105,12 @@ public class DatasetTest extends AudiTestBase {
     flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
 
     // verify through service that there are 2 words
-    Map<String, Object> responseMap = getWordCountStats(restClient, wordCountService);
+    Map<String, Object> responseMap = getWordCountStats(wordCountService);
     Assert.assertEquals(2.0, ((double) responseMap.get("totalWords")), 0);
     // test truncating a dataset with existing dataset
     datasetClient.truncate(Id.DatasetInstance.from(TEST_NAMESPACE, "wordStats"));
     // after truncating there should be 0 word
-    responseMap = getWordCountStats(restClient, wordCountService);
+    responseMap = getWordCountStats(wordCountService);
     Assert.assertEquals(0, ((double) responseMap.get("totalWords")), 0);
 
     // test the number of datasets used by an app with existing app
@@ -142,16 +140,14 @@ public class DatasetTest extends AudiTestBase {
                                                      "nonExistingDataset")).size());
   }
 
-  private Map<String, Object> getWordCountStats(RESTClient restClient, ServiceManager wordCountService)
-    throws Exception {
+  private Map<String, Object> getWordCountStats(ServiceManager wordCountService) throws Exception {
     URL url = new URL(wordCountService.getServiceURL(), "stats");
     // we have to make the first handler call after service starts with a retry
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(), restClient, 120,
-                   TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
+                                           120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     return GSON.fromJson(response.getResponseBodyAsString(),
-                         new TypeToken<Map<String, Object>>() {
-                         }.getType());
+                         new TypeToken<Map<String, Object>>() { }.getType());
   }
 
   private Set<Id.Program> getPrograms(String endPoint) throws IOException, UnauthorizedException {

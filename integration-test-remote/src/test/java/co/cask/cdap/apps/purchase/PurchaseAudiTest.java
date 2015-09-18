@@ -22,8 +22,6 @@ import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.NotFoundException;
-import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
@@ -48,7 +46,6 @@ import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -114,7 +111,7 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     // we have to make the first handler call after service starts with a retry
     retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(url).withBody(body).build(),
-                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                   120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     url = new URL(serviceURL, "user/Milo");
     HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
@@ -145,7 +142,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     url = new URL(serviceURL, "history/Milo");
     // we have to make the first handler call after service starts with a retry
     response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
-                   getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                              120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(200, response.getResponseCode());
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());

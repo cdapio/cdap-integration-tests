@@ -17,17 +17,17 @@
 package co.cask.cdap.apps.etl;
 
 import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.app.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.apps.etl.dataset.DatasetAccessApp;
 import co.cask.cdap.apps.etl.dataset.TPFSService;
 import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.etl.batch.config.ETLBatchConfig;
+import co.cask.cdap.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
+import co.cask.cdap.etl.batch.source.StreamBatchSource;
+import co.cask.cdap.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
+import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.transform.ProjectionTransform;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.template.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
-import co.cask.cdap.template.etl.batch.source.StreamBatchSource;
-import co.cask.cdap.template.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
-import co.cask.cdap.template.etl.common.ETLStage;
-import co.cask.cdap.template.etl.transform.ProjectionTransform;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
