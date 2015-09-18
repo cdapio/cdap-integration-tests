@@ -14,15 +14,18 @@
  * the License.
  */
 
-package co.cask.cdap.apps.etl.dataset;
+package co.cask.cdap.app.etl.realtime;
 
-import co.cask.cdap.api.app.AbstractApplication;
+import co.cask.cdap.app.etl.ETLTestBase;
+import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.artifact.ArtifactSummary;
 
-public class DatasetAccessApp extends AbstractApplication {
-  @Override
-  public void configure() {
-    setDescription("Application used to access datasets from integration tests");
-    addService(new TPFSService());
-    addService(new KVTableService());
-  }
+/**
+ * Common for ETL Realtime tests.
+ */
+public class BaseETLRealtimeTest extends ETLTestBase {
+
+  protected static final ArtifactSummary APP_ARTIFACT =
+    ArtifactSummary.from(Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-realtime", "3.3.0-SNAPSHOT"));
+
 }

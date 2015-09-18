@@ -14,11 +14,11 @@
  * the License.
  */
 
-package co.cask.cdap.apps.etl;
+package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.apps.etl.dataset.DatasetAccessApp;
-import co.cask.cdap.apps.etl.dataset.KVTableService;
+import co.cask.cdap.app.etl.dataset.DatasetAccessApp;
+import co.cask.cdap.app.etl.dataset.KVTableService;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.source.KVTableSource;
 import co.cask.cdap.etl.common.ETLStage;
@@ -74,7 +74,7 @@ public class KVTableWithProjectionTest extends ETLTestBase {
     ETLBatchConfig etlBatchConfig = new ETLBatchConfig("*/10 * * * *", source, sink, Lists.newArrayList(transform));
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlBatchConfig);
-    ApplicationManager appManager = getTestManager().deployApplication(appId, appRequest);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
 
     MapReduceManager mrManager = appManager.getMapReduceManager("ETLMapReduce");
     mrManager.start();
