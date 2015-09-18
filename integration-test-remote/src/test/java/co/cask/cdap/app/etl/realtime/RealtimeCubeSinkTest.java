@@ -20,6 +20,7 @@ import co.cask.cdap.api.dataset.lib.cube.AggregationFunction;
 import co.cask.cdap.api.dataset.lib.cube.Cube;
 import co.cask.cdap.api.dataset.lib.cube.CubeQuery;
 import co.cask.cdap.api.dataset.lib.cube.TimeSeries;
+import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.dataset2.lib.cube.CubeDatasetDefinition;
 import co.cask.cdap.etl.common.ETLStage;
@@ -45,9 +46,9 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Tests for {@link co.cask.cdap.etl.realtime.sink.RealtimeCubeSink}.
+ * Test for {@link co.cask.cdap.etl.realtime.sink.RealtimeCubeSink}.
  */
-public class RealtimeCubeSinkTest extends BaseETLRealtimeTest {
+public class RealtimeCubeSinkTest extends ETLTestBase {
 
   @Test
   public void test() throws Exception {
@@ -67,7 +68,7 @@ public class RealtimeCubeSinkTest extends BaseETLRealtimeTest {
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testCubeSink");
-    AppRequest<ETLRealtimeConfig> appRequest = new AppRequest<>(APP_ARTIFACT, etlConfig);
+    AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     WorkerManager workerManager = appManager.getWorkerManager(ETLWorker.NAME);
