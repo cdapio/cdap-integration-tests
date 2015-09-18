@@ -17,7 +17,6 @@
 package co.cask.cdap.test.standalone;
 
 import co.cask.cdap.StandaloneTester;
-import co.cask.cdap.apps.workflow.WorkflowTest;
 import co.cask.cdap.common.lang.ClassLoaders;
 import co.cask.cdap.test.runner.AutoSuiteRunner;
 import com.google.common.base.Splitter;
@@ -26,7 +25,6 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.rules.ExternalResource;
 import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
 
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;

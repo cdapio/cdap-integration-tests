@@ -26,7 +26,7 @@ import co.cask.cdap.api.service.AbstractService;
 import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
-import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.avro.file.DataFileStream;
@@ -67,9 +67,11 @@ public class TPFSService extends AbstractService {
   public static class TPFSHandler extends AbstractHttpServiceHandler {
 
     @UseDataSet(TPFS_1)
+    @SuppressWarnings("unused")
     private TimePartitionedFileSet tpfs1;
 
     @UseDataSet(TPFS_2)
+    @SuppressWarnings("unused")
     private TimePartitionedFileSet tpfs2;
 
     @GET
@@ -107,7 +109,7 @@ public class TPFSService extends AbstractService {
         }
       }
       responder.send(HttpURLConnection.HTTP_OK, ByteBuffer.wrap(Bytes.toBytes(records.toString())),
-                     "application/octet-stream", ImmutableMultimap.<String, String>of());
+                     "application/octet-stream", ImmutableMap.<String, String>of());
     }
   }
 }

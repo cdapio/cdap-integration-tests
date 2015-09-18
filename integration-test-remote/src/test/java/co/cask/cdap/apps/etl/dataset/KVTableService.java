@@ -47,6 +47,7 @@ public class KVTableService extends AbstractService {
   public static class KVTableHandler extends AbstractHttpServiceHandler {
 
     @UseDataSet(KV_TABLE_NAME)
+    @SuppressWarnings("unused")
     private KeyValueTable kvTableName;
 
     @GET

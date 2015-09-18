@@ -16,14 +16,11 @@
 
 package co.cask.cdap.apps.spark.sparkpagerank;
 
-import co.cask.cdap.api.schedule.ScheduleSpecification;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
-import co.cask.cdap.examples.sparkpagerank.SparkPageRankProgram;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
@@ -121,14 +118,14 @@ public class SparkPageRankAppTest extends AudiTestBase {
     URL url = new URL(serviceManager.getServiceURL(),
                       SparkPageRankApp.SparkPageRankServiceHandler.TOTAL_PAGES_PATH + "/" + RANK);
     HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
-                                           getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                                           120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
 
     url = new URL(serviceManager.getServiceURL(), SparkPageRankApp.SparkPageRankServiceHandler.RANKS_PATH);
     response = retryRestCalls(HttpURLConnection.HTTP_OK,
                               HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
-                              getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                              120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
 
