@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.etl;
+package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.data.schema.Schema;
@@ -70,7 +70,7 @@ public abstract class ETLTestBase extends AudiTestBase {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", getVersion(), ArtifactScope.SYSTEM), config);
   }
 
-  private String getVersion() throws IOException, UnauthorizedException {
+  protected String getVersion() throws IOException, UnauthorizedException {
     if (version == null) {
       version = metaClient.getVersion().getVersion();
     }
