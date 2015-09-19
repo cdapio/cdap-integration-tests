@@ -73,7 +73,7 @@ public abstract class ETLTestBase extends AudiTestBase {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", getVersion(), ArtifactScope.SYSTEM), config);
   }
 
-  protected String getVersion() {
+  private String getVersion() {
     if (version == null) {
       try {
         version = metaClient.getVersion().getVersion();

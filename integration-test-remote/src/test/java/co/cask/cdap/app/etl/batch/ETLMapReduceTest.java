@@ -81,7 +81,6 @@ public class ETLMapReduceTest extends ETLTestBase {
 
   @SuppressWarnings("ConstantConditions")
   @Test
-  @Ignore
   public void testTableToTableWithValidations() throws Exception {
 
     Schema schema = Schema.recordOf(
