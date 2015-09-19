@@ -19,8 +19,13 @@ package co.cask.cdap.apps.spark.sparkpagerank;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.data2.metadata.lineage.AccessType;
+import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
+import co.cask.cdap.metadata.serialize.LineageRecord;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
@@ -33,9 +38,12 @@ import co.cask.cdap.test.StreamManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableSet;
+import com.google.gson.Gson;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -46,7 +54,7 @@ import java.util.concurrent.TimeUnit;
  * Tests the functionality of {@link SparkPageRankApp}
  */
 public class SparkPageRankAppTest extends AudiTestBase {
-
+  private static final Gson GSON = new Gson();
   private static final String URL_1 = "http://example.com/page1";
   private static final String URL_2 = "http://example.com/page2";
   private static final String URL_3 = "http://example.com/page3";
@@ -62,13 +70,15 @@ public class SparkPageRankAppTest extends AudiTestBase {
   private static final Id.Program PAGE_RANK_PROGRAM = Id.Program.from(SPARK_PAGE_RANK_APP, ProgramType.SPARK,
                                                                       SparkPageRankApp.PageRankSpark.class
                                                                         .getSimpleName());
-
+  private static final Id.DatasetInstance RANKS_DATASET = Id.DatasetInstance.from(TEST_NAMESPACE, "ranks");
+  private static final Id.DatasetInstance RANKS_COUNTS_DATASET = Id.DatasetInstance.from(TEST_NAMESPACE, "rankscount");
 
   @Test
   public void test() throws Exception {
     RESTClient restClient = getRestClient();
     final ProgramClient programClient = getProgramClient();
 
+    long startTime = System.currentTimeMillis();
     ApplicationManager applicationManager = deployApplication(SparkPageRankApp.class);
 
     // none of the programs should have any run records
@@ -105,12 +115,21 @@ public class SparkPageRankAppTest extends AudiTestBase {
     }, 60, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     pageRankManager.waitForStatus(false, 10 * 60, 1);
 
+    List<RunRecord> sparkRanRecords =
+      programClient.getProgramRuns(PAGE_RANK_PROGRAM,
+                                   ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+    Assert.assertEquals(1, sparkRanRecords.size());
 
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
     ranksCounterManager.start();
     ranksCounterManager.waitForStatus(true, 60, 1);
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
+
+    List<RunRecord> mrRanRecords =
+      programClient.getProgramRuns(RANKS_COUNTER_PROGRAM,
+                                   ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+    Assert.assertEquals(1, mrRanRecords.size());
 
     // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
@@ -132,8 +151,53 @@ public class SparkPageRankAppTest extends AudiTestBase {
     serviceManager.stop();
     serviceManager.waitForStatus(false, 60, 1);
 
+    List<RunRecord> serviceRanRecords =
+      programClient.getProgramRuns(PAGE_RANK_SERVICE,
+                                   ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+    Assert.assertEquals(1, serviceRanRecords.size());
+
+    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                   String.format("streams/%s/lineage?start=%s&end=%s",
+                                                                 SparkPageRankApp.BACKLINK_URL_STREAM,
+                                                                 startTime, Long.MAX_VALUE));
+    LineageRecord expected =
+      new LineageRecord(startTime, Long.MAX_VALUE,
+                        ImmutableSet.of(
+                          new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
+                                       RunIds.fromString(sparkRanRecords.get(0).getPid())),
+                          new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.UNKNOWN,
+                                       RunIds.fromString(sparkRanRecords.get(0).getPid())),
+                          new Relation(RANKS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
+                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+                          new Relation(RANKS_COUNTS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
+                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+                          new Relation(RANKS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
+                                       RunIds.fromString(serviceRanRecords.get(0).getPid())),
+                          new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
+                                       RunIds.fromString(serviceRanRecords.get(0).getPid()))
+                        ));
+    testLineage(url, expected);
+
+    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                   String.format("datasets/%s/lineage?start=%s&end=%s",
+                                                                 "ranks",
+                                                                 startTime, Long.MAX_VALUE));
+    testLineage(url, expected);
+
+    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
+                                                   String.format("datasets/%s/lineage?start=%s&end=%s",
+                                                                 "rankscount",
+                                                                 startTime, Long.MAX_VALUE));
+    testLineage(url, expected);
+
 
     // services should 'KILLED' state because they were explicitly stopped with a single run
     assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE);
+  }
+
+  private void testLineage(URL url, LineageRecord expected) throws IOException, UnauthorizedException {
+    HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    LineageRecord lineageRecord = GSON.fromJson(response.getResponseBodyAsString(), LineageRecord.class);
+    Assert.assertEquals(expected, lineageRecord);
   }
 }

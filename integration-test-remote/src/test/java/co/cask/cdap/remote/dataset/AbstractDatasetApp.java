@@ -61,10 +61,12 @@ public abstract class AbstractDatasetApp extends AbstractApplication<AbstractDat
 
   @Override
   public void configure() {
-    DatasetConfig config = getConfig();
+    String datasetName = getConfig().getDatasetName();
 
-    addService(new DatasetService(config.getDatasetName()));
-    createDataset(config.getDatasetName(), getDatasetClass());
+    // set the name of the application to be the same as the dataset, to avoid conflicting with other datasets' apps
+    setName(datasetName);
+    addService(new DatasetService(datasetName));
+    createDataset(datasetName, getDatasetClass());
   }
 
   public class DatasetService extends AbstractService {

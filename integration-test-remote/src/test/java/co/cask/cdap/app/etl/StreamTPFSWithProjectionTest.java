@@ -14,11 +14,11 @@
  * the License.
  */
 
-package co.cask.cdap.apps.etl;
+package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.apps.etl.dataset.DatasetAccessApp;
-import co.cask.cdap.apps.etl.dataset.TPFSService;
+import co.cask.cdap.app.etl.dataset.DatasetAccessApp;
+import co.cask.cdap.app.etl.dataset.TPFSService;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;

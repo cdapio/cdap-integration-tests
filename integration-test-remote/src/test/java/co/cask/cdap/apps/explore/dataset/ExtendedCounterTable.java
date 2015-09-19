@@ -36,12 +36,12 @@ public interface ExtendedCounterTable extends Dataset, BatchReadable<String, Lon
   class Count {
     private final String word;
     private final long count;
-    private final long timestamp;
+    private final long ts;
 
     public Count(String word, Long count, Long timestamp) {
       this.word = word;
       this.count = count;
-      this.timestamp = timestamp;
+      this.ts = timestamp;
     }
 
     @SuppressWarnings("UnusedDeclaration")
@@ -56,7 +56,7 @@ public interface ExtendedCounterTable extends Dataset, BatchReadable<String, Lon
 
     @SuppressWarnings("UnusedDeclaration")
     public long getTimestamp() {
-      return timestamp;
+      return ts;
     }
   }
 }

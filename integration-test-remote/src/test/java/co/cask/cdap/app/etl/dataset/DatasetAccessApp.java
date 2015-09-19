@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.etl.dataset;
+package co.cask.cdap.app.etl.dataset;
 
 import co.cask.cdap.api.app.AbstractApplication;
 
