@@ -22,12 +22,16 @@ import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.dataset.table.Result;
 import co.cask.cdap.api.dataset.table.Row;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.remote.dataset.TreeMapInstanceCreator;
+import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpRequests;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -47,9 +51,13 @@ public class RemoteTable extends AbstractRemoteTable {
     .create();
 
   private final URL serviceURL;
+  private final RESTClient restClient;
+  private final ClientConfig clientConfig;
 
-  public RemoteTable(URL serviceURL) {
+  public RemoteTable(URL serviceURL, RESTClient restClient, ClientConfig clientConfig) {
     this.serviceURL = serviceURL;
+    this.restClient = restClient;
+    this.clientConfig = clientConfig;
   }
 
   @Nonnull
@@ -129,9 +137,8 @@ public class RemoteTable extends AbstractRemoteTable {
   private HttpResponse doPost(String method, String json) {
     try {
       URL url = new URL(serviceURL, method);
-      HttpResponse response = HttpRequests.execute(HttpRequest.post(url).withBody(json).build());
-      Preconditions.checkState(200 == response.getResponseCode(), response.getResponseBodyAsString());
-      return response;
+      return restClient.execute(HttpMethod.POST, url, json,
+                                ImmutableMap.<String, String>of(), clientConfig.getAccessToken());
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }

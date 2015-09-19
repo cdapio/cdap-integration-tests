@@ -189,15 +189,18 @@ public class AudiTestBase extends IntegrationTestBase {
   // TODO: improve the following getXDataset methods. Eventually, move them into IntegrationTestBase.
   // Consider whether they should should have behavior of createIfNotExists.
   protected DataSetManager<Table> getTableDataset(String datasetName) throws Exception {
-    return wrap(new RemoteTable(deployServiceForDataset(TableDatasetApp.class, datasetName)));
+    return wrap(new RemoteTable(deployServiceForDataset(TableDatasetApp.class, datasetName),
+                                getRestClient(), getClientConfig()));
   }
 
   protected DataSetManager<KeyValueTable> getKVTableDataset(String datasetName) throws Exception {
-    return wrap(new RemoteKeyValueTable(deployServiceForDataset(KVTableDatasetApp.class, datasetName)));
+    return wrap(new RemoteKeyValueTable(deployServiceForDataset(KVTableDatasetApp.class, datasetName),
+                                        getRestClient(), getClientConfig()));
   }
 
   protected DataSetManager<Cube> getCubeDataset(String datasetName) throws Exception {
-    return wrap(new RemoteCube(deployServiceForDataset(CubeDatasetApp.class, datasetName)));
+    return wrap(new RemoteCube(deployServiceForDataset(CubeDatasetApp.class, datasetName),
+                               getRestClient(), getClientConfig()));
   }
 
   // ensures that the Service for the dataset is deployed and running
