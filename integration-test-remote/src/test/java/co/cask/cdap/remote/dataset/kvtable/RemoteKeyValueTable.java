@@ -24,12 +24,16 @@ import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.api.dataset.lib.KeyValue;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Table;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.remote.dataset.TreeMapInstanceCreator;
+import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpRequests;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -52,11 +56,15 @@ public class RemoteKeyValueTable extends KeyValueTable {
     .create();
 
   private final URL serviceURL;
+  private final RESTClient restClient;
+  private final ClientConfig clientConfig;
 
-  public RemoteKeyValueTable(URL serviceURL) {
+  public RemoteKeyValueTable(URL serviceURL, RESTClient restClient, ClientConfig clientConfig) {
     // fine to pass null, since we never use those fields
     super(null, null);
     this.serviceURL = serviceURL;
+    this.restClient = restClient;
+    this.clientConfig = clientConfig;
   }
 
   @Nullable
@@ -162,9 +170,8 @@ public class RemoteKeyValueTable extends KeyValueTable {
   private HttpResponse doPost(String method, String json) {
     try {
       URL url = new URL(serviceURL, method);
-      HttpResponse response = HttpRequests.execute(HttpRequest.post(url).withBody(json).build());
-      Preconditions.checkState(200 == response.getResponseCode(), response.getResponseBodyAsString());
-      return response;
+      return restClient.execute(HttpMethod.POST, url, json,
+                                ImmutableMap.<String, String>of(), clientConfig.getAccessToken());
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
