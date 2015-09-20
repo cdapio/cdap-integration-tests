@@ -78,7 +78,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     RESTClient restClient = getRestClient();
     final ProgramClient programClient = getProgramClient();
 
-    long startTime = System.currentTimeMillis();
+    long startTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
     ApplicationManager applicationManager = deployApplication(SparkPageRankApp.class);
 
     // none of the programs should have any run records
@@ -156,12 +156,14 @@ public class SparkPageRankAppTest extends AudiTestBase {
                                    ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
     Assert.assertEquals(1, serviceRanRecords.size());
 
+    long endTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + 100;
+
     url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
                                                    String.format("streams/%s/lineage?start=%s&end=%s",
                                                                  SparkPageRankApp.BACKLINK_URL_STREAM,
-                                                                 startTime, Long.MAX_VALUE));
+                                                                 startTimeSecs, endTimeSecs));
     LineageRecord expected =
-      new LineageRecord(startTime, Long.MAX_VALUE,
+      new LineageRecord(startTimeSecs, endTimeSecs,
                         ImmutableSet.of(
                           new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
                                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
@@ -181,13 +183,13 @@ public class SparkPageRankAppTest extends AudiTestBase {
     url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
                                                    String.format("datasets/%s/lineage?start=%s&end=%s",
                                                                  "ranks",
-                                                                 startTime, Long.MAX_VALUE));
+                                                                 startTimeSecs, endTimeSecs));
     testLineage(url, expected);
 
     url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
                                                    String.format("datasets/%s/lineage?start=%s&end=%s",
                                                                  "rankscount",
-                                                                 startTime, Long.MAX_VALUE));
+                                                                 startTimeSecs, endTimeSecs));
     testLineage(url, expected);
 
 
