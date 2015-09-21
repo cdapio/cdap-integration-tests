@@ -18,7 +18,6 @@ package co.cask.cdap.apps.spark.sparkpagerank;
 
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.Tasks;
@@ -35,6 +34,10 @@ import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.StreamManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.CDH52Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
+import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -42,6 +45,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -53,6 +57,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests the functionality of {@link SparkPageRankApp}
  */
+@Category({
+  HDP20Incompatible.class,
+  HDP21Incompatible.class,
+  CDH51Incompatible.class,
+  CDH52Incompatible.class
+})
 public class SparkPageRankAppTest extends AudiTestBase {
   private static final Gson GSON = new Gson();
   private static final String URL_1 = "http://example.com/page1";
@@ -75,7 +85,6 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
   @Test
   public void test() throws Exception {
-    RESTClient restClient = getRestClient();
     final ProgramClient programClient = getProgramClient();
 
     long startTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());

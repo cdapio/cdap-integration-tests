@@ -33,10 +33,18 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.TestConfiguration;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.CDH52Incompatible;
+import co.cask.cdap.test.suite.category.CDH53Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
+import co.cask.cdap.test.suite.category.HDP21Incompatible;
+import co.cask.cdap.test.suite.category.HDP22Incompatible;
+import co.cask.cdap.test.suite.category.HDP23Incompatible;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -46,6 +54,15 @@ import javax.annotation.Nullable;
 /**
  * Test for {@link WikipediaPipelineApp}.
  */
+@Category({
+  HDP20Incompatible.class,
+  HDP21Incompatible.class,
+  HDP22Incompatible.class,
+  HDP23Incompatible.class,
+  CDH51Incompatible.class,
+  CDH52Incompatible.class,
+  CDH53Incompatible.class
+})
 public class WorkflowTest extends AudiTestBase {
   @ClassRule
   public static final TestConfiguration CONFIG = new TestConfiguration("explore.enabled", false);
