@@ -34,6 +34,8 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -41,6 +43,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,11 +89,6 @@ public class ExploreTest extends AudiTestBase {
     testCheckKVTable();
     LOG.info("Testing stream query.");
     testStreamQuery();
-
-    // Hive 0.12 doesn't support subqueries in the WHERE clause
-    // TODO: run only when running against Hive >=0.13
-    LOG.info("Testing subquery in where clause.");
-    testSubqueryInWhereClause();
   }
 
   private void testInsertQuery() throws Exception {
@@ -556,7 +554,15 @@ public class ExploreTest extends AudiTestBase {
     Assert.assertEquals(2, resultSchema.get(1).getPosition());
   }
 
-  private void testSubqueryInWhereClause() throws Exception {
+  @Test
+  @Category({HDP20Incompatible.class, CDH51Incompatible.class})
+  public void testSubqueryInWhereClause() throws Exception {
+    // Have to send input data all over again, because IntegrationTestBase methods are not static, so cannot be
+    // run in @BeforeClass.
+    LOG.info("Sending input data.");
+    sendInputData();
+
+    LOG.info("Testing subquery in where clause.");
     QueryClient client = new QueryClient(getClientConfig());
     String subquery = "select key from dataset_kvtable t2 where t1.word = t2.key";
     ExploreExecutionResult results = client.execute(
