@@ -33,6 +33,7 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import com.google.common.base.Throwables;
+import org.junit.Before;
 
 import java.io.IOException;
 
@@ -48,19 +49,18 @@ public abstract class ETLTestBase extends AudiTestBase {
     Schema.Field.of("num", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
 
-  protected final ETLStageProvider etlStageProvider;
-  protected final StreamClient streamClient;
-  protected final MetaClient metaClient;
-  protected final ApplicationClient appClient;
-  protected final DatasetClient datasetClient;
+  protected ETLStageProvider etlStageProvider;
+  protected StreamClient streamClient;
+  protected ApplicationClient appClient;
+  protected DatasetClient datasetClient;
   protected String version;
 
-  protected ETLTestBase() {
-    appClient = new ApplicationClient(getClientConfig(), getRestClient());
-    datasetClient = new DatasetClient(getClientConfig(), getRestClient());
+  @Before
+  public void setup() {
+    appClient = getApplicationClient();
+    datasetClient = getDatasetClient();
     etlStageProvider = new ETLStageProvider();
     streamClient = getStreamClient();
-    metaClient = new MetaClient(getClientConfig(), getRestClient());
   }
 
   protected AppRequest<ETLBatchConfig> getBatchAppRequest(ETLBatchConfig config)
@@ -76,7 +76,7 @@ public abstract class ETLTestBase extends AudiTestBase {
   private String getVersion() {
     if (version == null) {
       try {
-        version = metaClient.getVersion().getVersion();
+        version = getMetaClient().getVersion().getVersion();
       } catch (Exception e) {
         Throwables.propagate(e);
       }
