@@ -130,9 +130,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     pageRankManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> sparkRanRecords =
-      programClient.getProgramRuns(PAGE_RANK_PROGRAM,
-                                   ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(1, sparkRanRecords.size());
+      getRunRecords(1, programClient, PAGE_RANK_PROGRAM,
+                    ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE);
 
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
@@ -141,9 +140,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> mrRanRecords =
-      programClient.getProgramRuns(RANKS_COUNTER_PROGRAM,
-                                   ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(1, mrRanRecords.size());
+      getRunRecords(1, programClient, RANKS_COUNTER_PROGRAM,
+                    ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE);
 
     // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
@@ -166,9 +164,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     serviceManager.waitForStatus(false, 60, 1);
 
     List<RunRecord> serviceRanRecords =
-      programClient.getProgramRuns(PAGE_RANK_SERVICE,
-                                   ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(1, serviceRanRecords.size());
+      getRunRecords(1, programClient, PAGE_RANK_SERVICE,
+                    ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE);
 
     long endTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + 100;
 

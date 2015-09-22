@@ -107,10 +107,8 @@ public class PurchaseLineageTest extends AudiTestBase {
     Id.DatasetInstance dataset = Id.DatasetInstance.from(TEST_NAMESPACE, "purchases");
     Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, streamName);
 
-    List<RunRecord> ranRecords =
-      programClient.getProgramRuns(PURCHASE_FLOW,
-                                   ProgramRunStatus.RUNNING.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(1, ranRecords.size());
+    List<RunRecord> ranRecords = getRunRecords(1, programClient, PURCHASE_FLOW,
+                                               ProgramRunStatus.RUNNING.name(), 0, endTime);
 
     // check stream lineage
     LineageRecord expected =
@@ -158,15 +156,11 @@ public class PurchaseLineageTest extends AudiTestBase {
     String firstServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
     Id.DatasetInstance historyDs = Id.DatasetInstance.from(TEST_NAMESPACE, "history");
-    List<RunRecord> mrRanRecords =
-      programClient.getProgramRuns(PURCHASE_HISTORY_BUILDER,
-                                   ProgramRunStatus.COMPLETED.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(1, mrRanRecords.size());
+    List<RunRecord> mrRanRecords = getRunRecords(1, programClient, PURCHASE_HISTORY_BUILDER,
+                                                 ProgramRunStatus.COMPLETED.name(), 0, endTime);
 
-    List<RunRecord> serviceRuns =
-      programClient.getProgramRuns(PURCHASE_HISTORY_SERVICE,
-                                   ProgramRunStatus.KILLED.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(1, serviceRuns.size());
+    List<RunRecord> serviceRuns = getRunRecords(1, programClient, PURCHASE_HISTORY_SERVICE,
+                                                ProgramRunStatus.KILLED.name(), 0, endTime);
 
     // lineage will have mapreduce and service relations now.
     expected =
@@ -202,9 +196,8 @@ public class PurchaseLineageTest extends AudiTestBase {
 
     String secondServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
-    serviceRuns = programClient.getProgramRuns(PURCHASE_HISTORY_SERVICE,
-                                               ProgramRunStatus.KILLED.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(2, serviceRuns.size());
+    serviceRuns = getRunRecords(2, programClient, PURCHASE_HISTORY_SERVICE,
+                                ProgramRunStatus.KILLED.name(), 0, endTime);
 
     expected =
       LineageSerializer.toLineageRecord(
@@ -381,9 +374,8 @@ public class PurchaseLineageTest extends AudiTestBase {
     retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build(),
                    120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
-    List<RunRecord> runRecords =
-      getProgramClient().getProgramRuns(PURCHASE_HISTORY_SERVICE, ProgramRunStatus.RUNNING.name(), 0,
-                                        Long.MAX_VALUE, Integer.MAX_VALUE);
+    List<RunRecord> runRecords = getRunRecords(1, getProgramClient(), PURCHASE_HISTORY_SERVICE,
+                                               ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
 
     Assert.assertEquals(1, runRecords.size());
     purchaseHistoryService.stop();

@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -131,6 +132,23 @@ public class AudiTestBase extends IntegrationTestBase {
     MetricQueryResult.TimeValue[] timeValues = series[0].getData();
     Preconditions.checkState(timeValues.length == 1, "Metric TimeValues has more than one TimeValue: {}", timeValues);
     return timeValues[0].getValue();
+  }
+
+  protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final Id.Program program,
+                                        final String status, final long startTime, final long endTime)
+    throws Exception {
+    final List<RunRecord> runRecords = new ArrayList<>();
+    // Tasks.waitFor can be removed when CDAP-3656 is fixed
+    Tasks.waitFor(expectedSize, new Callable<Integer>() {
+      @Override
+      public Integer call() throws Exception {
+        runRecords.clear();
+        runRecords.addAll(
+          programClient.getProgramRuns(program, status, startTime, endTime, Integer.MAX_VALUE));
+        return runRecords.size();
+      }
+    }, 30, TimeUnit.SECONDS, 10, TimeUnit.MILLISECONDS);
+    return runRecords;
   }
 
   // {@param} expectedStatus can be null if count is 0
@@ -225,6 +243,7 @@ public class AudiTestBase extends IntegrationTestBase {
   // wraps a Dataset within a DatasetManager
   private <T> DataSetManager<T> wrap(final Dataset dataset) {
     return new DataSetManager<T>() {
+      @SuppressWarnings("unchecked")
       @Override
       public T get() {
         return (T) dataset;
