@@ -33,7 +33,6 @@ import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
-import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.MapReduceManager;
@@ -260,7 +259,7 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                                            "service*", "PROGRAM"));
     Set<MetadataSearchResultRecord> expectedSearchResults =
       ImmutableSet.of(
-        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE, MetadataSearchTargetType.PROGRAM)
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE)
       );
 
     verifySearchResult(searchURL, expectedSearchResults);
@@ -276,8 +275,8 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                                        "spKey1:sp*", "ALL"));
     expectedSearchResults =
       ImmutableSet.of(
-        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE, MetadataSearchTargetType.PROGRAM),
-        new MetadataSearchResultRecord(PURCHASE_APP, MetadataSearchTargetType.APP)
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE),
+        new MetadataSearchResultRecord(PURCHASE_APP)
       );
 
     verifySearchResult(searchURL, expectedSearchResults);
