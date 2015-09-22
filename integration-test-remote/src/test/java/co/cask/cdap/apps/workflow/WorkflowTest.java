@@ -31,11 +31,9 @@ import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.WorkflowTokenNodeDetail;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
-import co.cask.cdap.test.TestConfiguration;
 import co.cask.cdap.test.WorkflowManager;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
-import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.List;
@@ -47,9 +45,6 @@ import javax.annotation.Nullable;
  * Test for {@link WikipediaPipelineApp}.
  */
 public class WorkflowTest extends AudiTestBase {
-  @ClassRule
-  public static final TestConfiguration CONFIG = new TestConfiguration("explore.enabled", false);
-
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(WikipediaPipelineApp.class);
