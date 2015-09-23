@@ -96,7 +96,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(SparkPageRankApp.class);
 
     // none of the programs should have any run records
-    assertRuns(0, programClient, null, PAGE_RANK_SERVICE, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
+    assertRuns(0, programClient, ProgramRunStatus.ALL, PAGE_RANK_SERVICE, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
 
     StreamManager backlinkURLStream = getTestManager().getStreamManager(STREAM);
     backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_2));

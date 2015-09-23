@@ -151,11 +151,11 @@ public class AudiTestBase extends IntegrationTestBase {
     return runRecords;
   }
 
-  // {@param} expectedStatus can be null if count is 0
   protected void assertRuns(int count, ProgramClient programClient,
-                            @Nullable ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
+                            ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
     for (Id.Program programId : programIds) {
-      List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+      List<RunRecord> runRecords =
+        getRunRecords(count, programClient, programId, expectedStatus.name(), 0, Long.MAX_VALUE);
       Assert.assertEquals(count, runRecords.size());
       for (RunRecord runRecord : runRecords) {
         Assert.assertEquals(expectedStatus, runRecord.getStatus());
