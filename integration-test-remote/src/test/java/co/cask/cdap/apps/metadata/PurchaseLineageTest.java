@@ -22,9 +22,10 @@ import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
+import co.cask.cdap.data2.metadata.lineage.Lineage;
+import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
 import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.purchase.PurchaseApp;
-import co.cask.cdap.metadata.serialize.LineageRecord;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
@@ -33,7 +34,7 @@ import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
-import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
+import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.MapReduceManager;
@@ -91,7 +92,7 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                        String.format("streams/%s/lineage?start=%s&end=%s",
                                                                      streamName, startTime, endTime));
 
-    testLineage(url, new LineageRecord(startTime, endTime, ImmutableSet.<Relation>of()));
+    testLineage(url, LineageSerializer.toLineageRecord(startTime, endTime, new Lineage(ImmutableSet.<Relation>of())));
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
@@ -106,23 +107,22 @@ public class PurchaseLineageTest extends AudiTestBase {
     Id.DatasetInstance dataset = Id.DatasetInstance.from(TEST_NAMESPACE, "purchases");
     Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, streamName);
 
-    List<RunRecord> ranRecords =
-      programClient.getProgramRuns(PURCHASE_FLOW,
-                                   ProgramRunStatus.RUNNING.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(1, ranRecords.size());
+    List<RunRecord> ranRecords = getRunRecords(1, programClient, PURCHASE_FLOW,
+                                               ProgramRunStatus.RUNNING.name(), 0, endTime);
 
     // check stream lineage
     LineageRecord expected =
-      new LineageRecord(startTime, endTime,
-                        ImmutableSet.of(
-                          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
-                                       RunIds.fromString(ranRecords.get(0).getPid()),
-                                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
+      LineageSerializer.toLineageRecord(
+        startTime, endTime,
+        new Lineage(ImmutableSet.of(
+          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
+                       RunIds.fromString(ranRecords.get(0).getPid()),
+                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
 
-                          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
-                                       RunIds.fromString(ranRecords.get(0).getPid()),
-                                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader")))
-                        ));
+          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
+                       RunIds.fromString(ranRecords.get(0).getPid()),
+                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader")))
+        )));
     testLineage(url, expected);
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getId());
@@ -156,33 +156,33 @@ public class PurchaseLineageTest extends AudiTestBase {
     String firstServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
     Id.DatasetInstance historyDs = Id.DatasetInstance.from(TEST_NAMESPACE, "history");
-    List<RunRecord> mrRanRecords =
-      programClient.getProgramRuns(PURCHASE_HISTORY_BUILDER,
-                                   ProgramRunStatus.COMPLETED.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(1, mrRanRecords.size());
+    List<RunRecord> mrRanRecords = getRunRecords(1, programClient, PURCHASE_HISTORY_BUILDER,
+                                                 ProgramRunStatus.COMPLETED.name(), 0, endTime);
 
-    List<RunRecord> serviceRuns =
-      programClient.getProgramRuns(PURCHASE_HISTORY_SERVICE,
-                                   ProgramRunStatus.KILLED.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(1, serviceRuns.size());
+    List<RunRecord> serviceRuns = getRunRecords(1, programClient, PURCHASE_HISTORY_SERVICE,
+                                                ProgramRunStatus.KILLED.name(), 0, endTime);
 
     // lineage will have mapreduce and service relations now.
     expected =
-      new LineageRecord(startTime, endTime,
-                        ImmutableSet.of(
-                          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
-                                       RunIds.fromString(ranRecords.get(0).getPid()),
-                                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
-                          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
-                                       RunIds.fromString(ranRecords.get(0).getPid()),
-                                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
-                          new Relation(historyDs, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
-                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-                          new Relation(dataset, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
-                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-                          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
-                                       RunIds.fromString(serviceRuns.get(0).getPid()))
-                        ));
+      // When CDAP-3657 is fixed, we will no longer need to use LineageSerializer for serializing.
+      // Instead we can direclty use Id.toString() to get the program and data keys.
+      LineageSerializer.toLineageRecord(
+        startTime,
+        endTime,
+        new Lineage(ImmutableSet.of(
+          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
+                       RunIds.fromString(ranRecords.get(0).getPid()),
+                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
+          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
+                       RunIds.fromString(ranRecords.get(0).getPid()),
+                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
+          new Relation(historyDs, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(dataset, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+                       RunIds.fromString(serviceRuns.get(0).getPid()))
+        )));
 
     testLineage(url, expected);
 
@@ -196,29 +196,30 @@ public class PurchaseLineageTest extends AudiTestBase {
 
     String secondServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
-    serviceRuns = programClient.getProgramRuns(PURCHASE_HISTORY_SERVICE,
-                                               ProgramRunStatus.KILLED.name(), 0, endTime, Integer.MAX_VALUE);
-    Assert.assertEquals(2, serviceRuns.size());
+    serviceRuns = getRunRecords(2, programClient, PURCHASE_HISTORY_SERVICE,
+                                ProgramRunStatus.KILLED.name(), 0, endTime);
 
     expected =
-      new LineageRecord(startTime, endTime,
-                        ImmutableSet.of(
-                          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
-                                       RunIds.fromString(ranRecords.get(0).getPid()),
-                                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
-                          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
-                                       RunIds.fromString(ranRecords.get(0).getPid()),
-                                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
-                          new Relation(historyDs, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
-                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-                          new Relation(dataset, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
-                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-                          // TODO : After CDAP-3623, the following will become one entry with runids in the set.
-                          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
-                                       RunIds.fromString(serviceRuns.get(0).getPid())),
-                          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
-                                       RunIds.fromString(serviceRuns.get(1).getPid()))
-                        ));
+      LineageSerializer.toLineageRecord(
+        startTime,
+        endTime,
+        new Lineage(ImmutableSet.of(
+          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
+                       RunIds.fromString(ranRecords.get(0).getPid()),
+                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
+          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
+                       RunIds.fromString(ranRecords.get(0).getPid()),
+                       ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
+          new Relation(historyDs, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(dataset, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          // TODO : After CDAP-3623, the following will become one entry with runids in the set.
+          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+                       RunIds.fromString(serviceRuns.get(0).getPid())),
+          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+                       RunIds.fromString(serviceRuns.get(1).getPid()))
+        )));
 
     testLineage(url, expected);
 
@@ -260,7 +261,7 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                                            "service*", "PROGRAM"));
     Set<MetadataSearchResultRecord> expectedSearchResults =
       ImmutableSet.of(
-        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE, MetadataSearchTargetType.PROGRAM)
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE)
       );
 
     verifySearchResult(searchURL, expectedSearchResults);
@@ -276,8 +277,8 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                                        "spKey1:sp*", "ALL"));
     expectedSearchResults =
       ImmutableSet.of(
-        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE, MetadataSearchTargetType.PROGRAM),
-        new MetadataSearchResultRecord(PURCHASE_APP, MetadataSearchTargetType.APP)
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE),
+        new MetadataSearchResultRecord(PURCHASE_APP)
       );
 
     verifySearchResult(searchURL, expectedSearchResults);
@@ -373,9 +374,8 @@ public class PurchaseLineageTest extends AudiTestBase {
     retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build(),
                    120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
-    List<RunRecord> runRecords =
-      getProgramClient().getProgramRuns(PURCHASE_HISTORY_SERVICE, ProgramRunStatus.RUNNING.name(), 0,
-                                        Long.MAX_VALUE, Integer.MAX_VALUE);
+    List<RunRecord> runRecords = getRunRecords(1, getProgramClient(), PURCHASE_HISTORY_SERVICE,
+                                               ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
 
     Assert.assertEquals(1, runRecords.size());
     purchaseHistoryService.stop();

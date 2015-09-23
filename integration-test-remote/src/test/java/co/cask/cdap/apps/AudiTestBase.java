@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -133,11 +134,28 @@ public class AudiTestBase extends IntegrationTestBase {
     return timeValues[0].getValue();
   }
 
-  // {@param} expectedStatus can be null if count is 0
+  protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final Id.Program program,
+                                        final String status, final long startTime, final long endTime)
+    throws Exception {
+    final List<RunRecord> runRecords = new ArrayList<>();
+    // Tasks.waitFor can be removed when CDAP-3656 is fixed
+    Tasks.waitFor(expectedSize, new Callable<Integer>() {
+      @Override
+      public Integer call() throws Exception {
+        runRecords.clear();
+        runRecords.addAll(
+          programClient.getProgramRuns(program, status, startTime, endTime, Integer.MAX_VALUE));
+        return runRecords.size();
+      }
+    }, 30, TimeUnit.SECONDS, 10, TimeUnit.MILLISECONDS);
+    return runRecords;
+  }
+
   protected void assertRuns(int count, ProgramClient programClient,
-                            @Nullable ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
+                            ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
     for (Id.Program programId : programIds) {
-      List<RunRecord> runRecords = programClient.getAllProgramRuns(programId, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+      List<RunRecord> runRecords =
+        getRunRecords(count, programClient, programId, expectedStatus.name(), 0, Long.MAX_VALUE);
       Assert.assertEquals(count, runRecords.size());
       for (RunRecord runRecord : runRecords) {
         Assert.assertEquals(expectedStatus, runRecord.getStatus());
@@ -225,6 +243,7 @@ public class AudiTestBase extends IntegrationTestBase {
   // wraps a Dataset within a DatasetManager
   private <T> DataSetManager<T> wrap(final Dataset dataset) {
     return new DataSetManager<T>() {
+      @SuppressWarnings("unchecked")
       @Override
       public T get() {
         return (T) dataset;

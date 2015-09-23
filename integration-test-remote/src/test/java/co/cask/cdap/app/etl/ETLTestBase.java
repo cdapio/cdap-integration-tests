@@ -21,11 +21,13 @@ import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ApplicationClient;
+import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.MetaClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.realtime.ETLRealtimeApplication;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
@@ -36,6 +38,10 @@ import com.google.common.base.Throwables;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * An abstract class for writing etl integration tests. Tests for etl should extend this class.
@@ -53,24 +59,39 @@ public abstract class ETLTestBase extends AudiTestBase {
   protected StreamClient streamClient;
   protected ApplicationClient appClient;
   protected DatasetClient datasetClient;
+  protected ArtifactClient artifactClient;
   protected String version;
 
   @Before
-  public void setup() {
+  public void setup() throws InterruptedException, ExecutionException, TimeoutException {
     appClient = getApplicationClient();
     datasetClient = getDatasetClient();
     etlStageProvider = new ETLStageProvider();
     streamClient = getStreamClient();
+    artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
+
+    version = getVersion();
+    final Id.Artifact batchId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-batch", version);
+    final Id.Artifact realtimeId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-realtime", version);
+
+    // wait until we see extensions for cdap-etl-batch and cdap-etl-realtime
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        return !artifactClient.getPluginTypes(batchId, ArtifactScope.SYSTEM).isEmpty() &&
+          !artifactClient.getPluginTypes(realtimeId, ArtifactScope.SYSTEM).isEmpty();
+      }
+    }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
   }
 
   protected AppRequest<ETLBatchConfig> getBatchAppRequest(ETLBatchConfig config)
     throws IOException, UnauthorizedException {
-    return new AppRequest<>(new ArtifactSummary("cdap-etl-batch", getVersion(), ArtifactScope.SYSTEM), config);
+    return new AppRequest<>(new ArtifactSummary("cdap-etl-batch", version, ArtifactScope.SYSTEM), config);
   }
 
   protected AppRequest<ETLRealtimeConfig> getRealtimeAppRequest(ETLRealtimeConfig config)
     throws IOException, UnauthorizedException {
-    return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", getVersion(), ArtifactScope.SYSTEM), config);
+    return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", version, ArtifactScope.SYSTEM), config);
   }
 
   private String getVersion() {
