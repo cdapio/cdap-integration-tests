@@ -22,14 +22,16 @@ import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
+import co.cask.cdap.data2.metadata.lineage.Lineage;
+import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
 import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
-import co.cask.cdap.metadata.serialize.LineageRecord;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
+import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
@@ -128,9 +130,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     pageRankManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> sparkRanRecords =
-      programClient.getProgramRuns(PAGE_RANK_PROGRAM,
-                                   ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(1, sparkRanRecords.size());
+      getRunRecords(1, programClient, PAGE_RANK_PROGRAM,
+                    ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE);
 
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
@@ -139,9 +140,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> mrRanRecords =
-      programClient.getProgramRuns(RANKS_COUNTER_PROGRAM,
-                                   ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(1, mrRanRecords.size());
+      getRunRecords(1, programClient, RANKS_COUNTER_PROGRAM,
+                    ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE);
 
     // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
@@ -164,9 +164,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     serviceManager.waitForStatus(false, 60, 1);
 
     List<RunRecord> serviceRanRecords =
-      programClient.getProgramRuns(PAGE_RANK_SERVICE,
-                                   ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    Assert.assertEquals(1, serviceRanRecords.size());
+      getRunRecords(1, programClient, PAGE_RANK_SERVICE,
+                    ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE);
 
     long endTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + 100;
 
@@ -175,21 +174,25 @@ public class SparkPageRankAppTest extends AudiTestBase {
                                                                  SparkPageRankApp.BACKLINK_URL_STREAM,
                                                                  startTimeSecs, endTimeSecs));
     LineageRecord expected =
-      new LineageRecord(startTimeSecs, endTimeSecs,
-                        ImmutableSet.of(
-                          new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
-                                       RunIds.fromString(sparkRanRecords.get(0).getPid())),
-                          new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.UNKNOWN,
-                                       RunIds.fromString(sparkRanRecords.get(0).getPid())),
-                          new Relation(RANKS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
-                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-                          new Relation(RANKS_COUNTS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
-                                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-                          new Relation(RANKS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
-                                       RunIds.fromString(serviceRanRecords.get(0).getPid())),
-                          new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
-                                       RunIds.fromString(serviceRanRecords.get(0).getPid()))
-                        ));
+      // When CDAP-3657 is fixed, we will no longer need to use LineageSerializer for serializing.
+      // Instead we can direclty use Id.toString() to get the program and data keys.
+      LineageSerializer.toLineageRecord(
+        startTimeSecs,
+        endTimeSecs,
+        new Lineage(ImmutableSet.of(
+          new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
+                       RunIds.fromString(sparkRanRecords.get(0).getPid())),
+          new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.UNKNOWN,
+                       RunIds.fromString(sparkRanRecords.get(0).getPid())),
+          new Relation(RANKS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(RANKS_COUNTS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(RANKS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
+                       RunIds.fromString(serviceRanRecords.get(0).getPid())),
+          new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
+                       RunIds.fromString(serviceRanRecords.get(0).getPid()))
+        )));
     testLineage(url, expected);
 
     url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
