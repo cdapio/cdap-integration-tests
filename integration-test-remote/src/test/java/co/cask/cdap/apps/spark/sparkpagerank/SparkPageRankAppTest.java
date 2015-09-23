@@ -17,8 +17,8 @@
 package co.cask.cdap.apps.spark.sparkpagerank;
 
 import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.apps.metadata.LineageClient;
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
@@ -30,7 +30,6 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
@@ -45,13 +44,10 @@ import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -68,8 +64,6 @@ import java.util.concurrent.TimeUnit;
   CDH52Incompatible.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
-  private static final Gson GSON = new GsonBuilder().
-    registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec()).create();
   private static final String URL_1 = "http://example.com/page1";
   private static final String URL_2 = "http://example.com/page2";
   private static final String URL_3 = "http://example.com/page3";
@@ -77,14 +71,13 @@ public class SparkPageRankAppTest extends AudiTestBase {
   private static final String TOTAL_PAGES = "1";
 
   private static final Id.Application SPARK_PAGE_RANK_APP = Id.Application.from(TEST_NAMESPACE, "SparkPageRank");
-  private static final Id.Stream STREAM = Id.Stream.from(TEST_NAMESPACE, SparkPageRankApp.BACKLINK_URL_STREAM);
+  private static final Id.Stream URL_STREAM = Id.Stream.from(TEST_NAMESPACE, SparkPageRankApp.BACKLINK_URL_STREAM);
   private static final Id.Service PAGE_RANK_SERVICE = Id.Service.from(
     SPARK_PAGE_RANK_APP, SparkPageRankApp.SERVICE_HANDLERS);
   private static final Id.Program RANKS_COUNTER_PROGRAM = Id.Program.from(
     SPARK_PAGE_RANK_APP, ProgramType.MAPREDUCE, SparkPageRankApp.RanksCounter.class.getSimpleName());
-  private static final Id.Program PAGE_RANK_PROGRAM = Id.Program.from(SPARK_PAGE_RANK_APP, ProgramType.SPARK,
-                                                                      SparkPageRankApp.PageRankSpark.class
-                                                                        .getSimpleName());
+  private static final Id.Program PAGE_RANK_PROGRAM =
+    Id.Program.from(SPARK_PAGE_RANK_APP, ProgramType.SPARK, SparkPageRankApp.PageRankSpark.class.getSimpleName());
   private static final Id.DatasetInstance RANKS_DATASET = Id.DatasetInstance.from(TEST_NAMESPACE, "ranks");
   private static final Id.DatasetInstance RANKS_COUNTS_DATASET = Id.DatasetInstance.from(TEST_NAMESPACE, "rankscount");
 
@@ -98,7 +91,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // none of the programs should have any run records
     assertRuns(0, programClient, null, PAGE_RANK_SERVICE, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
 
-    StreamManager backlinkURLStream = getTestManager().getStreamManager(STREAM);
+    StreamManager backlinkURLStream = getTestManager().getStreamManager(URL_STREAM);
     backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_2));
     backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_3));
     backlinkURLStream.send(Joiner.on(" ").join(URL_2, URL_1));
@@ -169,10 +162,6 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
     long endTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + 100;
 
-    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
-                                                   String.format("streams/%s/lineage?start=%s&end=%s",
-                                                                 SparkPageRankApp.BACKLINK_URL_STREAM,
-                                                                 startTimeSecs, endTimeSecs));
     LineageRecord expected =
       // When CDAP-3657 is fixed, we will no longer need to use LineageSerializer for serializing.
       // Instead we can direclty use Id.toString() to get the program and data keys.
@@ -180,7 +169,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
         startTimeSecs,
         endTimeSecs,
         new Lineage(ImmutableSet.of(
-          new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
+          new Relation(URL_STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
           new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.UNKNOWN,
                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
@@ -193,28 +182,18 @@ public class SparkPageRankAppTest extends AudiTestBase {
           new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRanRecords.get(0).getPid()))
         )));
-    testLineage(url, expected);
 
-    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
-                                                   String.format("datasets/%s/lineage?start=%s&end=%s",
-                                                                 "ranks",
-                                                                 startTimeSecs, endTimeSecs));
-    testLineage(url, expected);
+    LineageClient lineageClient = getLineageClient();
+    Assert.assertEquals(expected,
+                        lineageClient.getStreamLineage(URL_STREAM, startTimeSecs, endTimeSecs));
 
-    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
-                                                   String.format("datasets/%s/lineage?start=%s&end=%s",
-                                                                 "rankscount",
-                                                                 startTimeSecs, endTimeSecs));
-    testLineage(url, expected);
+    Assert.assertEquals(expected,
+                        lineageClient.getDatasetLineage(RANKS_DATASET, startTimeSecs, endTimeSecs));
 
+    Assert.assertEquals(expected,
+                        lineageClient.getDatasetLineage(RANKS_COUNTS_DATASET, startTimeSecs, endTimeSecs));
 
-    // services should 'KILLED' state because they were explicitly stopped with a single run
+    // services' run records should have 'KILLED' state because they were explicitly stopped
     assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE);
-  }
-
-  private void testLineage(URL url, LineageRecord expected) throws IOException, UnauthorizedException {
-    HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
-    LineageRecord lineageRecord = GSON.fromJson(response.getResponseBodyAsString(), LineageRecord.class);
-    Assert.assertEquals(expected, lineageRecord);
   }
 }

@@ -24,6 +24,8 @@ import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.lib.cube.Cube;
 import co.cask.cdap.api.dataset.table.Table;
+import co.cask.cdap.apps.metadata.LineageClient;
+import co.cask.cdap.apps.metadata.MetadataClient;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
@@ -83,6 +85,14 @@ public class AudiTestBase extends IntegrationTestBase {
   @Override
   protected RESTClient getRestClient() {
     return restClient;
+  }
+
+  protected MetadataClient getMetadataClient() {
+    return new MetadataClient(getClientConfig(), getRestClient());
+  }
+
+  protected LineageClient getLineageClient() {
+    return new LineageClient(getClientConfig(), getRestClient());
   }
 
   // constructs a RestClient with logging upon each request

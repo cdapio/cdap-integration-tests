@@ -29,6 +29,7 @@ import co.cask.cdap.apps.NamespacedStreamTest;
 import co.cask.cdap.apps.StreamTest;
 import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
+import co.cask.cdap.apps.metadata.MetadataTest;
 import co.cask.cdap.apps.metadata.PurchaseLineageTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
@@ -47,29 +48,30 @@ import org.junit.runners.Suite;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+  ApplicationTest.class,
   BatchCubeSinkTest.class,
   ETLMapReduceTest.class,
-  KVTableWithProjectionTest.class,
   ETLWorkerTest.class,
-  RealtimeCubeSinkTest.class,
-  StreamTPFSWithProjectionTest.class,
-  ApplicationTest.class,
+  KVTableWithProjectionTest.class,
   DatasetTest.class,
   ExploreTest.class,
   FileSetTest.class,
-  PurchaseLineageTest.class,
+  MetadataTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
   PurchaseAudiTest.class,
-  StreamSchedulerTest.class,
-  ServiceWorkerTest.class,
-  SparkPageRankAppTest.class,
-  StreamTest.class,
-  WordCountTest.class,
-  WorkflowTest.class,
+  PurchaseLineageTest.class,
+  RealtimeCubeSinkTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
-  RemoteTableTest.class
+  RemoteTableTest.class,
+  ServiceWorkerTest.class,
+  SparkPageRankAppTest.class,
+  StreamSchedulerTest.class,
+  StreamTest.class,
+  StreamTPFSWithProjectionTest.class,
+  WordCountTest.class,
+  WorkflowTest.class
 })
 public class AllTests {
 }
