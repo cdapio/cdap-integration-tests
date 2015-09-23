@@ -78,8 +78,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
 
     // none of the programs should have any run records
-    assertRuns(0, programClient, null, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE, PURCHASE_USER_PROFILE_SERVICE,
-               PURCHASE_HISTORY_WORKFLOW);
+    assertRuns(0, programClient, ProgramRunStatus.ALL, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE,
+               PURCHASE_USER_PROFILE_SERVICE, PURCHASE_HISTORY_WORKFLOW);
 
     // PurchaseHistoryWorkflow should have two schedules in suspended state
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);

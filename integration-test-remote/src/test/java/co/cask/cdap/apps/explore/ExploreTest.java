@@ -64,8 +64,6 @@ public class ExploreTest extends AudiTestBase {
     LOG.info("Sending input data.");
     sendInputData();
 
-    LOG.info("Testing insert query.");
-    testInsertQuery();
     LOG.info("Testing equality join.");
     testEqualityJoin();
     LOG.info("Testing left outer join.");
@@ -89,6 +87,9 @@ public class ExploreTest extends AudiTestBase {
     testCheckKVTable();
     LOG.info("Testing stream query.");
     testStreamQuery();
+    // TODO: Move to the beginning when https://issues.cask.co/browse/CDAP-3757 is fixed
+    LOG.info("Testing insert query.");
+    testInsertQuery();
   }
 
   private void testInsertQuery() throws Exception {
