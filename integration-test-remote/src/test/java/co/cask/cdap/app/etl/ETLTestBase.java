@@ -23,13 +23,12 @@ import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
-import co.cask.cdap.client.MetaClient;
 import co.cask.cdap.client.StreamClient;
+import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
-import co.cask.cdap.etl.realtime.ETLRealtimeApplication;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
@@ -78,8 +77,13 @@ public abstract class ETLTestBase extends AudiTestBase {
     Tasks.waitFor(true, new Callable<Boolean>() {
       @Override
       public Boolean call() throws Exception {
-        return !artifactClient.getPluginTypes(batchId, ArtifactScope.SYSTEM).isEmpty() &&
-          !artifactClient.getPluginTypes(realtimeId, ArtifactScope.SYSTEM).isEmpty();
+        try {
+          return !artifactClient.getPluginTypes(batchId, ArtifactScope.SYSTEM).isEmpty() &&
+            !artifactClient.getPluginTypes(realtimeId, ArtifactScope.SYSTEM).isEmpty();
+        } catch (ArtifactNotFoundException e) {
+          // happens if etl-batch or etl-realtime were not added yet
+          return false;
+        }
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
   }
