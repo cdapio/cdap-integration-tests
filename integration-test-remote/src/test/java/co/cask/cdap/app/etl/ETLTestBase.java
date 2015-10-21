@@ -24,7 +24,6 @@ import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.StreamClient;
-import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.utils.Tasks;
@@ -80,7 +79,7 @@ public abstract class ETLTestBase extends AudiTestBase {
         try {
           return !artifactClient.getPluginTypes(batchId, ArtifactScope.SYSTEM).isEmpty() &&
             !artifactClient.getPluginTypes(realtimeId, ArtifactScope.SYSTEM).isEmpty();
-        } catch (ArtifactNotFoundException e) {
+        } catch (Exception e) {
           // happens if etl-batch or etl-realtime were not added yet
           return false;
         }
