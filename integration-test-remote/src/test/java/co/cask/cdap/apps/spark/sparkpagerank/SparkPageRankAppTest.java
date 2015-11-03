@@ -41,6 +41,7 @@ import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -65,7 +66,8 @@ import java.util.concurrent.TimeUnit;
   HDP20Incompatible.class,
   HDP21Incompatible.class,
   CDH51Incompatible.class,
-  CDH52Incompatible.class
+  CDH52Incompatible.class,
+  MapR5Incompatible.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
   private static final Gson GSON = new GsonBuilder().

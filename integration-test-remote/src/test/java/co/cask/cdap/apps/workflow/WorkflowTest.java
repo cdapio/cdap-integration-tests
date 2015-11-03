@@ -39,6 +39,7 @@ import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -59,7 +60,8 @@ import javax.annotation.Nullable;
   HDP23Incompatible.class,
   CDH51Incompatible.class,
   CDH52Incompatible.class,
-  CDH53Incompatible.class
+  CDH53Incompatible.class,
+  MapR5Incompatible.class
 })
 public class WorkflowTest extends AudiTestBase {
   @Test
