@@ -56,7 +56,8 @@ public class WorkflowTest extends AudiTestBase {
     // Setup input streams with test data
     createTestData();
 
-    WorkflowManager workflowManager = applicationManager.getWorkflowManager(WikipediaPipelineWorkflow.NAME);
+    WorkflowManager workflowManager =
+      applicationManager.getWorkflowManager(WikipediaPipelineWorkflow.class.getSimpleName());
     // Test with default threshold. Workflow should not proceed beyond first condition.
     testWorkflow(workflowManager);
 
