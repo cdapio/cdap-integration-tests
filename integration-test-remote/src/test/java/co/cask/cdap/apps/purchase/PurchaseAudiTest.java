@@ -117,7 +117,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(new JsonParser().parse(body), new JsonParser().parse(response.getResponseBodyAsString()));
 
-    applicationManager.startWorkflow(PURCHASE_HISTORY_WORKFLOW, ImmutableMap.<String, String>of());
+    getProgramClient().start(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, PURCHASE_HISTORY_WORKFLOW);
 
     getProgramClient().waitForStatus(PurchaseApp.APP_NAME, ProgramType.WORKFLOW, PURCHASE_HISTORY_WORKFLOW,
                                      "RUNNING", 60, TimeUnit.SECONDS);

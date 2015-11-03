@@ -19,6 +19,7 @@ package co.cask.cdap.apps.serviceworker;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
@@ -53,10 +54,15 @@ public class ServiceWorkerTest extends AudiTestBase {
                    getRestClient(), 120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
 
     // start the worker
-    WorkerManager workerManager = applicationManager.startWorker(ServiceApplication.WORKER_NAME);
-    workerManager.waitForStatus(true, 60, 1);
+    getProgramClient().start(ServiceApplication.class.getSimpleName(), ProgramType.WORKER,
+                             ServiceApplication.WORKER_NAME);
+
+    getProgramClient().waitForStatus(ServiceApplication.class.getSimpleName(), ProgramType.WORKER,
+                                     ServiceApplication.WORKER_NAME, "RUNNING", 60, TimeUnit.SECONDS);
+
     // worker will stop automatically
-    workerManager.waitForStatus(false, 60, 1);
+    getProgramClient().waitForStatus(ServiceApplication.class.getSimpleName(), ProgramType.WORKER,
+                                     ServiceApplication.WORKER_NAME, "STOPPED", 60, TimeUnit.SECONDS);
 
     // check if the worker's write to the table was successful
     HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
