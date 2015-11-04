@@ -104,7 +104,9 @@ public class WordCountTest extends AudiTestBase {
     }
 
     // Check user metrics sum aggregated across runs
-    checkMetric(flowTags, longestWordLengthMetric, longestWordLengthAcrossRuns, 30);
+    // Since CDAP-3003 is fixed in 3.1.0, we need to add run tag to the flow tags for 3.0
+    checkMetric(addToTags(flowTags, ImmutableMap.of("run", "*")), longestWordLengthMetric,
+                longestWordLengthAcrossRuns, 30);
   }
 
   private Map<String, String> getFlowTags(Id.Program flowId) {
