@@ -108,7 +108,8 @@ public class WordCountTest extends AudiTestBase {
   }
 
   private Map<String, String> getFlowTags(Id.Program flowId) {
-    return ImmutableMap.of("ns", flowId.getNamespaceId(), "app", flowId.getApplicationId(), "fl", flowId.getId());
+    return ImmutableMap.of("ns", flowId.getNamespaceId(), "app", flowId.getApplicationId(), "fl", flowId.getId(),
+                           "run", "*");
   }
 
   private Map<String, String> addToTags(Map<String, String> tags, Map<String, String> toAdd) {
