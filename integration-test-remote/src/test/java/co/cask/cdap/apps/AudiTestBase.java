@@ -17,11 +17,15 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.client.MetricsClient;
+import co.cask.cdap.client.MonitorClient;
+import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.IntegrationTestBase;
@@ -29,6 +33,7 @@ import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
 import org.junit.Assert;
@@ -41,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 
@@ -49,8 +55,89 @@ import javax.annotation.Nullable;
  */
 public class AudiTestBase extends IntegrationTestBase {
   protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
+  private static final long SERVICE_CHECK_TIMEOUT = TimeUnit.MINUTES.toSeconds(10);
+  public static final NamespaceMeta DEFAULT =
+    new NamespaceMeta.Builder().setName(Id.Namespace.DEFAULT).setDescription("Default Namespace").build();
+
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
+
+  @Override
+  public void setUp() throws Exception {
+    checkSystemServices();
+    super.setUp();
+  }
+
+  private boolean allSystemServicesOk() throws IOException, UnauthorizedException {
+    for (Map.Entry<String, String> entry : getMonitorClient().getAllSystemServiceStatus().entrySet()) {
+      // Exclude explore service, since it does not work on secured cluster prior to 3.1 see CDAP-1905
+      if (entry.getKey().equals("explore.service")) {
+        continue;
+      }
+      if (!"OK".equals(entry.getValue())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // TODO Remove this code if we decide to backport IntegrationTestBase from CDAP repo
+  protected void checkSystemServices() throws TimeoutException {
+    Callable<Boolean> cdapAvailable = new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        // first wait for all system services to be 'OK'
+        if (!allSystemServicesOk()) {
+          return false;
+        }
+        // Check that the dataset service is up, and also that the default namespace exists
+        // Using list and checking that the only namespace to exist is default, as opposed to using get()
+        // so we don't have to unnecessarily add a try-catch for NamespaceNotFoundException, since that exception is
+        // not handled in checkServicesWithRetry.
+        List<NamespaceMeta> namespaces = getNamespaceClient().list();
+        return namespaces.size() == 1 && DEFAULT.equals(namespaces.get(0));
+      }
+    };
+
+    checkServicesWithRetry(cdapAvailable, "CDAP Services are not available");
+
+    LOG.info("CDAP Services are up and running!");
+  }
+
+  protected MonitorClient getMonitorClient() {
+    return new MonitorClient(getClientConfig(), getRestClient());
+  }
+
+  protected NamespaceClient getNamespaceClient() {
+    return new NamespaceClient(getClientConfig(), getRestClient());
+  }
+
+
+  private void checkServicesWithRetry(Callable<Boolean> callable,
+                                      String exceptionMessage) throws TimeoutException {
+    int numSecs = 0;
+    do {
+      try {
+        numSecs++;
+        if (callable.call()) {
+          return;
+        }
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException | IOException e) {
+        // We want to suppress and retry on InterruptedException or IOException
+      } catch (Throwable e) {
+        // Also suppress and retry if the root cause is InterruptedException or IOException
+        Throwable rootCause = Throwables.getRootCause(e);
+        if (!(rootCause instanceof InterruptedException || rootCause instanceof IOException)) {
+          // Throw if root cause is any other exception e.g. UnauthorizedException
+          throw Throwables.propagate(rootCause);
+        }
+      }
+    } while (numSecs <= SERVICE_CHECK_TIMEOUT);
+
+    // when we have passed the timeout and the check for services is not successful
+    throw new TimeoutException(exceptionMessage);
+  }
 
   public AudiTestBase() {
     restClient = createRestClient();
