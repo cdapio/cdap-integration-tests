@@ -81,7 +81,7 @@ public class AudiTestBase extends IntegrationTestBase {
     return true;
   }
 
-
+  // TODO Remove this code if we decide to backport IntegrationTestBase from CDAP repo
   protected void checkSystemServices() throws TimeoutException {
     Callable<Boolean> cdapAvailable = new Callable<Boolean>() {
       @Override
