@@ -56,7 +56,8 @@ import org.junit.runners.Suite;
   ApplicationTest.class,
   DatasetTest.class,
   ExploreTest.class,
-  FileSetTest.class,
+//  TODO: Re-enable after fixing CDAP-4188
+//  FileSetTest.class,
   PurchaseLineageTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
