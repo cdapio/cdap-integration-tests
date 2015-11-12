@@ -22,7 +22,9 @@ import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
+import co.cask.cdap.api.flow.AbstractFlow;
 import co.cask.cdap.api.flow.Flow;
+import co.cask.cdap.api.flow.FlowConfigurer;
 import co.cask.cdap.api.flow.FlowSpecification;
 import co.cask.cdap.api.flow.flowlet.AbstractFlowlet;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
@@ -89,14 +91,14 @@ public class WordCountApplication extends AbstractApplication {
   /**
    *
    */
-  private class KeyValueFlow implements Flow {
+  private class KeyValueFlow extends AbstractFlow {
+
     @Override
-    public FlowSpecification configure() {
-      return FlowSpecification.Builder.with()
-        .setName("KeyValueFlow").setDescription("KeyValueFlow")
-        .withFlowlets().add("wordSplitter", new WordSplitterFlowlet())
-        .connect().from(new Stream("lists")).to("wordSplitter")
-        .build();
+    protected void configure() {
+      setName("KeyValueFlow");
+      setDescription("KeyValueFlow");
+      addFlowlet("wordSplitter", new WordSplitterFlowlet());
+      connectStream("lists", "wordsplitter");
     }
   }
 
@@ -131,14 +133,15 @@ public class WordCountApplication extends AbstractApplication {
   /**
    *
    */
-  public static class ExtendedWordCountFlow implements Flow {
+  public static class ExtendedWordCountFlow extends AbstractFlow {
+
     @Override
-    public FlowSpecification configure() {
-      return FlowSpecification.Builder.with()
-        .setName("ExtendedWordCountFlow").setDescription("ExtendedWordCountFlow")
-        .withFlowlets().add("wordCounter", new ExtendedWordCountFlowlet())
-        .connect().from(new Stream("words2")).to("wordCounter")
-        .build();
+    public void configure() {
+      setName("ExtendedWordCountFlow");
+      setDescription("ExtendedWordCountFlow");
+      addFlowlet("wordCounter", new ExtendedWordCountFlowlet());
+      connectStream("words2", "wordCounter");
+
     }
   }
 
@@ -163,14 +166,15 @@ public class WordCountApplication extends AbstractApplication {
   /**
    *
    */
-  public static class WordCountFlow implements Flow {
+  public static class WordCountFlow extends AbstractFlow {
+
     @Override
-    public FlowSpecification configure() {
-      return FlowSpecification.Builder.with()
-        .setName("WordCountFlow").setDescription("WordCountFlow")
-        .withFlowlets().add("wordCounter", new WordCountFlowlet())
-        .connect().from(new Stream("words")).to("wordCounter")
-        .build();
+    public void configure() {
+      setName("WordCountFlow");
+      setDescription("WordCountFlow");
+      addFlowlet("wordCounter", new WordCountFlowlet());
+      connectStream("words", "wordCounter");
+
     }
   }
 
