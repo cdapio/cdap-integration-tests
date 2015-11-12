@@ -98,7 +98,7 @@ public class WordCountApplication extends AbstractApplication {
       setName("KeyValueFlow");
       setDescription("KeyValueFlow");
       addFlowlet("wordSplitter", new WordSplitterFlowlet());
-      connectStream("lists", "wordsplitter");
+      connectStream("lists", "wordSplitter");
     }
   }
 
