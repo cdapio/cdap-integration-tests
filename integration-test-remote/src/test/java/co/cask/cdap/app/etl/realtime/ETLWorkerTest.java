@@ -154,7 +154,7 @@ public class ETLWorkerTest extends ETLTestBase {
         // need to wait for information to get to the table, not just for the row to be created
         return row.getColumns().size() != 0;
       }
-    }, 10, TimeUnit.SECONDS, 50, TimeUnit.MILLISECONDS);
+    }, 10, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
   private boolean checkStreams(Collection<StreamManager> streamManagers, long startTime) throws IOException {

@@ -85,7 +85,7 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
         Collection<TimeSeries> result = cube.query(buildCubeQuery(startTs));
         return !result.isEmpty();
       }
-    }, 10, TimeUnit.SECONDS, 50, TimeUnit.MILLISECONDS);
+    }, 10, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
     workerManager.stop();
 
     // verify
