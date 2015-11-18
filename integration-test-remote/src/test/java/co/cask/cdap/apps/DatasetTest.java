@@ -124,8 +124,8 @@ public class DatasetTest extends AudiTestBase {
 
     // test datasets used by a program with an existing program
     Assert.assertEquals(appDatasetsCount, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",
-                                                                           WordCount.class.getSimpleName(),
-                                                                           "WordCounter")).size());
+                                                                            WordCount.class.getSimpleName(),
+                                                                            "WordCounter")).size());
 
     // test datasets used by a program with a non existing program
     Assert.assertEquals(0, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",

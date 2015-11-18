@@ -119,7 +119,7 @@ public class AudiTestBase extends IntegrationTestBase {
       public Long call() throws Exception {
         return getMetricValue(tags, metric);
       }
-    }, timeOutSeconds, TimeUnit.SECONDS, 100, TimeUnit.MILLISECONDS);
+    }, timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
   private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
@@ -147,7 +147,7 @@ public class AudiTestBase extends IntegrationTestBase {
           programClient.getProgramRuns(program, status, startTime, endTime, Integer.MAX_VALUE));
         return runRecords.size();
       }
-    }, 30, TimeUnit.SECONDS, 10, TimeUnit.MILLISECONDS);
+    }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
     return runRecords;
   }
 
