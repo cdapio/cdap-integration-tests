@@ -22,6 +22,7 @@ import co.cask.cdap.etl.batch.source.KVTableSource;
 import co.cask.cdap.etl.batch.source.StreamBatchSource;
 import co.cask.cdap.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
 import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.etl.transform.ProjectionTransform;
 import com.google.common.collect.ImmutableMap;
@@ -55,7 +56,7 @@ public final class ETLStageProvider {
     if (delimiter != null) {
       builder.put("format.setting.delimiter", delimiter);
     }
-    return new ETLStage("Stream", builder.build());
+    return new ETLStage(streamName, new Plugin("Stream", builder.build()));
   }
 
   /**
@@ -79,14 +80,14 @@ public final class ETLStageProvider {
     if (duration != null) {
       builder.put(Properties.TimePartitionedFileSetDataset.DURATION, duration);
     }
-    return new ETLStage("TPFSAvro", builder.build());
+    return new ETLStage(fileSetName, new Plugin("TPFSAvro", builder.build()));
   }
 
   /**
    * Returns an {@link ETLStage} of empty {@link ProjectionTransform}
    */
-  public ETLStage getEmptyProjectionTranform() {
-    return new ETLStage("Projection", ImmutableMap.<String, String>of());
+  public ETLStage getEmptyProjectionTranform(String stageName) {
+    return new ETLStage(stageName, new Plugin("Projection", ImmutableMap.<String, String>of()));
   }
 
   /**
@@ -104,6 +105,6 @@ public final class ETLStageProvider {
       builder.put(Properties.KeyValueTable.VALUE_FIELD, valueField);
     }
 
-    return new ETLStage("KVTable", builder.build());
+    return new ETLStage(tableName, new Plugin("KVTable", builder.build()));
   }
 }

@@ -24,6 +24,7 @@ import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.dataset2.lib.cube.CubeDatasetDefinition;
 import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.etl.realtime.ETLWorker;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
@@ -52,8 +53,8 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
 
   @Test
   public void test() throws Exception {
-    ETLStage source = new ETLStage("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
-                                                                    DataGeneratorSource.TABLE_TYPE));
+    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
+                                                                      DataGeneratorSource.TABLE_TYPE));
     // single aggregation
     Map<String, String> datasetProps = ImmutableMap.of(
       CubeDatasetDefinition.PROPERTY_AGGREGATION_PREFIX + "byName.dimensions", "name"
@@ -61,10 +62,13 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
     Map<String, String> measurementsProps = ImmutableMap.of(
       Properties.Cube.MEASUREMENT_PREFIX + "score", "GAUGE"
     );
-    ETLStage sink = new ETLStage("Cube",
-                                 ImmutableMap.of(Properties.Cube.DATASET_NAME, "cube1",
-                                                 Properties.Cube.DATASET_OTHER, new Gson().toJson(datasetProps),
-                                                 Properties.Cube.MEASUREMENTS, new Gson().toJson(measurementsProps)));
+    Plugin sinkConfig = new Plugin("Cube",
+                                   ImmutableMap.of(Properties.Cube.DATASET_NAME, "cube1",
+                                                   Properties.Cube.DATASET_OTHER, new Gson().toJson(datasetProps),
+                                                   Properties.Cube.MEASUREMENTS, new Gson().toJson(measurementsProps)));
+    ETLStage source = new ETLStage("DataGenSource", sourceConfig);
+    ETLStage sink = new ETLStage("CubeSink", sinkConfig);
+
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testCubeSink");
