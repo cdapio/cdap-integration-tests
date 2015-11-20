@@ -22,6 +22,7 @@ import co.cask.cdap.app.etl.dataset.KVTableService;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.source.KVTableSource;
 import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
@@ -68,9 +69,10 @@ public class KVTableWithProjectionTest extends ETLTestBase {
     Id.Application appId = Id.Application.from(TEST_NAMESPACE, "StreamToKVTableWithProjection");
 
     ETLStage source = etlStageProvider.getStreamBatchSource(SOURCE_STREAM, "10m", "0d", Formats.CSV,
-      DUMMY_STREAM_EVENT_SCHEMA, "|");
+                                                            DUMMY_STREAM_EVENT_SCHEMA, "|");
     ETLStage sink = etlStageProvider.getTableSource(KVTableService.KV_TABLE_NAME, "ticker", "price");
-    ETLStage transform = new ETLStage("Projection", ImmutableMap.of("convert", "ticker:bytes,price:bytes"));
+    ETLStage transform = new ETLStage("ProjectionTransform1",
+                                      new Plugin("Projection", ImmutableMap.of("convert", "ticker:bytes,price:bytes")));
     ETLBatchConfig etlBatchConfig = new ETLBatchConfig("*/10 * * * *", source, sink, Lists.newArrayList(transform));
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlBatchConfig);

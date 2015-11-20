@@ -26,6 +26,7 @@ import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
 import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
@@ -49,9 +50,14 @@ public class ETLMapReduceTest extends ETLTestBase {
   @Test
   public void testKVToKV() throws Exception {
     // kv table to kv table pipeline
-    ETLStage source = new ETLStage("KVTable", ImmutableMap.of(Properties.BatchReadableWritable.NAME, "table1"));
-    ETLStage sink = new ETLStage("KVTable", ImmutableMap.of(Properties.BatchReadableWritable.NAME, "table2"));
-    ETLStage transform = new ETLStage("Projection", ImmutableMap.<String, String>of());
+    ETLStage source = new ETLStage("KVTableSource",
+                                   new Plugin("KVTable", ImmutableMap.of(Properties.BatchReadableWritable.NAME,
+                                                                         "table1")));
+    ETLStage sink = new ETLStage("KVTableSink",
+                                 new Plugin("KVTable", ImmutableMap.of(Properties.BatchReadableWritable.NAME,
+                                                                       "table2")));
+    ETLStage transform = new ETLStage("ProjectionTransform", new Plugin("Projection",
+                                                                        ImmutableMap.<String, String>of()));
     List<ETLStage> transformList = Lists.newArrayList(transform);
     ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, transformList);
 
@@ -91,11 +97,11 @@ public class ETLMapReduceTest extends ETLTestBase {
       Schema.Field.of("item", Schema.of(Schema.Type.STRING))
     );
 
-    ETLStage source = new ETLStage("Table",
-      ImmutableMap.of(
-        Properties.BatchReadableWritable.NAME, "inputTable",
-        Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
-        Properties.Table.PROPERTY_SCHEMA, schema.toString()));
+    ETLStage source = new ETLStage("TableSource", new Plugin("Table",
+                                                             ImmutableMap.of(
+                                                               Properties.BatchReadableWritable.NAME, "inputTable",
+                                                               Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
+                                                               Properties.Table.PROPERTY_SCHEMA, schema.toString())));
 
     String validationScript = "function isValid(input) {  " +
       "var errCode = 0; var errMsg = 'none'; var isValid = true;" +
@@ -103,17 +109,18 @@ public class ETLMapReduceTest extends ETLTestBase {
       "{ errCode = 10; errMsg = 'user name greater than 6 characters'; isValid = false; }; " +
       "return {'isValid': isValid, 'errorCode': errCode, 'errorMsg': errMsg}; " +
       "};";
-    ETLStage transform = new ETLStage("Validator",
-                                      ImmutableMap.<String, String>of("validators", "core",
-                                                                      "validationScript", validationScript),
-                                      "keyErrors");
+    ETLStage transform =
+      new ETLStage("ValidatorTransform", new Plugin("Validator",
+                                                    ImmutableMap.<String, String>of(
+                                                      "validators", "core", "validationScript", validationScript)
+      ), "keyErrors");
     List<ETLStage> transformList = new ArrayList<>();
     transformList.add(transform);
 
-    ETLStage sink = new ETLStage("Table",
-      ImmutableMap.of(
-        Properties.BatchReadableWritable.NAME, "outputTable",
-        Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey"));
+    ETLStage sink = new ETLStage("TableSink", new Plugin("Table",
+                                                         ImmutableMap.of(
+                                                           Properties.BatchReadableWritable.NAME, "outputTable",
+                                                           Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey")));
 
     ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, transformList);
 

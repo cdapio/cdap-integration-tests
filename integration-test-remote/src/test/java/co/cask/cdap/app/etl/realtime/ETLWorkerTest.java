@@ -23,6 +23,7 @@ import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.etl.realtime.ETLWorker;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
@@ -58,8 +59,10 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   public void testEmptyProperties() throws Exception {
     // Set properties to null to test if ETLTemplate can handle it.
-    ETLStage source = new ETLStage("DataGenerator", null);
-    ETLStage sink = new ETLStage("Stream", ImmutableMap.of(Properties.Stream.NAME, "testS"));
+    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(Properties.Stream.NAME, "testS"));
+    ETLStage source = new ETLStage("DataGeneratorSource", sourceConfig);
+    Plugin sinkConfig = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "testS"));
+    ETLStage sink = new ETLStage("StreamSink", sinkConfig);
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testAdap");
@@ -71,13 +74,18 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   @Category(SlowTests.class)
   public void testStreamSinks() throws Exception {
-    ETLStage source = new ETLStage("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
-                                                                    DataGeneratorSource.STREAM_TYPE));
+    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
+                                                                      DataGeneratorSource.STREAM_TYPE));
+    ETLStage source = new ETLStage("DataGeneratorSource", sourceConfig);
+
+    Plugin sink1 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamA"));
+    Plugin sink2 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamB"));
+    Plugin sink3 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamC"));
 
     List<ETLStage> sinks = Lists.newArrayList(
-      new ETLStage("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamA")),
-      new ETLStage("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamB")),
-      new ETLStage("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamC"))
+      new ETLStage("StreamA", sink1),
+      new ETLStage("StreamB", sink2),
+      new ETLStage("StreamC", sink3)
     );
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(1, source, sinks, null, null);
 
@@ -113,11 +121,13 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   @SuppressWarnings("ConstantConditions")
   public void testTableSink() throws Exception {
-    ETLStage source = new ETLStage("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
-                                                                    DataGeneratorSource.TABLE_TYPE));
-    ETLStage sink = new ETLStage("Table",
-                                 ImmutableMap.of(Properties.Table.NAME, "table1",
-                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "binary"));
+    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
+                                                                      DataGeneratorSource.TABLE_TYPE));
+    Plugin sinkConfig = new Plugin("Table",
+                                   ImmutableMap.of(Properties.Table.NAME, "table1",
+                                                   Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "binary"));
+    ETLStage source = new ETLStage("DataGenSource", sourceConfig);
+    ETLStage sink = new ETLStage("TableSink", sinkConfig);
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testToStream");

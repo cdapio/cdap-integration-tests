@@ -25,6 +25,7 @@ import co.cask.cdap.etl.batch.sink.TimePartitionedFileSetDatasetAvroSink;
 import co.cask.cdap.etl.batch.source.StreamBatchSource;
 import co.cask.cdap.etl.batch.source.TimePartitionedFileSetDatasetAvroSource;
 import co.cask.cdap.etl.common.ETLStage;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.transform.ProjectionTransform;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
@@ -125,14 +126,15 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
     ETLStage source = etlStageProvider.getStreamBatchSource(SOURCE_STREAM, "10m", "0d",
                                                             Formats.CSV, DUMMY_STREAM_EVENT_SCHEMA, "|");
     ETLStage sink = etlStageProvider.getTPFS(TPFSService.EVENT_SCHEMA, TPFSService.TPFS_1, null, null, null);
-    ETLStage transform = new ETLStage("Projection", ImmutableMap.of("drop", "headers"));
+    ETLStage transform = new ETLStage("testTransform",
+                                      new Plugin("Projection", ImmutableMap.of("drop", "headers")));
     return new ETLBatchConfig("*/10 * * * *", source, sink, Lists.newArrayList(transform));
   }
 
   private ETLBatchConfig constructTPFSToTPFSConfig() {
     ETLStage source = etlStageProvider.getTPFS(TPFSService.EVENT_SCHEMA, TPFSService.TPFS_1, null, "20m", "0d");
     ETLStage sink = etlStageProvider.getTPFS(TPFSService.EVENT_SCHEMA, TPFSService.TPFS_2, null, null, null);
-    ETLStage transform = etlStageProvider.getEmptyProjectionTranform();
+    ETLStage transform = etlStageProvider.getEmptyProjectionTranform("tpfsProjection");
     return new ETLBatchConfig("*/10 * * * *", source, sink, Lists.newArrayList(transform));
   }
 
