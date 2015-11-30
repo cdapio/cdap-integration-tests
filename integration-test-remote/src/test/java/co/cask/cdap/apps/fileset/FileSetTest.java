@@ -17,11 +17,11 @@
 package co.cask.cdap.apps.fileset;
 
 import co.cask.cdap.api.dataset.lib.FileSet;
-import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.examples.fileset.FileSetExample;
 import co.cask.cdap.proto.DatasetSpecificationSummary;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpMethod;

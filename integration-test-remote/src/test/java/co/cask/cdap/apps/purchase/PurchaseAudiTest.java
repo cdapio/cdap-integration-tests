@@ -18,7 +18,6 @@ package co.cask.cdap.apps.purchase;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.api.schedule.ScheduleSpecification;
-import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
@@ -30,6 +29,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.ScheduledRuntime;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ProgramManager;

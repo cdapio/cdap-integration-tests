@@ -14,35 +14,40 @@
  * the License.
  */
 
-package co.cask.cdap.remote.dataset.kvtable;
+package co.cask.cdap.remote.dataset.cube;
 
 import co.cask.cdap.api.annotation.Property;
 import co.cask.cdap.api.dataset.Dataset;
-import co.cask.cdap.api.dataset.lib.KeyValueTable;
+import co.cask.cdap.api.dataset.lib.cube.AbstractCubeHttpHandler;
+import co.cask.cdap.api.dataset.lib.cube.Cube;
 import co.cask.cdap.api.service.http.HttpServiceHandler;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 
 /**
- * Application which allows reading or writing to a {@link KeyValueTable}.
+ * Application which allows reading or writing to a {@link Cube}.
  */
-public class KVTableDatasetApp extends AbstractDatasetApp {
+public class CubeDatasetApp extends AbstractDatasetApp {
 
   @Override
   protected Class<? extends Dataset> getDatasetClass() {
-    return KeyValueTable.class;
+    return Cube.class;
   }
 
   @Override
   protected HttpServiceHandler getDatasetHttpHandler(String datasetName) {
-    return new KVTableHttpHandler(datasetName);
+    return new CubeHttpHandler(datasetName);
   }
 
-  public static class KVTableHttpHandler extends AbstractKVTableHttpHandler {
+  /**
+   * A basic implementation of {@link co.cask.cdap.api.service.http.HttpServiceHandler} that provides endpoints to
+   * explore and execute queries in {@link Cube} dataset.
+   */
+  public static class CubeHttpHandler extends AbstractCubeHttpHandler {
 
     @Property
     private final String datasetName;
 
-    public KVTableHttpHandler(String datasetName) {
+    public CubeHttpHandler(String datasetName) {
       this.datasetName = datasetName;
     }
 
@@ -52,7 +57,7 @@ public class KVTableDatasetApp extends AbstractDatasetApp {
     }
 
     @Override
-    protected KeyValueTable getKVTable() {
+    protected Cube getCube() {
       return getContext().getDataset(datasetName);
     }
   }

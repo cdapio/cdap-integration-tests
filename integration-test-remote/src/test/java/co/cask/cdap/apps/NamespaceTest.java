@@ -21,6 +21,7 @@ import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
+import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;

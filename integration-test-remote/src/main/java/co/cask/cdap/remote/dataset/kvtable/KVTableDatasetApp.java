@@ -14,35 +14,38 @@
  * the License.
  */
 
-package co.cask.cdap.remote.dataset.table;
+package co.cask.cdap.remote.dataset.kvtable;
 
 import co.cask.cdap.api.annotation.Property;
 import co.cask.cdap.api.dataset.Dataset;
-import co.cask.cdap.api.dataset.table.Table;
+import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.service.http.HttpServiceHandler;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 
 /**
- * Application which allows reading or writing to a {@link Table}.
+ * Application which allows reading or writing to a {@link KeyValueTable}.
  */
-public class TableDatasetApp extends AbstractDatasetApp {
+public class KVTableDatasetApp extends AbstractDatasetApp {
 
   @Override
   protected Class<? extends Dataset> getDatasetClass() {
-    return Table.class;
+    return KeyValueTable.class;
   }
 
   @Override
   protected HttpServiceHandler getDatasetHttpHandler(String datasetName) {
-    return new TableHttpHandler(datasetName);
+    return new KVTableHttpHandler(datasetName);
   }
 
-  public static class TableHttpHandler extends AbstractTableHttpHandler {
+  /**
+   * HttpHandler to make API calls on the KeyValueTable.
+   */
+  public static class KVTableHttpHandler extends AbstractKVTableHttpHandler {
 
     @Property
     private final String datasetName;
 
-    public TableHttpHandler(String datasetName) {
+    public KVTableHttpHandler(String datasetName) {
       this.datasetName = datasetName;
     }
 
@@ -52,7 +55,7 @@ public class TableDatasetApp extends AbstractDatasetApp {
     }
 
     @Override
-    protected Table getTable() {
+    protected KeyValueTable getKVTable() {
       return getContext().getDataset(datasetName);
     }
   }

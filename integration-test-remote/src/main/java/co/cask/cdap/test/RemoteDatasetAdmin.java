@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.remote.dataset;
+package co.cask.cdap.test;
 
 import co.cask.cdap.api.dataset.DatasetAdmin;
 import co.cask.cdap.client.DatasetClient;

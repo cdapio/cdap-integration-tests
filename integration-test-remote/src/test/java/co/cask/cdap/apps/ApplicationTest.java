@@ -21,6 +21,7 @@ import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
 import org.junit.Assert;
 import org.junit.Test;

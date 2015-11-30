@@ -69,6 +69,9 @@ public abstract class AbstractDatasetApp extends AbstractApplication<AbstractDat
     createDataset(datasetName, getDatasetClass());
   }
 
+  /**
+   * Dataset service.
+   */
   public class DatasetService extends AbstractService {
 
     private final String datasetName;
@@ -84,6 +87,9 @@ public abstract class AbstractDatasetApp extends AbstractApplication<AbstractDat
     }
   }
 
+  /**
+   * Ping Handler.
+   */
   public static class PingHandler extends AbstractHttpServiceHandler {
 
     @Path("ping")

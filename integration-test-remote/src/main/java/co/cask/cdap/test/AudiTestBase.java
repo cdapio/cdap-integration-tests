@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps;
+package co.cask.cdap.test;
 
 import co.cask.cdap.api.Config;
 import co.cask.cdap.api.app.Application;
@@ -35,17 +35,12 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
-import co.cask.cdap.remote.dataset.RemoteDatasetAdmin;
 import co.cask.cdap.remote.dataset.cube.CubeDatasetApp;
 import co.cask.cdap.remote.dataset.cube.RemoteCube;
 import co.cask.cdap.remote.dataset.kvtable.KVTableDatasetApp;
 import co.cask.cdap.remote.dataset.kvtable.RemoteKeyValueTable;
 import co.cask.cdap.remote.dataset.table.RemoteTable;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
-import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.DataSetManager;
-import co.cask.cdap.test.IntegrationTestBase;
-import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
@@ -65,7 +60,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.Nullable;
 
 /**
  * Custom wrapper around IntegrationTestBase
