@@ -17,7 +17,6 @@
 package co.cask.cdap.apps.metadata;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
-import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.app.RunIds;
@@ -36,6 +35,7 @@ import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;

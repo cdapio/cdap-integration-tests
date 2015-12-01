@@ -17,7 +17,7 @@
 package co.cask.cdap.remote.dataset.test;
 
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
-import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.DataSetManager;
 import org.junit.Assert;
 import org.junit.Test;

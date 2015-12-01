@@ -16,7 +16,6 @@
 
 package co.cask.cdap.apps.purchase;
 
-import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.StreamClient;
@@ -27,6 +26,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;

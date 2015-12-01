@@ -17,9 +17,9 @@
 package co.cask.cdap.apps.serviceworker;
 
 import co.cask.cdap.api.common.Bytes;
-import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
 import co.cask.common.http.HttpRequest;

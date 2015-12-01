@@ -62,12 +62,12 @@ public class AutoSuiteRunner extends ParentRunner<Runner> {
   @Inherited
   public @interface Matches {
     /**
-     * @return the packages to inspect
+     * returns the packages to inspect
      */
     String[] packages();
 
     /**
-     * @return the regex for matching class name. Default match class names end with Test.
+     * returns the regex for matching class name. Default match class names end with Test.
      */
     String pattern() default ".*Test$";
   }

@@ -17,7 +17,6 @@
 package co.cask.cdap.apps.wordcount;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
-import co.cask.cdap.apps.AudiTestBase;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.examples.wordcount.WordCount;
@@ -27,6 +26,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.StreamManager;
 import com.google.common.base.Preconditions;

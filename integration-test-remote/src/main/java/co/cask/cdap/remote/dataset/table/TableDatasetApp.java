@@ -14,36 +14,38 @@
  * the License.
  */
 
-package co.cask.cdap.remote.dataset.cube;
+package co.cask.cdap.remote.dataset.table;
 
 import co.cask.cdap.api.annotation.Property;
 import co.cask.cdap.api.dataset.Dataset;
-import co.cask.cdap.api.dataset.lib.cube.AbstractCubeHttpHandler;
-import co.cask.cdap.api.dataset.lib.cube.Cube;
+import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.api.service.http.HttpServiceHandler;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 
 /**
- * Application which allows reading or writing to a {@link Cube}.
+ * Application which allows reading or writing to a {@link Table}.
  */
-public class CubeDatasetApp extends AbstractDatasetApp {
+public class TableDatasetApp extends AbstractDatasetApp {
 
   @Override
   protected Class<? extends Dataset> getDatasetClass() {
-    return Cube.class;
+    return Table.class;
   }
 
   @Override
   protected HttpServiceHandler getDatasetHttpHandler(String datasetName) {
-    return new CubeHttpHandler(datasetName);
+    return new TableHttpHandler(datasetName);
   }
 
-  public static class CubeHttpHandler extends AbstractCubeHttpHandler {
+  /**
+   * HttpHandler to make API calls  the Table.
+   */
+  public static class TableHttpHandler extends AbstractTableHttpHandler {
 
     @Property
     private final String datasetName;
 
-    public CubeHttpHandler(String datasetName) {
+    public TableHttpHandler(String datasetName) {
       this.datasetName = datasetName;
     }
 
@@ -53,7 +55,7 @@ public class CubeDatasetApp extends AbstractDatasetApp {
     }
 
     @Override
-    protected Cube getCube() {
+    protected Table getTable() {
       return getContext().getDataset(datasetName);
     }
   }

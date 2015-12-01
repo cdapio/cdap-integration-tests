@@ -26,7 +26,7 @@ import co.cask.cdap.api.dataset.lib.cube.DimensionValue;
 import co.cask.cdap.api.dataset.lib.cube.MeasureType;
 import co.cask.cdap.api.dataset.lib.cube.TimeSeries;
 import co.cask.cdap.api.dataset.lib.cube.TimeValue;
-import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.DataSetManager;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

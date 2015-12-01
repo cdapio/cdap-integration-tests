@@ -26,6 +26,7 @@ import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamProperties;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;

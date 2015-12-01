@@ -16,7 +16,7 @@
 
 package co.cask.cdap.upgrade;
 
-import co.cask.cdap.apps.AudiTestBase;
+import co.cask.cdap.test.AudiTestBase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

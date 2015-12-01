@@ -23,6 +23,7 @@ import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
+import co.cask.cdap.test.AudiTestBase;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
