@@ -28,6 +28,7 @@
     <module>integration-test-remote</module>
     <module>integration-test-standalone</module>
     <module>upgrade-test</module>
+    <module>long-running-test</module>
   </modules>
   <packaging>pom</packaging>
 
@@ -42,6 +43,7 @@
     <skip.remote.test>true</skip.remote.test>
     <skip.standalone.test>true</skip.standalone.test>
     <skip.upgrade.test>true</skip.upgrade.test>
+    <skip.long.running.test>true</skip.long.running.test>
   </properties>
 
   <dependencies>
@@ -216,6 +218,7 @@
               <excludes>
                 <exclude>LICENSE*.txt</exclude>
                 <exclude>**/Apache-LICENSE-2.0</exclude>
+                <exclude>**/*.state</exclude>
               </excludes>
             </configuration>
           </execution>
@@ -246,6 +249,13 @@
       <id>upgrade-test</id>
       <properties>
         <skip.upgrade.test>false</skip.upgrade.test>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>long-running-test</id>
+      <properties>
+        <skip.long.running.test>false</skip.long.running.test>
       </properties>
     </profile>
   </profiles>
