@@ -32,6 +32,7 @@ public interface LongRunningTest<T extends TestState> {
    * Called after the last run of the test.
    * Can be used to stop apps, and run other clean up operations.
    * The cluster will be reset after this method.
+   * The goal of this method is to get the cluster in a resettable state.
    * This method may never be called, instead cluster can simply be deleted.
    */
   void cleanup() throws Exception;
@@ -48,6 +49,9 @@ public interface LongRunningTest<T extends TestState> {
    * Data operations performed in previous runs can be verified using the saved state.
    * #runOperations will be called after this method.
    * If this method throws exception then #runOperations will not be called, and test will fail.
+   * </p>
+   * The test runs will be scheduled in such a way as to let all the data operations performed in the
+   * previous call to #runOperations are complete.
    *
    * @param state state saved from previous call to #runOperations
    */
