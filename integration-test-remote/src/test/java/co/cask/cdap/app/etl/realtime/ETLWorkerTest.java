@@ -87,7 +87,7 @@ public class ETLWorkerTest extends ETLTestBase {
       new ETLStage("StreamB", sink2),
       new ETLStage("StreamC", sink3)
     );
-    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(1, source, sinks, null, null);
+    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(1, source, sinks, null, null, null);
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testToStream");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
