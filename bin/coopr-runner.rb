@@ -106,7 +106,7 @@ rescue OptionParser::InvalidArgument, OptionParser::InvalidOption
 end
 
 # Evaluate options, set defaults
-server_uri = options[:uri] || ENV['COOPR_SERVER_URI'].dup || 'http://localhost:55054'
+server_uri = options[:uri] || (ENV.key?('COOPR+SERVER_URI') ? ENV['COOPR_SERVER_URI'].dup : 'http://localhost:55054')
 server_uri.prepend('http://') unless server_uri.start_with?('http')
 server_uri.chomp!('/')
 options[:uri] = server_uri
@@ -133,19 +133,27 @@ module Cask
       end
 
       def get(url)
+        puts "GET: #{url}"
         ::RestClient.get("#{@options[:uri]}/#{url}", @headers)
       end
 
       def post(url, postdata)
-        ::RestClient.post("#{@options[:uri]}/#{url}", postdata, @headers)
+        #::RestClient.post("#{@options[:uri]}/#{url}", postdata, @headers)
+        puts "POST: #{url}"
+        require 'pp'
+        pp postdata
       end
 
       def put(url, putdata)
-        ::RestClient.put("#{@options[:uri]}/#{url}", putdata, @headers)
+        #::RestClient.put("#{@options[:uri]}/#{url}", putdata, @headers)
+        puts "PUT: #{url}"
+        require 'pp'
+        pp putdata
       end
 
       def delete(url)
-        ::RestClient.delete("#{@options[:uri]}/#{url}", @headers)
+        #::RestClient.delete("#{@options[:uri]}/#{url}", @headers)
+        puts "DELETE: #{url}"
       end
     end
 
