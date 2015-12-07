@@ -106,7 +106,7 @@ rescue OptionParser::InvalidArgument, OptionParser::InvalidOption
 end
 
 # Evaluate options, set defaults
-server_uri = options[:uri] || ENV['COOPR_SERVER_URI'].dup || 'http://localhost:55054'
+server_uri = options[:uri] || (ENV.key?('COOPR_SERVER_URI') ? ENV['COOPR_SERVER_URI'].dup : 'http://localhost:55054')
 server_uri.prepend('http://') unless server_uri.start_with?('http')
 server_uri.chomp!('/')
 options[:uri] = server_uri
