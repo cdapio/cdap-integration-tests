@@ -1,0 +1,22 @@
+{
+  "config": {
+    "cdap": {
+      "cdap_site": {
+        "explore.executor.container.memory.mb": "2048",
+        "mapreduce.map.java.opts": "-Xmx1536m",
+        "mapreduce.map.memory.mb": "2048",
+        "mapreduce.reduce.java.opts": "-Xmx1536m",
+        "mapreduce.reduce.memory.mb": "2048",
+        "metrics.processor.memory.mb": "512"
+      }
+    },
+    "hadoop": {
+      "mapred_site": {
+        "mapreduce.map.java.opts": "-Xmx1536m",
+        "mapreduce.map.memory.mb": "2048",
+        "mapreduce.reduce.java.opts": "-Xmx1536m",
+        "mapreduce.reduce.memory.mb": "2048"
+      }
+    }
+  }
+}
