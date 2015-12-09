@@ -1,0 +1,9 @@
+{
+  "config": {
+    "cdap": {
+      "cdap_site": {
+        "explore.enabled": "true"
+      }
+    }
+  }
+}

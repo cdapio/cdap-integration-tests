@@ -1,0 +1,9 @@
+{
+  "config": {
+    "cdap": {
+      "cdap_site": {
+        "metrics.processor.memory.mb": "512"
+      }
+    }
+  }
+}
