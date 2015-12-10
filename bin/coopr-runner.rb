@@ -133,27 +133,19 @@ module Cask
       end
 
       def get(url)
-        puts "GET: #{url}"
         ::RestClient.get("#{@options[:uri]}/#{url}", @headers)
       end
 
       def post(url, postdata)
-        #::RestClient.post("#{@options[:uri]}/#{url}", postdata, @headers)
-        puts "POST: #{url}"
-        require 'pp'
-        pp postdata
+        ::RestClient.post("#{@options[:uri]}/#{url}", postdata, @headers)
       end
 
       def put(url, putdata)
-        #::RestClient.put("#{@options[:uri]}/#{url}", putdata, @headers)
-        puts "PUT: #{url}"
-        require 'pp'
-        pp putdata
+        ::RestClient.put("#{@options[:uri]}/#{url}", putdata, @headers)
       end
 
       def delete(url)
-        #::RestClient.delete("#{@options[:uri]}/#{url}", @headers)
-        puts "DELETE: #{url}"
+        ::RestClient.delete("#{@options[:uri]}/#{url}", @headers)
       end
     end
 
