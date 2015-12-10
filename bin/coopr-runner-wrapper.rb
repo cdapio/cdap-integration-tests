@@ -259,6 +259,5 @@ module Cask
   end
 end
 
-# ccc = Cask::CooprDriver::ConfigWrapper.new
-# ccc.run
+# Instantiate and run
 Cask::CooprDriver::ConfigWrapper.new.run
