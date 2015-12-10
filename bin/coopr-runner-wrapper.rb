@@ -63,14 +63,25 @@ module Cask
       def run
         # If this is not a cluster creation, wrapper has nothing to do
         run_as_noop unless _action_create?
-        # Ensure the coopr-runner.rb options we need were given
-        _validate_opts
+
+        begin
+          # Ensure the coopr-runner.rb options we need were given
+          _validate_opts
+        rescue => e
+          # Not enough args given (ie --help). Silently default to coopr-runner.rb
+          puts "WARN: #{e.message}. #{$PROGRAM_NAME} taking no action"
+          run_as_noop
+        end
         # Generate the list of dimensions for this invocation
         @dimensions ||= identify_dimensions
         # Generate the additional commandline arguments from the dimension config files
         @new_args ||= generate_new_args
         # Exec into coopr-runner.rb
         _ruby_exec(@new_args + ARGV)
+      rescue => e
+        # Wrapper was unable to complete for unknown reason. Fail
+        puts "ERROR: #{e.message}."
+        exit 1
       end
 
       # Exec this process into coopr-runner.rb with the original ARGV. This can be called
