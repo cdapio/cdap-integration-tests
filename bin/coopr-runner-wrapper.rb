@@ -31,7 +31,6 @@ module Cask
     # inserted into the original arguments, and coopr-runner.rb is invoked accordingly
     class ConfigWrapper
       def initialize
-        @original_argv = ARGV.dup
         @conf_dir = _config_dir
         @coopr_runner_exe = _coopr_runner_exe
 
@@ -138,9 +137,9 @@ module Cask
 
         # Extract only the options we care about from ARGV
         relevant_opts = ['-a', '--action', '-T', '--cluster-template', '-n', '--name']
-        relevant_argv = @original_argv.select do |element|
+        relevant_argv = ARGV.select do |element|
           # select this element if it, or the previous element, is in relevant_opts (both key and value)
-          relevant_opts.include?(element) || relevant_opts.include?(@original_argv[@original_argv.find_index(element) - 1])
+          relevant_opts.include?(element) || relevant_opts.include?(ARGV[ARGV.find_index(element) - 1])
         end
 
         # Parse this subset, otherwise we'd have to duplicate all options in coopr-runner.rb here in the wrapper
