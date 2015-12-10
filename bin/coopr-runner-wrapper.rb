@@ -190,6 +190,9 @@ module Cask
           if name[1] == 'mapr'
             dimensions.push('cdap_mapr')
             name.shift && name.shift
+          elsif name[1] == 'sdk'
+            dimensions.push('cdap_sdk')
+            name.shift && name.shift
           elsif name[1] == 'singlenode' || name[1] == 'distributed'
             dimensions.push('cdap')
             name.shift
