@@ -34,7 +34,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>3.3.0-SNAPSHOT</cdap.version>
+    <cdap.version>3.4.0-SNAPSHOT</cdap.version>
     <junit.version>4.11</junit.version>
     <hadoop.version>2.3.0</hadoop.version>
     <snappy.version>1.1.1.7</snappy.version>
