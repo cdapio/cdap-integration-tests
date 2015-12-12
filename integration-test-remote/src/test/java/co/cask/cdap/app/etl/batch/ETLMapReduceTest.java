@@ -36,6 +36,7 @@ import co.cask.cdap.test.MapReduceManager;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -47,6 +48,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class ETLMapReduceTest extends ETLTestBase {
 
+  // https://issues.cask.co/browse/CDAP-4429
+  @Ignore
   @Test
   public void testKVToKV() throws Exception {
     // kv table to kv table pipeline
@@ -85,6 +88,8 @@ public class ETLMapReduceTest extends ETLTestBase {
   }
 
   @SuppressWarnings("ConstantConditions")
+  // https://issues.cask.co/browse/CDAP-4429
+  @Ignore
   @Test
   public void testTableToTableWithValidations() throws Exception {
 

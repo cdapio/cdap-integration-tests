@@ -40,6 +40,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -51,6 +52,9 @@ import java.util.concurrent.TimeUnit;
  * Test for {@link co.cask.cdap.etl.batch.sink.BatchCubeSink}.
  */
 public class BatchCubeSinkTest extends ETLTestBase {
+
+  // https://issues.cask.co/browse/CDAP-4429
+  @Ignore
   @Test
   public void test() throws Exception {
 
