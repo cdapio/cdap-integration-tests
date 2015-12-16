@@ -62,7 +62,8 @@ public class WordCountTest extends AudiTestBase {
     ApplicationClient appClient = getApplicationClient();
     ProgramClient programClient = getProgramClient();
 
-    Id.Program flowId = Id.Program.from(TEST_NAMESPACE, "WordCount", ProgramType.FLOW, "WordCounter");
+    Id.Program flowId = Id.Program.from(Id.Application.from(TEST_NAMESPACE, "WordCount"),
+                                        ProgramType.FLOW, "WordCounter");
     Map<String, String> flowTags = getFlowTags(flowId);
     String longestWordLengthMetric = "user.longest.word.length";
 

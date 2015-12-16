@@ -24,6 +24,7 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
+import co.cask.cdap.proto.StreamRecord;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
@@ -60,13 +61,13 @@ public class NamespacedStreamTest extends AudiTestBase {
     streamClient1.create(streamName);
 
     // namespace2 still has 0 streams after creating namespace in first namespace
-    List<StreamDetail> ns1Streams = streamClient1.list();
+    List<StreamRecord> ns1Streams = streamClient1.list();
     Assert.assertEquals(1, ns1Streams.size());
     Assert.assertEquals(streamName, ns1Streams.get(0).getName());
     Assert.assertTrue(streamClient2.list().isEmpty());
 
     streamClient2.create(streamName);
-    List<StreamDetail> ns2Streams = streamClient2.list();
+    List<StreamRecord> ns2Streams = streamClient2.list();
     Assert.assertEquals(1, ns2Streams.size());
     Assert.assertEquals(streamName, ns2Streams.get(0).getName());
 

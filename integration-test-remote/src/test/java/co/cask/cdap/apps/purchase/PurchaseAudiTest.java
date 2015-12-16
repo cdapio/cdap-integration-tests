@@ -27,7 +27,6 @@ import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.ScheduledRuntime;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ServiceManager;
@@ -36,7 +35,6 @@ import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonParser;
@@ -188,5 +186,30 @@ public class PurchaseAudiTest extends AudiTestBase {
   private void assertSingleRun(List<RunRecord> runRecords, ProgramRunStatus expectedStatus) {
     Assert.assertEquals(1, runRecords.size());
     Assert.assertEquals(expectedStatus, runRecords.get(0).getStatus());
+  }
+
+  public static class ScheduledRuntime {
+
+    private String scheduleId;
+    private long time;
+
+    public ScheduledRuntime(String scheduleId, long time) {
+      this.scheduleId = scheduleId;
+      this.time = time;
+    }
+
+    /**
+     * @return schedule id.
+     */
+    public String getScheduleId() {
+      return scheduleId;
+    }
+
+    /**
+     * @return runtime.
+     */
+    public long getTime() {
+      return time;
+    }
   }
 }

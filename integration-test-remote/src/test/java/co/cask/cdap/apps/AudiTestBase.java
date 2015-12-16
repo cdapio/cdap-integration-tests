@@ -21,6 +21,7 @@ import co.cask.cdap.client.MonitorClient;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.Id;
@@ -54,10 +55,10 @@ import javax.annotation.Nullable;
  * Custom wrapper around IntegrationTestBase
  */
 public class AudiTestBase extends IntegrationTestBase {
-  protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
+  protected static final Id.Namespace TEST_NAMESPACE = Constants.DEFAULT_NAMESPACE_ID;
   private static final long SERVICE_CHECK_TIMEOUT = TimeUnit.MINUTES.toSeconds(10);
   public static final NamespaceMeta DEFAULT =
-    new NamespaceMeta.Builder().setName(Id.Namespace.DEFAULT).setDescription("Default Namespace").build();
+    new NamespaceMeta.Builder().setName(Constants.DEFAULT_NAMESPACE_ID).setDescription("Default Namespace").build();
 
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
   private final RESTClient restClient;
@@ -186,7 +187,8 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
-    MetricQueryResult metricQueryResult = new MetricsClient(getClientConfig(), getRestClient()).query(metric, tags);
+    MetricQueryResult metricQueryResult = new MetricsClient(getClientConfig(),
+                                                            getRestClient()).query(tags, metric, null);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {
       return 0;

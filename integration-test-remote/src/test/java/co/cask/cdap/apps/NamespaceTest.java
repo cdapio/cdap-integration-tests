@@ -19,7 +19,7 @@ package co.cask.cdap.apps;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.exception.BadRequestException;
-import co.cask.cdap.common.exception.NamespaceNotFoundException;
+import co.cask.cdap.common.exception.NotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import com.google.common.base.Joiner;
@@ -59,14 +59,14 @@ public class NamespaceTest extends AudiTestBase {
     try {
       namespaceClient.get(NS1.getId());
       Assert.fail("Expected namespace not to exist: " + NS1);
-    } catch (NamespaceNotFoundException expected) {
-      // expected
+    } catch (NotFoundException expected) {
+//       expected
     }
     try {
       namespaceClient.get(NS2.getId());
       Assert.fail("Expected namespace not to exist: " + NS2);
-    } catch (NamespaceNotFoundException expected) {
-      // expected
+    } catch (NotFoundException expected) {
+//       expected
     }
 
     // namespace create should work with or without description
@@ -78,7 +78,7 @@ public class NamespaceTest extends AudiTestBase {
       namespaceClient.create(Constants.DEFAULT_NAMESPACE_META);
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     Id.Namespace.DEFAULT.getId())));
+                                                                     Constants.DEFAULT_NAMESPACE)));
     }
 
     try {
@@ -109,8 +109,8 @@ public class NamespaceTest extends AudiTestBase {
     Assert.assertEquals(ns2Meta, namespaceClient.get(NS2.getId()));
 
     // default namespace should still exist after delete of it
-    namespaceClient.delete(Id.Namespace.DEFAULT.getId());
-    namespaceClient.get(Id.Namespace.DEFAULT.getId());
+    namespaceClient.delete(Constants.DEFAULT_NAMESPACE);
+    namespaceClient.get(Constants.DEFAULT_NAMESPACE);
 
     // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
     namespaceClient.delete(NS1.getId());

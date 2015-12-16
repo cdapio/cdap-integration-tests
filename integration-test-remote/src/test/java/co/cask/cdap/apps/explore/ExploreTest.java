@@ -28,7 +28,7 @@ import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
 import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.QueryStatus;
+import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
@@ -85,9 +85,12 @@ public class ExploreTest extends AudiTestBase {
     ServiceManager wordCountService = app.startService("WordCountService");
 
     String appName = WordCountApplication.class.getSimpleName();
-    Id.Flow wordCountFlowId = Id.Flow.from(appName, "WordCountFlow");
-    Id.Flow extendedWordCountFlowId = Id.Flow.from(appName, "ExtendedWordCountFlow");
-    Id.Flow keyValueFlowId = Id.Flow.from(appName, "KeyValueFlow");
+    Id.Program wordCountFlowId = Id.Program.from(Id.Application.from(TEST_NAMESPACE, appName),
+                                                 ProgramType.FLOW, "WordCountFlow");
+    Id.Program extendedWordCountFlowId = Id.Program.from(Id.Application.from(TEST_NAMESPACE, appName),
+                                                         ProgramType.FLOW, "ExtendedWordCountFlow");
+    Id.Program keyValueFlowId = Id.Program.from(Id.Application.from(TEST_NAMESPACE, appName),
+                                                ProgramType.FLOW, "KeyValueFlow");
     Id.Service wordCountServiceId = Id.Service.from(Id.Application.from(TEST_NAMESPACE, appName), "WordCountService");
     waitForStatus(true, wordCountFlowId, extendedWordCountFlowId, keyValueFlowId, wordCountServiceId);
 
@@ -131,7 +134,6 @@ public class ExploreTest extends AudiTestBase {
         + "on (t1.word = t2.key) "
         + "order by t1.word").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(3, rows.size());
 
@@ -163,7 +165,6 @@ public class ExploreTest extends AudiTestBase {
         + "LEFT OUTER JOIN dataset_kvtable t2 "
         + "ON (t1.word = t2.key) order by t1.word").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(5, rows.size());
 
@@ -204,7 +205,6 @@ public class ExploreTest extends AudiTestBase {
         + "RIGHT OUTER JOIN dataset_kvtable t2 "
         + "ON (t1.word = t2.key) order by t1.word").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(4, rows.size());
 
@@ -241,7 +241,6 @@ public class ExploreTest extends AudiTestBase {
         + "FULL OUTER JOIN dataset_kvtable t2 "
         + "ON (t1.word = t2.key) order by t1.word").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(6, rows.size());
 
@@ -285,7 +284,6 @@ public class ExploreTest extends AudiTestBase {
       "select t1.count,count(*) as rowCount from dataset_wordcounts t1 "
         + "JOIN  dataset_kvtable t2 ON (t1.word = t2.key) group by t1.count").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(2, rows.size());
 
@@ -309,7 +307,6 @@ public class ExploreTest extends AudiTestBase {
       "select sum(t1.count) as sum from dataset_wordcounts t1 "
         + "LEFT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(1, rows.size());
 
@@ -328,7 +325,6 @@ public class ExploreTest extends AudiTestBase {
       "select avg(t1.count) as avg from dataset_wordcounts t1 "
         + "LEFT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(1, rows.size());
 
@@ -347,7 +343,6 @@ public class ExploreTest extends AudiTestBase {
       "select min(t1.count) as min from dataset_wordcounts t1 "
         + "RIGHT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(1, rows.size());
 
@@ -366,7 +361,6 @@ public class ExploreTest extends AudiTestBase {
       "select max(t1.count) as max from dataset_wordcounts t1 "
         + "RIGHT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(1, rows.size());
 
@@ -384,7 +378,6 @@ public class ExploreTest extends AudiTestBase {
     ExploreExecutionResult results = client.execute(
       "select * from dataset_kvtable order by key").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(4, rows.size());
 
@@ -424,7 +417,6 @@ public class ExploreTest extends AudiTestBase {
     ExploreExecutionResult results = client.execute(
       "select * from dataset_wordcounts t1 where exists (" + subquery + ") order by t1.word").get();
 
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(3, rows.size());
 
@@ -460,7 +452,6 @@ public class ExploreTest extends AudiTestBase {
 
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute("select * from stream_trades").get();
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(4, rows.size());
 
@@ -482,7 +473,6 @@ public class ExploreTest extends AudiTestBase {
     results = client.execute(
       "select ticker, count(*) as transactions, sum(num_traded) as volume from stream_trades " +
         "group by ticker order by volume desc").get();
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     rows = executionResult2Rows(results);
     Assert.assertEquals(2, rows.size());
 
