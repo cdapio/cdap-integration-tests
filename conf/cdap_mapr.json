@@ -1,0 +1,9 @@
+{
+  "config": {
+    "hadoop": {
+      "yarn_site": {
+        "yarn.nodemanager.delete.debug-delay-sec": "43200"
+      }
+    }
+  }
+}
