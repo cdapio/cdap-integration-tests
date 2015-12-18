@@ -439,7 +439,7 @@ module Cask
           sleep @poll_interval
         end
       rescue RuntimeError => e
-        puts "ERROR: #{e.inspect}"
+        log "ERROR: #{e.inspect}"
         log_failed_tasks
       end
 
@@ -475,15 +475,16 @@ module Cask
 
         # log header
         header = "#{failed_tasks.length} Failed Tasks:"
-        puts '-' * header.length
-        puts header
-        puts '-' * header.length
+        log '    ' + '-' * header.length
+        log '    ' + header
+        log '    ' + '-' * header.length
 
         # log each failed task
         failed_tasks.each do |ft|
-          puts "\n#{ft['action']['statusTime']} #{ft['hostname']} #{ft['action']['service']} #{ft['action']['action']}"
-          puts "STDOUT: #{ft['action']['stdout']}"
-          puts "STDERR: #{ft['action']['stderr']}"
+          ts = Time.at(ft['action']['statusTime'] / 1000).utc.iso8601
+          log "    #{ts} #{ft['hostname']} #{ft['action']['service']} #{ft['action']['action']}"
+          log "    STDOUT: #{ft['action']['stdout']}"
+          log "    STDERR: #{ft['action']['stderr']}"
         end
       end
 
