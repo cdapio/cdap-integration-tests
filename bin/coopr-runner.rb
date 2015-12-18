@@ -444,10 +444,12 @@ module Cask
       end
 
       # Returns an array of hashes of the form:
-      # {
-      #   'hostname' => "myhost.example.com",
-      #   'action' => "[ coopr action data, see http://docs.coopr.io/coopr/current/en/rest/clusters.html#cluster-details ]'
-      # }
+      # [
+      #   {
+      #     'hostname' => "myhost.example.com",
+      #     'action' => "[ coopr action data, see http://docs.coopr.io/coopr/current/en/rest/clusters.html#cluster-details ]'
+      #   }
+      # ]
       # sorted by action submitTime
       def fetch_failed_tasks
         failed_tasks = []
