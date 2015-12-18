@@ -213,6 +213,8 @@
               <excludes>
                 <exclude>LICENSE*.txt</exclude>
                 <exclude>**/Apache-LICENSE-2.0</exclude>
+                <exclude>**/*.state</exclude>
+                <exclude>**/*.json</exclude>
               </excludes>
             </configuration>
           </execution>

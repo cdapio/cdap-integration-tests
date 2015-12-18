@@ -1,0 +1,9 @@
+{
+  "config": {
+    "cdap_auto": {
+      "git": {
+        "local_user": "root"
+      }
+    }
+  }
+}
