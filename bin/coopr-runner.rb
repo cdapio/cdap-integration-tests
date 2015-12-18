@@ -438,6 +438,53 @@ module Cask
           fail "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
           sleep @poll_interval
         end
+      rescue RuntimeError => e
+        puts "ERROR: #{e.inspect}"
+        log_failed_tasks
+      end
+
+      # Returns an array of hashes of the form:
+      # {
+      #   'hostname' => "myhost.example.com",
+      #   'action' => "[ coopr action data, see http://docs.coopr.io/coopr/current/en/rest/clusters.html#cluster-details ]'
+      # }
+      # sorted by action submitTime
+      def fetch_failed_tasks
+        failed_tasks = []
+        resp = @coopr_client.get("v2/clusters/#{id}")
+        cluster = JSON.parse(resp.to_str)
+        nodes = cluster['nodes']
+        nodes.each do |n|
+          next unless n.key?('properties') && n['properties'].key?('hostname')
+          hostname = n['properties']['hostname']
+          next unless n.key?('actions')
+          n['actions'].each do |a|
+            next unless a.key?('status') && a['status'] == 'failed'
+            failed_task = {}
+            failed_task['hostname'] = hostname
+            failed_task['action'] = a
+            failed_tasks.push(failed_task)
+          end
+        end
+        failed_tasks.sort_by { |v| v['action']['statusTime'] }
+      end
+
+      # Fetches and logs to STDOUT all failed tasks for this cluster
+      def log_failed_tasks
+        failed_tasks = fetch_failed_tasks
+
+        # log header
+        header = "#{failed_tasks.length} Failed Tasks:"
+        puts '-' * header.length
+        puts header
+        puts '-' * header.length
+
+        # log each failed task
+        failed_tasks.each do |ft|
+          puts "\n#{ft['action']['statusTime']} #{ft['hostname']} #{ft['action']['service']} #{ft['action']['action']}"
+          puts "STDOUT: #{ft['action']['stdout']}"
+          puts "STDERR: #{ft['action']['stderr']}"
+        end
       end
 
       # Adds a list of services to a cluster
