@@ -154,7 +154,7 @@ module Cask
       attr_accessor :name, :cluster_template, :num_machines, :provider, :provider_fields, :config
 
       def initialize(options)
-        @coopr_client =  Cask::CooprDriver::CooprClient.new(options)
+        @coopr_client = Cask::CooprDriver::CooprClient.new(options)
 
         # json blocks to be manipulated
         @services_contents = []
@@ -317,7 +317,7 @@ module Cask
       attr_accessor :id, :spec, :poll_interval
 
       def initialize(spec, options)
-        unless  spec.instance_of?(ClusterSpec)
+        unless spec.instance_of?(ClusterSpec)
           fail ArgumentError, 'ClusterManager expects an arg of type ClusterSpec'
         end
         @spec = spec
@@ -512,7 +512,7 @@ module Cask
 
         begin
           resp = @coopr_client.post('v2/getNodeProperties', postdata.to_json)
-          nodes =  JSON.parse(resp.to_str)
+          nodes = JSON.parse(resp.to_str)
         rescue => e
           raise "Unable to fetch nodes for service #{service}: #{e.inspect}"
         end
