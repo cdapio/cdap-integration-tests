@@ -482,7 +482,8 @@ module Cask
         # log each failed task
         failed_tasks.each do |ft|
           ts = Time.at(ft['action']['statusTime'] / 1000).utc.iso8601
-          log "    #{ts} #{ft['hostname']} #{ft['action']['service']} #{ft['action']['action']}"
+          service = ft['action']['service'].to_s == '' ? '-' : ft['action']['service']
+          log "    #{ts} #{ft['hostname']} #{service} #{ft['action']['action']}"
           log "    STDOUT: #{ft['action']['stdout']}"
           log "    STDERR: #{ft['action']['stderr']}"
         end
