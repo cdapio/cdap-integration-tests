@@ -330,6 +330,15 @@ module Cask
         puts "#{Time.now.utc.iso8601} #{msg}"
       end
 
+      # Logs a multi-line input with indention, java exception style
+      def log_multiline(msg)
+        lines = msg.split("\n")
+        lines[1..-1].each_with_index do |_v, i|
+          lines[i+1] = "    #{lines[i+1]}"
+        end
+        log(lines.join("\n"))
+      end
+
       # Creates a cluster of given ClusterSpec
       # Persists @id - id of coopr cluster
       def create
@@ -477,17 +486,18 @@ module Cask
 
         # log header
         header = "#{failed_tasks.length} Failed Tasks:"
-        log '    ' + '-' * header.length
-        log '    ' + header
-        log '    ' + '-' * header.length
+        log '-' * header.length
+        log header
+        log '-' * header.length
 
         # log each failed task
         failed_tasks.each do |ft|
           ts = Time.at(ft['action']['statusTime'] / 1000).utc.iso8601
           service = ft['action']['service'].to_s == '' ? '-' : ft['action']['service']
-          log "    #{ts} #{ft['hostname']} #{service} #{ft['action']['action']}"
-          log "    STDOUT: #{ft['action']['stdout']}"
-          log "    STDERR: #{ft['action']['stderr']}"
+          log "#{ts} #{ft['hostname']} #{service} #{ft['action']['action']}"
+          log_multiline "STDOUT: #{ft['action']['stdout']}"
+          log_multiline "STDERR: #{ft['action']['stderr']}"
+          log ''
         end
       end
 
