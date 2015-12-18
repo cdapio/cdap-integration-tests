@@ -41,7 +41,9 @@ public class NamespaceTest extends AudiTestBase {
   private static final NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
     .setName(NS1)
     .setDescription("testDescription")
-    .setSchedulerQueueName("testSchedulerQueueName")
+    // this was not existing in the retrieved list of namespace metas, due to NamespaceHttpHandler#create
+    // not supporting this property (or any NamespaceConfig) in CDAP 2.8
+    // .setSchedulerQueueName("testSchedulerQueueName")
     .build();
   private static final NamespaceMeta ns2Meta = new NamespaceMeta.Builder()
     .setName(NS2)

@@ -69,6 +69,17 @@ public class AudiTestBase extends IntegrationTestBase {
     super.setUp();
   }
 
+  @Override
+  public void tearDown() throws Exception {
+    // stop everything in default namespace
+    getProgramClient().stopAll();
+    NamespaceClient namespaceClient = getNamespaceClient();
+    for (NamespaceMeta namespaceMeta : namespaceClient.list()) {
+      namespaceClient.delete(namespaceMeta.getName());
+    }
+    super.tearDown();
+  }
+
   private boolean allSystemServicesOk() throws IOException, UnauthorizedException {
     for (Map.Entry<String, String> entry : getMonitorClient().getAllSystemServiceStatus().entrySet()) {
       // Exclude explore service, since it does not work on secured cluster prior to 3.1 see CDAP-1905

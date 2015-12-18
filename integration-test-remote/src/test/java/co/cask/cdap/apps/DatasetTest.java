@@ -22,7 +22,9 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.exception.UnauthorizedException;
 import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
+import co.cask.cdap.proto.DatasetSpecificationSummary;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramRecord;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
@@ -102,26 +104,24 @@ public class DatasetTest extends AudiTestBase {
                                                                             WordCount.class.getSimpleName())).size());
 
     // test the number of datasets used by an app with non existing app
-    Assert.assertEquals(0, getDatasetInstances(String.format("apps/%s/datasets", "nonExistingApp")).size());
+    try {
+      getDatasetInstances(String.format("apps/%s/datasets", "nonExistingApp"));
+      Assert.fail();
+    } catch (IOException expected) {
+      Assert.assertTrue(expected.getMessage().contains("404"));
+    }
 
+    // test flows using a dataset with existing dataset name
+    // (services for a dataset is not implemented at this time)
+    Assert.assertEquals(1, getPrograms(String.format("data/datasets/%s/flows", "wordStats")).size());
 
-    // test datasets used by a program with an existing program
-    Assert.assertEquals(appDatasetsCount, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",
-                                                                           WordCount.class.getSimpleName(),
-                                                                           "WordCounter")).size());
-
-    // test datasets used by a program with a non existing program
-    Assert.assertEquals(0, getDatasetInstances(String.format("apps/%s/flows/%s/datasets",
-                                                             WordCount.class.getSimpleName(),
-                                                             "nonExistingProgram")).size());
-
-    // test programs using a dataset with existing dataset name
-    Assert.assertEquals(2, getPrograms(String.format("data/datasets/%s/programs", "wordStats")).size());
-
-
-    // test programs using a dataset with non existing dataset name
-    Assert.assertEquals(0, getPrograms(String.format("data/datasets/%s/programs",
-                                                     "nonExistingDataset")).size());
+    try {
+      // test programs using a dataset with non existing dataset name
+      getPrograms(String.format("data/datasets/%s/programs", "nonExistingDataset"));
+      Assert.fail();
+    } catch (IOException expected) {
+      Assert.assertTrue(expected.getMessage().contains("404"));
+    }
   }
 
   private Map<String, Object> getWordCountStats(RESTClient restClient, ServiceManager wordCountService)
@@ -138,13 +138,14 @@ public class DatasetTest extends AudiTestBase {
 
   private Set<Id.Program> getPrograms(String endPoint) throws IOException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.Program>>() {
+    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<ProgramRecord>>() {
     }.getType());
   }
 
-  private Set<Id.DatasetInstance> getDatasetInstances(String endPoint) throws IOException, UnauthorizedException {
+  private Set<DatasetSpecificationSummary> getDatasetInstances(String endPoint)
+    throws IOException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.DatasetInstance>>() {
+    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<DatasetSpecificationSummary>>() {
     }.getType());
   }
 

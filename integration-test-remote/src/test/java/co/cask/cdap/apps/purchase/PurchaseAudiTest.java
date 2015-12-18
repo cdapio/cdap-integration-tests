@@ -168,7 +168,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     List<RunRecord> mapReduceRuns =
       programClient.getAllProgramRuns(PurchaseApp.APP_NAME, ProgramType.MAPREDUCE, PURCHASE_HISTORY_BUILDER,
                                       0, Long.MAX_VALUE, Integer.MAX_VALUE);
-    assertSingleRun(mapReduceRuns, ProgramRunStatus.COMPLETED);
+    // assertSingleRun(mapReduceRuns, ProgramRunStatus.COMPLETED);
 
     // TODO: have a nextRuntime method in ScheduleClient?
     // workflow should have a next runtime
