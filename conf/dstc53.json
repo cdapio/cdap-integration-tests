@@ -2,7 +2,7 @@
   "config": {
     "hadoop": {
       "distribution": "cdh",
-      "distribution_version": "5.3.6"
+      "distribution_version": "5.3.8"
     },
     "hive": {
       "hive_site": {
