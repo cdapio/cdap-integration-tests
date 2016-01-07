@@ -21,6 +21,7 @@ import co.cask.cdap.api.schedule.ScheduleSpecification;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.UnauthorizedException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
@@ -46,6 +47,7 @@ import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -65,6 +67,7 @@ public class PurchaseAudiTest extends AudiTestBase {
                                                                                 "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER = Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE,
                                                                              "PurchaseHistoryBuilder");
+  private static final Id.Schedule SCHEDULE = Id.Schedule.from(PURCHASE_APP, "DailySchedule");
   private enum ProgramAction {
     START,
     STOP
@@ -157,17 +160,28 @@ public class PurchaseAudiTest extends AudiTestBase {
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
     // TODO: CDAP-3616 have a nextRuntime method in ScheduleClient?
-    // workflow should have a next runtime
+    // workflow should not have a next runtime since its schedule was not 'resumed' and it was simply run once
+    List<ScheduledRuntime> scheduledRuntimes = getNextRuntime(restClient);
+    Assert.assertTrue(scheduledRuntimes.isEmpty());
+
+    Assert.assertEquals("SUSPENDED", purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).status(200));
+    purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).resume();
+
+    scheduledRuntimes = getNextRuntime(restClient);
+    Assert.assertEquals(1, scheduledRuntimes.size());
+
+    purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).suspend();
+  }
+
+  private List<ScheduledRuntime> getNextRuntime(RESTClient restClient) throws UnauthorizedException, IOException {
     String path = String.format("apps/%s/workflows/%s/nextruntime",
                                 PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW.getId());
-    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, path);
-    response = restClient.execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, path);
+    HttpResponse response = restClient.execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
 
     Type scheduledRuntimeListType = new TypeToken<List<ScheduledRuntime>>() { }.getType();
-    List<ScheduledRuntime> scheduledRuntimes =
-      ObjectResponse.<List<ScheduledRuntime>>fromJsonBody(response, scheduledRuntimeListType, GSON)
-        .getResponseObject();
-    Assert.assertEquals(1, scheduledRuntimes.size());
+    return ObjectResponse.<List<ScheduledRuntime>>fromJsonBody(response, scheduledRuntimeListType, GSON)
+      .getResponseObject();
   }
 
   private void checkScheduleState(ScheduleClient scheduleClient, Scheduler.ScheduleState state,
