@@ -1,0 +1,13 @@
+{
+  "config": {
+    "hadoop_mapr": {
+      "distribution_version": "5.0.0"
+    },
+    "java": {
+      "jdk_version": "8"
+    }
+  },
+  "provider-fields": {
+    "google_data_disk_size_gb": "200,200"
+  }
+}
