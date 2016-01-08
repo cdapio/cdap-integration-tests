@@ -465,6 +465,7 @@ module Cask
         resp = @coopr_client.get("v2/clusters/#{id}")
         cluster = JSON.parse(resp.to_str)
         nodes = cluster['nodes']
+        return failed_tasks if nodes.nil? || nodes.empty?
         nodes.each do |n|
           next unless n.key?('properties') && n['properties'].key?('hostname')
           hostname = n['properties']['hostname']
@@ -499,6 +500,8 @@ module Cask
           log_multiline "STDERR: #{ft['action']['stderr']}"
           log ''
         end
+      rescue => e
+        log "ERROR: Unable to fetch and log failed tasks: #{e.inspect}"
       end
 
       # Adds a list of services to a cluster
