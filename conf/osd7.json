@@ -1,0 +1,10 @@
+{
+  "config": {
+    "hadoop": {
+      "distribution": "cdh",
+      "distribution_version": "5.4.9"
+    }
+  },
+  "imagetype": "debian7",
+  "services": "spark-historyserver"
+}

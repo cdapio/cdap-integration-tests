@@ -1,0 +1,8 @@
+{
+  "config": {
+    "java": {
+      "jdk_version": "7"
+    }
+  },
+  "imagetype": "ubuntu12"
+}

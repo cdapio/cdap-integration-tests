@@ -1,0 +1,8 @@
+{
+  "config": {
+    "java": {
+      "jdk_version": "8"
+    }
+  },
+  "imagetype": "centos6"
+}
