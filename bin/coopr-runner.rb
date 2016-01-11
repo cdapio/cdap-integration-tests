@@ -450,6 +450,7 @@ module Cask
       rescue RuntimeError => e
         log "ERROR: #{e.inspect}"
         log_failed_tasks
+        exit 1
       end
 
       # Returns an array of hashes of the form:
