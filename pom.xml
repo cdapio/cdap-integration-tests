@@ -34,7 +34,10 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <cdap.pre.version>3.2.2</cdap.pre.version>
     <cdap.version>3.3.0-SNAPSHOT</cdap.version>
+    <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
+    <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
     <hadoop.version>2.3.0</hadoop.version>
     <snappy.version>1.1.1.7</snappy.version>
@@ -51,32 +54,32 @@
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>HelloWorld</artifactId>
-      <version>${cdap.version}</version>
+      <version>${cdap.examples.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>FileSetExample</artifactId>
-      <version>${cdap.version}</version>
+      <version>${cdap.examples.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>Purchase</artifactId>
-      <version>${cdap.version}</version>
+      <version>${cdap.examples.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>SparkPageRank</artifactId>
-      <version>${cdap.version}</version>
+      <version>${cdap.examples.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>WordCount</artifactId>
-      <version>${cdap.version}</version>
+      <version>${cdap.examples.version}</version>
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>WikipediaPipeline</artifactId>
-      <version>${cdap.version}</version>
+      <version>${cdap.examples.version}</version>
     </dependency>
     <dependency> <!-- PurchaseHistory Dependency -->
       <groupId>org.apache.hadoop</groupId>
@@ -172,6 +175,7 @@
           <argLine>-Xmx5000m -Djava.awt.headless=true -XX:MaxPermSize=256m -XX:+UseConcMarkSweepGC -XX:OnOutOfMemoryError="kill -9 %p"</argLine>
           <systemPropertyVariables>
             <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+            <stage>${upgrade.test.stage}</stage>
           </systemPropertyVariables>
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
@@ -247,8 +251,18 @@
     </profile>
 
     <profile>
-      <id>upgrade-test</id>
+      <id>upgrade-test-pre</id>
       <properties>
+        <cdap.examples.version>${cdap.pre.version}</cdap.examples.version>
+        <upgrade.test.stage>PRE</upgrade.test.stage>
+        <skip.upgrade.test>false</skip.upgrade.test>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>upgrade-test-post</id>
+      <properties>
+        <upgrade.test.stage>POST</upgrade.test.stage>
         <skip.upgrade.test>false</skip.upgrade.test>
       </properties>
     </profile>

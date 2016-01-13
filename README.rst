@@ -53,7 +53,7 @@ To run upgrade tests, execute the following steps::
 
 To run a particular stage, execute the following from the commandline::
 
-  mvn test -P upgrade-test -DinstanceUri=<HostAndPort> -Dstage=post|pre
+  mvn test -P upgrade-test-<stage> -DinstanceUri=<HostAndPort>
 
 
 License and Trademarks
