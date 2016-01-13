@@ -48,13 +48,13 @@ public abstract class UpgradeTestBase extends AudiTestBase {
 
   @Test
   public void testUpgrade() throws Exception {
-    LOG.info("Testing stage {} of Upgrade: {}", STAGE, getClass().getSimpleName());
+    LOG.info("Testing stage {} of Upgrade: {}.", STAGE, getClass().getSimpleName());
     if (PRE.equalsIgnoreCase(STAGE)) {
       preStage();
     } else if (POST.equalsIgnoreCase(STAGE)) {
       postStage();
     } else {
-      throw new IllegalArgumentException(String.format("Allowed stages: %s, %s", PRE, POST));
+      throw new IllegalArgumentException(String.format("Unknown stage: %s. Allowed stages: %s, %s", STAGE, PRE, POST));
     }
     LOG.info("Testing stage {} of Upgrade: {} - SUCCESSFUL!", STAGE, getClass().getSimpleName());
   }
