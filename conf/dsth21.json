@@ -2,7 +2,7 @@
   "config": {
     "hadoop": {
       "distribution": "hdp",
-      "distribution_version": "2.1.7.0"
+      "distribution_version": "2.1.15.0"
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -23,13 +23,8 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.flow.AbstractFlow;
-import co.cask.cdap.api.flow.Flow;
-import co.cask.cdap.api.flow.FlowConfigurer;
-import co.cask.cdap.api.flow.FlowSpecification;
 import co.cask.cdap.api.flow.flowlet.AbstractFlowlet;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
-import co.cask.cdap.api.mapreduce.AbstractMapReduce;
-import co.cask.cdap.api.mapreduce.MapReduceContext;
 import co.cask.cdap.api.service.AbstractService;
 import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
@@ -44,15 +39,9 @@ import co.cask.cdap.apps.explore.dataset.KeyStructValueTableModule;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.charset.CharacterCodingException;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -80,7 +69,6 @@ public class WordCountApplication extends AbstractApplication {
 
     addFlow(new WordCountFlow());
     addService(new WordCountService());
-//    addMapReduce(new CountTotalsJob());
 
     addStream(new Stream("lists"));
     addDatasetModule("kv_table", KeyStructValueTableModule.class);
@@ -247,55 +235,6 @@ public class WordCountApplication extends AbstractApplication {
         }
 
         responder.sendJson(count);
-      }
-    }
-  }
-
-  /**
-   *
-   */
-  public static class CountTotalsJob extends AbstractMapReduce {
-    @Override
-    public void configure() {
-      setName("CountTotalsJob");
-      setDescription("Counts total words count");
-      setInputDataset("wordCounts");
-      setOutputDataset("totalCount");
-    }
-
-    @Override
-    public void beforeSubmit(MapReduceContext context) throws Exception {
-      Job job = context.getHadoopJob();
-      job.setMapperClass(MyMapper.class);
-      job.setMapOutputKeyClass(BytesWritable.class);
-      job.setMapOutputValueClass(LongWritable.class);
-      job.setReducerClass(MyReducer.class);
-    }
-
-    /**
-     *
-     */
-    public static class MyMapper extends Mapper<String, Long, BytesWritable, LongWritable> {
-      @Override
-      protected void map(String key, Long value, Context context) throws IOException, InterruptedException {
-        context.write(new BytesWritable(Bytes.toBytes("total")), new LongWritable(value));
-      }
-    }
-
-    /**
-     *
-     */
-    public static class MyReducer extends Reducer<BytesWritable, LongWritable, String, Long> {
-      @Override
-      protected void reduce(BytesWritable key, Iterable<LongWritable> values, Context context)
-        throws IOException, InterruptedException {
-
-        long total = 0;
-        for (LongWritable longWritable : values) {
-          total += longWritable.get();
-        }
-
-        context.write("total_words_count", total);
       }
     }
   }

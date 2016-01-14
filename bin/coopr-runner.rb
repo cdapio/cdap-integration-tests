@@ -154,7 +154,7 @@ module Cask
       attr_accessor :name, :cluster_template, :num_machines, :provider, :provider_fields, :config
 
       def initialize(options)
-        @coopr_client =  Cask::CooprDriver::CooprClient.new(options)
+        @coopr_client = Cask::CooprDriver::CooprClient.new(options)
 
         # json blocks to be manipulated
         @services_contents = []
@@ -317,7 +317,7 @@ module Cask
       attr_accessor :id, :spec, :poll_interval
 
       def initialize(spec, options)
-        unless  spec.instance_of?(ClusterSpec)
+        unless spec.instance_of?(ClusterSpec)
           fail ArgumentError, 'ClusterManager expects an arg of type ClusterSpec'
         end
         @spec = spec
@@ -328,6 +328,15 @@ module Cask
 
       def log(msg)
         puts "#{Time.now.utc.iso8601} #{msg}"
+      end
+
+      # Logs a multi-line input with indention, java exception style
+      def log_multiline(msg)
+        lines = msg.split("\n")
+        lines[1..-1].each_with_index do |_v, i|
+          lines[i+1] = "    #{lines[i+1]}"
+        end
+        log(lines.join("\n"))
       end
 
       # Creates a cluster of given ClusterSpec
@@ -438,6 +447,62 @@ module Cask
           fail "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
           sleep @poll_interval
         end
+      rescue RuntimeError => e
+        log "ERROR: #{e.inspect}"
+        log_failed_tasks
+        raise e
+      end
+
+      # Returns an array of hashes of the form:
+      # [
+      #   {
+      #     'hostname' => "myhost.example.com",
+      #     'action' => "[ coopr action data, see http://docs.coopr.io/coopr/current/en/rest/clusters.html#cluster-details ]'
+      #   }
+      # ]
+      # sorted by action submitTime
+      def fetch_failed_tasks
+        failed_tasks = []
+        resp = @coopr_client.get("v2/clusters/#{id}")
+        cluster = JSON.parse(resp.to_str)
+        nodes = cluster['nodes']
+        return failed_tasks if nodes.nil? || nodes.empty?
+        nodes.each do |n|
+          next unless n.key?('properties') && n['properties'].key?('hostname')
+          hostname = n['properties']['hostname']
+          next unless n.key?('actions')
+          n['actions'].each do |a|
+            next unless a.key?('status') && a['status'] == 'failed'
+            failed_task = {}
+            failed_task['hostname'] = hostname
+            failed_task['action'] = a
+            failed_tasks.push(failed_task)
+          end
+        end
+        failed_tasks.sort_by { |v| v['action']['statusTime'] }
+      end
+
+      # Fetches and logs to STDOUT all failed tasks for this cluster
+      def log_failed_tasks
+        failed_tasks = fetch_failed_tasks
+
+        # log header
+        header = "#{failed_tasks.length} Failed Tasks:"
+        log '-' * header.length
+        log header
+        log '-' * header.length
+
+        # log each failed task
+        failed_tasks.each do |ft|
+          ts = Time.at(ft['action']['statusTime'] / 1000).utc.iso8601
+          service = ft['action']['service'].to_s == '' ? '-' : ft['action']['service']
+          log "#{ts} #{ft['hostname']} #{service} #{ft['action']['action']}"
+          log_multiline "STDOUT: #{ft['action']['stdout']}"
+          log_multiline "STDERR: #{ft['action']['stderr']}"
+          log ''
+        end
+      rescue => e
+        log "ERROR: Unable to fetch and log failed tasks: #{e.inspect}"
       end
 
       # Adds a list of services to a cluster
@@ -465,7 +530,7 @@ module Cask
 
         begin
           resp = @coopr_client.post('v2/getNodeProperties', postdata.to_json)
-          nodes =  JSON.parse(resp.to_str)
+          nodes = JSON.parse(resp.to_str)
         rescue => e
           raise "Unable to fetch nodes for service #{service}: #{e.inspect}"
         end
