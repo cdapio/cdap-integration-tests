@@ -23,16 +23,24 @@ import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
+import co.cask.cdap.client.QueryClient;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
+import co.cask.cdap.etl.common.Connection;
 import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.common.Properties;
+import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramRunStatus;
+import co.cask.cdap.proto.QueryResult;
+import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.MapReduceManager;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
@@ -40,12 +48,23 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Tests for ETLBatch.
  */
 public class ETLMapReduceTest extends ETLTestBase {
+
+  private static Schema purchaseSchema = Schema.recordOf(
+    "purchase",
+    Schema.Field.of("rowkey", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("count", Schema.of(Schema.Type.INT)),
+    Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)),
+    Schema.Field.of("item", Schema.of(Schema.Type.STRING))
+  );
+
 
   @Test
   public void testKVToKV() throws Exception {
@@ -84,19 +103,99 @@ public class ETLMapReduceTest extends ETLTestBase {
     }
   }
 
+  @Test
+  public void testDAG() throws Exception {
+    /*
+     *             -----  highpass --------|   |--- hdfs sink (2 rows)
+     *             |                       |---|
+     * sourceTable ------ lowpass ---------|   |--- hbase sink (2 rows)
+     * (2 rows)                       |
+     *                                |------------ hdfs2 sink (1 row)
+     */
+
+    ETLStage source = new ETLStage("SourceTable", new Plugin("Table",
+                                                       ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
+                                                                       Properties.Table.PROPERTY_SCHEMA_ROW_FIELD,
+                                                                       "rowkey",
+                                                                       Properties.Table.PROPERTY_SCHEMA,
+                                                                       purchaseSchema.toString())));
+    ETLStage lpFilter = new ETLStage("LowPassFilter", new Plugin(
+      "ScriptFilter", ImmutableMap.of("script",
+                                      "function shouldFilter(inputRecord) { return inputRecord.count > 8; }")));
+
+    ETLStage hpFilter = new ETLStage("HighPassFilter", new Plugin(
+      "ScriptFilter", ImmutableMap.of("script",
+                                      "function shouldFilter(inputRecord) { return inputRecord.count < 6; }")));
+
+    List<ETLStage> transforms = ImmutableList.of(lpFilter, hpFilter);
+
+    ETLStage tableSink = new ETLStage("SinkTable", new Plugin(
+      "Table", ImmutableMap.of(Properties.BatchReadableWritable.NAME, "hbase",
+                               Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
+                               Properties.Table.PROPERTY_SCHEMA, purchaseSchema.toString())));
+    ETLStage hdfsSink = new ETLStage("TPFSAvro", new Plugin(
+      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, purchaseSchema.toString(),
+                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "hdfs")));
+    ETLStage hdfsSink2 = new ETLStage("TPFSAvro2", new Plugin(
+      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, purchaseSchema.toString(),
+                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "hdfs2")));
+
+    List<ETLStage> sinks = ImmutableList.of(tableSink, hdfsSink, hdfsSink2);
+    List<Connection> connections = ImmutableList.of(
+      new Connection("SourceTable", "LowPassFilter"),
+      new Connection("SourceTable", "HighPassFilter"),
+      new Connection("LowPassFilter", "SinkTable"),
+      new Connection("HighPassFilter", "SinkTable"),
+      new Connection("LowPassFilter", "TPFSAvro"),
+      new Connection("HighPassFilter", "TPFSAvro"),
+      new Connection("LowPassFilter", "TPFSAvro2"));
+
+    ETLBatchConfig etlConfig = new ETLBatchConfig(ETLBatchConfig.Engine.MAPREDUCE,
+                                                  "* * * * *", source, sinks, transforms, connections, null, null);
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
+    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "TabToTab");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+    ingestPurchaseTestData(getTableDataset("input"));
+
+    final MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
+    mrManager.start();
+    mrManager.waitForFinish(5, TimeUnit.MINUTES);
+    Tasks.waitFor(1, new Callable<Integer>() {
+      @Override
+      public Integer call() throws Exception {
+        return mrManager.getHistory(ProgramRunStatus.COMPLETED).size();
+      }
+    }, 1, TimeUnit.MINUTES);
+
+    QueryClient client = new QueryClient(getClientConfig());
+    ExploreExecutionResult result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_hbase")
+      .get(5, TimeUnit.MINUTES);
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    List<QueryResult> resultList = Lists.newArrayList(result);
+    Assert.assertEquals(2, resultList.size());
+    verifyResult("row1", resultList.get(0).getColumns());
+    verifyResult("row2", resultList.get(1).getColumns());
+
+    result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_hdfs").get(5, TimeUnit.MINUTES);
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    resultList = Lists.newArrayList(result);
+    Assert.assertEquals(2, resultList.size());
+    verifyResult("row1", resultList.get(0).getColumns());
+    verifyResult("row2", resultList.get(1).getColumns());
+
+    result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_hdfs2").get(5, TimeUnit.MINUTES);
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    resultList = Lists.newArrayList(result);
+    Assert.assertEquals(1, resultList.size());
+    verifyResult("row1", resultList.get(0).getColumns());
+  }
+
   @SuppressWarnings("ConstantConditions")
   @Test
   public void testTableToTableWithValidations() throws Exception {
 
-    Schema schema = Schema.recordOf(
-      "purchase",
-      Schema.Field.of("rowkey", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("count", Schema.of(Schema.Type.INT)),
-      Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)),
-      Schema.Field.of("item", Schema.of(Schema.Type.STRING))
-    );
-
+    Schema schema = purchaseSchema;
     ETLStage source = new ETLStage("TableSource", new Plugin("Table",
                                                              ImmutableMap.of(
                                                                Properties.BatchReadableWritable.NAME, "inputTable",
@@ -110,10 +209,8 @@ public class ETLMapReduceTest extends ETLTestBase {
       "return {'isValid': isValid, 'errorCode': errCode, 'errorMsg': errMsg}; " +
       "};";
     ETLStage transform =
-      new ETLStage("ValidatorTransform", new Plugin("Validator",
-                                                    ImmutableMap.<String, String>of(
-                                                      "validators", "core", "validationScript", validationScript)
-      ), "keyErrors");
+      new ETLStage("ValidatorTransform", new Plugin("Validator", ImmutableMap.of(
+        "validators", "core", "validationScript", validationScript)), "keyErrors");
     List<ETLStage> transformList = new ArrayList<>();
     transformList.add(transform);
 
@@ -165,5 +262,50 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     row = outputTable.get(Bytes.toBytes("row2"));
     Assert.assertEquals(0, row.getColumns().size());
+  }
+
+  private void verifyResult(String rowKey, List<Object> row) {
+    Assert.assertEquals(rowKey, row.get(0));
+    switch (rowKey) {
+      case "row1":
+        Assert.assertEquals("samuel", row.get(1));
+        Assert.assertEquals(5, row.get(2));
+        Assert.assertEquals(123.45, row.get(3));
+        Assert.assertEquals("scotch", row.get(4));
+        break;
+
+      case "row2":
+        Assert.assertEquals("jackson", row.get(1));
+        Assert.assertEquals(10, row.get(2));
+        Assert.assertEquals(123456789d, row.get(3));
+        Assert.assertEquals("island", row.get(4));
+        break;
+
+      default:
+        Assert.fail(String.format("Unrecognized rowKey {%s}!", rowKey));
+    }
+  }
+
+  private void ingestPurchaseTestData(DataSetManager<Table> tableManager) {
+    Table inputTable = tableManager.get();
+
+    // valid record, user name "samuel" is 6 chars long
+    Put put = new Put(Bytes.toBytes("row1"));
+    put.add("user", "samuel");
+    put.add("count", 5);
+    put.add("price", 123.45);
+    put.add("item", "scotch");
+    inputTable.put(put);
+    tableManager.flush();
+
+    // valid record, user name "jackson" is > 6 characters
+    put = new Put(Bytes.toBytes("row2"));
+    put.add("user", "jackson");
+    put.add("count", 10);
+    put.add("price", 123456789d);
+    put.add("item", "island");
+    inputTable.put(put);
+
+    tableManager.flush();
   }
 }

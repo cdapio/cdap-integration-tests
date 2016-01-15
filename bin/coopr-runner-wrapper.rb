@@ -75,6 +75,7 @@ module Cask
         @dimensions ||= identify_dimensions
         # Generate the additional commandline arguments from the dimension config files
         @new_args ||= generate_new_args
+        puts "Running coopr-runner.rb with additional args: #{@new_args}"
         # Exec into coopr-runner.rb
         _ruby_exec(@new_args + ARGV)
       rescue => e
@@ -221,7 +222,7 @@ module Cask
       def _extract_dimensions_from_env
         dimensions = []
         unless ENV['bamboo_shortJobKey'].nil?
-          dimensions.push(ENV['bamboo_shortJobKey'])
+          dimensions.push(ENV['bamboo_shortJobKey'].downcase)
         end
         dimensions
       end
@@ -236,6 +237,7 @@ module Cask
         res_args = []
         input_file = File.join(@conf_dir, "#{dimension}.json")
 
+        puts "Inserting configuration from #{input_file}"
         begin
           dimension_json = JSON.parse(IO.read(input_file))
 

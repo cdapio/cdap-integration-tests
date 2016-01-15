@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -39,7 +39,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -47,8 +46,6 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-// TODO CDAP-3364: Ignoring this test case as StandaloneTester is unable to setup plugin classes properly right now.
-// once that is fixed, we can remove this ignore.
 /**
  * Integration test which tests the following:
  * <ul>
@@ -57,14 +54,12 @@ import java.util.concurrent.TimeUnit;
  * <li>{@link TimePartitionedFileSetDatasetAvroSink}</li>
  * <li>{@link TimePartitionedFileSetDatasetAvroSource}</li>
  */
-@Ignore
 public class StreamTPFSWithProjectionTest extends ETLTestBase {
 
   private static final String SOURCE_STREAM = "sourceStream";
 
   @Test
-  public void testAdapters() throws Exception {
-
+  public void testStreamTPFSWithProjection() throws Exception {
     //1. create a source stream and send an event
     Id.Stream sourceStreamId = createSourceStream(SOURCE_STREAM);
     streamClient.sendEvent(sourceStreamId, DUMMY_STREAM_EVENT);
@@ -74,7 +69,7 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
     ServiceManager serviceManager = applicationManager.getServiceManager(TPFSService.class.getSimpleName());
     serviceManager.start();
 
-    // 3. Run Stream To TPFS with Projection Transform Adapter
+    // 3. Run Stream To TPFS with Projection Transform pipeline
     Id.Application streamToTPFSAppId = Id.Application.from(TEST_NAMESPACE, "StreamToTPFSWithProjection");
     ETLBatchConfig etlBatchConfig = constructStreamToTPFSConfig();
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlBatchConfig);
@@ -85,29 +80,22 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
     workflowManager.start();
     workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
-    // 4. Run TPFS to TPFS Adapter where the source is the sink from the above adapter
+    // 4. Run TPFS to TPFS pipeline where the source is the sink from the above pipeline
     Id.Application tpfsToTPFSAppId = Id.Application.from(TEST_NAMESPACE, "TPFSToTPFSWithProjection");
     etlBatchConfig = constructTPFSToTPFSConfig();
     appRequest = getBatchAppRequest(etlBatchConfig);
     appManager = getTestManager().deployApplication(tpfsToTPFSAppId, appRequest);
     workflowManager = appManager.getWorkflowManager("ETLWorkflow");
 
-    // add 5minutes to the end time to make sure the newly added partition is included in the run.
+    // add 5 minutes to the end time to make sure the newly added partition is included in the run.
     workflowManager.start(ImmutableMap.of("runtime", String.valueOf(timeInMillis + 300 * 1000)));
     workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
-    // both the adapters needs to run first so that the TPFS gets created and the service can access it.
+    // both the pipelines needs to run first so that the TPFS gets created and the service can access it.
 
     // 5. Verify data in TPFS
     verifyTPFSData(serviceManager, TPFSService.TPFS_1);
     verifyTPFSData(serviceManager, TPFSService.TPFS_2);
-
-    serviceManager.stop();
-    appClient.delete(streamToTPFSAppId);
-    appClient.delete(tpfsToTPFSAppId);
-    datasetClient.delete(Id.DatasetInstance.from(TEST_NAMESPACE, TPFSService.TPFS_1));
-    datasetClient.delete(Id.DatasetInstance.from(TEST_NAMESPACE, TPFSService.TPFS_2));
-    streamClient.delete(Id.Stream.from(TEST_NAMESPACE, SOURCE_STREAM));
   }
 
   private void verifyTPFSData(ServiceManager serviceManager, String tpfsName) throws IOException,

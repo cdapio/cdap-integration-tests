@@ -3,12 +3,12 @@
     "hadoop": {
       "distribution": "cdh",
       "distribution_version": "5.1.5"
-    }
-  },
-  "hive": {
-    "hive_site": {
-      "javax.jdo.option.ConnectionDriverName": "org.apache.derby.jdbc.EmbeddedDriver",
-      "javax.jdo.option.ConnectionURL": "jdbc:derby:;databaseName=/var/lib/hive/metastore/metastore_db;create=true"
+    },
+    "hive": {
+      "hive_site": {
+        "javax.jdo.option.ConnectionDriverName": "org.apache.derby.jdbc.EmbeddedDriver",
+        "javax.jdo.option.ConnectionURL": "jdbc:derby:;databaseName=/var/lib/hive/metastore/metastore_db;create=true"
+      }
     }
   }
 }

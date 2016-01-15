@@ -2,13 +2,13 @@
   "config": {
     "hadoop": {
       "distribution": "cdh",
-      "distribution_version": "5.3.6"
-    }
-  },
-  "hive": {
-    "hive_site": {
-      "javax.jdo.option.ConnectionDriverName": "org.apache.derby.jdbc.EmbeddedDriver",
-      "javax.jdo.option.ConnectionURL": "jdbc:derby:;databaseName=/var/lib/hive/metastore/metastore_db;create=true"
+      "distribution_version": "5.3.8"
+    },
+    "hive": {
+      "hive_site": {
+        "javax.jdo.option.ConnectionDriverName": "org.apache.derby.jdbc.EmbeddedDriver",
+        "javax.jdo.option.ConnectionURL": "jdbc:derby:;databaseName=/var/lib/hive/metastore/metastore_db;create=true"
+      }
     }
   },
   "services": "spark-historyserver"
