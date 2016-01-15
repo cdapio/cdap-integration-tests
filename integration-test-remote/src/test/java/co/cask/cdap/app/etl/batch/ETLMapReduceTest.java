@@ -59,7 +59,7 @@ public class ETLMapReduceTest extends ETLTestBase {
   private static Schema purchaseSchema = Schema.recordOf(
     "purchase",
     Schema.Field.of("rowkey", Schema.of(Schema.Type.STRING)),
-    Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("userId", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("count", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)),
     Schema.Field.of("item", Schema.of(Schema.Type.STRING))
@@ -169,6 +169,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     }, 1, TimeUnit.MINUTES);
 
     QueryClient client = new QueryClient(getClientConfig());
+
     ExploreExecutionResult result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_hbase")
       .get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
@@ -204,8 +205,8 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     String validationScript = "function isValid(input) {  " +
       "var errCode = 0; var errMsg = 'none'; var isValid = true;" +
-      "if (!coreValidator.maxLength(input.user, 6)) " +
-      "{ errCode = 10; errMsg = 'user name greater than 6 characters'; isValid = false; }; " +
+      "if (!coreValidator.maxLength(input.userId, 6)) " +
+      "{ errCode = 10; errMsg = 'userId greater than 6 characters'; isValid = false; }; " +
       "return {'isValid': isValid, 'errorCode': errCode, 'errorMsg': errMsg}; " +
       "};";
     ETLStage transform =
@@ -229,18 +230,18 @@ public class ETLMapReduceTest extends ETLTestBase {
     DataSetManager<Table> inputManager = getTableDataset("inputTable");
     Table inputTable = inputManager.get();
 
-    // valid record, user name "samuel" is 6 chars long
+    // valid record, userId "samuel" is 6 chars long
     Put put = new Put(Bytes.toBytes("row1"));
-    put.add("user", "samuel");
+    put.add("userId", "samuel");
     put.add("count", 5);
     put.add("price", 123.45);
     put.add("item", "scotch");
     inputTable.put(put);
     inputManager.flush();
 
-    // valid record, user name "jackson" is > 6 characters
+    // valid record, userId "jackson" is > 6 characters
     put = new Put(Bytes.toBytes("row2"));
-    put.add("user", "jackson");
+    put.add("userId", "jackson");
     put.add("count", 10);
     put.add("price", 123456789d);
     put.add("item", "island");
@@ -255,7 +256,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     Table outputTable = outputManager.get();
 
     Row row = outputTable.get(Bytes.toBytes("row1"));
-    Assert.assertEquals("samuel", row.getString("user"));
+    Assert.assertEquals("samuel", row.getString("userId"));
     Assert.assertEquals(5, (int) row.getInt("count"));
     Assert.assertTrue(Math.abs(123.45 - row.getDouble("price")) < 0.000001);
     Assert.assertEquals("scotch", row.getString("item"));
@@ -289,9 +290,9 @@ public class ETLMapReduceTest extends ETLTestBase {
   private void ingestPurchaseTestData(DataSetManager<Table> tableManager) {
     Table inputTable = tableManager.get();
 
-    // valid record, user name "samuel" is 6 chars long
+    // valid record, userId "samuel" is 6 chars long
     Put put = new Put(Bytes.toBytes("row1"));
-    put.add("user", "samuel");
+    put.add("userId", "samuel");
     put.add("count", 5);
     put.add("price", 123.45);
     put.add("item", "scotch");
@@ -300,7 +301,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     // valid record, user name "jackson" is > 6 characters
     put = new Put(Bytes.toBytes("row2"));
-    put.add("user", "jackson");
+    put.add("userId", "jackson");
     put.add("count", 10);
     put.add("price", 123456789d);
     put.add("item", "island");
