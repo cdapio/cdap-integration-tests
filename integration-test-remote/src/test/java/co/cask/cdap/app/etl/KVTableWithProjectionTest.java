@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -37,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests {@link KVTableSource} and {@link Properties.ProjectionTransform} convert function
  */
+// https://issues.cask.co/browse/CDAP-4629
+@Ignore
 public class KVTableWithProjectionTest extends ETLTestBase {
 
   private static final String SOURCE_STREAM = "sourceStream";
