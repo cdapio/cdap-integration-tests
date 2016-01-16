@@ -70,6 +70,8 @@ public class PurchaseLineageTest extends AudiTestBase {
   private static final Id.Application PURCHASE_APP = Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME);
   private static final Id.Flow PURCHASE_FLOW = Id.Flow.from(PURCHASE_APP, "PurchaseFlow");
   private static final Id.Service PURCHASE_HISTORY_SERVICE = Id.Service.from(PURCHASE_APP, "PurchaseHistoryService");
+  private static final Id.Service CATALOG_LOOKUP_SERVICE = Id.Service.from(PURCHASE_APP, "CatalogLookup");
+  private static final Id.Service USER_PROFILE_SERVICE = Id.Service.from(PURCHASE_APP, "UserProfileService");
   private static final Id.Workflow PURCHASE_HISTORY_WORKFLOW = Id.Workflow.from(PURCHASE_APP,
                                                                                 "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER = Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE,
@@ -261,7 +263,9 @@ public class PurchaseLineageTest extends AudiTestBase {
                                                                            "service*", "PROGRAM"));
     Set<MetadataSearchResultRecord> expectedSearchResults =
       ImmutableSet.of(
-        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE)
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE),
+        new MetadataSearchResultRecord(CATALOG_LOOKUP_SERVICE),
+        new MetadataSearchResultRecord(USER_PROFILE_SERVICE)
       );
 
     verifySearchResult(searchURL, expectedSearchResults);
@@ -270,6 +274,10 @@ public class PurchaseLineageTest extends AudiTestBase {
     searchURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
                                                          String.format("metadata/search?query=%s&target=%s",
                                                                        "spKey1:spValue1", "PROGRAM"));
+    expectedSearchResults =
+      ImmutableSet.of(
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE)
+      );
     verifySearchResult(searchURL, expectedSearchResults);
 
     searchURL = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
