@@ -32,11 +32,13 @@ import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
+import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Throwables;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -78,8 +80,23 @@ public abstract class ETLTestBase extends AudiTestBase {
       @Override
       public Boolean call() throws Exception {
         try {
-          return !artifactClient.getPluginTypes(batchId, ArtifactScope.SYSTEM).isEmpty() &&
-            !artifactClient.getPluginTypes(realtimeId, ArtifactScope.SYSTEM).isEmpty();
+          boolean batchReady = false;
+          List<PluginSummary> plugins = artifactClient.getPluginSummaries(batchId, "batchsource", ArtifactScope.SYSTEM);
+          for (PluginSummary plugin : plugins) {
+            if ("Table".equals(plugin.getName())) {
+              batchReady = true;
+              break;
+            }
+          }
+          boolean realtimeReady = false;
+          plugins = artifactClient.getPluginSummaries(realtimeId, "realtimesource", ArtifactScope.SYSTEM);
+          for (PluginSummary plugin : plugins) {
+            if ("DataGenerator".equals(plugin.getName())) {
+              realtimeReady = true;
+              break;
+            }
+          }
+          return batchReady && realtimeReady;
         } catch (ArtifactNotFoundException e) {
           // happens if etl-batch or etl-realtime were not added yet
           return false;
