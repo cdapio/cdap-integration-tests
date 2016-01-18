@@ -44,7 +44,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private static final Id.DatasetInstance PURCHASE_STORE = Id.DatasetInstance.from(Id.Namespace.DEFAULT, "history");
   private static final Map<String, String> EMPTY_PROPERTIES = ImmutableMap.of();
   private static final Map<String, String> APP_PROPERTIES = ImmutableMap.of("env", "prod");
-  private final Set<MetadataRecord> EXPECTED_APP_METADATA = ImmutableSet.of(
+  private static final Set<MetadataRecord> EXPECTED_APP_METADATA = ImmutableSet.of(
     new MetadataRecord(PURCHASE_APP, APP_PROPERTIES, ImmutableSet.<String>of())
   );
   private static final Set<String> STREAM_TAGS = ImmutableSet.of("input");
