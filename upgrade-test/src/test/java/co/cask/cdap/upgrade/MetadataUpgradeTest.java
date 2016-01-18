@@ -48,11 +48,11 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     new MetadataRecord(PURCHASE_APP, APP_PROPERTIES, ImmutableSet.<String>of())
   );
   private static final Set<String> STREAM_TAGS = ImmutableSet.of("input");
-  private static final Set<MetadataRecord> EXPECTED_MR_METADATA = ImmutableSet.of(
+  private static final Set<MetadataRecord> EXPECTED_STREAM_METADATA = ImmutableSet.of(
     new MetadataRecord(PURCHASE_STREAM, EMPTY_PROPERTIES, STREAM_TAGS)
   );
   private static final Set<String> MR_TAGS = ImmutableSet.of("processing");
-  private static final Set<MetadataRecord> EXPECTED_STREAM_METADATA = ImmutableSet.of(
+  private static final Set<MetadataRecord> EXPECTED_MR_METADATA = ImmutableSet.of(
     new MetadataRecord(PURCHASE_HISTORY_BUILDER, EMPTY_PROPERTIES, MR_TAGS)
   );
   private static final Set<String> DS_TAGS = ImmutableSet.of("output");
@@ -116,19 +116,19 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     );
     // assert that system metadata is empty
     Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_APP), MetadataScope.SYSTEM),
+      ImmutableSet.of(new MetadataRecord(PURCHASE_APP, MetadataScope.SYSTEM)),
       metadataClient.getMetadata(PURCHASE_APP, MetadataScope.SYSTEM)
     );
     Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_STREAM), MetadataScope.SYSTEM),
+      ImmutableSet.of(new MetadataRecord(PURCHASE_STREAM, MetadataScope.SYSTEM)),
       metadataClient.getMetadata(PURCHASE_STREAM, MetadataScope.SYSTEM)
     );
     Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_HISTORY_BUILDER), MetadataScope.SYSTEM),
+      ImmutableSet.of(new MetadataRecord(PURCHASE_HISTORY_BUILDER, MetadataScope.SYSTEM)),
       metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER, MetadataScope.SYSTEM)
     );
     Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_STORE), MetadataScope.SYSTEM),
+      ImmutableSet.of(new MetadataRecord(PURCHASE_STORE, MetadataScope.SYSTEM)),
       metadataClient.getMetadata(PURCHASE_STORE, MetadataScope.SYSTEM)
     );
   }
