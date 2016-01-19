@@ -60,8 +60,8 @@ module Cask
 
       # Exec this process into coopr-runner.rb with the new generated config arguments
       def run
-        # If this is not a cluster creation, wrapper has nothing to do
-        run_as_noop unless _action_create?
+        # If this is not a cluster creation or reconfigure, wrapper has nothing to do
+        run_as_noop unless _action_create? || _action_reconfigure?
 
         begin
           # Ensure the coopr-runner.rb options we need were given
@@ -166,7 +166,12 @@ module Cask
 
       # Determine if this invocation of coopr-runner.rb is a cluster creation
       def _action_create?
-        @action.nil? || @action =~ /create/
+        @action.nil? || @action =~ /^create/i
+      end
+
+      # Determine if this invocation of coopr-runner.rb is a cluster reconfigure
+      def _action_reconfigure?
+        @action =~ /^reconfigure/i
       end
 
       # Parse clustertemplate name to determine the dimensions whose config we should include

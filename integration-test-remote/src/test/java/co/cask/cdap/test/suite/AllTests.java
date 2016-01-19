@@ -29,7 +29,7 @@ import co.cask.cdap.apps.NamespacedStreamTest;
 import co.cask.cdap.apps.StreamTest;
 import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
-import co.cask.cdap.apps.metadata.PurchaseLineageTest;
+import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
 import co.cask.cdap.apps.serviceworker.ServiceWorkerTest;
@@ -57,7 +57,7 @@ import org.junit.runners.Suite;
   DatasetTest.class,
   ExploreTest.class,
   FileSetTest.class,
-  PurchaseLineageTest.class,
+  PurchaseMetadataTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
   PurchaseAudiTest.class,

@@ -30,15 +30,8 @@
   <dependencies>
     <dependency>
       <groupId>co.cask.cdap.test</groupId>
-      <artifactId>integration-test-remote</artifactId>
+      <artifactId>integration-test-core</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap.test</groupId>
-      <artifactId>integration-test-remote</artifactId>
-      <version>${project.version}</version>
-      <type>test-jar</type>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 
