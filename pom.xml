@@ -29,6 +29,7 @@
     <module>integration-test-standalone</module>
     <module>upgrade-test</module>
     <module>long-running-test</module>
+    <module>integration-test-core</module>
   </modules>
   <packaging>pom</packaging>
 
