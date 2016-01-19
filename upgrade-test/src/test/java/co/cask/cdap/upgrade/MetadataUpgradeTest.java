@@ -74,10 +74,10 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP));
 
     metadataClient.addTags(PURCHASE_STREAM, STREAM_TAGS);
-    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_STREAM));
+    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM));
 
     metadataClient.addTags(PURCHASE_HISTORY_BUILDER, MR_TAGS);
-    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER));
+    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER));
 
     metadataClient.addTags(PURCHASE_STORE, DS_TAGS);
     Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(PURCHASE_STORE));
@@ -114,6 +114,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
       ),
       metadataClient.searchMetadata(Id.Namespace.DEFAULT, "output", MetadataSearchTargetType.ALL)
     );
+
     // assert that system metadata is empty
     Assert.assertEquals(
       ImmutableSet.of(new MetadataRecord(PURCHASE_APP, MetadataScope.SYSTEM)),
