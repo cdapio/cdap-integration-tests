@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -38,6 +38,7 @@ import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.CDH53Incompatible;
+import co.cask.cdap.test.suite.category.CDH55Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
@@ -81,6 +82,10 @@ public class WorkflowTest extends AudiTestBase {
   }
 
   @Test
+  // https://issues.cask.co/browse/CDAP-4711
+  @Category({
+    CDH55Incompatible.class
+  })
   public void testLDA() throws Exception {
     WikipediaPipelineApp.WikipediaAppConfig appConfig = new WikipediaPipelineApp.WikipediaAppConfig();
     AppRequest<WikipediaPipelineApp.WikipediaAppConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, appConfig);
