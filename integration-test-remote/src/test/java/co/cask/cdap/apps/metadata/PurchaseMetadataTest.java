@@ -17,10 +17,6 @@
 package co.cask.cdap.apps.metadata;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
-import co.cask.cdap.api.data.batch.BatchReadable;
-import co.cask.cdap.api.data.batch.BatchWritable;
-import co.cask.cdap.api.data.batch.RecordScannable;
-import co.cask.cdap.api.data.batch.RecordWritable;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
@@ -402,7 +398,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
         new MetadataSearchResultRecord(PURCHASE_HISTORY_BUILDER),
         new MetadataSearchResultRecord(PURCHASE_HISTORY_WORKFLOW)
       ),
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "batch", null));
+      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "batch", MetadataSearchTargetType.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_FLOW),
@@ -502,15 +498,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
     result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "body:STR*", null);
     Assert.assertEquals(expected, result);
 
-    // schema search for a field with the given fieldtype
-    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "string", null);
-    Assert.assertEquals(
-      ImmutableSet.of(
-        new MetadataSearchResultRecord(PURCHASE_STREAM),
-        new MetadataSearchResultRecord(HISTORY_DS),
-        new MetadataSearchResultRecord(PURCHASES_DS)
-      ), result);
-
     // create a view
     Schema viewSchema = Schema.recordOf("record",
                                         Schema.Field.of("viewBody", Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
@@ -543,15 +530,10 @@ public class PurchaseMetadataTest extends AudiTestBase {
       .addAll(expectedBatchReadables)
       .add(new MetadataSearchResultRecord(HISTORY_DS))
       .build();
-    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, BatchReadable.class.getSimpleName(), null);
-    Assert.assertEquals(expectedBatchReadables, result);
-    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, BatchWritable.class.getSimpleName(),
-                                           MetadataSearchTargetType.DATASET);
+    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "batch", MetadataSearchTargetType.DATASET);
     Assert.assertEquals(expectedAllDatasets, result);
-    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, RecordScannable.class.getSimpleName(), null);
+    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "explore", MetadataSearchTargetType.DATASET);
     Assert.assertEquals(expectedAllDatasets, result);
-    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, RecordWritable.class.getSimpleName(), null);
-    Assert.assertEquals(expectedKvTables, result);
     result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, KeyValueTable.class.getName(), null);
     Assert.assertEquals(expectedKvTables, result);
     result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "type:*", null);
