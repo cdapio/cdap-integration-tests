@@ -53,6 +53,13 @@ public class AppWithSleepingFlowlet extends AbstractApplication {
       connectStream("ingestStream", "streamFlowlet");
       connect("streamFlowlet", "sleepingFlowlet");
     }
+
+    // For backwards compatability. Only the configureFlow() method is called in CDAP 3.2.x.
+    // This can be removed once we no longer need this app to run against CDAP 3.2.x.
+    @Override
+    protected void configureFlow() {
+      configure();
+    }
   }
 
   /**
