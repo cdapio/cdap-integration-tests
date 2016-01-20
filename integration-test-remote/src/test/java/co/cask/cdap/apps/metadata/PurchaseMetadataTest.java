@@ -16,19 +16,15 @@
 
 package co.cask.cdap.apps.metadata;
 
-import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
-import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.LineageClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.StreamViewClient;
-import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.app.RunIds;
-import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.metadata.dataset.MetadataDataset;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
 import co.cask.cdap.data2.metadata.lineage.Lineage;
@@ -40,8 +36,6 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.ViewSpecification;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
-import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
@@ -72,7 +66,6 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -331,24 +324,30 @@ public class PurchaseMetadataTest extends AudiTestBase {
   }
 
   private void assertArtifactSearch() throws Exception {
-    // wait until cdap-etl-batch artifacts are available
-    waitForETLBatchArtifact();
-    String version = getMetaClient().getVersion().getVersion();
-    Id.Artifact batchId = Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-batch", version);
-    Set<MetadataSearchResultRecord> expected = ImmutableSet.of(new MetadataSearchResultRecord(batchId));
-    Set<MetadataSearchResultRecord> result = metadataClient.searchMetadata(Id.Namespace.SYSTEM, "cdap-etl-batch", null);
-    Assert.assertEquals(expected, result);
-    result = metadataClient.searchMetadata(Id.Namespace.SYSTEM, "cdap-etl-b*", MetadataSearchTargetType.ARTIFACT);
-    Assert.assertEquals(expected, result);
-    ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
-    List<ArtifactSummary> allCorePlugins = artifactClient.listVersions(Id.Namespace.DEFAULT, "core-plugins",
-                                                                       ArtifactScope.SYSTEM);
-    Assert.assertTrue("Expected at least one core-plugins artifact.", allCorePlugins.size() > 0);
-    String corePluginsVersion = allCorePlugins.get(0).getVersion();
-    Id.Artifact corePlugins = Id.Artifact.from(Id.Namespace.SYSTEM, "core-plugins", corePluginsVersion);
-    expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
-    result = metadataClient.searchMetadata(Id.Namespace.SYSTEM, "table", MetadataSearchTargetType.ARTIFACT);
-    Assert.assertEquals(expected, result);
+    String artifactName = "system-metadata-artifact";
+    String pluginArtifactName = "system-metadata-plugins";
+    Id.Artifact systemMetadataArtifact = Id.Artifact.from(Id.Namespace.DEFAULT, artifactName, "1.0.0");
+    getTestManager().addAppArtifact(systemMetadataArtifact, ArtifactSystemMetadataApp.class);
+    Id.Artifact pluginArtifact = Id.Artifact.from(Id.Namespace.DEFAULT, pluginArtifactName, "1.0.0");
+    getTestManager().addPluginArtifact(pluginArtifact, systemMetadataArtifact,
+                                       ArtifactSystemMetadataApp.EchoPlugin1.class,
+                                       ArtifactSystemMetadataApp.EchoPlugin2.class);
+    // verify search using artifact name
+    Assert.assertEquals(
+      ImmutableSet.of(new MetadataSearchResultRecord(systemMetadataArtifact)),
+      metadataClient.searchMetadata(Id.Namespace.DEFAULT, artifactName, null)
+    );
+    // verify search using plugin name
+    Assert.assertEquals(
+      ImmutableSet.of(new MetadataSearchResultRecord(pluginArtifact)),
+      metadataClient.searchMetadata(Id.Namespace.DEFAULT,
+                                    ArtifactSystemMetadataApp.PLUGIN1_NAME, MetadataSearchTargetType.ARTIFACT)
+    );
+    Assert.assertEquals(
+      ImmutableSet.of(new MetadataSearchResultRecord(pluginArtifact)),
+      metadataClient.searchMetadata(Id.Namespace.DEFAULT,
+                                    ArtifactSystemMetadataApp.PLUGIN2_NAME, null)
+    );
   }
 
   private void assertAppSearch() throws Exception {
@@ -571,32 +570,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(FREQUENT_CUSTOMERS_DS)), result);
     result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, USER_PROFILES_DS.getId(), null);
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(USER_PROFILES_DS)), result);
-  }
-
-  private void waitForETLBatchArtifact() throws Exception {
-    final ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
-    String version = getMetaClient().getVersion().getVersion();
-    final Id.Artifact batchId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-batch", version);
-    // wait for the cdap-etl-batch artifact to be available
-    Tasks.waitFor(true, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        try {
-          boolean batchReady = false;
-          List<PluginSummary> plugins = artifactClient.getPluginSummaries(batchId, "batchsource", ArtifactScope.SYSTEM);
-          for (PluginSummary plugin : plugins) {
-            if ("Table".equals(plugin.getName())) {
-              batchReady = true;
-              break;
-            }
-          }
-          return batchReady;
-        } catch (ArtifactNotFoundException e) {
-          // happens if etl-batch or etl-realtime were not added yet
-          return false;
-        }
-      }
-    }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
   }
 
   private void verifyServiceRun(String runId, Set<MetadataRecord> expected) throws Exception {
