@@ -30,12 +30,13 @@ import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
 import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.common.Plugin;
-import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.MapReduceManager;
+import co.cask.hydrator.plugin.batch.sink.BatchCubeSink;
+import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -48,7 +49,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Test for {@link co.cask.cdap.etl.batch.sink.BatchCubeSink}.
+ * Test for {@link BatchCubeSink}.
  */
 public class BatchCubeSinkTest extends ETLTestBase {
   @Test
