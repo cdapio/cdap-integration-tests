@@ -23,7 +23,7 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.etl.api.PipelineConfigurer;
 import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.api.batch.BatchSourceContext;
-import co.cask.cdap.etl.batch.source.KVTableSource;
+import co.cask.hydrator.plugin.batch.source.KVTableSource;
 
 /**
  * Test Batch Source that writes to a table in {@link BatchSource#prepareRun} and {@link BatchSource#onRunFinish}.

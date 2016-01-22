@@ -18,14 +18,14 @@ package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
-import co.cask.cdap.etl.batch.source.KVTableSource;
 import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.common.Plugin;
-import co.cask.cdap.etl.common.Properties;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.MapReduceManager;
+import co.cask.hydrator.plugin.batch.source.KVTableSource;
+import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
