@@ -115,6 +115,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
       metadataClient.searchMetadata(Id.Namespace.DEFAULT, "output", MetadataSearchTargetType.ALL)
     );
 
+    // assert that system metadata is empty
     Assert.assertEquals(
       ImmutableSet.of(new MetadataRecord(PURCHASE_APP, MetadataScope.SYSTEM)),
       metadataClient.getMetadata(PURCHASE_APP, MetadataScope.SYSTEM)

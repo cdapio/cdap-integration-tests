@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright © 2015 Cask Data, Inc.
+  Copyright © 2015-2016 Cask Data, Inc.
 
   Licensed under the Apache License, Version 2.0 (the "License"); you may not
   use this file except in compliance with the License. You may obtain a copy of
@@ -35,8 +35,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.version>3.4.0-SNAPSHOT</cdap.version>
     <cdap.pre.version>3.3.0</cdap.pre.version>
+    <cdap.version>3.4.0-SNAPSHOT</cdap.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
