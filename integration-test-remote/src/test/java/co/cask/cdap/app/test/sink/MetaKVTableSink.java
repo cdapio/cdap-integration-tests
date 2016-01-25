@@ -23,7 +23,7 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.etl.api.PipelineConfigurer;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSinkContext;
-import co.cask.cdap.etl.batch.sink.KVTableSink;
+import co.cask.hydrator.plugin.batch.sink.KVTableSink;
 
 /**
  * Test Batch Sink that writes to a table in {@link BatchSink#prepareRun} and {@link BatchSink#onRunFinish}.

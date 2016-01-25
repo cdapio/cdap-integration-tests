@@ -118,9 +118,9 @@
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>cdap-etl-lib</artifactId>
-      <version>${cdap.version}</version>
+      <groupId>co.cask.hydrator</groupId>
+      <artifactId>core-plugins</artifactId>
+      <version>1.2.0</version>
       <exclusions>
         <exclusion>
           <groupId>*</groupId>
