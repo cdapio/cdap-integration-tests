@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -93,8 +93,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
                                                                                      "userProfiles");
 
   private static final Type SET_METADATA_RECORD_TYPE = new TypeToken<Set<MetadataRecord>>() { }.getType();
-  private static final Type SET_METADATA_SEARCH_RESULT_TYPE =
-    new TypeToken<Set<MetadataSearchResultRecord>>() { }.getType();
 
   private MetadataClient metadataClient;
   private LineageClient lineageClient;
