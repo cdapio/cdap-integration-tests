@@ -2,10 +2,7 @@
   "config": {
     "cdap_auto": {
       "git": {
-        "local_user": "root",
-        "hydrator_plugins": {
-          "branch": "release/1.2"
-        }
+        "local_user": "root"
       }
     }
   }
