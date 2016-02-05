@@ -60,7 +60,8 @@ public class RemoteTable extends AbstractRemoteTable {
   @Nonnull
   @Override
   public Row get(byte[] row) {
-    return get(row, new byte[][] {});
+    String json = GSON.toJson(new Get(row));
+    return doPost("get", json, Result.class);
   }
 
   @Nonnull
@@ -90,7 +91,8 @@ public class RemoteTable extends AbstractRemoteTable {
 
   @Override
   public void delete(byte[] row) {
-    delete(row, new byte[][] {});
+    String json = GSON.toJson(new Delete(row));
+    doPost("delete", json);
   }
 
   @Override
