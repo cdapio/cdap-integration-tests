@@ -54,5 +54,14 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
     result = metadataClient.searchMetadata(Id.Namespace.SYSTEM, "table", MetadataSearchTargetType.ARTIFACT);
     Assert.assertEquals(expected, result);
+    // Searching in the default namespace should also surface entities from the system namespace
+    expected = ImmutableSet.of(new MetadataSearchResultRecord(
+      Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-batch", getMetaClient().getVersion().getVersion())));
+    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "batch", null);
+    Assert.assertEquals(expected, result);
+    expected = ImmutableSet.of(new MetadataSearchResultRecord(
+      Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-realtime", getMetaClient().getVersion().getVersion())));
+    result = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "realtime", null);
+    Assert.assertEquals(expected, result);
   }
 }

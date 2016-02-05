@@ -403,7 +403,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
         new MetadataSearchResultRecord(CATALOG_LOOKUP_SERVICE),
         new MetadataSearchResultRecord(USER_PROFILE_SERVICE)
       ),
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "realtime", null));
+      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "realtime", MetadataSearchTargetType.PROGRAM));
 
     // Using program names
     Assert.assertEquals(
