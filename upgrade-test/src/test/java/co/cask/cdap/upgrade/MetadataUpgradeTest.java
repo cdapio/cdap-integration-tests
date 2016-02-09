@@ -76,7 +76,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     deployApplication(PurchaseApp.class);
 
     // create a view
-    Id.Stream.View view = Id.Stream.View.from(PURCHASE_STREAM, PURCHASE_STREAM + "View");
+    Id.Stream.View view = Id.Stream.View.from(PURCHASE_STREAM, PURCHASE_STREAM.getId() + "View");
     Schema viewSchema = Schema.recordOf("record",
                                         Schema.Field.of("viewBody", Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
