@@ -16,11 +16,15 @@
 
 package co.cask.cdap.upgrade;
 
+import co.cask.cdap.api.data.format.FormatSpecification;
+import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.client.MetadataClient;
+import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramType;
+import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
@@ -68,8 +72,17 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
   @Override
   protected void preStage() throws Exception {
+    // deploy an application
     deployApplication(PurchaseApp.class);
-    // Add some metadata
+
+    // create a view
+    Id.Stream.View view = Id.Stream.View.from(PURCHASE_STREAM, PURCHASE_STREAM + "View");
+    Schema viewSchema = Schema.recordOf("record",
+                                        Schema.Field.of("viewBody", Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
+    StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
+    viewClient.createOrUpdate(view, new ViewSpecification(new FormatSpecification("format", viewSchema)));
+
+    // Add some user metadata
     metadataClient.addProperties(PURCHASE_APP, APP_PROPERTIES);
     Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP));
 
@@ -115,22 +128,64 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
       metadataClient.searchMetadata(Id.Namespace.DEFAULT, "output", MetadataSearchTargetType.ALL)
     );
 
-    // assert that system metadata is empty
-    Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_APP, MetadataScope.SYSTEM)),
-      metadataClient.getMetadata(PURCHASE_APP, MetadataScope.SYSTEM)
-    );
-    Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_STREAM, MetadataScope.SYSTEM)),
-      metadataClient.getMetadata(PURCHASE_STREAM, MetadataScope.SYSTEM)
-    );
-    Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_HISTORY_BUILDER, MetadataScope.SYSTEM)),
-      metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER, MetadataScope.SYSTEM)
-    );
-    Assert.assertEquals(
-      ImmutableSet.of(new MetadataRecord(PURCHASE_STORE, MetadataScope.SYSTEM)),
-      metadataClient.getMetadata(PURCHASE_STORE, MetadataScope.SYSTEM)
-    );
+    // there should be system metadata records for these entities
+    verifySystemMetadata(PURCHASE_APP, true, true);
+    verifySystemMetadata(PURCHASE_STORE, true, true);
+    // currently we don't have any properties for programs
+    verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
+    verifySystemMetadata(PURCHASE_STREAM, true, true);
+
+    // makes some searches: this should get system entities such as dataset, artifacts, flow, services, programs
+    Set<MetadataSearchResultRecord> searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "explore",
+                                                                                  MetadataSearchTargetType.ALL);
+    // 4 = dataset: frequentCustomers + dataset: userProfiles + dataset: purchases + dataset: history
+    Assert.assertEquals(4, searchResults.size());
+
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "batch", MetadataSearchTargetType.ALL);
+    // 7 = artifact: cdap-etl-batch.3.3.1-SNAPSHOT + dataset: frequentCustomers + dataset: userProfiles +
+    // dataset: purchases + dataset: history +  workflow: PurchaseHistoryWorkflow + mapreduce: PurchaseHistoryBuilder
+    Assert.assertEquals(7, searchResults.size());
+
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "realtime", MetadataSearchTargetType.ALL);
+    // 5 = service: CatalogLookup + service: UserProfileService + service: PurchaseHistoryService + flow: PurchaseFlow +
+    // artifact: cdap-etl-realtime.3.3.1-SNAPSHOT
+    Assert.assertEquals(5, searchResults.size());
+
+    // system metadata for app check
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, PURCHASE_APP.getId(),
+                                                  MetadataSearchTargetType.ALL);
+    Assert.assertEquals(1, searchResults.size());
+
+    // system metadata for stream check
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, PURCHASE_STREAM.getId(),
+                                                  MetadataSearchTargetType.ALL);
+    // 3 = stream: purchaseStream + app: PurchaseHistory + view: purchaseStreamView
+    Assert.assertEquals(3, searchResults.size());
+
+    // perform schema searches
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "price", MetadataSearchTargetType.ALL);
+    // 2 = dataset: purchases + dataset: history
+    Assert.assertEquals(2, searchResults.size());
+
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "lastname:string",
+                                                  MetadataSearchTargetType.ALL);
+    Assert.assertEquals(1, searchResults.size());
+
+    // search for view schema
+    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, "viewBody", MetadataSearchTargetType.ALL);
+    Assert.assertEquals(1, searchResults.size());
+  }
+
+  private void verifySystemMetadata(Id.NamespacedId id, boolean checkProperties, boolean checkTags) throws Exception {
+    Set<MetadataRecord> metadataRecords = metadataClient.getMetadata(id, MetadataScope.SYSTEM);
+    Assert.assertEquals(1, metadataRecords.size());
+    MetadataRecord metadata = metadataRecords.iterator().next();
+    Assert.assertEquals(MetadataScope.SYSTEM, metadata.getScope());
+    if (checkProperties) {
+      Assert.assertTrue(metadata.getProperties().size() != 0);
+    }
+    if (checkTags) {
+      Assert.assertTrue(metadata.getTags().size() != 0);
+    }
   }
 }
