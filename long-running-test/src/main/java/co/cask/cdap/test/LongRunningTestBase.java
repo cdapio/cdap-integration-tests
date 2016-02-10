@@ -80,8 +80,6 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
     LOG.info("Got input state = {}", inputState);
 
     if (firstRun) {
-      // TODO: would be a good idea to call operations separately than calling super.setUp()
-      super.setUp();
       LOG.info("Calling setup...");
       setup();
     }
