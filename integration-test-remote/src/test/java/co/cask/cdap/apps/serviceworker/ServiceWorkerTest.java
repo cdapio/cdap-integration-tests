@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Test worker that writes to dataset and service that reads from it.
@@ -45,7 +44,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(ServiceApplication.class);
 
     ServiceManager serviceManager = applicationManager.getServiceManager(ServiceApplication.SERVICE_NAME).start();
-    serviceManager.waitForStatus(true, 60, 1);
+    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
 
     URL serviceURL = serviceManager.getServiceURL();
@@ -53,14 +52,13 @@ public class ServiceWorkerTest extends AudiTestBase {
 
     // we have to make the first handler call after service starts with a retry
     // hit the service endpoint, get for worker_key, should return 204 (null)
-    retryRestCalls(HttpURLConnection.HTTP_NO_CONTENT, HttpRequest.get(url).build(),
-                   120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    retryRestCalls(HttpURLConnection.HTTP_NO_CONTENT, HttpRequest.get(url).build());
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
-    workerManager.waitForStatus(true, 60, 1);
+    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     // worker will stop automatically
-    workerManager.waitForStatus(false, 60, 1);
+    workerManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     // check if the worker's write to the table was successful
     HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
@@ -78,6 +76,6 @@ public class ServiceWorkerTest extends AudiTestBase {
     Assert.assertTrue(alreadyRunning);
 
     serviceManager.stop();
-    serviceManager.waitForStatus(false, 60, 1);
+    serviceManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
   }
 }

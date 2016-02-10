@@ -108,7 +108,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
     // Start service
     ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getId()).start();
-    serviceManager.waitForStatus(true, 60, 1);
+    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     Assert.assertTrue(serviceManager.isRunning());
 
     // Start Spark Page Rank and await completion
@@ -128,7 +128,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
         ProgramRunStatus status = pageRankRuns.get(0).getStatus();
         return (status == ProgramRunStatus.RUNNING || status == ProgramRunStatus.COMPLETED);
       }
-    }, 60, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    }, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
     pageRankManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> sparkRanRecords =
@@ -138,7 +138,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
     ranksCounterManager.start();
-    ranksCounterManager.waitForStatus(true, 60, 1);
+    ranksCounterManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // wait 10 minutes for the mapreduce to execute
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> mrRanRecords =
@@ -150,20 +151,18 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
     URL url = new URL(serviceManager.getServiceURL(),
                       SparkPageRankApp.SparkPageRankServiceHandler.TOTAL_PAGES_PATH + "/" + RANK);
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
-                                           120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
 
     url = new URL(serviceManager.getServiceURL(), SparkPageRankApp.SparkPageRankServiceHandler.RANKS_PATH);
     response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                              HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
-                              120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                              HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
 
     serviceManager.stop();
-    serviceManager.waitForStatus(false, 60, 1);
+    serviceManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     List<RunRecord> serviceRanRecords =
       getRunRecords(1, programClient, PAGE_RANK_SERVICE,
