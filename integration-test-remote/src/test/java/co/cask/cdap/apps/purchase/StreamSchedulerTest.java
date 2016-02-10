@@ -74,10 +74,11 @@ public class StreamSchedulerTest extends AudiTestBase {
     WorkflowManager purchaseHistoryWorkflow = applicationManager.getWorkflowManager("PurchaseHistoryWorkflow");
     MapReduceManager purchaseHistoryBuilder = applicationManager.getMapReduceManager("PurchaseHistoryBuilder");
 
-    purchaseHistoryWorkflow.waitForStatus(true, 60, 1);
-    purchaseHistoryBuilder.waitForStatus(true, 60, 1);
+    purchaseHistoryWorkflow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryBuilder.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // wait 5 minutes for the map reduce to execute
     purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
-    purchaseHistoryWorkflow.waitForStatus(false, 60, 1);
+    purchaseHistoryWorkflow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     // both the mapreduce and workflow should have 1 run
     ProgramClient programClient = getProgramClient();
@@ -92,10 +93,11 @@ public class StreamSchedulerTest extends AudiTestBase {
     scheduleClient.resume(dataSchedule);
     Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
-    purchaseHistoryWorkflow.waitForStatus(true, 60, 1);
-    purchaseHistoryBuilder.waitForStatus(true, 60, 1);
+    purchaseHistoryWorkflow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryBuilder.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // wait 5 minutes for the mapreduce to execute
     purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
-    purchaseHistoryWorkflow.waitForStatus(false, 60, 1);
+    purchaseHistoryWorkflow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     assertRuns(2, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
   }

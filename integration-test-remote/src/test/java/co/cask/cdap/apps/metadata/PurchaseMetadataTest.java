@@ -118,13 +118,13 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
-    purchaseFlow.waitForStatus(true, 60, 1);
+    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     StreamManager purchaseStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
 
     RuntimeMetrics flowletMetrics = purchaseFlow.getFlowletMetrics("collector");
-    flowletMetrics.waitForProcessed(1, 5, TimeUnit.MINUTES);
+    flowletMetrics.waitForProcessed(1, FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     Id.DatasetInstance dataset = Id.DatasetInstance.from(TEST_NAMESPACE, "purchases");
     Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, streamName);
@@ -152,13 +152,14 @@ public class PurchaseMetadataTest extends AudiTestBase {
       applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getId());
 
     purchaseFlow.stop();
-    purchaseFlow.waitForStatus(false, 60, 1);
+    purchaseFlow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForStatus(true, 60, 1);
-    purchaseHistoryBuilderManager.waitForStatus(true, 60, 1);
+    purchaseHistoryWorkflowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryBuilderManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // wait 10 minutes for the mapreduce to finish
     purchaseHistoryBuilderManager.waitForStatus(false, 10 * 60, 1);
-    purchaseHistoryWorkflowManager.waitForStatus(false, 60, 1);
+    purchaseHistoryWorkflowManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     ServiceManager purchaseHistoryService =
       applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getId());
@@ -588,20 +589,19 @@ public class PurchaseMetadataTest extends AudiTestBase {
   // starts service, makes a handler call, stops it and finally returns the runId of the completed run
   private String makePurchaseHistoryServiceCallAndReturnRunId(ServiceManager purchaseHistoryService) throws Exception {
     purchaseHistoryService.start();
-    purchaseHistoryService.waitForStatus(true, 60, 1);
+    purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     URL historyURL = new URL(purchaseHistoryService.getServiceURL(), "history/Milo");
 
     // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build(),
-                   120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build());
 
     List<RunRecord> runRecords = getRunRecords(1, getProgramClient(), PURCHASE_HISTORY_SERVICE,
                                                ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
 
     Assert.assertEquals(1, runRecords.size());
     purchaseHistoryService.stop();
-    purchaseHistoryService.waitForStatus(false, 60, 1);
+    purchaseHistoryService.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     return runRecords.get(0).getPid();
   }
 }

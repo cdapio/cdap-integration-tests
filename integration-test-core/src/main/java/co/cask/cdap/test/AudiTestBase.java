@@ -65,8 +65,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * Custom wrapper around IntegrationTestBase
  */
 public class AudiTestBase extends IntegrationTestBase {
-  protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
+
+  // Used for starting/stop await timeout.
+  protected static final int PROGRAM_START_STOP_TIMEOUT_SECONDS =
+    Integer.valueOf(System.getProperty("programTimeout", "60"));
+  // Amount of time to wait for a flowlet to process its first event (upon startup).
+  // For now, make it same as PROGRAM_START_STOP_TIMEOUT_SECONDS.
+  protected static final int FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
+
+  protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
   private final RESTClient restClient;
 
   public AudiTestBase() {
@@ -157,6 +165,10 @@ public class AudiTestBase extends IntegrationTestBase {
     }
   }
 
+  protected HttpResponse retryRestCalls(int expectedStatusCode, HttpRequest request) throws Exception {
+    return retryRestCalls(expectedStatusCode, request, 120, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
+  }
+
   protected HttpResponse retryRestCalls(final int expectedStatusCode, final HttpRequest request,
                                         long timeout, TimeUnit timeoutUnit,
                                         long pollInterval, TimeUnit pollIntervalUnit) throws Exception {
@@ -164,9 +176,14 @@ public class AudiTestBase extends IntegrationTestBase {
     Tasks.waitFor(expectedStatusCode, new Callable<Integer>() {
       @Override
       public Integer call() throws Exception {
-        HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
-        ref.set(response);
-        return response.getResponseCode();
+        try {
+          HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
+          ref.set(response);
+          return response.getResponseCode();
+        } catch (Throwable t) {
+          LOG.error("Error while executing Http request.", t);
+          return null;
+        }
       }
     }, timeout, timeoutUnit, pollInterval, pollIntervalUnit);
     Preconditions.checkNotNull(ref.get(), "No Httprequest was attempted.");
@@ -228,8 +245,7 @@ public class AudiTestBase extends IntegrationTestBase {
     if (!serviceManager.isRunning()) {
       // start the service and wait until it becomes reachable. AbstractDatasetApp#DatasetService adds a PingHandler
       serviceManager.start();
-      retryRestCalls(200, HttpRequest.get(new URL(serviceURL, "ping")).build(),
-                     60, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
+      retryRestCalls(200, HttpRequest.get(new URL(serviceURL, "ping")).build());
     }
     return serviceURL;
   }
