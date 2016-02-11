@@ -47,6 +47,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
+import org.junit.After;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +80,19 @@ public class AudiTestBase extends IntegrationTestBase {
 
   public AudiTestBase() {
     restClient = createRestClient();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    // attempt tearDown five times.
+    for (int i = 0; i < 5; i++) {
+      try {
+        super.tearDown();
+        return;
+      } catch (Throwable t) {
+        LOG.error("Error while tearing down on attempt #{}.", i, t);
+      }
+    }
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
