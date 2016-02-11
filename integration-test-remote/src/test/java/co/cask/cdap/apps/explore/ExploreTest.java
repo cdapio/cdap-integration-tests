@@ -42,6 +42,7 @@ import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -55,6 +56,7 @@ import javax.annotation.Nullable;
 /**
  * Tests Explore functionality using {@link WordCountApplication}.
  */
+@Ignore
 public class ExploreTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(ExploreTest.class);
   private static final Gson GSON = new Gson();

@@ -47,6 +47,7 @@ import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -68,6 +69,7 @@ import javax.annotation.Nullable;
   CDH53Incompatible.class,
   MapR5Incompatible.class
 })
+@Ignore
 public class WorkflowTest extends AudiTestBase {
 
   private static final Id.Artifact ARTIFACT_ID =
