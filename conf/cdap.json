@@ -5,5 +5,12 @@
         "explore.enabled": "true"
       }
     }
+  },
+  "administration": {
+    "leaseduration": {
+      "initial": 82800000,
+      "max": 0,
+      "step": 82800000
+    }
   }
 }
