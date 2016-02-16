@@ -37,6 +37,11 @@ To run integration tests against an automatically instantiated CDAP Standalone i
 
   mvn clean test -P standalone-test
 
+To modify the timeouts for program start/stop awaiting, set the ``programTimeout`` argument to a number (in seconds).
+For instance, to set the timeout to 120 seconds::
+
+  mvn clean test -DinstanceUri=<HostAndPort> -DprogramTimeout=120
+
 
 CDAP Upgrade Tests
 ------------------

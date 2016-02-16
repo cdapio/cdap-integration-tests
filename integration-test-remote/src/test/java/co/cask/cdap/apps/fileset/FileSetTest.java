@@ -39,7 +39,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Tests the functionality of {@link co.cask.cdap.data2.dataset2.lib.file.FileSetDataset}
@@ -64,15 +63,14 @@ public class FileSetTest extends AudiTestBase {
     }
     ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
 
-    fileSetService.waitForStatus(true, 60, 1);
+    fileSetService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     URL serviceURL = fileSetService.getServiceURL();
     URL url = new URL(serviceURL, "lines?path=myFile.txt");
 
     // we have to make the first handler call after service starts with a retry
     HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                                           HttpRequest.put(url).withBody(DATA_UPLOAD).build(),
-                                           120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+                                           HttpRequest.put(url).withBody(DATA_UPLOAD).build());
     Assert.assertEquals(200, response.getResponseCode());
 
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
@@ -96,7 +94,8 @@ public class FileSetTest extends AudiTestBase {
                              "dataset.counts.output.path", "out.txt"));
 
     // mapreduce should start and then complete
-    wordCountManager.waitForStatus(true, 60, 1);
+    wordCountManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // wait 5 minutes for mapreduce to execute
     wordCountManager.waitForStatus(false, 5 * 60, 1);
 
     url = new URL(serviceURL, "counts?path=out.txt/part-r-00000");

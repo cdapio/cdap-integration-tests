@@ -681,7 +681,7 @@ public class ExploreTest extends AudiTestBase {
 
   private void waitForStatus(boolean status, ProgramManager... managers) throws InterruptedException {
     for (ProgramManager manager : managers) {
-      manager.waitForStatus(status);
+      manager.waitForStatus(status, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     }
   }
 

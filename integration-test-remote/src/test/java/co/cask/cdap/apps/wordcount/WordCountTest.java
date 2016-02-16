@@ -73,8 +73,7 @@ public class WordCountTest extends AudiTestBase {
 
     for (String wordEvent : wordEvents) {
       FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-      // TODO: make an AbstractRemoteProgramManager which has default timeouts
-      flowManager.waitForStatus(true, 30, 1);
+      flowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
       List<RunRecord> runningRecords =
         getRunRecords(1, programClient, flowId, ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
       //There should only be one run that is running
@@ -91,7 +90,7 @@ public class WordCountTest extends AudiTestBase {
 
       // try out metricsClient#getFlowletMetrics()
       RuntimeMetrics counterMetrics = flowManager.getFlowletMetrics("counter");
-      counterMetrics.waitForProcessed(numWordsProcessed, 1, TimeUnit.MINUTES);
+      counterMetrics.waitForProcessed(numWordsProcessed, FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
       int longestWordLength = longestString(wordEvent.split(" ")).length();
       longestWordLengthAcrossRuns += longestWordLength;

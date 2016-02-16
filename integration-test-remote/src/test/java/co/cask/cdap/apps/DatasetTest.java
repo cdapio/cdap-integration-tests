@@ -96,15 +96,15 @@ public class DatasetTest extends AudiTestBase {
     Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
 
     FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-    flowManager.waitForStatus(true, 30, 1);
+    flowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
-    wordCountService.waitForStatus(true, 60, 1);
+    wordCountService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
     wordStream.send("hello world");
 
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
-    flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
+    flowletMetrics.waitForProcessed(1, FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // verify through service that there are 2 words
     Map<String, Object> responseMap = getWordCountStats(wordCountService);
@@ -145,8 +145,7 @@ public class DatasetTest extends AudiTestBase {
   private Map<String, Object> getWordCountStats(ServiceManager wordCountService) throws Exception {
     URL url = new URL(wordCountService.getServiceURL(), "stats");
     // we have to make the first handler call after service starts with a retry
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
-                                           120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     return GSON.fromJson(response.getResponseBodyAsString(),
                          new TypeToken<Map<String, Object>>() { }.getType());
