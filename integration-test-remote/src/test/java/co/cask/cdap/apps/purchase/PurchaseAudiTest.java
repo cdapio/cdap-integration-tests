@@ -92,29 +92,28 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
-    purchaseFlow.waitForStatus(true, 60, 1);
+    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     StreamManager purchaseStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
 
     RuntimeMetrics flowletMetrics = purchaseFlow.getFlowletMetrics("collector");
-    flowletMetrics.waitForProcessed(1, 1, TimeUnit.MINUTES);
+    flowletMetrics.waitForProcessed(1, FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     ServiceManager purchaseHistoryService =
       applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getId()).start();
     ServiceManager userProfileService =
       applicationManager.getServiceManager(PURCHASE_USER_PROFILE_SERVICE.getId()).start();
 
-    userProfileService.waitForStatus(true, 60, 1);
-    purchaseHistoryService.waitForStatus(true, 60, 1);
+    userProfileService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     URL serviceURL = userProfileService.getServiceURL();
     URL url = new URL(serviceURL, "user");
     String body = "{\"id\":\"Milo\",\"firstName\":\"Milo\",\"lastName\":\"Bernard\",\"categories\":[\"drink\"]}";
 
     // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(url).withBody(body).build(),
-                   120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(url).withBody(body).build());
 
     url = new URL(serviceURL, "user/Milo");
     HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
@@ -130,10 +129,11 @@ public class PurchaseAudiTest extends AudiTestBase {
     startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForStatus(true, 60, 1);
-    purchaseHistoryBuilderManager.waitForStatus(true, 60, 1);
+    purchaseHistoryWorkflowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryBuilderManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // wait 10 minutes for the mapreduce to execute
     purchaseHistoryBuilderManager.waitForStatus(false, 10 * 60, 1);
-    purchaseHistoryWorkflowManager.waitForStatus(false, 60, 1);
+    purchaseHistoryWorkflowManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     // Ensure that the flow and services are still running
     startStopServices(ProgramAction.START, purchaseFlow, purchaseHistoryService, userProfileService);
@@ -144,8 +144,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     serviceURL = purchaseHistoryService.getServiceURL();
     url = new URL(serviceURL, "history/Milo");
     // we have to make the first handler call after service starts with a retry
-    response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build(),
-                              120, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+    response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build());
     Assert.assertEquals(200, response.getResponseCode());
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());
@@ -203,7 +202,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     }
 
     for (ProgramManager program : programs) {
-      program.waitForStatus(waitCondition, 60, 1);
+      program.waitForStatus(waitCondition, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     }
   }
 }

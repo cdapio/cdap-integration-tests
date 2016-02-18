@@ -37,7 +37,7 @@ public class ApplicationTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
     FlowManager purchaseFlow = applicationManager.getFlowManager("PurchaseFlow").start();
-    purchaseFlow.waitForStatus(true, 60, 1);
+    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     // should not delete application when programs are running
     ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
