@@ -49,6 +49,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -69,6 +70,7 @@ import java.util.concurrent.TimeUnit;
   CDH52Incompatible.class,
   MapR5Incompatible.class
 })
+@Ignore
 public class SparkPageRankAppTest extends AudiTestBase {
   private static final Gson GSON = new GsonBuilder().
     registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec()).create();
