@@ -82,6 +82,11 @@
       <artifactId>WikipediaPipeline</artifactId>
       <version>${cdap.examples.version}</version>
     </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>DataCleansing</artifactId>
+      <version>${cdap.examples.version}</version>
+    </dependency>
     <dependency> <!-- PurchaseHistory Dependency -->
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>

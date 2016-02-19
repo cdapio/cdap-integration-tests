@@ -16,7 +16,6 @@
 
 package co.cask.cdap.test;
 
-import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import org.junit.After;
 import org.junit.Before;
@@ -24,11 +23,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Map;
 
 /**
  * Abstract class for writing long running tests for CDAP.
@@ -37,10 +34,17 @@ import java.lang.reflect.Type;
  */
 public abstract class LongRunningTestBase<T extends TestState> extends AudiTestBase implements LongRunningTest<T> {
   public static final Logger LOG = LoggerFactory.getLogger(LongRunningTestBase.class);
-  public static final String INPUT_STATE_PROP = "input.state";
-  public static final String OUTPUT_STATE_PROP = "output.state";
-
+  // key is Test class name and value is test state in json format
+  private static Map<String, String> inMemoryStatePerTest;
   private static final Gson GSON = new Gson();
+
+  public static void initializeInMemoryMap(Map<String, String> inMemoryMap) {
+    inMemoryStatePerTest = inMemoryMap;
+  }
+
+  public static Map<String, String> getInMemoryMap() {
+    return inMemoryStatePerTest;
+  }
 
   @Before
   @Override
@@ -54,27 +58,21 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
     checkSystemServices();
   }
 
-  // TODO: call cleanup and reset
   @Test
   public void test() throws Exception {
     LOG.info("Starting test run {}", getClass().getCanonicalName());
-    String inputStateFile = System.getProperty(INPUT_STATE_PROP);
-    LOG.info("Input state file = {}", inputStateFile);
-    Preconditions.checkNotNull(inputStateFile, "Input state file name cannot be null.");
-
-    String outputStateFile = System.getProperty(OUTPUT_STATE_PROP);
-    LOG.info("Output state file = {}", outputStateFile);
-    Preconditions.checkNotNull(outputStateFile, "Output state file name cannot be null.");
 
     boolean firstRun = false;
     T inputState;
     Type stateType = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-    try (FileReader fileReader = new FileReader(inputStateFile)) {
-      inputState = GSON.fromJson(fileReader, stateType);
-    } catch (FileNotFoundException e) {
-      LOG.warn("Input state file not found, treating this as the first run");
+    String key = getClass().getCanonicalName();
+    if (inMemoryStatePerTest.containsKey(key)) {
+      inputState = GSON.fromJson(inMemoryStatePerTest.get(key), stateType);
+    } else {
+      LOG.warn("Input state not found, treating this as the first run");
       firstRun = true;
       inputState = getInitialState();
+      inMemoryStatePerTest.put(key, GSON.toJson(inputState));
     }
 
     LOG.info("Got input state = {}", inputState);
@@ -90,9 +88,8 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
     T outputState = runOperations(inputState);
 
     LOG.info("Got output state = {}", outputState);
-    try (FileWriter writer = new FileWriter(outputStateFile)) {
-      GSON.toJson(outputState, writer);
-    }
+    inMemoryStatePerTest.put(key, GSON.toJson(outputState));
+
     LOG.info("Test run {} completed", getClass().getCanonicalName());
   }
 }
