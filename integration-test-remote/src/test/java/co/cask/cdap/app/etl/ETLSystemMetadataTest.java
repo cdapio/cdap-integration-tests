@@ -25,6 +25,7 @@ import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -33,6 +34,7 @@ import java.util.Set;
 /**
  * Tests system metadata for ETL apps.
  */
+@Ignore
 public class ETLSystemMetadataTest extends ETLTestBase {
 
   @Test
