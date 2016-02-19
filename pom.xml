@@ -36,7 +36,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <cdap.pre.version>3.2.2</cdap.pre.version>
-    <cdap.version>3.3.1</cdap.version>
+    <cdap.version>3.3.2-SNAPSHOT</cdap.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
@@ -80,6 +80,11 @@
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>WikipediaPipeline</artifactId>
+      <version>${cdap.examples.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>DataCleansing</artifactId>
       <version>${cdap.examples.version}</version>
     </dependency>
     <dependency> <!-- PurchaseHistory Dependency -->

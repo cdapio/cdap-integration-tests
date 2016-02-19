@@ -53,6 +53,7 @@ import java.util.regex.Pattern;
 public class AutoSuiteRunner extends ParentRunner<Runner> {
 
   private final List<Runner> children;
+  private static final String TESTS_TO_RUN = "long.test";
 
   /**
    * The <code>SuitePackages</code> annotation specifies the packages to discover test classes to run.
@@ -81,7 +82,12 @@ public class AutoSuiteRunner extends ParentRunner<Runner> {
     if (matches == null) {
       throw new IllegalArgumentException("Missing @Matches annotation");
     }
-    Pattern pattern = Pattern.compile(matches.pattern());
+    String testsToRun = System.getProperty(TESTS_TO_RUN);
+    String patternStr = matches.pattern();
+    if (testsToRun != null && !testsToRun.isEmpty()) {
+      patternStr = createRegex(testsToRun);
+    }
+    Pattern pattern = Pattern.compile(patternStr);
 
     // Find all packages as specified
     for (String pkg : matches.packages()) {
@@ -100,6 +106,18 @@ public class AutoSuiteRunner extends ParentRunner<Runner> {
     }
 
     this.children = runners;
+  }
+
+  private String createRegex(String testsToRun) {
+    String[] tests = testsToRun.split(",");
+    StringBuilder regex = new StringBuilder();
+    for (String test : tests) {
+      regex.append(".*");
+      regex.append(test);
+      regex.append("$|");
+    }
+    regex.deleteCharAt((regex.length() - 1));
+    return regex.toString();
   }
 
   @Override
