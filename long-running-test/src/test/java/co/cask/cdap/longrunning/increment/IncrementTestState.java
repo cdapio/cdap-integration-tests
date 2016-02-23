@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.increment;
+package co.cask.cdap.longrunning.increment;
 
 import co.cask.cdap.test.TestState;
 import com.google.common.base.Objects;

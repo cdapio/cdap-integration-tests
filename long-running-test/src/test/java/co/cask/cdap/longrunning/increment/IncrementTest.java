@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.increment;
+package co.cask.cdap.longrunning.increment;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
