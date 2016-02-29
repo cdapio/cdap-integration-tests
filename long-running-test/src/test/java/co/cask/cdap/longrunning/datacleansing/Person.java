@@ -16,14 +16,10 @@
 
 package co.cask.cdap.longrunning.datacleansing;
 
-import com.google.gson.Gson;
-
 /**
  * Represents person object for DataCleansing App
  */
 public class Person {
-
-  private static final Gson GSON = new Gson();
 
   private long pid;
   private String name;
@@ -67,19 +63,5 @@ public class Person {
 
   public void setZip(String zip) {
     this.zip = zip;
-  }
-
-  public String toJson() {
-    return GSON.toJson(this);
-  }
-
-  @Override
-  public String toString() {
-    return "Person{" +
-      "pid=" + pid +
-      ", name='" + name + '\'' +
-      ", dob='" + dob + '\'' +
-      ", zip=" + zip +
-      '}';
   }
 }

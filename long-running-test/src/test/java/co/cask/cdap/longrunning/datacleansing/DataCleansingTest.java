@@ -34,6 +34,7 @@ import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.Gson;
 import org.junit.Assert;
 
 import java.io.IOException;
@@ -58,6 +59,8 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
 
   private static final String CLEAN_RECORDS_DATASET = "cleanRecords";
   private static final String INVALID_RECORDS_DATASET = "invalidRecords";
+
+  private static final Gson GSON = new Gson();
 
   @Override
   public void setup() throws Exception {
@@ -133,7 +136,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
 
   private String getRecord(long index, boolean invalid) {
     String zip = invalid ? "84125q" : "84125";
-    return new Person(index, "bob", "02-12-1983", zip).toJson();
+    return GSON.toJson(new Person(index, "bob", "02-12-1983", zip));
   }
 
   // pass true to get the number of invalid records; pass false to get the number of valid records processed.
