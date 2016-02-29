@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -177,7 +177,8 @@ public class AudiTestBase extends IntegrationTestBase {
       @Override
       public Integer call() throws Exception {
         try {
-          HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
+          HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken(),
+                                                          expectedStatusCode);
           ref.set(response);
           return response.getResponseCode();
         } catch (Throwable t) {

@@ -31,22 +31,24 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpRequests;
 import co.cask.common.http.HttpResponse;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.junit.Assert;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Data Cleansing long running test
  */
 public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestState> {
-  private static final int NO_OF_CLEAN_RECORDS = 70;
-  private static final int NO_OF_INVALID_RECORDS = 30;
+  private static final int CLEAN_RECORDS_PER_BATCH = 70;
+  private static final int INVALID_RECORDS_PER_BATCH = 30;
 
   private static final String DATACLEANSING_MAPREDUCE_NAME = "DataCleansingMapReduce";
   private static final String DATACLEANSING_NAME = "DataCleansing";
@@ -57,19 +59,18 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   private static final String CLEAN_RECORDS_DATASET = "cleanRecords";
   private static final String INVALID_RECORDS_DATASET = "invalidRecords";
 
-  private static final String CLEAN_RECORD = ",\"name\":\"bob\",\"dob\":\"02-12-1983\",\"zip\":\"84125\"}";
-  private static final String INVALID_RECORD = ",\"name\":\"timothy\",\"dob\":\"06-21-1995\",\"zip\":\"84125q\"}";
-
   @Override
   public void setup() throws Exception {
     LOG.info("setting up data cleaning test");
     ApplicationManager applicationManager = deployApplication(DataCleansing.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME).start();
     serviceManager.waitForStatus(true);
-    TimeUnit.SECONDS.sleep(30);
+    URL serviceURL = serviceManager.getServiceURL();
+    // until the service starts, the endpoint will return 503. Once it's up, it'll return 404
+    retryRestCalls(HttpURLConnection.HTTP_NOT_FOUND,
+                   HttpRequest.get(new URL(serviceURL, "nonExistentEndpoint")).build());
   }
 
-  // TODO: Clean partitions and keyvaluetable
   @Override
   public void cleanup() throws Exception {
     LOG.info("cleaning up data cleansing test");
@@ -84,7 +85,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   public void verifyRuns(DataCleansingTestState state) throws Exception {
     LOG.info("verifying runs for data cleaning");
     // For now, check total number of clean records and invalid records
-    Assert.assertEquals(state.getEndInvalidRecordPid(), verifyMetrics(true) + verifyMetrics(false));
+    Assert.assertEquals(state.getEndInvalidRecordPid(), getValidityMetrics(true) + getValidityMetrics(false));
 
     // verify segregated records
     Assert.assertTrue(verifyRecordsWithExplore(state));
@@ -97,47 +98,46 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME);
     URL serviceURL = serviceManager.getServiceURL();
 
-    LOG.info("Writing {} events in one batch", NO_OF_CLEAN_RECORDS + NO_OF_INVALID_RECORDS);
+    LOG.info("Writing {} events in one batch", CLEAN_RECORDS_PER_BATCH + INVALID_RECORDS_PER_BATCH);
     // write a set of records to one partition and run the DataCleansingMapReduce job on that one partition
     createPartition(serviceURL, state);
-    Long now = System.currentTimeMillis();
-    ImmutableMap<String, String> args = ImmutableMap.of(OUTPUT_PARTITION_KEY, now.toString(),
+    long now = System.currentTimeMillis();
+    ImmutableMap<String, String> args = ImmutableMap.of(OUTPUT_PARTITION_KEY, Long.toString(now),
                                                         SCHEMA_KEY, SCHEMAJSON);
     applicationManager.getMapReduceManager(DATACLEANSING_MAPREDUCE_NAME).start(args);
 
     return new DataCleansingTestState(now, state.getEndInvalidRecordPid() + 1,
-                                      state.getEndInvalidRecordPid() + NO_OF_CLEAN_RECORDS,
-                                      state.getEndInvalidRecordPid() + NO_OF_CLEAN_RECORDS + 1,
-                                      state.getEndInvalidRecordPid() + NO_OF_CLEAN_RECORDS + NO_OF_INVALID_RECORDS);
+                                      state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH,
+                                      state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH + 1,
+                                      state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH +
+                                      INVALID_RECORDS_PER_BATCH);
   }
 
   private void createPartition(URL serviceUrl, DataCleansingTestState state) throws IOException {
     URL url = new URL(serviceUrl, "v1/records/raw");
-    StringBuilder sb = new StringBuilder();
-    generateRecords(sb, state.getEndInvalidRecordPid() + 1, false);
-    generateRecords(sb, state.getEndInvalidRecordPid() + NO_OF_CLEAN_RECORDS + 1, true);
-    HttpRequest request = HttpRequest.post(url).withBody(sb.toString()).build();
+    List<String> records = new ArrayList<String>();
+    generateRecords(records, state.getEndInvalidRecordPid() + 1, false);
+    generateRecords(records, state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH + 1, true);
+    String body = Joiner.on("\n").join(records) + "\n";
+    HttpRequest request = HttpRequest.post(url).withBody(body).build();
     HttpResponse response = HttpRequests.execute(request);
     Assert.assertEquals(200, response.getResponseCode());
   }
 
-  private void generateRecords(StringBuilder sb, long start, boolean invalid) {
-    long noOfRecords = invalid ? NO_OF_INVALID_RECORDS : NO_OF_CLEAN_RECORDS;
-    String record = invalid ? INVALID_RECORD : CLEAN_RECORD;
-    for (long i = start; i < (start + noOfRecords); i++) {
-      createRecord(sb, record, i);
-      sb.append("\n");
+  private void generateRecords(List<String> records, long start, boolean invalid) {
+    long numRecords = invalid ? INVALID_RECORDS_PER_BATCH : CLEAN_RECORDS_PER_BATCH;
+    for (long i = start; i < (start + numRecords); i++) {
+      records.add(getRecord(i, invalid));
     }
   }
 
-  private void createRecord(StringBuilder sb, String record, long i) {
-    sb.append("{\"pid\":");
-    sb.append(i);
-    sb.append(record);
+  private String getRecord(long index, boolean invalid) {
+    String zip = invalid ? "84125q" : "84125";
+    return new Person(index, "bob", "02-12-1983", zip).toJson();
   }
 
   // pass true to get the number of invalid records; pass false to get the number of valid records processed.
-  private long verifyMetrics(boolean invalid) throws Exception {
+  private long getValidityMetrics(boolean invalid) throws Exception {
     String metric = "user.records." + (invalid ? "invalid" : "valid");
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Id.Namespace.DEFAULT.getId(),
                                                Constants.Metrics.Tag.APP, DATACLEANSING_NAME,
@@ -152,38 +152,35 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     }
   }
 
-  // TODO: Use serivce instead of explore
+  // TODO: Use serivce instead of explore as Explore is slower
   private boolean verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
     QueryClient queryClient = new QueryClient(getClientConfig());
     String cleanRecordsQuery = "SELECT * FROM dataset_" + CLEAN_RECORDS_DATASET + " where TIME = "
-                                + state.getTimestamp();
+      + state.getTimestamp();
     String invalidRecordsQuery = "SELECT * FROM dataset_" + INVALID_RECORDS_DATASET + " where TIME = "
-                                + state.getTimestamp();
+      + state.getTimestamp();
 
     // Reduce wait time by submitting both the queries
     ListenableFuture<ExploreExecutionResult> cleanRecordsExecute = queryClient.execute(TEST_NAMESPACE,
                                                                                        cleanRecordsQuery);
     ListenableFuture<ExploreExecutionResult> invalidRecordsExecute = queryClient.execute(TEST_NAMESPACE,
-                                                                                       invalidRecordsQuery);
+                                                                                         invalidRecordsQuery);
     ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
     ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();
 
-    state.getStartInvalidRecordPid();
-    return (verifyResults(cleanRecordsResult, CLEAN_RECORD, state.getStartCleanRecordPid()) &&
-            verifyResults(invalidRecordsResult, INVALID_RECORD, state.getStartInvalidRecordPid()));
+    return (verifyResults(cleanRecordsResult, state.getStartCleanRecordPid(), false) &&
+      verifyResults(invalidRecordsResult, state.getStartInvalidRecordPid(), true));
   }
 
-  private boolean verifyResults(ExploreExecutionResult result, String record, long i) {
+  private boolean verifyResults(ExploreExecutionResult result, long index, boolean invalid) {
     while (result.hasNext()) {
       QueryResult next = result.next();
       List<Object> columns = next.getColumns();
-      StringBuilder sb = new StringBuilder();
-      createRecord(sb, record, i);
-      String expectedRecord = sb.toString();
+      String expectedRecord = getRecord(index, invalid);
       if (!expectedRecord.equalsIgnoreCase((String) columns.get(0))) {
         return false;
       }
-      i++;
+      index++;
     }
     return true;
   }
