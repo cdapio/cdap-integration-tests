@@ -24,18 +24,49 @@ import com.google.common.base.Objects;
  */
 public class DataCleansingTestState implements TestState {
 
-  private final long totalRecords;
+  private final long timestamp;
+  private final long startCleanRecordPid;
+  private final long endCleanRecordPid;
+  private final long startInvalidRecordPid;
+  private final long endInvalidRecordPid;
 
-  public DataCleansingTestState(long totalRecords) {
-    this.totalRecords = totalRecords;
+  public DataCleansingTestState(long timestamp, long startCleanRecordPid, long endCleanRecordPid,
+                                long startInvalidRecordPid, long endInvalidRecordPid) {
+    this.timestamp = timestamp;
+    this.startCleanRecordPid = startCleanRecordPid;
+    this.endCleanRecordPid = endCleanRecordPid;
+    this.startInvalidRecordPid = startInvalidRecordPid;
+    this.endInvalidRecordPid = endInvalidRecordPid;
   }
 
-  public long getTotalRecords () {
-    return totalRecords;
+  public long getTimestamp () {
+    return timestamp;
+  }
+
+  public long getStartCleanRecordPid() {
+    return startCleanRecordPid;
+  }
+
+  public long getEndCleanRecordPid() {
+    return endCleanRecordPid;
+  }
+
+  public long getStartInvalidRecordPid() {
+    return startInvalidRecordPid;
+  }
+
+  public long getEndInvalidRecordPid() {
+    return endInvalidRecordPid;
   }
 
   @Override
   public String toString() {
-    return Objects.toStringHelper(this).add("totalRecords", totalRecords).toString();
+    return Objects.toStringHelper(this)
+      .add("timestamp", timestamp)
+      .add("startCleanRecordPid", startCleanRecordPid)
+      .add("endCleanRecordPid", endCleanRecordPid)
+      .add("startInvalidRecordPid", startInvalidRecordPid)
+      .add("endInvalidRecordPid", endInvalidRecordPid)
+      .toString();
   }
 }

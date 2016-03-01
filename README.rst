@@ -63,29 +63,23 @@ To run a particular stage, execute the following from the commandline::
 
 CDAP Long Running Tests
 ------------------
-The long running test cases consist of 4 operations, ``setup``, ``cleanup``, ``verifyRuns`` and ``runOperations``. More
-information on design of long running tests can be found
-[here](https://confluence.cask.co/display/ENG/Long+Running+Tests).
+The long running test cases consist of 4 operations, ``setup``, ``cleanup``, ``verifyRuns`` and ``runOperations``.
+More information on design of long running tests can be found [here](https://confluence.cask.co/display/ENG/Long+Running+Tests)
 
-To run multiple long running tests, execute::
+All the long running tests/test-packages should be under ``<cdap-integration-tests>/long-running-test/test/java/co/cask/cdap/longrunning``
 
-  1. Add new Tests/test-packages under <cdap-integration-tests>/long-running-test/test/java/co/cask/cdap/longrunning
+To run all the tests under ``longrunning`` package::
 
-  2. To run all the tests under ``longrunning`` package::
+  mvn clean test -P long-running-test -DinstanceUri=<cdap-host>:<cdap-port> -Dinput.state=./long-running-test-in.state -Doutput.state=./long-running-test-out.state
 
-    mvn clean test -P long-running-test -DinstanceUri=<cdap-host>:<cdap-port>
-    -Dinput.state=./long-running-test-in.state -Doutput.state=./long-running-test-out.state
+Here, ``-Dinput.state`` is an input file from previous run which will be used in current run.
+``-Doutput.state`` is an output file which will be used to persist state of current run.
 
-    Here, ``-Dinput.state`` is an input file from previous run which will be used in current run.
-    ``-Doutput.state`` is an output file which will be used to persist state of current run.
+To run selected single/multiple tests under longrunning package::
 
-    To run selected single/multiple tests under ``longrunning`` package::
+  mvn clean test -P long-running-test -DinstanceUri=<cdap-host>:<cdap-port> -Dinput.state=./long-running-test-in.state -Doutput.state=./long-running-test-out.state -Dlong.test=IncrementTest,DataCleansingTest
 
-    mvn clean test -P long-running-test -DinstanceUri=<cdap-host>:<cdap-port>
-      -Dinput.state=./long-running-test-in.state -Doutput.state=./long-running-test-out.state
-      -Dlong.test=IncrementTest,DataCleansingTest
-
-    Here, ``-Dlong.test`` is used to specify multiple comma separated tests.
+Here, ``-Dlong.test`` is used to specify multiple comma separated tests.
 
 
 License and Trademarks
