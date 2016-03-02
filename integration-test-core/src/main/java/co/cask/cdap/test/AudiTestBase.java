@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -75,6 +75,9 @@ public class AudiTestBase extends IntegrationTestBase {
   protected static final int FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
 
   protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
+
+  // avoid logging of HttpRequest's body by default, to avoid verbose logging
+  private static final int logBodyLimit = Integer.valueOf(System.getProperty("logRequestBodyLimit", "0"));
   private final RESTClient restClient;
 
   public AudiTestBase() {
@@ -99,7 +102,16 @@ public class AudiTestBase extends IntegrationTestBase {
           if (inputSupplier != null) {
             body = CharStreams.toString(CharStreams.newReaderSupplier(inputSupplier, Charsets.UTF_8));
           }
-          LOG.info("Making request: {} {} - body: {}", httpRequest.getMethod(), httpRequest.getURL(), body);
+
+          if (logBodyLimit > 0) {
+            if (body != null && body.length() >= logBodyLimit) {
+              body = body.substring(0, logBodyLimit) + " ... [TRIMMED]";
+            }
+            LOG.info("Making request: {} {} - body: {}", httpRequest.getMethod(), httpRequest.getURL(), body);
+          } else {
+            // omit the body from being logged, if user doesn't explicitly request it
+            LOG.info("Making request: {} {}", httpRequest.getMethod(), httpRequest.getURL());
+          }
         } catch (IOException e) {
           LOG.error("Failed to get body from http request: {} {}", httpRequest.getMethod(), httpRequest.getURL(), e);
         }
