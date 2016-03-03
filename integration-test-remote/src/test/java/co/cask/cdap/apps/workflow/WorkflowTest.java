@@ -39,6 +39,7 @@ import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.CDH55Incompatible;
+import co.cask.cdap.test.suite.category.CDH56Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
@@ -84,7 +85,8 @@ public class WorkflowTest extends AudiTestBase {
   @Test
   // https://issues.cask.co/browse/CDAP-4711
   @Category({
-    CDH55Incompatible.class
+    CDH55Incompatible.class,
+    CDH56Incompatible.class
   })
   public void testLDA() throws Exception {
     WikipediaPipelineApp.WikipediaAppConfig appConfig = new WikipediaPipelineApp.WikipediaAppConfig();
