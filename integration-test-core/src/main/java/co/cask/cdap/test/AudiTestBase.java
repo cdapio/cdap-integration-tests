@@ -189,7 +189,8 @@ public class AudiTestBase extends IntegrationTestBase {
       @Override
       public Integer call() throws Exception {
         try {
-          HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
+          HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken(),
+                                                          expectedStatusCode);
           ref.set(response);
           return response.getResponseCode();
         } catch (Throwable t) {
