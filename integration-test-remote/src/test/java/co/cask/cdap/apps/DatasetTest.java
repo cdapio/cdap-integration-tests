@@ -104,7 +104,7 @@ public class DatasetTest extends AudiTestBase {
     wordStream.send("hello world");
 
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
-    flowletMetrics.waitForProcessed(1, FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    flowletMetrics.waitForProcessed(1, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // verify through service that there are 2 words
     Map<String, Object> responseMap = getWordCountStats(wordCountService);
