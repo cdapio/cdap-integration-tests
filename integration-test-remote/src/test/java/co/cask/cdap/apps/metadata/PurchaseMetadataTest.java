@@ -36,7 +36,6 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.ViewSpecification;
-import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
@@ -50,17 +49,12 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
-import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -72,9 +66,6 @@ import java.util.concurrent.TimeUnit;
  * Tests the metadata and lineage functionality using PurchaseApp
  */
 public class PurchaseMetadataTest extends AudiTestBase {
-  private static final Gson GSON = new GsonBuilder().
-    registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec()).create();
-
   private static final Id.Application PURCHASE_APP = Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME);
   private static final Id.Flow PURCHASE_FLOW = Id.Flow.from(PURCHASE_APP, "PurchaseFlow");
   private static final Id.Service PURCHASE_HISTORY_SERVICE = Id.Service.from(PURCHASE_APP, "PurchaseHistoryService");
@@ -92,8 +83,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
   private static final Id.DatasetInstance USER_PROFILES_DS = Id.DatasetInstance.from(Id.Namespace.DEFAULT,
                                                                                      "userProfiles");
 
-  private static final Type SET_METADATA_RECORD_TYPE = new TypeToken<Set<MetadataRecord>>() { }.getType();
-
   private MetadataClient metadataClient;
   private LineageClient lineageClient;
 
@@ -108,7 +97,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
     ProgramClient programClient = getProgramClient();
 
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
-    String streamName = "purchaseStream";
 
     long startTime = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
     long endTime = startTime + 10000;
@@ -124,10 +112,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
     purchaseStream.send("Milo bought 10 PBR for $12");
 
     RuntimeMetrics flowletMetrics = purchaseFlow.getFlowletMetrics("collector");
-    flowletMetrics.waitForProcessed(1, FLOWLET_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-    Id.DatasetInstance dataset = Id.DatasetInstance.from(TEST_NAMESPACE, "purchases");
-    Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, streamName);
+    flowletMetrics.waitForProcessed(1, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     List<RunRecord> ranRecords = getRunRecords(1, programClient, PURCHASE_FLOW,
                                                ProgramRunStatus.RUNNING.name(), 0, endTime);
@@ -137,11 +122,11 @@ public class PurchaseMetadataTest extends AudiTestBase {
       LineageSerializer.toLineageRecord(
         startTime, endTime,
         new Lineage(ImmutableSet.of(
-          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.UNKNOWN,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
 
-          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
+          new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader")))
         )));
@@ -158,17 +143,21 @@ public class PurchaseMetadataTest extends AudiTestBase {
     purchaseHistoryWorkflowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     purchaseHistoryBuilderManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     // wait 10 minutes for the mapreduce to finish
-    purchaseHistoryBuilderManager.waitForStatus(false, 10 * 60, 1);
-    purchaseHistoryWorkflowManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-
-    ServiceManager purchaseHistoryService =
-      applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getId());
+    purchaseHistoryBuilderManager.waitForFinish(10, TimeUnit.MINUTES);
+    purchaseHistoryWorkflowManager.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // add tag for the dataset
-    metadataClient.addTags(HISTORY_DS, ImmutableSet.of("dsTag1"));
+    Set<String> historyDatasetTags = ImmutableSet.of("dsTag1");
+    metadataClient.addTags(HISTORY_DS, historyDatasetTags);
 
     // add tag for the service
-    metadataClient.addTags(PURCHASE_HISTORY_SERVICE, ImmutableSet.of("serviceTag1"));
+    Set<String> purchaseHistoryServiceTags = ImmutableSet.of("serviceTag1");
+    metadataClient.addTags(PURCHASE_HISTORY_SERVICE, purchaseHistoryServiceTags);
+
+    // assert that the tags we added exist
+    Assert.assertEquals(historyDatasetTags, metadataClient.getTags(HISTORY_DS, MetadataScope.USER));
+    Assert.assertEquals(purchaseHistoryServiceTags,
+                        metadataClient.getTags(PURCHASE_HISTORY_SERVICE, MetadataScope.USER));
 
     // add metadata properties
     Map<String, String> serviceProperties = ImmutableMap.of("spKey1", "spValue1");
@@ -176,9 +165,14 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Map<String, String> appProperties = ImmutableMap.of("spKey1", "spApp1");
     metadataClient.addProperties(PURCHASE_APP, appProperties);
 
+    // assert that the properties that we added exists
+    Assert.assertEquals(serviceProperties, metadataClient.getProperties(PURCHASE_HISTORY_SERVICE, MetadataScope.USER));
+    Assert.assertEquals(appProperties, metadataClient.getProperties(PURCHASE_APP, MetadataScope.USER));
+
+    ServiceManager purchaseHistoryService =
+      applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getId());
     String firstServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
-    Id.DatasetInstance historyDs = Id.DatasetInstance.from(TEST_NAMESPACE, "history");
     List<RunRecord> mrRanRecords = getRunRecords(1, programClient, PURCHASE_HISTORY_BUILDER,
                                                  ProgramRunStatus.COMPLETED.name(), 0, endTime);
 
@@ -188,22 +182,22 @@ public class PurchaseMetadataTest extends AudiTestBase {
     // lineage will have mapreduce and service relations now.
     expected =
       // When CDAP-3657 is fixed, we will no longer need to use LineageSerializer for serializing.
-      // Instead we can direclty use Id.toString() to get the program and data keys.
+      // Instead we can directly use Id.toString() to get the program and data keys.
       LineageSerializer.toLineageRecord(
         startTime,
         endTime,
         new Lineage(ImmutableSet.of(
-          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
+          new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
-          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.UNKNOWN,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
-          new Relation(historyDs, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(dataset, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRuns.get(0).getPid()))
         )));
 
@@ -227,20 +221,20 @@ public class PurchaseMetadataTest extends AudiTestBase {
         startTime,
         endTime,
         new Lineage(ImmutableSet.of(
-          new Relation(stream, PURCHASE_FLOW, AccessType.READ,
+          new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
-          new Relation(dataset, PURCHASE_FLOW, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.UNKNOWN,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
-          new Relation(historyDs, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(dataset, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           // TODO : After CDAP-3623, the following will become one entry with runids in the set.
-          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRuns.get(0).getPid())),
-          new Relation(historyDs, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRuns.get(1).getPid()))
         )));
 
@@ -249,28 +243,30 @@ public class PurchaseMetadataTest extends AudiTestBase {
     // verify tags and metadata properties for the 2 service runs
     Set<MetadataRecord> expectedTagsFirst =
       ImmutableSet.of(
-        new MetadataRecord(PURCHASE_APP, MetadataScope.USER, ImmutableMap.of("spKey1", "spApp1"),
+        new MetadataRecord(PURCHASE_APP, MetadataScope.USER, appProperties,
                            ImmutableSet.<String>of()),
         new MetadataRecord(PURCHASE_HISTORY_SERVICE, MetadataScope.USER, ImmutableMap.of("spKey1", "spValue1"),
                            ImmutableSet.of("serviceTag1")),
-        new MetadataRecord(historyDs, MetadataScope.USER, ImmutableMap.<String, String>of(),
+        new MetadataRecord(HISTORY_DS, MetadataScope.USER, ImmutableMap.<String, String>of(),
                            ImmutableSet.of("dsTag1"))
       );
 
-    verifyServiceRun(firstServiceRunId, expectedTagsFirst);
+    Assert.assertEquals(expectedTagsFirst,
+                        metadataClient.getMetadata(new Id.Run(PURCHASE_HISTORY_SERVICE, firstServiceRunId)));
 
     Set<MetadataRecord> expectedTagsSecond = ImmutableSet.of(
-      new MetadataRecord(PURCHASE_APP, MetadataScope.USER, ImmutableMap.of("spKey1", "spApp1"),
+      new MetadataRecord(PURCHASE_APP, MetadataScope.USER, appProperties,
                          ImmutableSet.<String>of()),
       new MetadataRecord(PURCHASE_HISTORY_SERVICE, MetadataScope.USER,
                          ImmutableMap.of("spKey1", "spValue1", "spKey2", "spValue2"),
                          ImmutableSet.of("serviceTag1", "serviceTag2")),
-      new MetadataRecord(historyDs, MetadataScope.USER,
+      new MetadataRecord(HISTORY_DS, MetadataScope.USER,
                          ImmutableMap.<String, String>of(),
                          ImmutableSet.of("dsTag1", "dsTag2"))
     );
 
-    verifyServiceRun(secondServiceRunId, expectedTagsSecond);
+    Assert.assertEquals(expectedTagsSecond,
+                        metadataClient.getMetadata(new Id.Run(PURCHASE_HISTORY_SERVICE, secondServiceRunId)));
 
     // check dataset lineage
     Assert.assertEquals(expected, lineageClient.getLineage(HISTORY_DS, startTime, endTime, null));
@@ -571,21 +567,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(USER_PROFILES_DS)), result);
   }
 
-  private void verifyServiceRun(String runId, Set<MetadataRecord> expected) throws Exception {
-    URL serviceRunURL = getClientConfig().resolveNamespacedURLV3(
-      TEST_NAMESPACE, String.format("apps/%s/services/%s/runs/%s/metadata",
-                                    PURCHASE_APP.getId(), PURCHASE_HISTORY_SERVICE.getId(), runId));
-
-    HttpResponse response = getRestClient().execute(HttpRequest.get(serviceRunURL).build(),
-                                                    getClientConfig().getAccessToken());
-    Assert.assertEquals(200, response.getResponseCode());
-
-    Set<MetadataRecord> metadataRecords = GSON.fromJson(response.getResponseBodyAsString(),
-                                                              SET_METADATA_RECORD_TYPE);
-
-    Assert.assertEquals(expected, metadataRecords);
-  }
-
   // starts service, makes a handler call, stops it and finally returns the runId of the completed run
   private String makePurchaseHistoryServiceCallAndReturnRunId(ServiceManager purchaseHistoryService) throws Exception {
     purchaseHistoryService.start();
@@ -601,7 +582,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     Assert.assertEquals(1, runRecords.size());
     purchaseHistoryService.stop();
-    purchaseHistoryService.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryService.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     return runRecords.get(0).getPid();
   }
 }

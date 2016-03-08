@@ -96,6 +96,7 @@ public class ETLWorkerTest extends ETLTestBase {
     long startTime = System.currentTimeMillis();
     WorkerManager workerManager = appManager.getWorkerManager(ETLWorker.NAME);
     workerManager.start();
+    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     List<StreamManager> streamManagers = Lists.newArrayList(
       getTestManager().getStreamManager(Id.Stream.from(Id.Namespace.DEFAULT, "streamA")),
@@ -105,7 +106,7 @@ public class ETLWorkerTest extends ETLTestBase {
 
     int retries = 0;
     boolean succeeded = false;
-    while (retries < 60) {
+    while (retries < PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS) {
       succeeded = checkStreams(streamManagers, startTime);
       if (succeeded) {
         break;
