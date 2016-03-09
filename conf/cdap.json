@@ -6,11 +6,5 @@
       }
     }
   },
-  "administration": {
-    "leaseduration": {
-      "initial": 82800000,
-      "max": 0,
-      "step": 82800000
-    }
-  }
+  "initial-lease-duration": 82800000
 }
