@@ -197,6 +197,8 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(FREQUENT_CUSTOMERS_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRuns.get(0).getPid()))
         )));
@@ -230,6 +232,8 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(HISTORY_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
+                       RunIds.fromString(mrRanRecords.get(0).getPid())),
+          new Relation(FREQUENT_CUSTOMERS_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           // TODO : After CDAP-3623, the following will become one entry with runids in the set.
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
