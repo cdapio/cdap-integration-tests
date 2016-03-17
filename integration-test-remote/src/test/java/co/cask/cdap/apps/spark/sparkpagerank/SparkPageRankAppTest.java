@@ -17,7 +17,7 @@
 package co.cask.cdap.apps.spark.sparkpagerank;
 
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
@@ -213,7 +213,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE);
   }
 
-  private void testLineage(URL url, LineageRecord expected) throws IOException, UnauthorizedException {
+  private void testLineage(URL url, LineageRecord expected) throws IOException, UnauthenticatedException {
     HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     LineageRecord lineageRecord = GSON.fromJson(response.getResponseBodyAsString(), LineageRecord.class);
     Assert.assertEquals(expected, lineageRecord);
