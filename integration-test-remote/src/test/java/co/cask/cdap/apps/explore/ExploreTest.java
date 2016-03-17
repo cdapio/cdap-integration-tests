@@ -23,7 +23,7 @@ import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.StreamNotFoundException;
-import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
 import co.cask.cdap.proto.Id;
@@ -665,7 +665,7 @@ public class ExploreTest extends AudiTestBase {
   }
 
   private void assertStreamEvents(Id.Stream streamId, String... expectedEvents)
-    throws UnauthorizedException, IOException, StreamNotFoundException {
+    throws UnauthenticatedException, IOException, StreamNotFoundException {
 
     List<StreamEvent> streamEvents = Lists.newArrayList();
     getStreamClient().getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, streamEvents);

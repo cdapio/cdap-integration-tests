@@ -25,7 +25,7 @@ import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.BadRequestException;
-import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
@@ -106,12 +106,12 @@ public abstract class ETLTestBase extends AudiTestBase {
   }
 
   protected AppRequest<ETLBatchConfig> getBatchAppRequest(ETLBatchConfig config)
-    throws IOException, UnauthorizedException {
+    throws IOException, UnauthenticatedException {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-batch", version, ArtifactScope.SYSTEM), config);
   }
 
   protected AppRequest<ETLRealtimeConfig> getRealtimeAppRequest(ETLRealtimeConfig config)
-    throws IOException, UnauthorizedException {
+    throws IOException, UnauthenticatedException {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", version, ArtifactScope.SYSTEM), config);
   }
 
@@ -131,11 +131,11 @@ public abstract class ETLTestBase extends AudiTestBase {
    *
    * @param streamName: the name of the stream
    * @return {@link Id.Stream} the id of the created stream
-   * @throws UnauthorizedException
+   * @throws UnauthenticatedException
    * @throws BadRequestException
    * @throws IOException
    */
-  protected Id.Stream createSourceStream(String streamName) throws UnauthorizedException, BadRequestException,
+  protected Id.Stream createSourceStream(String streamName) throws UnauthenticatedException, BadRequestException,
     IOException {
     Id.Stream sourceStreamId = Id.Stream.from(TEST_NAMESPACE, streamName);
     streamClient.create(sourceStreamId);

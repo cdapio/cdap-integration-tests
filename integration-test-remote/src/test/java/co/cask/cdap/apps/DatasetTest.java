@@ -19,7 +19,7 @@ package co.cask.cdap.apps;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.config.ClientConfig;
-import co.cask.cdap.common.UnauthorizedException;
+import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.DatasetMeta;
@@ -151,19 +151,19 @@ public class DatasetTest extends AudiTestBase {
                          new TypeToken<Map<String, Object>>() { }.getType());
   }
 
-  private Set<Id.Program> getPrograms(String endPoint) throws IOException, UnauthorizedException {
+  private Set<Id.Program> getPrograms(String endPoint) throws IOException, UnauthenticatedException {
     HttpResponse response = makeRequest(endPoint);
     return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.Program>>() {
     }.getType());
   }
 
-  private Set<Id.DatasetInstance> getDatasetInstances(String endPoint) throws IOException, UnauthorizedException {
+  private Set<Id.DatasetInstance> getDatasetInstances(String endPoint) throws IOException, UnauthenticatedException {
     HttpResponse response = makeRequest(endPoint);
     return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.DatasetInstance>>() {
     }.getType());
   }
 
-  private HttpResponse makeRequest(String endPoint) throws IOException, UnauthorizedException {
+  private HttpResponse makeRequest(String endPoint) throws IOException, UnauthenticatedException {
     ClientConfig clientConfig = getClientConfig();
     URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, endPoint);
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, clientConfig.getAccessToken());
