@@ -35,6 +35,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import org.junit.Assert;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -116,25 +117,25 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     // verify search using user metadata added prior to upgrade
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PURCHASE_APP)),
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "env:prod", null)
+      searchMetadata(Id.Namespace.DEFAULT, "env:prod", null)
     );
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_STREAM)
       ),
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "input", null)
+      searchMetadata(Id.Namespace.DEFAULT, "input", null)
     );
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_BUILDER)
       ),
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "process*", MetadataSearchTargetType.PROGRAM)
+      searchMetadata(Id.Namespace.DEFAULT, "process*", MetadataSearchTargetType.PROGRAM)
     );
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(HISTORY)
       ),
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "output", MetadataSearchTargetType.ALL)
+      searchMetadata(Id.Namespace.DEFAULT, "output", MetadataSearchTargetType.ALL)
     );
 
     // there should be system metadata records for these entities
@@ -146,46 +147,46 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
     // makes some searches: this should get system entities such as dataset, artifacts, flow, services, programs
     Set<MetadataSearchResultRecord> searchResults = filterNonPurchaseEntities(
-      metadataClient.searchMetadata(Id.Namespace.DEFAULT, "explore", MetadataSearchTargetType.ALL));
+      searchMetadata(Id.Namespace.DEFAULT, "explore", MetadataSearchTargetType.ALL));
     // 4 = dataset: frequentCustomers + dataset: userProfiles + dataset: purchases + dataset: history
     Assert.assertEquals(4, searchResults.size());
 
-    searchResults = filterNonPurchaseEntities(metadataClient.searchMetadata(Id.Namespace.DEFAULT, "batch",
-                                                                            MetadataSearchTargetType.ALL));
+    searchResults = filterNonPurchaseEntities(searchMetadata(Id.Namespace.DEFAULT, "batch",
+                                                             MetadataSearchTargetType.ALL));
     // 6 = dataset: frequentCustomers + dataset: userProfiles +
     // dataset: purchases + dataset: history +  workflow: PurchaseHistoryWorkflow + mapreduce: PurchaseHistoryBuilder
     Assert.assertEquals(6, searchResults.size());
 
-    searchResults = filterNonPurchaseEntities(metadataClient.searchMetadata(Id.Namespace.DEFAULT, "realtime",
-                                                                            MetadataSearchTargetType.ALL));
+    searchResults = filterNonPurchaseEntities(searchMetadata(Id.Namespace.DEFAULT, "realtime",
+                                                             MetadataSearchTargetType.ALL));
     // 4 = service: CatalogLookup + service: UserProfileService + service: PurchaseHistoryService + flow: PurchaseFlow
     Assert.assertEquals(4, searchResults.size());
 
     // system metadata for app check
-    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, PURCHASE_APP.getId(),
-                                                  MetadataSearchTargetType.ALL);
+    searchResults = searchMetadata(Id.Namespace.DEFAULT, PURCHASE_APP.getId(),
+                                   MetadataSearchTargetType.ALL);
     Assert.assertEquals(1, searchResults.size());
 
     // system metadata for stream check
-    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, PURCHASE_STREAM.getId(),
-                                                  MetadataSearchTargetType.ALL);
+    searchResults = searchMetadata(Id.Namespace.DEFAULT, PURCHASE_STREAM.getId(),
+                                   MetadataSearchTargetType.ALL);
     // 3 = stream: purchaseStream + app: PurchaseHistory + view: purchaseStreamView
     Assert.assertEquals(3, searchResults.size());
 
     // perform schema searches
-    searchResults = filterNonPurchaseEntities(metadataClient.searchMetadata(Id.Namespace.DEFAULT, "price",
-                                                                            MetadataSearchTargetType.ALL));
+    searchResults = filterNonPurchaseEntities(searchMetadata(Id.Namespace.DEFAULT, "price",
+                                                             MetadataSearchTargetType.ALL));
     // 2 = dataset: purchases + dataset: history
     Assert.assertEquals(2, searchResults.size());
 
-    searchResults = filterNonPurchaseEntities(metadataClient.searchMetadata(Id.Namespace.DEFAULT, "lastname:string",
-                                                                            MetadataSearchTargetType.ALL));
+    searchResults = filterNonPurchaseEntities(searchMetadata(Id.Namespace.DEFAULT, "lastname:string",
+                                                             MetadataSearchTargetType.ALL));
     // 1 =  dataset: history
     Assert.assertEquals(1, searchResults.size());
 
     // search for view schema
-    searchResults = metadataClient.searchMetadata(Id.Namespace.DEFAULT, PURCHASE_VIEW_FIELD,
-                                                  MetadataSearchTargetType.ALL);
+    searchResults = searchMetadata(Id.Namespace.DEFAULT, PURCHASE_VIEW_FIELD,
+                                   MetadataSearchTargetType.ALL);
     Assert.assertEquals(1, searchResults.size());
   }
 
@@ -236,5 +237,15 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
       };
     }
     return purchaseAppPredicate;
+  }
+
+  private Set<MetadataSearchResultRecord> searchMetadata(Id.Namespace namespace, String query,
+                                                         MetadataSearchTargetType targetType) throws Exception {
+    Set<MetadataSearchResultRecord> results = metadataClient.searchMetadata(namespace, query, targetType);
+    Set<MetadataSearchResultRecord> transformed = new HashSet<>();
+    for (MetadataSearchResultRecord result : results) {
+      transformed.add(new MetadataSearchResultRecord(result.getEntityId()));
+    }
+    return transformed;
   }
 }
