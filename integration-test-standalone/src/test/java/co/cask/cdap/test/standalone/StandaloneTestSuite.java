@@ -26,6 +26,7 @@ import org.junit.ClassRule;
 import org.junit.rules.ExternalResource;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -109,7 +110,8 @@ public class StandaloneTestSuite {
     URLClassLoader classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), null);
     try {
       Class<?> clz = classLoader.loadClass(StandaloneTester.class.getName());
-      return clz.getConstructor().newInstance();
+      Constructor<?> constructor = clz.getConstructor(Object[].class);
+      return constructor.newInstance((Object) new Object[0]);
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
