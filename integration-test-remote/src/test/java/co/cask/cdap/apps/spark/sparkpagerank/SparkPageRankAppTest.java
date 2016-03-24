@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -183,11 +183,11 @@ public class SparkPageRankAppTest extends AudiTestBase {
         new Lineage(ImmutableSet.of(
           new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
-          new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.UNKNOWN,
+          new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.WRITE,
                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
-          new Relation(RANKS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
+          new Relation(RANKS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.READ,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(RANKS_COUNTS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.UNKNOWN,
+          new Relation(RANKS_COUNTS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.WRITE,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(RANKS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRanRecords.get(0).getPid())),
