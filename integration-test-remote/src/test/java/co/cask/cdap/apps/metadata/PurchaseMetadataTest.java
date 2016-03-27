@@ -79,8 +79,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
   private static final Id.Stream PURCHASE_STREAM = Id.Stream.from(Id.Namespace.DEFAULT, "purchaseStream");
   private static final Id.DatasetInstance HISTORY_DS = Id.DatasetInstance.from(Id.Namespace.DEFAULT, "history");
   private static final Id.DatasetInstance PURCHASES_DS = Id.DatasetInstance.from(Id.Namespace.DEFAULT, "purchases");
-  private static final Id.DatasetInstance OLD_PURCHASES_DS =
-    Id.DatasetInstance.from(Id.Namespace.DEFAULT, "oldPurchases");
   private static final Id.DatasetInstance FREQUENT_CUSTOMERS_DS = Id.DatasetInstance.from(Id.Namespace.DEFAULT,
                                                                                           "frequentCustomers");
   private static final Id.DatasetInstance USER_PROFILES_DS = Id.DatasetInstance.from(Id.Namespace.DEFAULT,
@@ -200,8 +198,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.READ,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(OLD_PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.READ,
-                       RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(FREQUENT_CUSTOMERS_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
@@ -237,8 +233,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(HISTORY_DS, PURCHASE_HISTORY_BUILDER, AccessType.WRITE,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.READ,
-                       RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(OLD_PURCHASES_DS, PURCHASE_HISTORY_BUILDER, AccessType.READ,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(FREQUENT_CUSTOMERS_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
@@ -525,8 +519,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     // search dataset
     Set<MetadataSearchResultRecord> expectedKvTables = ImmutableSet.of(
-      new MetadataSearchResultRecord(FREQUENT_CUSTOMERS_DS), new MetadataSearchResultRecord(USER_PROFILES_DS),
-      new MetadataSearchResultRecord(OLD_PURCHASES_DS)
+      new MetadataSearchResultRecord(FREQUENT_CUSTOMERS_DS), new MetadataSearchResultRecord(USER_PROFILES_DS)
     );
     Set<MetadataSearchResultRecord> expectedBatchReadables = ImmutableSet.<MetadataSearchResultRecord>builder()
       .addAll(expectedKvTables)
