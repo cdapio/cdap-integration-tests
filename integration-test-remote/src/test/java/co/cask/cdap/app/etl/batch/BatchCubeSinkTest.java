@@ -25,7 +25,6 @@ import co.cask.cdap.api.dataset.lib.cube.TimeSeries;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
-import co.cask.cdap.data2.dataset2.lib.cube.CubeDatasetDefinition;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
 import co.cask.cdap.etl.common.ETLStage;
@@ -39,13 +38,11 @@ import co.cask.hydrator.plugin.batch.sink.BatchCubeSink;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -68,20 +65,13 @@ public class BatchCubeSinkTest extends ETLTestBase {
                                                                Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
                                                                Properties.Table.PROPERTY_SCHEMA, schema.toString())));
 
-    // single aggregation
-    Map<String, String> datasetProps = ImmutableMap.of(
-      CubeDatasetDefinition.PROPERTY_AGGREGATION_PREFIX + "byUser.dimensions", "user"
-    );
-    Map<String, String> measurementsProps = ImmutableMap.of(
-      Properties.Cube.MEASUREMENT_PREFIX + "count", "COUNTER"
-    );
+    String aggregationGroup = "byUser:user";
+    String measurement = "count:COUNTER";
     ETLStage sink =
       new ETLStage("CubeSink", new Plugin("Cube",
                                           ImmutableMap.of(Properties.Cube.DATASET_NAME, "batch_cube",
-                                                          Properties.Cube.DATASET_OTHER,
-                                                          new Gson().toJson(datasetProps),
-                                                          Properties.Cube.MEASUREMENTS,
-                                                          new Gson().toJson(measurementsProps))));
+                                                          Properties.Cube.AGGREGATIONS, aggregationGroup,
+                                                          Properties.Cube.MEASUREMENTS, measurement)));
 
     ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, Lists.<ETLStage>newArrayList());
 
