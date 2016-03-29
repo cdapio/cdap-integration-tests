@@ -40,6 +40,7 @@ import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
+import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -102,7 +103,8 @@ public class PurchaseMetadataTest extends AudiTestBase {
     long startTime = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
     long endTime = startTime + 10000;
     // assert no lineage for purchase stream.
-    Assert.assertEquals(LineageSerializer.toLineageRecord(startTime, endTime, new Lineage(ImmutableSet.<Relation>of())),
+    Assert.assertEquals(LineageSerializer.toLineageRecord(startTime, endTime, new Lineage(ImmutableSet.<Relation>of()),
+                                                          ImmutableSet.<CollapseType>of()),
                         lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // start PurchaseFlow and ingest an event
@@ -130,7 +132,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader")))
-        )));
+        )), ImmutableSet.<CollapseType>of());
     Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getId());
@@ -202,7 +204,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRuns.get(0).getPid()))
-        )));
+        )), ImmutableSet.<CollapseType>of());
 
     Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
@@ -241,7 +243,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(serviceRuns.get(0).getPid())),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRuns.get(1).getPid()))
-        )));
+        )), ImmutableSet.<CollapseType>of());
 
     Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 

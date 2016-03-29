@@ -30,6 +30,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
+import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -193,7 +194,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
                        RunIds.fromString(serviceRanRecords.get(0).getPid())),
           new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
                        RunIds.fromString(serviceRanRecords.get(0).getPid()))
-        )));
+        )), ImmutableSet.<CollapseType>of());
     testLineage(url, expected);
 
     url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
