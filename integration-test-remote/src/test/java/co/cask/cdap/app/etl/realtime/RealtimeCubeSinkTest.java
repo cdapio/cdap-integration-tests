@@ -22,7 +22,6 @@ import co.cask.cdap.api.dataset.lib.cube.CubeQuery;
 import co.cask.cdap.api.dataset.lib.cube.TimeSeries;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.data2.dataset2.lib.cube.CubeDatasetDefinition;
 import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.realtime.ETLWorker;
@@ -36,18 +35,16 @@ import co.cask.hydrator.plugin.common.Properties;
 import co.cask.hydrator.plugin.realtime.source.DataGeneratorSource;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Test for {@link co.cask.cdap.etl.realtime.sink.RealtimeCubeSink}.
+ * Test for {@link co.cask.hydrator.plugin.realtime.sink.RealtimeCubeSink}.
  */
 public class RealtimeCubeSinkTest extends ETLTestBase {
 
@@ -56,16 +53,13 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
     Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
                                                                       DataGeneratorSource.TABLE_TYPE));
     // single aggregation
-    Map<String, String> datasetProps = ImmutableMap.of(
-      CubeDatasetDefinition.PROPERTY_AGGREGATION_PREFIX + "byName.dimensions", "name"
-    );
-    Map<String, String> measurementsProps = ImmutableMap.of(
-      Properties.Cube.MEASUREMENT_PREFIX + "score", "GAUGE"
-    );
+    String aggregationGroup = "byName:name";
+    String measurement = "score:GAUGE";
+
     Plugin sinkConfig = new Plugin("Cube",
                                    ImmutableMap.of(Properties.Cube.DATASET_NAME, "cube1",
-                                                   Properties.Cube.DATASET_OTHER, new Gson().toJson(datasetProps),
-                                                   Properties.Cube.MEASUREMENTS, new Gson().toJson(measurementsProps)));
+                                                   Properties.Cube.AGGREGATIONS, aggregationGroup,
+                                                   Properties.Cube.MEASUREMENTS, measurement));
     ETLStage source = new ETLStage("DataGenSource", sourceConfig);
     ETLStage sink = new ETLStage("CubeSink", sinkConfig);
 
