@@ -17,6 +17,7 @@
 package co.cask.cdap.longrunning.datacleansing;
 
 import co.cask.cdap.client.QueryClient;
+import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.examples.datacleansing.DataCleansing;
 import co.cask.cdap.examples.datacleansing.DataCleansingMapReduce;
@@ -29,7 +30,6 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpRequest;
-import co.cask.common.http.HttpRequests;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -116,14 +116,15 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
                                       INVALID_RECORDS_PER_BATCH);
   }
 
-  private void createPartition(URL serviceUrl, DataCleansingTestState state) throws IOException {
+  private void createPartition(URL serviceUrl, DataCleansingTestState state)
+    throws IOException, UnauthenticatedException {
     URL url = new URL(serviceUrl, "v1/records/raw");
-    List<String> records = new ArrayList<String>();
+    List<String> records = new ArrayList<>();
     generateRecords(records, state.getEndInvalidRecordPid() + 1, false);
     generateRecords(records, state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH + 1, true);
     String body = Joiner.on("\n").join(records) + "\n";
     HttpRequest request = HttpRequest.post(url).withBody(body).build();
-    HttpResponse response = HttpRequests.execute(request);
+    HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
   }
 
