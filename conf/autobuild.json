@@ -3,6 +3,11 @@
     "cdap_auto": {
       "git": {
         "local_user": "root",
+        "repos": {
+          "hydrator-plugins": {
+            "branch": "release/1.2"
+          }
+        },
         "hydrator_plugins": {
           "branch": "release/1.2"
         }
