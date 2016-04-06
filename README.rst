@@ -77,9 +77,10 @@ Here, ``-Dinput.state`` is an input file from previous run which will be used in
 
 To run selected single/multiple tests under longrunning package::
 
-  mvn clean test -P long-running-test -DinstanceUri=<cdap-host>:<cdap-port> -Dinput.state=./long-running-test-in.state -Doutput.state=./long-running-test-out.state -Dlong.test=IncrementTest,DataCleansingTest
+  mvn clean test -P long-running-test -DinstanceUri=<cdap-host>:<cdap-port> -Dinput.state=./long-running-test-in.state -Doutput.state=./long-running-test-out.state -Dlong.test=IncrementTest,DataCleansingTest -Dlong.running.namespace=testNamespace
 
 Here, ``-Dlong.test`` is used to specify multiple comma separated tests.
+``-Dlong.running.namespace`` is used to specify namespace name for all long running tests. If not specified, 'Default' namespace will be used.
 
 
 License and Trademarks
