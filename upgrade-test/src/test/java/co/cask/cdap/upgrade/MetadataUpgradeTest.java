@@ -94,16 +94,23 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
     // Add some user metadata
     metadataClient.addProperties(PURCHASE_APP, APP_PROPERTIES);
-    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP));
+    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP, MetadataScope.USER));
 
     metadataClient.addTags(PURCHASE_STREAM, STREAM_TAGS);
-    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM));
+    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM, MetadataScope.USER));
 
     metadataClient.addTags(PURCHASE_HISTORY_BUILDER, MR_TAGS);
-    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER));
+    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER, MetadataScope.USER));
 
     metadataClient.addTags(HISTORY, DS_TAGS);
-    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY));
+    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY, MetadataScope.USER));
+
+    // there should be system metadata records for these entities
+    verifySystemMetadata(PURCHASE_APP, true, true);
+    verifySystemMetadata(HISTORY, true, true);
+    // currently we don't have any properties for programs
+    verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
+    verifySystemMetadata(PURCHASE_STREAM, true, true);
   }
 
   @Override
