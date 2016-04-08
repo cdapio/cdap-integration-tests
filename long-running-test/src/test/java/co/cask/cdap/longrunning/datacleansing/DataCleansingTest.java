@@ -65,7 +65,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   @Override
   public void setup() throws Exception {
     LOG.info("setting up data cleaning test");
-    ApplicationManager applicationManager = deployApplication(DataCleansing.class);
+    ApplicationManager applicationManager = deployApplication(getLongRunningNamespace(), DataCleansing.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME).start();
     serviceManager.waitForStatus(true);
     URL serviceURL = serviceManager.getServiceURL();
@@ -96,7 +96,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
 
   @Override
   public DataCleansingTestState runOperations(DataCleansingTestState state) throws Exception {
-    ApplicationManager applicationManager = getApplicationManager(Id.Application.from(Id.Namespace.DEFAULT.getId(),
+    ApplicationManager applicationManager = getApplicationManager(Id.Application.from(getLongRunningNamespace().getId(),
                                                                                       DATACLEANSING_NAME));
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME);
     URL serviceURL = serviceManager.getServiceURL();
@@ -143,7 +143,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   // pass true to get the number of invalid records; pass false to get the number of valid records processed.
   private long getValidityMetrics(boolean invalid) throws Exception {
     String metric = "user.records." + (invalid ? "invalid" : "valid");
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, Id.Namespace.DEFAULT.getId(),
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, getLongRunningNamespace().getId(),
                                                Constants.Metrics.Tag.APP, DATACLEANSING_NAME,
                                                Constants.Metrics.Tag.MAPREDUCE, DATACLEANSING_MAPREDUCE_NAME);
     MetricQueryResult result = getMetricsClient().query(tags, metric);
@@ -165,9 +165,9 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
       + state.getTimestamp();
 
     // Reduce wait time by submitting both the queries
-    ListenableFuture<ExploreExecutionResult> cleanRecordsExecute = queryClient.execute(TEST_NAMESPACE,
+    ListenableFuture<ExploreExecutionResult> cleanRecordsExecute = queryClient.execute(getLongRunningNamespace(),
                                                                                        cleanRecordsQuery);
-    ListenableFuture<ExploreExecutionResult> invalidRecordsExecute = queryClient.execute(TEST_NAMESPACE,
+    ListenableFuture<ExploreExecutionResult> invalidRecordsExecute = queryClient.execute(getLongRunningNamespace(),
                                                                                          invalidRecordsQuery);
     ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
     ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();

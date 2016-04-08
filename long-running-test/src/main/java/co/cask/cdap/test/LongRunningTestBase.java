@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,6 +16,9 @@
 
 package co.cask.cdap.test;
 
+import co.cask.cdap.client.NamespaceClient;
+import co.cask.cdap.common.NamespaceNotFoundException;
+import co.cask.cdap.proto.Id;
 import com.google.gson.Gson;
 import org.junit.After;
 import org.junit.Before;
@@ -36,19 +39,38 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   public static final Logger LOG = LoggerFactory.getLogger(LongRunningTestBase.class);
   // key is Test class name and value is test state in json format
   private static Map<String, String> inMemoryStatePerTest;
+  private Id.Namespace longRunningNamespace;
   private static final Gson GSON = new Gson();
 
   public static void initializeInMemoryMap(Map<String, String> inMemoryMap) {
     inMemoryStatePerTest = inMemoryMap;
   }
 
+  private Id.Namespace configureLongRunningNamespace(String namespaceId) throws Exception {
+    Id.Namespace testNamespace = Id.Namespace.DEFAULT;
+    if (namespaceId != null) {
+      NamespaceClient namespaceClient = getNamespaceClient();
+      try {
+        testNamespace = Id.Namespace.from(namespaceClient.get(Id.Namespace.from(namespaceId)).getName());
+      } catch (NamespaceNotFoundException e) {
+        testNamespace = createNamespace(namespaceId);
+      }
+    }
+    return testNamespace;
+  }
+
   public static Map<String, String> getInMemoryMap() {
     return inMemoryStatePerTest;
+  }
+
+  public Id.Namespace getLongRunningNamespace() {
+    return longRunningNamespace;
   }
 
   @Before
   @Override
   public void setUp() throws Exception {
+    longRunningNamespace = configureLongRunningNamespace(System.getProperty("long.running.namespace"));
     checkSystemServices();
   }
 

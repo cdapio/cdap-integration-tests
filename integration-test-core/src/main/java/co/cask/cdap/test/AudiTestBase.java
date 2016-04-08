@@ -34,6 +34,7 @@ import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.cube.CubeDatasetApp;
 import co.cask.cdap.remote.dataset.cube.RemoteCube;
@@ -212,8 +213,9 @@ public class AudiTestBase extends IntegrationTestBase {
     return getTestManager().deployApplication(appId, appRequest);
   }
 
-  protected ApplicationManager deployApplication(Class<? extends Application> applicationClz, Config configObject) {
-    return getTestManager().deployApplication(TEST_NAMESPACE, applicationClz, configObject);
+  protected ApplicationManager deployApplication(Id.Namespace namespace, Class<? extends Application> applicationClz,
+                                                 Config configObject) {
+    return getTestManager().deployApplication(namespace, applicationClz, configObject);
   }
 
   @SuppressWarnings("unchecked")
@@ -231,26 +233,32 @@ public class AudiTestBase extends IntegrationTestBase {
   // TODO: improve the following getXDataset methods. Eventually, move them into IntegrationTestBase.
   // Consider whether they should should have behavior of createIfNotExists.
   protected DataSetManager<Table> getTableDataset(String datasetName) throws Exception {
-    return wrap(new RemoteTable(deployServiceForDataset(TableDatasetApp.class, datasetName),
+    return wrap(new RemoteTable(deployServiceForDataset(TEST_NAMESPACE, TableDatasetApp.class, datasetName),
                                 getRestClient(), getClientConfig()));
   }
 
   protected DataSetManager<KeyValueTable> getKVTableDataset(String datasetName) throws Exception {
-    return wrap(new RemoteKeyValueTable(deployServiceForDataset(KVTableDatasetApp.class, datasetName),
+    return wrap(new RemoteKeyValueTable(deployServiceForDataset(TEST_NAMESPACE, KVTableDatasetApp.class, datasetName),
+                                        getRestClient(), getClientConfig()));
+  }
+
+  protected DataSetManager<KeyValueTable> getKVTableDataset(DatasetId datasetId) throws Exception {
+    return wrap(new RemoteKeyValueTable(deployServiceForDataset(Id.Namespace.from(datasetId.getNamespace()),
+                                                                KVTableDatasetApp.class, datasetId.getDataset()),
                                         getRestClient(), getClientConfig()));
   }
 
   protected DataSetManager<Cube> getCubeDataset(String datasetName) throws Exception {
-    return wrap(new RemoteCube(deployServiceForDataset(CubeDatasetApp.class, datasetName),
+    return wrap(new RemoteCube(deployServiceForDataset(TEST_NAMESPACE, CubeDatasetApp.class, datasetName),
                                getRestClient(), getClientConfig()));
   }
 
   // ensures that the Service for the dataset is deployed and running
   // returns its baseURL
-  private URL deployServiceForDataset(Class<? extends Application> applicationClz,
+  private URL deployServiceForDataset(Id.Namespace namespace, Class<? extends Application> applicationClz,
                                       String datasetName) throws Exception {
     ApplicationManager appManager =
-      deployApplication(applicationClz, new AbstractDatasetApp.DatasetConfig(datasetName));
+      deployApplication(namespace, applicationClz, new AbstractDatasetApp.DatasetConfig(datasetName));
     ServiceManager serviceManager =
       appManager.getServiceManager(AbstractDatasetApp.DatasetService.class.getSimpleName());
 

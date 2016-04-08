@@ -20,6 +20,7 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import com.google.common.base.Charsets;
@@ -37,7 +38,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
 
   @Override
   public void setup() throws Exception {
-    ApplicationManager applicationManager = deployApplication(IncrementApp.class);
+    ApplicationManager applicationManager = deployApplication(getLongRunningNamespace(), IncrementApp.class);
     applicationManager.getFlowManager(IncrementApp.IncrementFlow.NAME).start();
   }
 
@@ -53,13 +54,15 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
 
   @Override
   public void verifyRuns(IncrementTestState state) throws Exception {
-    KeyValueTable readlessTable = getKVTableDataset(IncrementApp.READLESS_TABLE).get();
+    DatasetId readlessTableId = new DatasetId(getLongRunningNamespace().getId(), IncrementApp.READLESS_TABLE);
+    KeyValueTable readlessTable = getKVTableDataset(readlessTableId).get();
     long readlessSum = readLong(readlessTable.read(IncrementApp.SUM_KEY));
     long readlessNum = readLong(readlessTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), readlessSum);
     Assert.assertEquals(state.getNumEvents(), readlessNum);
 
-    KeyValueTable regularTable = getKVTableDataset(IncrementApp.REGULAR_TABLE).get();
+    DatasetId regularTableId = new DatasetId(getLongRunningNamespace().getId(), IncrementApp.REGULAR_TABLE);
+    KeyValueTable regularTable = getKVTableDataset(regularTableId).get();
     long regularSum = readLong(regularTable.read(IncrementApp.SUM_KEY));
     long regularNum = readLong(regularTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), regularSum);
@@ -75,7 +78,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
       writer.write(String.format("%010d", i));
       writer.write("\n");
     }
-    streamClient.sendBatch(Id.Stream.from(TEST_NAMESPACE, IncrementApp.INT_STREAM), "text/plain",
+    streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), IncrementApp.INT_STREAM), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
     long newSum = state.getSumEvents() + SUM_BATCH;
     return new IncrementTestState(newSum, state.getNumEvents() + BATCH_SIZE);
