@@ -70,8 +70,8 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   @Before
   @Override
   public void setUp() throws Exception {
-    longRunningNamespace = configureLongRunningNamespace(System.getProperty("long.running.namespace"));
     checkSystemServices();
+    longRunningNamespace = configureLongRunningNamespace(System.getProperty("long.running.namespace"));
   }
 
   @After
