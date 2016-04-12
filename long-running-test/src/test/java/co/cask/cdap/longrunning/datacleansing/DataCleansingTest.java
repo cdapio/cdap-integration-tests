@@ -16,16 +16,15 @@
 
 package co.cask.cdap.longrunning.datacleansing;
 
+import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
-import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.examples.datacleansing.DataCleansing;
-import co.cask.cdap.examples.datacleansing.DataCleansingMapReduce;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.QueryResult;
+import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.ServiceManager;
@@ -42,7 +41,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Data Cleansing long running test
@@ -65,7 +63,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   @Override
   public void setup() throws Exception {
     LOG.info("setting up data cleaning test");
-    ApplicationManager applicationManager = deployApplication(getLongRunningNamespace(), DataCleansing.class);
+    ApplicationManager applicationManager = deployApplication(getLongRunningNamespace(), DataCleansingApp.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME).start();
     serviceManager.waitForStatus(true);
     URL serviceURL = serviceManager.getServiceURL();
@@ -88,7 +86,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   public void verifyRuns(DataCleansingTestState state) throws Exception {
     LOG.info("verifying runs for data cleaning");
     // For now, check total number of clean records and invalid records
-    Assert.assertEquals(state.getEndInvalidRecordPid(), getValidityMetrics(true) + getValidityMetrics(false));
+    Assert.assertEquals(state.getEndInvalidRecordPid(), getTotalRecords(true) + getTotalRecords(false));
 
     // verify segregated records
     Assert.assertTrue(verifyRecordsWithExplore(state));
@@ -141,19 +139,12 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   // pass true to get the number of invalid records; pass false to get the number of valid records processed.
-  private long getValidityMetrics(boolean invalid) throws Exception {
-    String metric = "user.records." + (invalid ? "invalid" : "valid");
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, getLongRunningNamespace().getId(),
-                                               Constants.Metrics.Tag.APP, DATACLEANSING_NAME,
-                                               Constants.Metrics.Tag.MAPREDUCE, DATACLEANSING_MAPREDUCE_NAME);
-    MetricQueryResult result = getMetricsClient().query(tags, metric);
-    // copied from MetricsClient#getTotalCounter
-    if (result.getSeries().length == 0) {
-      return 0L;
-    } else {
-      MetricQueryResult.TimeValue[] timeValues = result.getSeries()[0].getData();
-      return timeValues.length == 0 ? 0L : timeValues[0].getValue();
-    }
+  private long getTotalRecords(boolean invalid) throws Exception {
+    DatasetId totalRecordsTableId = new DatasetId(getLongRunningNamespace().getId(),
+                                                  DataCleansingApp.TOTAL_RECORDS_TABLE);
+    KeyValueTable totalRecordsTable = getKVTableDataset(totalRecordsTableId).get();
+    byte[] recordKey = invalid ? DataCleansingApp.INVALID_RECORD_KEY : DataCleansingApp.CLEAN_RECORD_KEY;
+    return readLong(totalRecordsTable.read(recordKey));
   }
 
   // TODO: Use serivce instead of explore as Explore is slower
@@ -187,5 +178,9 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
       index++;
     }
     return true;
+  }
+
+  private long readLong(byte[] bytes) {
+    return bytes == null ? 0 : Bytes.toLong(bytes);
   }
 }
