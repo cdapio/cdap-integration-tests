@@ -39,13 +39,14 @@ public class IncrementApp extends AbstractApplication {
   public static final byte[] SUM_KEY = {'s'};
   public static final byte[] NUM_KEY = {'n'};
 
+  public static final String NAME = "IncrementApp";
   public static final String INT_STREAM = "intStream";
   public static final String READLESS_TABLE = "readlessTable";
   public static final String REGULAR_TABLE = "regularTable";
 
   @Override
   public void configure() {
-    setName("IncrementApp");
+    setName(NAME);
     addStream(new Stream(INT_STREAM));
     addFlow(new IncrementFlow());
   }

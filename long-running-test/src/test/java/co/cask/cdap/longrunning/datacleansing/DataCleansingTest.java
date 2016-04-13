@@ -41,6 +41,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Data Cleansing long running test
@@ -61,10 +62,13 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   private static final Gson GSON = new Gson();
 
   @Override
-  public void setup() throws Exception {
-    LOG.info("setting up data cleaning test");
-    ApplicationManager applicationManager = deployApplication(getLongRunningNamespace(), DataCleansingApp.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME).start();
+  public void deploy() throws Exception {
+    deployApplication(getLongRunningNamespace(), DataCleansingApp.class);
+  }
+
+  @Override
+  public void start() throws Exception {
+    ServiceManager serviceManager = getApplicationManager().getServiceManager(DataCleansingService.NAME).start();
     serviceManager.waitForStatus(true);
     URL serviceURL = serviceManager.getServiceURL();
     // until the service starts, the endpoint will return 503. Once it's up, it'll return 404
@@ -73,13 +77,20 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   @Override
-  public void cleanup() throws Exception {
-    LOG.info("cleaning up data cleansing test");
+  public void stop() throws Exception {
+    ServiceManager serviceManager = getApplicationManager().getServiceManager(DataCleansingService.NAME);
+    serviceManager.stop();
+    serviceManager.waitForStatus(false);
   }
 
   @Override
   public DataCleansingTestState getInitialState() {
     return new DataCleansingTestState(0, 0, 0, 0, 0);
+  }
+
+  @Override
+  public void awaitOperations(DataCleansingTestState state) throws Exception {
+    getApplicationManager().getMapReduceManager(DATACLEANSING_MAPREDUCE_NAME).waitForFinish(5, TimeUnit.MINUTES);
   }
 
   @Override
@@ -92,10 +103,13 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     Assert.assertTrue(verifyRecordsWithExplore(state));
   }
 
+  private ApplicationManager getApplicationManager() throws Exception {
+    return getApplicationManager(Id.Application.from(getLongRunningNamespace().getId(), DATACLEANSING_NAME));
+  }
+
   @Override
   public DataCleansingTestState runOperations(DataCleansingTestState state) throws Exception {
-    ApplicationManager applicationManager = getApplicationManager(Id.Application.from(getLongRunningNamespace().getId(),
-                                                                                      DATACLEANSING_NAME));
+    ApplicationManager applicationManager = getApplicationManager();
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME);
     URL serviceURL = serviceManager.getServiceURL();
 
