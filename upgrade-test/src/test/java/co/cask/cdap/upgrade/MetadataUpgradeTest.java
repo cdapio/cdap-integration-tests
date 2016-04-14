@@ -18,6 +18,7 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
@@ -35,6 +36,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import org.junit.Assert;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -75,6 +77,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private static final String PURCHASE_VIEW_FIELD = "purchaseViewBody";
   private static Predicate<MetadataSearchResultRecord> purchaseAppPredicate;
 
+  private static final Id.DatasetInstance DELETION_TEST_DS = Id.DatasetInstance.from(Id.Namespace.DEFAULT, "delete");
   private final MetadataClient metadataClient;
 
   public MetadataUpgradeTest() {
@@ -111,6 +114,20 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     // currently we don't have any properties for programs
     verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
     verifySystemMetadata(PURCHASE_STREAM, true, true);
+
+    // test metadata deletion of deleted datasets during upgrade
+    DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
+    datasetClient.create(DELETION_TEST_DS, "table");
+    metadataClient.addTags(DELETION_TEST_DS, Collections.singleton("deletethis"));
+    Assert.assertEquals(
+      Collections.singleton(new MetadataSearchResultRecord(DELETION_TEST_DS)),
+      searchMetadata(Id.Namespace.DEFAULT, "deletethis", MetadataSearchTargetType.DATASET)
+    );
+    datasetClient.delete(DELETION_TEST_DS);
+    Assert.assertEquals(
+      Collections.singleton(new MetadataSearchResultRecord(DELETION_TEST_DS)),
+      searchMetadata(Id.Namespace.DEFAULT, "deletethis", MetadataSearchTargetType.DATASET)
+    );
   }
 
   @Override
@@ -195,6 +212,12 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     searchResults = searchMetadata(Id.Namespace.DEFAULT, PURCHASE_VIEW_FIELD,
                                    MetadataSearchTargetType.ALL);
     Assert.assertEquals(1, searchResults.size());
+
+    // verify that metadata of deleted dataset was deleted
+    Assert.assertEquals(
+      Collections.EMPTY_SET,
+      searchMetadata(Id.Namespace.DEFAULT, "deletethis", MetadataSearchTargetType.DATASET)
+    );
   }
 
   private void verifySystemMetadata(Id.NamespacedId id, boolean checkProperties, boolean checkTags) throws Exception {
