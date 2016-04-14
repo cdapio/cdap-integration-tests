@@ -62,7 +62,7 @@ public class LongRunningTestRunner {
       inMemoryMap = GSON.fromJson(fileReader, type);
     } catch (FileNotFoundException e) {
       LOG.warn("Input state file not found, creating new instance of in memory map");
-      inMemoryMap = new HashMap<String, String>();
+      inMemoryMap = new HashMap<>();
     }
     LongRunningTestBase.initializeInMemoryMap(inMemoryMap);
   }

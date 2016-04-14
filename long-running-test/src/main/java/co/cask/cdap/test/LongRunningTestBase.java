@@ -16,9 +16,8 @@
 
 package co.cask.cdap.test;
 
-import co.cask.cdap.client.NamespaceClient;
-import co.cask.cdap.common.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.id.NamespaceId;
 import com.google.gson.Gson;
 import org.junit.After;
 import org.junit.Before;
@@ -39,24 +38,25 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   public static final Logger LOG = LoggerFactory.getLogger(LongRunningTestBase.class);
   // key is Test class name and value is test state in json format
   private static Map<String, String> inMemoryStatePerTest;
-  private Id.Namespace longRunningNamespace;
   private static final Gson GSON = new Gson();
+
+  private static final String STAGE = System.getProperty("stage");
+  private static final String PRE = "PRE";
+  private static final String POST = "POST";
+
+  private Id.Namespace longRunningNamespace;
+  private T state;
 
   public static void initializeInMemoryMap(Map<String, String> inMemoryMap) {
     inMemoryStatePerTest = inMemoryMap;
   }
 
-  private Id.Namespace configureLongRunningNamespace(String namespaceId) throws Exception {
-    Id.Namespace testNamespace = Id.Namespace.DEFAULT;
-    if (namespaceId != null) {
-      NamespaceClient namespaceClient = getNamespaceClient();
-      try {
-        testNamespace = Id.Namespace.from(namespaceClient.get(Id.Namespace.from(namespaceId)).getName());
-      } catch (NamespaceNotFoundException e) {
-        testNamespace = createNamespace(namespaceId);
-      }
+  private Id.Namespace configureLongRunningNamespace(String namespace) throws Exception {
+    Id.Namespace namespaceId = Id.Namespace.from(namespace);
+    if (!getNamespaceClient().exists(namespaceId)) {
+      createNamespace(namespace);
     }
-    return testNamespace;
+    return namespaceId;
   }
 
   public static Map<String, String> getInMemoryMap() {
@@ -71,47 +71,96 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   @Override
   public void setUp() throws Exception {
     checkSystemServices();
-    longRunningNamespace = configureLongRunningNamespace(System.getProperty("long.running.namespace"));
+    longRunningNamespace =
+      configureLongRunningNamespace(System.getProperty("long.running.namespace", NamespaceId.DEFAULT.getNamespace()));
+
+    boolean firstRun = false;
+    Type stateType = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+    String key = getTestName();
+    if (inMemoryStatePerTest.containsKey(key)) {
+      state = GSON.fromJson(inMemoryStatePerTest.get(key), stateType);
+    } else {
+      LOG.warn("Input state not found, treating this as the first run");
+      firstRun = true;
+      state = getInitialState();
+      inMemoryStatePerTest.put(key, GSON.toJson(state));
+    }
+
+    LOG.info("Got input state = {}", state);
+
+    if (firstRun) {
+      LOG.info("Executing first run of long running test {}...", getTestName());
+      deploy();
+      start();
+    }
   }
 
   @After
   @Override
   public void tearDown() throws Exception {
-    checkSystemServices();
+    inMemoryStatePerTest.put(getTestName(), GSON.toJson(state));
+  }
+
+  private String getTestName() {
+    return getClass().getCanonicalName();
   }
 
   @Test
   public void test() throws Exception {
-    LOG.info("Starting test run {}", getClass().getCanonicalName());
-
-    boolean firstRun = false;
-    T inputState;
-    Type stateType = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-    String key = getClass().getCanonicalName();
-    if (inMemoryStatePerTest.containsKey(key)) {
-      inputState = GSON.fromJson(inMemoryStatePerTest.get(key), stateType);
+    if (Boolean.getBoolean("longrunning.as.upgrade")) {
+      testUpgrade();
     } else {
-      LOG.warn("Input state not found, treating this as the first run");
-      firstRun = true;
-      inputState = getInitialState();
-      inMemoryStatePerTest.put(key, GSON.toJson(inputState));
+      testLongRunning();
     }
+  }
 
-    LOG.info("Got input state = {}", inputState);
+  private void testLongRunning() throws Exception {
+    LOG.info("Running one iteration of long running test {}", getTestName());
+    runOneIteration();
+  }
 
-    if (firstRun) {
-      LOG.info("Calling setup...");
-      setup();
+  private void testUpgrade() throws Exception {
+    LOG.info("Testing stage {} of Upgrade: {}.", STAGE, getTestName());
+    if (POST.equalsIgnoreCase(STAGE)) {
+      // in POST stage, we need to start up the test application, even though there exists a state file
+      // because the PRE stage stopped everything at the end (in order for CDAP to be stopped and upgraded).
+      // we can remove the call to deploy, if we want to test whether users don't have to redeploy apps after an
+      // upgrade.
+      deploy();
+      start();
+    } else if (!PRE.equalsIgnoreCase(STAGE)) {
+      throw new IllegalArgumentException(String.format("Unknown stage: %s. Allowed stages: %s, %s", STAGE, PRE, POST));
     }
+    try {
+      // run two iterations and then verify runs at the end (don't need to runOperations at the end)
+      runOneIteration();
+      runOneIteration();
 
+      LOG.info("Calling awaitOperations...");
+      awaitOperations(state);
+      verifyRuns(state);
+    } finally {
+      try {
+        stop();
+      } catch (Exception e) {
+        // simply log exceptions from the stop. Otherwise, it'll mask any actual exceptions from the try block
+        LOG.error("Got exception while stopping.", e);
+      }
+    }
+    LOG.info("Testing stage {} of Upgrade: {} - SUCCESSFUL!", STAGE, getTestName());
+  }
+
+  private void runOneIteration() throws Exception {
+    LOG.info("Running one iteration of test run {}", getTestName());
+
+    LOG.info("Calling awaitOperations...");
+    awaitOperations(state);
     LOG.info("Calling verifyRuns...");
-    verifyRuns(inputState);
+    verifyRuns(state);
     LOG.info("Calling runOperations...");
-    T outputState = runOperations(inputState);
+    state = runOperations(state);
+    LOG.info("Got output state = {}", state);
 
-    LOG.info("Got output state = {}", outputState);
-    inMemoryStatePerTest.put(key, GSON.toJson(outputState));
-
-    LOG.info("Test run {} completed", getClass().getCanonicalName());
+    LOG.info("One iteration of test run {} completed", getTestName());
   }
 }

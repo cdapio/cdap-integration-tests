@@ -182,6 +182,9 @@
           <systemPropertyVariables>
             <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
             <stage>${upgrade.test.stage}</stage>
+            <longrunning.as.upgrade>${longrunning.as.upgrade}</longrunning.as.upgrade>
+            <input.state>${input.state}</input.state>
+            <output.state>${output.state}</output.state>
           </systemPropertyVariables>
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
@@ -260,16 +263,28 @@
       <id>upgrade-test-pre</id>
       <properties>
         <cdap.examples.version>${cdap.pre.version}</cdap.examples.version>
+        <upgrade>true</upgrade>
         <upgrade.test.stage>PRE</upgrade.test.stage>
+
         <skip.upgrade.test>false</skip.upgrade.test>
+        <skip.long.running.test>false</skip.long.running.test>
+        <longrunning.as.upgrade>true</longrunning.as.upgrade>
+        <input.state>./upgrade-test.state</input.state>
+        <output.state>./upgrade-test.state</output.state>
       </properties>
     </profile>
 
     <profile>
       <id>upgrade-test-post</id>
       <properties>
+        <upgrade>true</upgrade>
         <upgrade.test.stage>POST</upgrade.test.stage>
+
         <skip.upgrade.test>false</skip.upgrade.test>
+        <skip.long.running.test>false</skip.long.running.test>
+        <longrunning.as.upgrade>true</longrunning.as.upgrade>
+        <input.state>./upgrade-test.state</input.state>
+        <output.state>./upgrade-test.state</output.state>
       </properties>
     </profile>
 

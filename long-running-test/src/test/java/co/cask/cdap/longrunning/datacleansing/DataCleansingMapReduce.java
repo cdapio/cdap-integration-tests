@@ -150,7 +150,7 @@ public class DataCleansingMapReduce extends AbstractMapReduce {
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
-      // setup the schema to be used by the mapper
+      // deploy the schema to be used by the mapper
       String schemaJson = context.getConfiguration().get(SCHEMA_KEY);
       if (schemaJson == null) {
         schemaMatcher = new SimpleSchemaMatcher(DEFAULT_SCHEMA);

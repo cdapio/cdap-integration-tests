@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class UpgradeTestBase extends AudiTestBase {
   protected static final Logger LOG = LoggerFactory.getLogger(UpgradeTestBase.class);
-  private static final String STAGE = System.getProperty("stage", "");
+  private static final String STAGE = System.getProperty("stage");
   private static final String PRE = "PRE";
   private static final String POST = "POST";
 
@@ -47,8 +47,8 @@ public abstract class UpgradeTestBase extends AudiTestBase {
   }
 
   @Test
-  public void testUpgrade() throws Exception {
-    LOG.info("Testing stage {} of Upgrade: {}.", STAGE, getClass().getSimpleName());
+  public final void testUpgrade() throws Exception {
+    LOG.info("Testing stage {} of Upgrade: {}.", STAGE, getClass().getCanonicalName());
     if (PRE.equalsIgnoreCase(STAGE)) {
       preStage();
     } else if (POST.equalsIgnoreCase(STAGE)) {
@@ -56,6 +56,6 @@ public abstract class UpgradeTestBase extends AudiTestBase {
     } else {
       throw new IllegalArgumentException(String.format("Unknown stage: %s. Allowed stages: %s, %s", STAGE, PRE, POST));
     }
-    LOG.info("Testing stage {} of Upgrade: {} - SUCCESSFUL!", STAGE, getClass().getSimpleName());
+    LOG.info("Testing stage {} of Upgrade: {} - SUCCESSFUL!", STAGE, getClass().getCanonicalName());
   }
 }
