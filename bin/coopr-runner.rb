@@ -247,6 +247,7 @@ module Cask
 
       def update_branch(branch)
         @config_contents['cdap_auto']['git']['branch'] = branch
+        @config_contents['cdap_auto']['git']['repos']['cdap']['branch'] = branch
       end
 
       def update_merge_open_prs(bool)
