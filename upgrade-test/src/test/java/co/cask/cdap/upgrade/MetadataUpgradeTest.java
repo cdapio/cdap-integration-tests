@@ -119,9 +119,24 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
     datasetClient.create(DELETION_TEST_DS, "table");
     metadataClient.addTags(DELETION_TEST_DS, Collections.singleton("deletethis"));
+    metadataClient.addProperties(DELETION_TEST_DS, Collections.singletonMap("propertyToUpdate", "OriginalValue"));
     Assert.assertEquals(
       Collections.singleton(new MetadataSearchResultRecord(DELETION_TEST_DS)),
       searchMetadata(Id.Namespace.DEFAULT, "deletethis", MetadataSearchTargetType.DATASET)
+    );
+    Assert.assertEquals(
+      Collections.singleton(new MetadataSearchResultRecord(DELETION_TEST_DS)),
+      searchMetadata(Id.Namespace.DEFAULT, "OriginalValue", MetadataSearchTargetType.DATASET)
+    );
+    metadataClient.addProperties(DELETION_TEST_DS, Collections.singletonMap("propertyToUpdate", "UpdatedValue"));
+    // even after updating propertyToUpdate, the dataset should be searchable by both its updated and original value
+    Assert.assertEquals(
+      Collections.singleton(new MetadataSearchResultRecord(DELETION_TEST_DS)),
+      searchMetadata(Id.Namespace.DEFAULT, "OriginalValue", MetadataSearchTargetType.DATASET)
+    );
+    Assert.assertEquals(
+      Collections.singleton(new MetadataSearchResultRecord(DELETION_TEST_DS)),
+      searchMetadata(Id.Namespace.DEFAULT, "UpdatedValue", MetadataSearchTargetType.DATASET)
     );
     datasetClient.delete(DELETION_TEST_DS);
     Assert.assertEquals(
@@ -217,6 +232,16 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(
       Collections.EMPTY_SET,
       searchMetadata(Id.Namespace.DEFAULT, "deletethis", MetadataSearchTargetType.DATASET)
+    );
+    // verify that indexes were updated, so the dataset is not searchable by its original property value
+    Assert.assertEquals(
+      Collections.EMPTY_SET,
+      searchMetadata(Id.Namespace.DEFAULT, "OriginalValue", MetadataSearchTargetType.DATASET)
+    );
+    // But it should be searchable by its updated property value
+    Assert.assertEquals(
+      Collections.EMPTY_SET,
+      searchMetadata(Id.Namespace.DEFAULT, "UpdatedValue", MetadataSearchTargetType.DATASET)
     );
   }
 
