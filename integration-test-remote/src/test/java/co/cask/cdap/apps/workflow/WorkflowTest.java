@@ -172,7 +172,7 @@ public class WorkflowTest extends AudiTestBase {
     } else {
       workflowManager.start(ImmutableMap.of("min.pages.threshold", String.valueOf(threshold)));
     }
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForFinish(15, TimeUnit.MINUTES);
     String pid = getLatestPid(workflowManager.getHistory());
     WorkflowTokenNodeDetail tokenAtCondition =
       workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
