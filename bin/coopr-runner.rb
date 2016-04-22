@@ -328,7 +328,7 @@ module Cask
 
       def initialize(spec, options)
         unless spec.instance_of?(ClusterSpec)
-          fail ArgumentError, 'ClusterManager expects an arg of type ClusterSpec'
+          raise ArgumentError, 'ClusterManager expects an arg of type ClusterSpec'
         end
         @spec = spec
         @coopr_client = Cask::CooprDriver::CooprClient.new(options)
@@ -344,7 +344,7 @@ module Cask
       def log_multiline(msg)
         lines = msg.split("\n")
         lines[1..-1].each_with_index do |_v, i|
-          lines[i+1] = "    #{lines[i+1]}"
+          lines[i + 1] = "    #{lines[i + 1]}"
         end
         log(lines.join("\n"))
       end
@@ -454,7 +454,7 @@ module Cask
         loop do
           break if active?
           log "progress: #{@last_status['stepscompleted']} / #{@last_status['stepstotal']}"
-          fail "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
+          raise "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
           sleep @poll_interval
         end
       rescue RuntimeError => e
@@ -545,13 +545,13 @@ module Cask
           raise "Unable to fetch nodes for service #{service}: #{e.inspect}"
         end
 
-        fail "No nodes returned for service #{service} on cluster #{@id}" if nodes.empty?
+        raise "No nodes returned for service #{service} on cluster #{@id}" if nodes.empty?
         n = nodes.values.first
         if n.key?('ipaddresses') && n['ipaddresses'].key?('access_v4')
           log "found IP #{n['ipaddresses']['access_v4']} for service #{service} on cluster #{@id}"
           n['ipaddresses']['access_v4']
         else
-          fail "Unable to determine IP address of node returned for service #{service} on cluster #{@id}: #{n}"
+          raise "Unable to determine IP address of node returned for service #{service} on cluster #{@id}: #{n}"
         end
       end
     end
@@ -587,7 +587,7 @@ when /create/i
         # keep looking for remaining cdap services
       end
     end
-    fail "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
+    raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
 
     ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
   end
@@ -599,8 +599,8 @@ when /create/i
 # Actions for an existing cluster
 when /reconfigure|add-services|stop|start|restart|delete/i
   # Ensure cluster id file from previous task is present
-  fail 'Must supply --cluster-id-file [file] to specify cluster ID to operate on' unless options[:cluster_id_file]
-  fail "No cluster id file present. Expecting #{options[:cluster_id_file]}" unless ::File.exist?(options[:cluster_id_file])
+  raise 'Must supply --cluster-id-file [file] to specify cluster ID to operate on' unless options[:cluster_id_file]
+  raise "No cluster id file present. Expecting #{options[:cluster_id_file]}" unless ::File.exist?(options[:cluster_id_file])
 
   # Read cluster id
   id = File.read(options[:cluster_id_file]).strip
@@ -634,7 +634,7 @@ when /reconfigure|add-services|stop|start|restart|delete/i
     when /^delete/i
       mgr.delete
     else
-      fail "Unknown action specified: #{options[:action]}"
+      raise "Unknown action specified: #{options[:action]}"
     end
     # Wait for operation to complete
     mgr.poll_until_active unless options[:action] =~ /delete/i
@@ -642,5 +642,5 @@ when /reconfigure|add-services|stop|start|restart|delete/i
     puts "Cluster #{id} not active. Skipping #{options[:action]}"
   end
 else
-  fail "Unknown action specified: #{options[:action]}"
+  raise "Unknown action specified: #{options[:action]}"
 end
