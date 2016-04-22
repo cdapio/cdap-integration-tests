@@ -104,7 +104,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
-    return getApplicationManager(Id.Application.from(getLongRunningNamespace().getId(), DATACLEANSING_NAME));
+    return getApplicationManager(getLongRunningNamespace().toEntityId().app(DATACLEANSING_NAME));
   }
 
   @Override
