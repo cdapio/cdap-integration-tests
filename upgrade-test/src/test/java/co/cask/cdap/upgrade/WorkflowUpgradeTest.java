@@ -59,8 +59,7 @@ public class WorkflowUpgradeTest extends UpgradeTestBase {
     ApplicationId appId = NamespaceId.DEFAULT.app(WorkflowUpgradeApp.NAME);
     Assert.assertTrue("WorkflowUpgradeApp must exist after upgrade.", getApplicationClient().exists(appId.toId()));
 
-    WorkflowManager workflowManager = getApplicationManager(appId.toId())
-      .getWorkflowManager(WorkflowUpgradeApp.WORKFLOW_NAME);
+    WorkflowManager workflowManager = getApplicationManager(appId).getWorkflowManager(WorkflowUpgradeApp.WORKFLOW_NAME);
 
     // Verify the Workflow had one run in pre-stage
     List<RunRecord> history = workflowManager.getHistory(ProgramRunStatus.COMPLETED);
@@ -70,7 +69,7 @@ public class WorkflowUpgradeTest extends UpgradeTestBase {
     String workflowRunIdBeforeUpgrade = history.get(0).getPid();
     verifyWorkflowToken(workflowManager, workflowRunIdBeforeUpgrade);
 
-    MapReduceManager mapReduceManager = getApplicationManager(appId.toId())
+    MapReduceManager mapReduceManager = getApplicationManager(appId)
       .getMapReduceManager(WorkflowUpgradeApp.MAPREDUCE_NAME);
 
     history = mapReduceManager.getHistory(ProgramRunStatus.COMPLETED);

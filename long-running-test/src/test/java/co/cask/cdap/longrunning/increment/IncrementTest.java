@@ -59,7 +59,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
-    return getApplicationManager(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME));
+    return getApplicationManager(getLongRunningNamespace().toEntityId().app(IncrementApp.NAME));
   }
 
   @Override
