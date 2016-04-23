@@ -125,6 +125,7 @@ options[:cluster_template] = options[:cluster_template] || ENV['COOPR_DRIVER_CLU
 options[:provider] = options[:provider] || ENV['COOPR_DRIVER_PROVIDER'] || 'google'
 options[:hardwaretype] = options[:hardwaretype] || ENV['COOPR_DRIVER_HARDWARETYPE'] || nil
 options[:imagetype] = options[:imagetype] || ENV['COOPR_DRIVER_IMAGETYPE'] || nil
+options[:num_machines] = options[:num_machines] || ENV['COOPR_DRIVER_NUMMACHINES'] || nil
 
 options[:services] = [] if options[:services].nil?
 
