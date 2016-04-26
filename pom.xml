@@ -37,6 +37,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <cdap.pre.version>3.3.0</cdap.pre.version>
     <cdap.version>3.4.0-SNAPSHOT</cdap.version>
+    <hydrator.version>1.3.0-SNAPSHOT</hydrator.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
@@ -125,7 +126,19 @@
     <dependency>
       <groupId>co.cask.hydrator</groupId>
       <artifactId>core-plugins</artifactId>
-      <version>1.3.0-SNAPSHOT</version>
+      <version>${hydrator.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <!-- co.cask.hydrator.common.Constants -->
+      <groupId>co.cask.hydrator</groupId>
+      <artifactId>hydrator-common</artifactId>
+      <version>${hydrator.version}</version>
       <exclusions>
         <exclusion>
           <groupId>*</groupId>
