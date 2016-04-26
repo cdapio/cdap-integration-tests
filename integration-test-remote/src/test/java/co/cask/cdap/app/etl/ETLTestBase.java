@@ -33,6 +33,8 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.artifact.PluginSummary;
+import co.cask.cdap.proto.id.ArtifactId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Throwables;
 import org.junit.Before;
@@ -74,8 +76,9 @@ public abstract class ETLTestBase extends AudiTestBase {
     version = getVersion();
     final Id.Artifact batchId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-batch", version);
     final Id.Artifact realtimeId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-realtime", version);
+    final ArtifactId datapipelineId = NamespaceId.DEFAULT.artifact("cdap-data-pipeline", version);
 
-    // wait until we see extensions for cdap-etl-batch and cdap-etl-realtime
+    // wait until we see extensions for cdap-etl-batch and cdap-etl-realtime and cdap-data-pipeline
     Tasks.waitFor(true, new Callable<Boolean>() {
       @Override
       public Boolean call() throws Exception {
@@ -96,7 +99,15 @@ public abstract class ETLTestBase extends AudiTestBase {
               break;
             }
           }
-          return batchReady && realtimeReady;
+          boolean datapipelineReady = false;
+          plugins = artifactClient.getPluginSummaries(datapipelineId.toId(), "batchaggregator", ArtifactScope.SYSTEM);
+          for (PluginSummary plugin : plugins) {
+            if ("GroupByAggregate".equals(plugin.getName())) {
+              datapipelineReady = true;
+              break;
+            }
+          }
+          return batchReady && realtimeReady && datapipelineReady;
         } catch (ArtifactNotFoundException e) {
           // happens if etl-batch or etl-realtime were not added yet
           return false;
@@ -113,6 +124,12 @@ public abstract class ETLTestBase extends AudiTestBase {
   protected AppRequest<ETLRealtimeConfig> getRealtimeAppRequest(ETLRealtimeConfig config)
     throws IOException, UnauthenticatedException {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", version, ArtifactScope.SYSTEM), config);
+  }
+
+  // make the above two methods use this method instead
+  protected AppRequest<co.cask.cdap.etl.proto.v2.ETLBatchConfig> getBatchAppRequestV2(
+    co.cask.cdap.etl.proto.v2.ETLBatchConfig config) throws IOException, UnauthenticatedException {
+    return new AppRequest<>(new ArtifactSummary("cdap-data-pipeline", version, ArtifactScope.SYSTEM), config);
   }
 
   private String getVersion() {

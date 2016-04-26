@@ -117,6 +117,11 @@
       <artifactId>cdap-etl-batch</artifactId>
       <version>${cdap.version}</version>
     </dependency>
+    <dependency> <!-- ETLBatchConfig -->
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-data-pipeline</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
     <dependency> <!-- ETLRealtimeConfig -->
       <groupId>co.cask.cdap</groupId>
       <artifactId>cdap-etl-realtime</artifactId>
