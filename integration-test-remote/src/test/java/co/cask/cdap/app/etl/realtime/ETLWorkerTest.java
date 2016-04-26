@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -33,6 +33,7 @@ import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.SlowTests;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkerManager;
+import co.cask.hydrator.common.Constants;
 import co.cask.hydrator.plugin.common.Properties;
 import co.cask.hydrator.plugin.realtime.source.DataGeneratorSource;
 import com.google.common.base.Charsets;
@@ -58,24 +59,26 @@ public class ETLWorkerTest extends ETLTestBase {
 
   @Test
   public void testEmptyProperties() throws Exception {
+    ETLStage source = new ETLStage("DataGeneratorSource",
+                                   new Plugin("DataGenerator", ImmutableMap.of(Constants.Reference.REFERENCE_NAME,
+                                                                               "DataGenerator")));
     // Set properties to null to test if ETLTemplate can handle it.
-    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(Properties.Stream.NAME, "testS"));
-    ETLStage source = new ETLStage("DataGeneratorSource", sourceConfig);
-    Plugin sinkConfig = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "testS"));
-    ETLStage sink = new ETLStage("StreamSink", sinkConfig);
-    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
+    ETLStage transform = new ETLStage("Projection", new Plugin("Projection", null));
+    ETLStage sink = new ETLStage("StreamSink", new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "testS")));
+
+    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.newArrayList(transform));
 
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testAdap");
-    AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
-    ApplicationManager appManager = deployApplication(appId, appRequest);
+    ApplicationManager appManager = deployApplication(appId, getRealtimeAppRequest(etlConfig));
     Assert.assertNotNull(appManager);
   }
 
   @Test
   @Category(SlowTests.class)
   public void testStreamSinks() throws Exception {
-    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
-                                                                      DataGeneratorSource.STREAM_TYPE));
+    Plugin sourceConfig = new Plugin("DataGenerator",
+                                     ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.STREAM_TYPE,
+                                                     Constants.Reference.REFERENCE_NAME, "DataGenerator"));
     ETLStage source = new ETLStage("DataGeneratorSource", sourceConfig);
 
     Plugin sink1 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamA"));
@@ -122,8 +125,9 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   @SuppressWarnings("ConstantConditions")
   public void testTableSink() throws Exception {
-    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
-                                                                      DataGeneratorSource.TABLE_TYPE));
+    Plugin sourceConfig = new Plugin("DataGenerator",
+                                     ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.TABLE_TYPE,
+                                                     Constants.Reference.REFERENCE_NAME, "DataGenerator"));
     Plugin sinkConfig = new Plugin("Table",
                                    ImmutableMap.of(Properties.Table.NAME, "table1",
                                                    Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "binary"));
