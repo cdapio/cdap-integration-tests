@@ -23,5 +23,6 @@ public class DatasetAccessApp extends AbstractApplication {
   public void configure() {
     setDescription("Application used to access datasets from integration tests");
     addService(new TPFSService());
+    addService(new SnapshotFilesetService());
   }
 }
