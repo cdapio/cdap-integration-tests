@@ -20,9 +20,9 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
@@ -41,6 +41,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -94,13 +95,19 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   @Override
-  public void verifyRuns(DataCleansingTestState state) throws Exception {
+  public void verifyRuns(final DataCleansingTestState state) throws Exception {
     LOG.info("verifying runs for data cleaning");
     // For now, check total number of clean records and invalid records
     Assert.assertEquals(state.getEndInvalidRecordPid(), getTotalRecords(true) + getTotalRecords(false));
 
     // verify segregated records
-    Assert.assertTrue(verifyRecordsWithExplore(state));
+    // Wait for explore service to start
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        return verifyRecordsWithExplore(state);
+      }
+    }, 3, TimeUnit.MINUTES, 2, TimeUnit.SECONDS);
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
