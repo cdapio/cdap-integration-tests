@@ -16,7 +16,6 @@
 
 package co.cask.cdap.app.etl.dataset;
 
-import co.cask.cdap.api.annotation.UseDataSet;
 import co.cask.cdap.api.data.DatasetInstantiationException;
 import co.cask.cdap.api.dataset.lib.PartitionedFileSet;
 import co.cask.cdap.api.service.AbstractService;
@@ -50,14 +49,7 @@ public class SnapshotFilesetService extends AbstractService {
   }
 
   public static class SnapshotFilesetHandler extends AbstractHttpServiceHandler {
-    @UseDataSet(USER_DATASET)
-    @SuppressWarnings("unused")
-    private PartitionedFileSet userSink;
-
-    @UseDataSet(ITEM_DATASET)
-    @SuppressWarnings("unused")
-    private PartitionedFileSet itemSink;
-
+    
     @GET
     @Path("read/{datasetName}")
     public void readFileset(HttpServiceRequest request, HttpServiceResponder responder,
