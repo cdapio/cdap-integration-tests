@@ -38,8 +38,7 @@ import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.CDH53Incompatible;
-import co.cask.cdap.test.suite.category.CDH55Incompatible;
-import co.cask.cdap.test.suite.category.CDH56Incompatible;
+import co.cask.cdap.test.suite.category.CDH54Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
@@ -83,11 +82,7 @@ public class WorkflowTest extends AudiTestBase {
   }
 
   @Test
-  // https://issues.cask.co/browse/CDAP-4711
-  @Category({
-    CDH55Incompatible.class,
-    CDH56Incompatible.class
-  })
+  @Category(CDH54Incompatible.class)
   public void testLDA() throws Exception {
     WikipediaPipelineApp.WikipediaAppConfig appConfig = new WikipediaPipelineApp.WikipediaAppConfig();
     AppRequest<WikipediaPipelineApp.WikipediaAppConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, appConfig);
@@ -177,7 +172,7 @@ public class WorkflowTest extends AudiTestBase {
     } else {
       workflowManager.start(ImmutableMap.of("min.pages.threshold", String.valueOf(threshold)));
     }
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForFinish(15, TimeUnit.MINUTES);
     String pid = getLatestPid(workflowManager.getHistory());
     WorkflowTokenNodeDetail tokenAtCondition =
       workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
