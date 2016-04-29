@@ -18,6 +18,7 @@ package co.cask.cdap.test.suite;
 
 import co.cask.cdap.app.etl.KVTableWithProjectionTest;
 import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
+import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.realtime.ETLWorkerTest;
@@ -47,6 +48,7 @@ import org.junit.runners.Suite;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+  BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   ETLMapReduceTest.class,
   KVTableWithProjectionTest.class,
