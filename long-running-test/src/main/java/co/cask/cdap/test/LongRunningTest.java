@@ -23,19 +23,22 @@ package co.cask.cdap.test;
  */
 public interface LongRunningTest<T extends TestState> {
   /**
-   * Called the first time this test is run against a fresh cluster.
-   * Can be used to deploy apps, start programs, etc.
+   * Used to deploy application.
+   * Will be called before #start.
    */
-  void setup() throws Exception;
+  void deploy() throws Exception;
+
+  /***
+   * Used to start programs. It is guaranteed that #deploy is called before this.
+   */
+  void start() throws Exception;
 
   /**
-   * Called after the last run of the test.
-   * Can be used to stop apps, and run other clean up operations.
-   * The cluster will be reset after this method.
+   * Called after a run of the test.
+   * Used to stop apps, and run other clean up operations.
    * The goal of this method is to get the cluster in a resettable state.
-   * This method may never be called, instead cluster can simply be deleted.
    */
-  void cleanup() throws Exception;
+  void stop() throws Exception;
 
   /**
    * Called when saved state for the test is not found (during the first run of the test)
@@ -45,13 +48,17 @@ public interface LongRunningTest<T extends TestState> {
   T getInitialState();
 
   /**
+   * This can be used to ensure that all data operations performed in the
+   * previous call to #runOperations are complete.
+   */
+  void awaitOperations(T state) throws Exception;
+
+  /**
    * Called during every run of the test.
    * Data operations performed in previous runs can be verified using the saved state.
    * #runOperations will be called after this method.
    * If this method throws exception then #runOperations will not be called, and test will fail.
    * </p>
-   * The test runs will be scheduled in such a way as to let all the data operations performed in the
-   * previous call to #runOperations are complete.
    *
    * @param state state saved from previous call to #runOperations
    */

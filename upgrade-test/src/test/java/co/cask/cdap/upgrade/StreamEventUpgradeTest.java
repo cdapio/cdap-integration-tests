@@ -21,7 +21,7 @@ import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamDetail;
-import com.clearspring.analytics.util.Lists;
+import com.google.common.collect.Lists;
 import org.junit.Assert;
 
 import java.util.List;

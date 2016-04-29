@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 #
-# Copyright © 2012-2015 Cask Data, Inc.
+# Copyright © 2012-2016 Cask Data, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -86,6 +86,12 @@ begin
     opts.on('-l', '--initial-lease-duration LEASETIME', 'Initial lease duration in milliseconds, else template default') do |l|
       options[:lease] = l
     end
+    opts.on('--cluster-service-ip-file FILE', 'Filename to write the IP of specified Coopr service, defaults to COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE') do |f|
+      options[:cluster_service_ip_file] = f
+    end
+    opts.on('--cluster-id-file FILE', 'Filename to write the ID of the created Coopr cluster, or to read as input for any actions other than "create". Defaults to COOPR_DRIVER_CLUSTER_ID_FILE "cdap-auto-clusterid.txt"') do |f|
+      options[:cluster_id_file] = f
+    end
 
     opts.separator ''
     opts.separator 'Required Arguments: None'
@@ -95,7 +101,7 @@ begin
     opts.separator '    --name mycluster --num-machines 1 --provider google --hardwaretype standard-xlarge --imagetype centos6 \\'
     opts.separator "    --distribution cdh --distribution-version 5 --branch develop --services 'some-optional-service' \\"
     opts.separator "    --initial-lease-duration 86400000 --config '{\"arbitrary\":\"json\"}' --provider-fields '{\"google_data_disk_size_gb\":\"300\"}' \\"
-    opts.separator '    --merge-open-prs true'
+    opts.separator '    --merge-open-prs true --cluster-service-ip-file cdap-auto-ip.txt --cluster-id-file cdap-auto-clusterid.txt'
     opts.separator ''
   end
   op.parse!(ARGV)
@@ -119,8 +125,12 @@ options[:cluster_template] = options[:cluster_template] || ENV['COOPR_DRIVER_CLU
 options[:provider] = options[:provider] || ENV['COOPR_DRIVER_PROVIDER'] || 'google'
 options[:hardwaretype] = options[:hardwaretype] || ENV['COOPR_DRIVER_HARDWARETYPE'] || nil
 options[:imagetype] = options[:imagetype] || ENV['COOPR_DRIVER_IMAGETYPE'] || nil
+options[:num_machines] = options[:num_machines] || ENV['COOPR_DRIVER_NUMMACHINES'] || nil
 
 options[:services] = [] if options[:services].nil?
+
+options[:cluster_service_ip_file] = options[:cluster_service_ip_file] || ENV['COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE'] || nil
+options[:cluster_id_file] = options[:cluster_id_file] || ENV['COOPR_DRIVER_CLUSTER_ID_FILE'] || nil
 
 module Cask
   module CooprDriver
@@ -247,6 +257,7 @@ module Cask
 
       def update_branch(branch)
         @config_contents['cdap_auto']['git']['branch'] = branch
+        @config_contents['cdap_auto']['git']['repos']['cdap']['branch'] = branch
       end
 
       def update_merge_open_prs(bool)
@@ -318,7 +329,7 @@ module Cask
 
       def initialize(spec, options)
         unless spec.instance_of?(ClusterSpec)
-          fail ArgumentError, 'ClusterManager expects an arg of type ClusterSpec'
+          raise ArgumentError, 'ClusterManager expects an arg of type ClusterSpec'
         end
         @spec = spec
         @coopr_client = Cask::CooprDriver::CooprClient.new(options)
@@ -334,7 +345,7 @@ module Cask
       def log_multiline(msg)
         lines = msg.split("\n")
         lines[1..-1].each_with_index do |_v, i|
-          lines[i+1] = "    #{lines[i+1]}"
+          lines[i + 1] = "    #{lines[i + 1]}"
         end
         log(lines.join("\n"))
       end
@@ -444,7 +455,7 @@ module Cask
         loop do
           break if active?
           log "progress: #{@last_status['stepscompleted']} / #{@last_status['stepstotal']}"
-          fail "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
+          raise "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
           sleep @poll_interval
         end
       rescue RuntimeError => e
@@ -535,13 +546,13 @@ module Cask
           raise "Unable to fetch nodes for service #{service}: #{e.inspect}"
         end
 
-        fail "No nodes returned for service #{service} on cluster #{@id}" if nodes.empty?
+        raise "No nodes returned for service #{service} on cluster #{@id}" if nodes.empty?
         n = nodes.values.first
         if n.key?('ipaddresses') && n['ipaddresses'].key?('access_v4')
           log "found IP #{n['ipaddresses']['access_v4']} for service #{service} on cluster #{@id}"
           n['ipaddresses']['access_v4']
         else
-          fail "Unable to determine IP address of node returned for service #{service} on cluster #{@id}: #{n}"
+          raise "Unable to determine IP address of node returned for service #{service} on cluster #{@id}: #{n}"
         end
       end
     end
@@ -549,8 +560,6 @@ module Cask
 end
 
 # Start script
-output_file_ip = 'cdap-auto-ip.txt'
-output_file_clusterid = 'cdap-auto-clusterid.txt'
 
 case options[:action]
 when /create/i
@@ -567,29 +576,35 @@ when /create/i
   sleep 5
   mgr.poll_until_active
 
-  # Determine which host runs cdap
-  ip = nil
-  # Check for all cdap service variants
-  %w(cdap-auto-with-auth cdap-mapr-auto-with-auth cdap-auto cdap-mapr-auto cdap-sdk-auto cdap).each do |svc|
-    begin
-      ip = mgr.get_access_ip_for_service(svc)
-      break
-    rescue
-      # keep looking for remaining cdap services
+  if options[:cluster_service_ip_file]
+    # Determine which host runs cdap
+    ip = nil
+    # Check for all cdap service variants
+    %w(cdap-auto-with-auth cdap-mapr-auto-with-auth cdap-auto cdap-mapr-auto cdap-sdk-auto cdap).each do |svc|
+      begin
+        ip = mgr.get_access_ip_for_service(svc)
+        break
+      rescue
+        # keep looking for remaining cdap services
+      end
     end
-  end
-  fail "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
+    raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
 
-  ::File.open(output_file_ip, 'w') { |file| file.puts(ip) }
-  ::File.open(output_file_clusterid, 'w') { |file| file.puts(mgr.id) }
+    ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
+  end
+
+  if options[:cluster_id_file]
+    ::File.open(options[:cluster_id_file], 'w') { |file| file.puts(mgr.id) }
+  end
 
 # Actions for an existing cluster
 when /reconfigure|add-services|stop|start|restart|delete/i
   # Ensure cluster id file from previous task is present
-  fail "No cluster id file present. Expecting #{output_file_clusterid}" unless ::File.exist?(output_file_clusterid)
+  raise 'Must supply --cluster-id-file [file] to specify cluster ID to operate on' unless options[:cluster_id_file]
+  raise "No cluster id file present. Expecting #{options[:cluster_id_file]}" unless ::File.exist?(options[:cluster_id_file])
 
   # Read cluster id
-  id = File.read(output_file_clusterid).strip
+  id = File.read(options[:cluster_id_file]).strip
 
   # Create cluster spec for existing cluster
   options[:id] = id
@@ -620,7 +635,7 @@ when /reconfigure|add-services|stop|start|restart|delete/i
     when /^delete/i
       mgr.delete
     else
-      fail "Unknown action specified: #{options[:action]}"
+      raise "Unknown action specified: #{options[:action]}"
     end
     # Wait for operation to complete
     mgr.poll_until_active unless options[:action] =~ /delete/i
@@ -628,5 +643,5 @@ when /reconfigure|add-services|stop|start|restart|delete/i
     puts "Cluster #{id} not active. Skipping #{options[:action]}"
   end
 else
-  fail "Unknown action specified: #{options[:action]}"
+  raise "Unknown action specified: #{options[:action]}"
 end

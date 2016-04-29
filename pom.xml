@@ -37,6 +37,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <cdap.pre.version>3.4.0-SNAPSHOT</cdap.pre.version>
     <cdap.version>3.5.0-SNAPSHOT</cdap.version>
+    <hydrator.version>1.4.0-SNAPSHOT</hydrator.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
@@ -125,7 +126,19 @@
     <dependency>
       <groupId>co.cask.hydrator</groupId>
       <artifactId>core-plugins</artifactId>
-      <version>1.3.0-SNAPSHOT</version>
+      <version>${hydrator.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <!-- co.cask.hydrator.common.Constants -->
+      <groupId>co.cask.hydrator</groupId>
+      <artifactId>hydrator-common</artifactId>
+      <version>${hydrator.version}</version>
       <exclusions>
         <exclusion>
           <groupId>*</groupId>
@@ -182,6 +195,9 @@
           <systemPropertyVariables>
             <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
             <stage>${upgrade.test.stage}</stage>
+            <longrunning.as.upgrade>${longrunning.as.upgrade}</longrunning.as.upgrade>
+            <input.state>${input.state}</input.state>
+            <output.state>${output.state}</output.state>
           </systemPropertyVariables>
           <forkCount>1</forkCount>
           <reuseForks>false</reuseForks>
@@ -260,16 +276,28 @@
       <id>upgrade-test-pre</id>
       <properties>
         <cdap.examples.version>${cdap.pre.version}</cdap.examples.version>
+        <upgrade>true</upgrade>
         <upgrade.test.stage>PRE</upgrade.test.stage>
+
         <skip.upgrade.test>false</skip.upgrade.test>
+        <skip.long.running.test>false</skip.long.running.test>
+        <longrunning.as.upgrade>true</longrunning.as.upgrade>
+        <input.state>./upgrade-test.state</input.state>
+        <output.state>./upgrade-test.state</output.state>
       </properties>
     </profile>
 
     <profile>
       <id>upgrade-test-post</id>
       <properties>
+        <upgrade>true</upgrade>
         <upgrade.test.stage>POST</upgrade.test.stage>
+
         <skip.upgrade.test>false</skip.upgrade.test>
+        <skip.long.running.test>false</skip.long.running.test>
+        <longrunning.as.upgrade>true</longrunning.as.upgrade>
+        <input.state>./upgrade-test.state</input.state>
+        <output.state>./upgrade-test.state</output.state>
       </properties>
     </profile>
 

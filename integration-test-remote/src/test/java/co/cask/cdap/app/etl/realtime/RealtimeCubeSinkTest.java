@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -31,6 +31,7 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.WorkerManager;
+import co.cask.hydrator.common.Constants;
 import co.cask.hydrator.plugin.common.Properties;
 import co.cask.hydrator.plugin.realtime.source.DataGeneratorSource;
 import com.google.common.collect.ImmutableMap;
@@ -50,8 +51,9 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
 
   @Test
   public void test() throws Exception {
-    Plugin sourceConfig = new Plugin("DataGenerator", ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE,
-                                                                      DataGeneratorSource.TABLE_TYPE));
+    Plugin sourceConfig = new Plugin("DataGenerator",
+                                     ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.TABLE_TYPE,
+                                                     Constants.Reference.REFERENCE_NAME, "DataGenerator"));
     // single aggregation
     String aggregationGroup = "byName:name";
     String measurement = "score:GAUGE";
