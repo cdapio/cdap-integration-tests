@@ -34,10 +34,16 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.CDH52Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
+import co.cask.cdap.test.suite.category.HDP21Incompatible;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.HashSet;
 import java.util.List;
@@ -49,6 +55,14 @@ import java.util.concurrent.TimeUnit;
  * Test for {@link SparkSink} and {@link SparkCompute} plugin types, using
  * NaiveBayesTrainer and a NaiveBayesClassifier.
  */
+@Category({
+  // We don't support spark on these distros
+  HDP20Incompatible.class,
+  HDP21Incompatible.class,
+  CDH51Incompatible.class,
+  CDH52Incompatible.class,
+  MapR5Incompatible.class // MapR51 category is used for all MapR version
+})
 public class SparkPluginsTest extends ETLTestBase {
 
   @Test
