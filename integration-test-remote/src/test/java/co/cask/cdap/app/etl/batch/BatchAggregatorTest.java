@@ -16,6 +16,7 @@
 
 package co.cask.cdap.app.etl.batch;
 
+import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.table.Put;
@@ -136,6 +137,8 @@ public class BatchAggregatorTest extends ETLTestBase {
       .addConnection(purchaseStage.getName(), itemGroupStage.getName())
       .addConnection(userGroupStage.getName(), userSinkStage.getName())
       .addConnection(itemGroupStage.getName(), itemSinkStage.getName())
+      .setDriverResources(new Resources(2048))
+      .setResources(new Resources(2048))
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
