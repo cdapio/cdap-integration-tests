@@ -43,11 +43,9 @@ public class AppWithSleepingFlowlet extends AbstractApplication {
    * Sample Flow.
    */
   public static final class FlowWithSleepingFlowlet extends AbstractFlow {
-
-    // For backwards compatibility.
-    // This can be changed to the new API once we no longer need this app to run against CDAP 3.2.x.
+    
     @Override
-    protected void configureFlow() {
+    protected void configure() {
       setName("FlowWithSleepingFlowlet");
       setDescription("A flow that collects names");
       addFlowlet("streamFlowlet", new StreamFlowlet());
