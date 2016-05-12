@@ -26,9 +26,9 @@ import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.api.batch.SparkCompute;
 import co.cask.cdap.etl.api.batch.SparkSink;
-import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
+import co.cask.cdap.etl.batch.config.ETLBatchConfig;
+import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
-import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
@@ -108,9 +108,9 @@ public class SparkPluginsTest extends ETLTestBase {
                                                                      "format", "text"),
                                                      null)))
       .addStage(new ETLStage("eventParser", new ETLPlugin("JavaScript", Transform.PLUGIN_TYPE,
-                                                           ImmutableMap.of("script", script,
+                                                          ImmutableMap.of("script", script,
                                                                            "schema", SpamMessage.SCHEMA.toString()),
-                                                           null)))
+                                                          null)))
       .addStage(new ETLStage("customSink",
                              new ETLPlugin("NaiveBayesTrainer", SparkSink.PLUGIN_TYPE,
                                            ImmutableMap.of("fileSetName", "modelFileSet",
@@ -125,7 +125,7 @@ public class SparkPluginsTest extends ETLTestBase {
       .build();
 
     ApplicationManager appManager = deployApplication(Id.Application.from(Id.Namespace.DEFAULT, "SpamTrainer"),
-                                                      getBatchAppRequestV2(etlConfig));
+                                                      getBatchAppRequest(etlConfig));
 
 
     // set up five spam messages and five non-spam messages to be used for classification
@@ -197,7 +197,7 @@ public class SparkPluginsTest extends ETLTestBase {
 
 
     ApplicationManager appManager = deployApplication(Id.Application.from(Id.Namespace.DEFAULT, "SpamClassifier"),
-                                                      getBatchAppRequestV2(etlConfig));
+                                                      getBatchAppRequest(etlConfig));
 
 
     // write some some messages to be classified
