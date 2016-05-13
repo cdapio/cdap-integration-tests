@@ -18,9 +18,11 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.helloworld.HelloWorld;
+import co.cask.cdap.examples.streamconversion.StreamConversionApp;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
+import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.StreamManager;
 import org.junit.Assert;
 
@@ -55,6 +57,14 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
 
     // send an additional event, which should be processed after the upgrade
     whoStream.send("test2");
+
+    //Deploy stream conversion app, inject event and run the MR-job so Avro schema data is written to a TPFS dataset.
+    //this is run in preStage so we can ensure upgrade can be successful with avro schema data.
+    applicationManager = deployApplication(StreamConversionApp.class);
+    StreamManager eventStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "events"));
+    eventStream.send("hello");
+    MapReduceManager mapReduceManager = applicationManager.getMapReduceManager("StreamConversionMapReduce").start();
+    mapReduceManager.waitForFinish(5, TimeUnit.MINUTES);
   }
 
   @Override

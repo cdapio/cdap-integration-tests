@@ -35,7 +35,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.pre.version>3.4.0-SNAPSHOT</cdap.pre.version>
+    <cdap.pre.version>3.4.1</cdap.pre.version>
     <cdap.version>3.5.0-SNAPSHOT</cdap.version>
     <hydrator.version>1.4.0-SNAPSHOT</hydrator.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
@@ -56,6 +56,11 @@
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>HelloWorld</artifactId>
+      <version>${cdap.examples.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>StreamConversion</artifactId>
       <version>${cdap.examples.version}</version>
     </dependency>
     <dependency>
