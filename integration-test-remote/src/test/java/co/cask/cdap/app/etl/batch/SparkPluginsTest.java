@@ -66,17 +66,13 @@ import java.util.concurrent.TimeUnit;
   // We don't support spark on these distros
   HDP20Incompatible.class,
   HDP21Incompatible.class,
-  // Because of CDAP-5461, following HDP incompatibities are added
+  // Because of CDAP-5461, following HDP incompatibilities are added
   HDP22Incompatible.class,
   HDP23Incompatible.class,
+  // We do no support spark version in CDH 5.1 and 5.2
   CDH51Incompatible.class,
   CDH52Incompatible.class,
-  // Because of CDAP-5768, following CDH incompatibities are added
-  CDH53Incompatible.class,
-  CDH54Incompatible.class,
-  CDH55Incompatible.class,
-  CDH56Incompatible.class,
-  CDH57Incompatible.class,
+  // Currently, coopr doesn't provision MapR cluster with Spark
   MapR5Incompatible.class // MapR51 category is used for all MapR version
 })
 public class SparkPluginsTest extends ETLTestBase {
