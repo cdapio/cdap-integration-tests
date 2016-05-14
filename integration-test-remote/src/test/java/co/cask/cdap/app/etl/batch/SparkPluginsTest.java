@@ -38,7 +38,6 @@ import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
-import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -60,9 +59,6 @@ import java.util.concurrent.TimeUnit;
   // We don't support spark on these distros
   HDP20Incompatible.class,
   HDP21Incompatible.class,
-  // Because of CDAP-5461, following HDP incompatibilities are added
-  HDP22Incompatible.class,
-  // We do no support spark version in CDH 5.1 and 5.2
   CDH51Incompatible.class,
   CDH52Incompatible.class,
   // Currently, coopr doesn't provision MapR cluster with Spark
