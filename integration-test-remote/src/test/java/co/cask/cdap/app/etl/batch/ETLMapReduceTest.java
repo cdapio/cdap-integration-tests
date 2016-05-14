@@ -50,7 +50,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Tests for ETLBatch.
@@ -396,10 +398,8 @@ public class ETLMapReduceTest extends ETLTestBase {
     mrManager.start();
     mrManager.waitForFinish(5, TimeUnit.MINUTES);
 
-    QueryClient client = new QueryClient(getClientConfig());
-    ExploreExecutionResult result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_allRewards")
-      .get(5, TimeUnit.MINUTES);
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    ExploreExecutionResult result = retryQueryExecutionTillFinished(Id.Namespace.DEFAULT,
+                                                                    "select * from dataset_allRewards", 5);
     List<QueryResult> resultList = Lists.newArrayList(result);
     Assert.assertEquals(4, resultList.size());
 
@@ -410,9 +410,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     rewards.add(new Rewards("row2", 10));
     verifyRewardResults(resultList, rewards, "rewards");
 
-    result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_userRewards")
-      .get(5, TimeUnit.MINUTES);
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    result = retryQueryExecutionTillFinished(Id.Namespace.DEFAULT, "select * from dataset_userRewards", 5);
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
     rewards = new HashSet();
@@ -420,15 +418,31 @@ public class ETLMapReduceTest extends ETLTestBase {
     rewards.add(new Rewards("row2", null, "jackson", 10));
     verifyRewardResults(resultList, rewards, "user");
 
-    result = client.execute(Id.Namespace.DEFAULT, "select * from dataset_itemRewards")
-      .get(5, TimeUnit.MINUTES);
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    result = retryQueryExecutionTillFinished(Id.Namespace.DEFAULT, "select * from dataset_itemRewards", 5);
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
     rewards = new HashSet();
     rewards.add(new Rewards("row1", "scotch", null, 5));
     rewards.add(new Rewards("row2", "island", null, 5));
     verifyRewardResults(resultList, rewards, "item");
+  }
+
+  // have noticed errors with hivemetastore for table not found,
+  // which didn't appear on consecutive run, so adding retry logic for query execute
+  private ExploreExecutionResult retryQueryExecutionTillFinished(Id.Namespace namespace, String query, int retryCount)
+    throws InterruptedException, ExecutionException, TimeoutException {
+    QueryClient client = new QueryClient(getClientConfig());
+    ExploreExecutionResult result = null;
+    for (int i = 0; i < retryCount; i++) {
+      result = client.execute(namespace, query).get(5, TimeUnit.MINUTES);
+      if (QueryStatus.OpStatus.FINISHED.equals(result.getStatus().getStatus())) {
+        return result;
+      }
+      TimeUnit.SECONDS.sleep(1);
+    }
+    Assert.assertNotNull(result);
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    return result;
   }
 
   // internal test class used for verifying results, used by testDAGSchemaChanges.
