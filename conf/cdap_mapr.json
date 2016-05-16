@@ -1,5 +1,8 @@
 {
   "config": {
+    "cdap": {
+      "version": "3.3.4-1"
+    },
     "hadoop": {
       "yarn_site": {
         "yarn.nodemanager.delete.debug-delay-sec": "43200"
