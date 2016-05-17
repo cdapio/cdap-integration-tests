@@ -36,6 +36,7 @@ import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
+import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
@@ -61,6 +62,8 @@ import java.util.concurrent.TimeUnit;
   HDP21Incompatible.class,
   CDH51Incompatible.class,
   CDH52Incompatible.class,
+  // this test is only compatible with spark v1.3.0 onwards and cdh5.3 uses spark v1.2.0
+  CDH53Incompatible.class,
   // Currently, coopr doesn't provision MapR cluster with Spark
   MapR5Incompatible.class // MapR51 category is used for all MapR version
 })
@@ -135,7 +138,7 @@ public class SparkPluginsTest extends ETLTestBase {
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
   }
 
   private void testSparkCompute() throws Exception {
@@ -196,7 +199,7 @@ public class SparkPluginsTest extends ETLTestBase {
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
 
     Set<SpamMessage> expected = new HashSet<>();
