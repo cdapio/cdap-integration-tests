@@ -108,8 +108,8 @@ public class SparkPluginsTest extends ETLTestBase {
                                            null)))
       .addConnection("source", "eventParser")
       .addConnection("eventParser", "customSink")
-      .setDriverResources(new Resources(3072))
-      .setResources(new Resources(3072))
+      .setDriverResources(new Resources(1024))
+      .setResources(new Resources(1024))
       .build();
 
     ApplicationManager appManager = deployApplication(Id.Application.from(Id.Namespace.DEFAULT, "SpamTrainer"),
@@ -179,8 +179,8 @@ public class SparkPluginsTest extends ETLTestBase {
       .addConnection("source", "eventParser")
       .addConnection("eventParser", "sparkCompute")
       .addConnection("sparkCompute", "sink")
-      .setDriverResources(new Resources(3072))
-      .setResources(new Resources(3072))
+      .setDriverResources(new Resources(1024))
+      .setResources(new Resources(1024))
       .build();
 
 
