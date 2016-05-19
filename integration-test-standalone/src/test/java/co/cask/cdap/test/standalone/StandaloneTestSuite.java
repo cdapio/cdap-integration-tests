@@ -39,7 +39,7 @@ import java.util.List;
  *
  */
 @RunWith(AutoSuiteRunner.class)
-@AutoSuiteRunner.Matches(packages = "co.cask.cdap.apps")
+@AutoSuiteRunner.Matches(packages = "co.cask.cdap.testapp")
 public class StandaloneTestSuite {
 
   private static final Object STANDALONE = createStandaloneTester();
