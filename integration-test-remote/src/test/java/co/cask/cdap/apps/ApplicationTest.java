@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -45,7 +45,8 @@ public class ApplicationTest extends AudiTestBase {
       appClient.delete(Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME));
       Assert.fail();
     } catch (IOException expected) {
-      Assert.assertEquals("403: Program is still running", expected.getMessage());
+      Assert.assertTrue(expected.getMessage().startsWith("403"));
+      Assert.assertTrue(expected.getMessage().contains("PurchaseFlow"));
     }
 
     // should not delete non-existing application
