@@ -22,6 +22,7 @@ import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
+import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.batch.BatchAggregator;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
@@ -42,8 +43,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class RowDenormalizerTest extends ETLTestBase {
-  public static final String SMARTWORKFLOW_NAME = "DataPipelineWorkflow";
-  public static final String DENORMALIZER_SOURCE = "denormzlizerSource";
+  public static final String DENORMALIZER_SOURCE = "denormalizerSource";
   public static final String DENORMALIZER_SINK = "denormalizerSink";
 
   private static final Schema INPUT_SCHEMA = Schema.recordOf(
@@ -94,7 +94,7 @@ public class RowDenormalizerTest extends ETLTestBase {
     Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "denormalizer-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SMARTWORKFLOW_NAME);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
     workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
@@ -125,8 +125,8 @@ public class RowDenormalizerTest extends ETLTestBase {
     inputManager.flush();
   }
 
-  private void putValues(Table inputTable, int index, long timestamp, String keyfield, String nameField, String
-    valueField) {
+  private void putValues(Table inputTable, int index, long timestamp, String keyfield, String nameField,
+                         String valueField) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("ts", timestamp);
     put.add("id", keyfield);
