@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.copybookreader;
+package co.cask.cdap.app.etl.batch;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
@@ -32,19 +32,49 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
+import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpRequest;
+import co.cask.common.http.HttpResponse;
 import co.cask.hydrator.common.Constants;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
 public class CopybookReaderTest extends ETLTestBase {
 
+  private URL serviceURL;
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    ApplicationManager applicationManager = deployApplication(UploadFile.class);
+    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
+    serviceURL = fileSetService.getServiceURL();
+    URL url = new URL(serviceURL, "copybook/create");
+    //POST request to create a new file set with name copybook
+    getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    url = new URL(serviceURL, "copybook?path=DTAR020_FB.bin");
+    //PUT request to upload the binary file, sent in the request body
+    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.put(url).
+      withBody(new File("src/test/resources/DTAR020_FB.bin")).build());
+  }
+
   @Test
   public void test() throws Exception {
+    //GET location of the fileset copybook on cluster
+    URL url = new URL(serviceURL, "copybook?path=DTAR020_FB.bin");
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+
     String cblContents = "000100*                                                                         \n" +
       "000200*   DTAR020 IS THE OUTPUT FROM DTAB020 FROM THE IML                       \n" +
       "000300*   CENTRAL REPORTING SYSTEM                                              \n" +
@@ -71,9 +101,9 @@ public class CopybookReaderTest extends ETLTestBase {
     ETLStage source = new ETLStage("CopybookReaderSource",
                                    new ETLPlugin("CopybookReader", BatchSource.PLUGIN_TYPE,
                                                  ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
-                                                                 Constants.Reference.REFERENCE_NAME, "TestCase",
-                                                                 "binaryFilePath", "file:////opt/cdap/sdk-3.5.0/" +
-                                                                   "DTAR020_FB.bin",
+                                                                 Constants.Reference.REFERENCE_NAME,
+                                                                 "CopybookReaderSourceTest",
+                                                                 "binaryFilePath", response.getResponseBodyAsString(),
                                                                  "copybookContents", cblContents,
                                                                  "drop", "DTAR020-STORE-NO,DTAR020-DATE"), null));
 
@@ -113,7 +143,6 @@ public class CopybookReaderTest extends ETLTestBase {
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
-
     Row row = outputTable.get(Bytes.toBytes("63604808"));
     Assert.assertEquals(4.87, row.getDouble("sale"), 0.1);
     Assert.assertEquals(170, row.getDouble("dept"), 0.1);
