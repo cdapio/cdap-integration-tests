@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2016 Cask Data, Inc.
+ * Copyright © 2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -54,15 +54,15 @@ public class ValueMapperTest extends ETLTestBase {
   private static final String ID = "id";
   private static final String NAME = "name";
   private static final String SALARY = "salary";
-  private static final String DESIGNATIONID = "designationid";
-  private static final String DESIGNATIONNAME = "designationName";
+  private static final String DESIGNATION_ID = "designationid";
+  private static final String DESIGNATION_NAME = "designationName";
 
   private static final Schema SOURCE_SCHEMA =
     Schema.recordOf("sourceRecord",
                     Schema.Field.of(ValueMapperTest.ID, Schema.of(Schema.Type.STRING)),
                     Schema.Field.of(ValueMapperTest.NAME, Schema.of(Schema.Type.STRING)),
                     Schema.Field.of(ValueMapperTest.SALARY, Schema.of(Schema.Type.STRING)),
-                    Schema.Field.of(ValueMapperTest.DESIGNATIONID,
+                    Schema.Field.of(ValueMapperTest.DESIGNATION_ID,
                                     Schema.nullableOf(Schema.of(Schema.Type.STRING))));
 
 
@@ -71,7 +71,7 @@ public class ValueMapperTest extends ETLTestBase {
                     Schema.Field.of(ValueMapperTest.ID, Schema.of(Schema.Type.STRING)),
                     Schema.Field.of(ValueMapperTest.NAME, Schema.of(Schema.Type.STRING)),
                     Schema.Field.of(ValueMapperTest.SALARY, Schema.of(Schema.Type.STRING)),
-                    Schema.Field.of(ValueMapperTest.DESIGNATIONNAME, Schema.of(Schema.Type.STRING)));
+                    Schema.Field.of(ValueMapperTest.DESIGNATION_NAME, Schema.of(Schema.Type.STRING)));
 
 
   @Test
@@ -115,14 +115,14 @@ public class ValueMapperTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "ValueMapperTest");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "ValueMapperTest");
     ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<KeyValueTable> dataSetManager = getKVTableDataset("designationLookupTable");
     KeyValueTable keyValueTable = dataSetManager.get();
-    keyValueTable.write("1".getBytes(Charsets.UTF_8), "SE".getBytes(Charsets.UTF_8));
-    keyValueTable.write("2".getBytes(Charsets.UTF_8), "SSE".getBytes(Charsets.UTF_8));
-    keyValueTable.write("3".getBytes(Charsets.UTF_8), "ML".getBytes(Charsets.UTF_8));
+    keyValueTable.write("1", "SE");
+    keyValueTable.write("2", "SSE");
+    keyValueTable.write("3", "ML");
     dataSetManager.flush();
 
     DataSetManager<Table> inputManager = getTableDataset(inputTable);
@@ -130,9 +130,9 @@ public class ValueMapperTest extends ETLTestBase {
 
     Put put = new Put(Bytes.toBytes(1)).add(ID, "100").add(NAME, "John").add(SALARY, "1000");
     empTable.put(put);
-    Put put1 = new Put(Bytes.toBytes(2)).add(ID, "101").add(NAME, "Kerry").add(SALARY, "1030").add(DESIGNATIONID, "2");
+    Put put1 = new Put(Bytes.toBytes(2)).add(ID, "101").add(NAME, "Kerry").add(SALARY, "1030").add(DESIGNATION_ID, "2");
     empTable.put(put1);
-    Put put2 = new Put(Bytes.toBytes(3)).add(ID, "102").add(NAME, "Mathew").add(SALARY, "1230").add(DESIGNATIONID, "");
+    Put put2 = new Put(Bytes.toBytes(3)).add(ID, "102").add(NAME, "Mathew").add(SALARY, "1230").add(DESIGNATION_ID, "");
     empTable.put(put2);
     inputManager.flush();
 
@@ -150,8 +150,8 @@ public class ValueMapperTest extends ETLTestBase {
     Table table = tableManager.get();
     Row row = table.get(Bytes.toBytes("John"));
 
-    Assert.assertEquals("100", row.getString("id"));
-    Assert.assertEquals("DEFAULTID", row.getString("designationName"));
+    Assert.assertEquals("100", row.getString(DESIGNATION_ID));
+    Assert.assertEquals("DEFAULTID", row.getString(DESIGNATION_NAME));
 
   }
 
