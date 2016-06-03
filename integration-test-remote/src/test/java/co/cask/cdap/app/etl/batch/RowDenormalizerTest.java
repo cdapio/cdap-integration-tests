@@ -78,7 +78,9 @@ public class RowDenormalizerTest extends ETLTestBase {
       Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "id",
       Properties.Table.PROPERTY_SCHEMA, OUTPUT_SCHEMA.toString()), null));
 
-    ETLStage aggregateStage = new ETLStage("KeyAggregate", new ETLPlugin("RowDenormalizer", BatchAggregator.PLUGIN_TYPE, CONFIG_MAP, null));
+    ETLStage aggregateStage = new ETLStage("KeyAggregate", new ETLPlugin("RowDenormalizer",
+                                                                         BatchAggregator.PLUGIN_TYPE,
+                                                                         CONFIG_MAP, null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(sourceStage)

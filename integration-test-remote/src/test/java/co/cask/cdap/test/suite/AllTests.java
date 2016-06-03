@@ -21,6 +21,7 @@ import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
+import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
 import co.cask.cdap.app.etl.batch.SparkPluginsTest;
 import co.cask.cdap.app.etl.realtime.ETLWorkerTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
@@ -73,7 +74,8 @@ import org.junit.runners.Suite;
   SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
   WordCountTest.class,
-  WorkflowTest.class
+  WorkflowTest.class,
+  RowDenormalizerTest.class
 })
 public class AllTests {
 }
