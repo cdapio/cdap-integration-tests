@@ -137,7 +137,7 @@ public class ValueMapperTest extends ETLTestBase {
     WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     mrManager.start();
     mrManager.waitForFinish(10, TimeUnit.MINUTES);
-	
+
     Map<String, String> nameDesignationMap = new HashMap<String, String>();
     nameDesignationMap.put("John", "DEFAULTID");
     nameDesignationMap.put("Kerry", "SSE");
