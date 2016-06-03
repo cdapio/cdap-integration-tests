@@ -110,8 +110,6 @@ public class ValueMapperTest extends ETLTestBase {
       .addStage(sink)
       .addConnection(source.getName(), transform.getName())
       .addConnection(transform.getName(), sink.getName())
-      .setDriverResources(new Resources(2048))
-      .setResources(new Resources(2048))
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
@@ -150,7 +148,7 @@ public class ValueMapperTest extends ETLTestBase {
     Table table = tableManager.get();
     Row row = table.get(Bytes.toBytes("John"));
 
-    Assert.assertEquals("100", row.getString(DESIGNATION_ID));
+    Assert.assertEquals("100", row.getString(ID));
     Assert.assertEquals("DEFAULTID", row.getString(DESIGNATION_NAME));
 
   }
