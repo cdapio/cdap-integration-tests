@@ -53,6 +53,7 @@ import org.junit.runners.Suite;
   ApplicationTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
+  CopybookReaderTest.class,
   DatasetTest.class,
   ETLMapReduceTest.class,
   ETLWorkerTest.class,
@@ -74,8 +75,7 @@ import org.junit.runners.Suite;
   SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
   WordCountTest.class,
-  WorkflowTest.class,
-  CopybookReaderTest.class
+  WorkflowTest.class
 })
 public class AllTests {
 }

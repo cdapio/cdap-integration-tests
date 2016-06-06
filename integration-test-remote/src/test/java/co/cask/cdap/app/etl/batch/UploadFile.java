@@ -49,19 +49,14 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 
 /**
- * An application that illustrates how to use the FileSet dataset.
- * <ul>
- * <li>Uses a Service that uploads files in—or downloads files to—a FileSet.</li>
- * <li>Includes a MapReduce that implements the classic word count example. The input and output paths
- * of the MapReduce can be configured through runtime arguments.</li>
- * </ul>
+ * Application to upload file and return it's location.
  */
 public class UploadFile extends AbstractApplication {
 
   @Override
   public void configure() {
     setName("UploadFile");
-    setDescription("Application to upload file on hdfs using FileSet dataset");
+    setDescription("Application to upload file on HDFS using FileSet dataset");
     addService(new FileSetService());
 
   }
@@ -71,20 +66,20 @@ public class UploadFile extends AbstractApplication {
     @Override
     protected void configure() {
       setName("FileSetService");
-      setDescription("A Service to upload files to, or download files from file sets.");
+      setDescription("A service to upload files to file sets, and return it's location");
       setInstances(1);
       addHandler(new FileSetService.FileSetHandler());
     }
 
     /**
-     * A handler that allows reading and writing files.
+     * Handler to upload file and returns it's location.
      */
     public class FileSetHandler extends AbstractHttpServiceHandler {
       private final Gson GSON = new Gson();
       private final Logger LOG = LoggerFactory.getLogger(FileSetService.FileSetHandler.class);
 
       /**
-       * Responds with the content of the file specified by the request.
+       * Responds with location of the file specified by the request.
        *
        * @param set      the name of the file set
        * @param filePath the relative path within the file set

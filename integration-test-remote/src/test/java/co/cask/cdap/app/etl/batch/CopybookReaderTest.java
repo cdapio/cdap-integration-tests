@@ -115,8 +115,7 @@ public class CopybookReaderTest extends ETLTestBase {
                                                                            "DTAR020-DEPT-NO:dept," +
                                                                            "DTAR020-QTY-SOLD:qty," +
                                                                            "DTAR020-SALE-PRICE:sale",
-                                                                         "schema", schema.toString()),
-                                                         null));
+                                                                         "schema", schema.toString()), null));
     ETLStage sink =
       new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
                                               ImmutableMap.of(
