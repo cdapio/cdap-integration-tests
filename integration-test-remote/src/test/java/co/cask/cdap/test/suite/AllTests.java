@@ -67,6 +67,7 @@ import org.junit.runners.Suite;
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
   RemoteTableTest.class,
+  RowDenormalizerTest.class,
   ServiceWorkerTest.class,
   SparkPageRankAppTest.class,
   StreamSchedulerTest.class,
@@ -74,8 +75,7 @@ import org.junit.runners.Suite;
   SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
   WordCountTest.class,
-  WorkflowTest.class,
-  RowDenormalizerTest.class
+  WorkflowTest.class
 })
 public class AllTests {
 }
