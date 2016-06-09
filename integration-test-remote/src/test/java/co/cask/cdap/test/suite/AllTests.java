@@ -21,6 +21,7 @@ import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
+import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
 import co.cask.cdap.app.etl.batch.SparkPluginsTest;
 import co.cask.cdap.app.etl.realtime.ETLWorkerTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
@@ -66,6 +67,7 @@ import org.junit.runners.Suite;
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
   RemoteTableTest.class,
+  RowDenormalizerTest.class,
   ServiceWorkerTest.class,
   SparkPageRankAppTest.class,
   StreamSchedulerTest.class,
