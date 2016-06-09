@@ -61,7 +61,7 @@ public class UploadFile extends AbstractApplication {
 
   }
 
-  public class FileSetService extends AbstractService {
+  public static class FileSetService extends AbstractService {
 
     @Override
     protected void configure() {
@@ -74,9 +74,9 @@ public class UploadFile extends AbstractApplication {
     /**
      * Handler to upload file and returns it's location.
      */
-    public class FileSetHandler extends AbstractHttpServiceHandler {
-      private final Gson GSON = new Gson();
-      private final Logger LOG = LoggerFactory.getLogger(FileSetService.FileSetHandler.class);
+    public static class FileSetHandler extends AbstractHttpServiceHandler {
+      private static final Gson GSON = new Gson();
+      private static final Logger LOG = LoggerFactory.getLogger(FileSetService.FileSetHandler.class);
 
       /**
        * Responds with location of the file specified by the request.
