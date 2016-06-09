@@ -53,16 +53,17 @@ public class CopybookReaderTest extends ETLTestBase {
 
   private URL serviceURL;
 
-  @Override
   @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  public void testSetup() throws Exception {
     ApplicationManager applicationManager = deployApplication(UploadFile.class);
-    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
-    serviceURL = fileSetService.getServiceURL();
+    ServiceManager serviceManager = applicationManager.getServiceManager(UploadFile.
+                                                                           FileSetService.class.getSimpleName());
+    serviceManager.start();
+    serviceURL = serviceManager.getServiceURL();
     URL url = new URL(serviceURL, "copybook/create");
     //POST request to create a new file set with name copybook
-    getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     url = new URL(serviceURL, "copybook?path=DTAR020_FB.bin");
     //PUT request to upload the binary file, sent in the request body
     retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.put(url).
@@ -74,6 +75,7 @@ public class CopybookReaderTest extends ETLTestBase {
     //GET location of the fileset copybook on cluster
     URL url = new URL(serviceURL, "copybook?path=DTAR020_FB.bin");
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     String cblContents = "000100*                                                                         \n" +
       "000200*   DTAR020 IS THE OUTPUT FROM DTAB020 FROM THE IML                       \n" +
