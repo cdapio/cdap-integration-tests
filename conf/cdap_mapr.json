@@ -11,5 +11,6 @@
         "yarn.nodemanager.delete.debug-delay-sec": "43200"
       }
     }
-  }
+  },
+  "initial-lease-duration": 82800000
 }
