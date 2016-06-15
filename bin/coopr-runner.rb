@@ -603,6 +603,8 @@ when /create/i
     end
 
     ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
+  else
+    raise 'Set "--cluster-service-ip-file" if setting "--cluster-service-to-check"' unless options[:cluster_service_to_check].nil?
   end
 
   if options[:cluster_id_file]
