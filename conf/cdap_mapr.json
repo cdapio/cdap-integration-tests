@@ -4,6 +4,9 @@
       "version": "3.4.0-1"
     },
     "hadoop": {
+      "mapred_site": {
+        "mapreduce.task.io.sort.mb": "100"
+      },
       "yarn_site": {
         "yarn.nodemanager.delete.debug-delay-sec": "43200"
       }
