@@ -89,6 +89,9 @@ begin
     opts.on('--cluster-service-ip-file FILE', 'Filename to write the IP of specified Coopr service, defaults to COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE') do |f|
       options[:cluster_service_ip_file] = f
     end
+    opts.on('--cluster-service-to-check SERVICE', 'Coopr service name to check for access IP, defaults to all CDAP services') do |f|
+      options[:cluster_service_to_check] = f
+    end
     opts.on('--cluster-id-file FILE', 'Filename to write the ID of the created Coopr cluster, or to read as input for any actions other than "create". Defaults to COOPR_DRIVER_CLUSTER_ID_FILE "cdap-auto-clusterid.txt"') do |f|
       options[:cluster_id_file] = f
     end
@@ -130,6 +133,7 @@ options[:num_machines] = options[:num_machines] || ENV['COOPR_DRIVER_NUMMACHINES
 options[:services] = [] if options[:services].nil?
 
 options[:cluster_service_ip_file] = options[:cluster_service_ip_file] || ENV['COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE'] || nil
+options[:cluster_service_to_check] = options[:cluster_service_to_check] || nil # Check all CDAP services in list
 options[:cluster_id_file] = options[:cluster_id_file] || ENV['COOPR_DRIVER_CLUSTER_ID_FILE'] || nil
 
 module Cask
@@ -533,7 +537,7 @@ module Cask
       end
 
       # Get IP address for a single host of the cluster for given service
-      # TODO: Handle multiple nodes instead of nodes.values.first.  We are taking advantage that we know Audi is only on a singlenode
+      # TODO: Handle multiple nodes instead of nodes.values.first.
       def get_access_ip_for_service(service)
         postdata = {}
         postdata['clusterId'] = @id
@@ -577,20 +581,30 @@ when /create/i
   mgr.poll_until_active
 
   if options[:cluster_service_ip_file]
-    # Determine which host runs cdap
     ip = nil
-    # Check for all cdap service variants
-    %w(cdap-auto-with-auth cdap-mapr-auto-with-auth cdap-auto cdap-mapr-auto cdap-sdk-auto cdap).each do |svc|
+    # Determine which host runs our desired service
+    if options[:cluster_service_to_check]
       begin
-        ip = mgr.get_access_ip_for_service(svc)
-        break
-      rescue
-        # keep looking for remaining cdap services
+        puts "Searching for Coopr service: #{options[:cluster_service_to_check]}"
+        ip = mgr.get_access_ip_for_service(options[:cluster_service_to_check])
       end
+      raise "No nodes for #{options[:cluster_service_to_check]} service found on cluster #{mgr.id}" if ip.nil?
+    else
+      # Check for all cdap service variants
+      %w(cdap-auto-with-auth cdap-mapr-auto-with-auth cdap-auto cdap-mapr-auto cdap-sdk-auto cdap).each do |svc|
+        begin
+          ip = mgr.get_access_ip_for_service(svc)
+          break
+        rescue
+          # keep looking for remaining cdap services
+        end
+      end
+      raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
     end
-    raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
 
     ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
+  else
+    raise 'Set "--cluster-service-ip-file" if setting "--cluster-service-to-check"' unless options[:cluster_service_to_check].nil?
   end
 
   if options[:cluster_id_file]

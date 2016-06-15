@@ -202,6 +202,9 @@ module Cask
             dimensions.push('cdap')
             name.shift
           end
+        elsif name[0] == 'docker'
+          dimensions.push('docker')
+          name.shift
         end
 
         # Next should be singlenode/distributed
