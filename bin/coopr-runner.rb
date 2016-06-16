@@ -462,6 +462,7 @@ module Cask
           raise "Cluster #{@id} is not in an active or pending state" unless %w(active pending).include? @last_status['status']
           sleep @poll_interval
         end
+        log "Cluster #{@id} is complete and active"
       rescue RuntimeError => e
         log "ERROR: #{e.inspect}"
         log_failed_tasks
