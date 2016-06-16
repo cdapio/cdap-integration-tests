@@ -567,6 +567,9 @@ end
 
 case options[:action]
 when /create/i
+  # Ensure an output file has been specified if cluster-service-to-check has been requested
+  raise 'Must supply "--cluster-service-ip-file [file]" if setting "--cluster-service-to-check"' if options[:cluster_service_to_check] && !options[:cluster_service_ip_file]
+
   # Create cluster spec
   spec = Cask::CooprDriver::ClusterSpec.new(options)
 
@@ -603,8 +606,6 @@ when /create/i
     end
 
     ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
-  else
-    raise 'Set "--cluster-service-ip-file" if setting "--cluster-service-to-check"' unless options[:cluster_service_to_check].nil?
   end
 
   if options[:cluster_id_file]
