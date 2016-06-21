@@ -81,13 +81,12 @@ public class XMLReaderTest extends ETLTestBase {
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
-    String processedFileTable = "XMLTrackingTable";
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderXMLPreProcessingRequiredTest")
+      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderBatchSourceTest")
       .put("path", response.getResponseBodyAsString())
       .put("nodePath", "/catalog/book/price")
-      .put("reprocessingReq", "Yes")
-      .put("tableName", processedFileTable)
+      .put("reprocessingRequired", "Yes")
+      .put("tableName", "XMLTrackingTable")
       .put("actionAfterProcess", "None")
       .put("tableExpiryPeriod", "30")
       .build();
@@ -114,7 +113,7 @@ public class XMLReaderTest extends ETLTestBase {
 
     String outputDatasetName = "output-batchsink-test";
     ETLStage sink =
-      new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
+      new ETLStage("XMLTableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
                                               ImmutableMap.of(
                                                 Properties.BatchReadableWritable.NAME, outputDatasetName,
                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "offset",
