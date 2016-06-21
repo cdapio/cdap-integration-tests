@@ -70,8 +70,8 @@ public class XMLReaderTest extends ETLTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     url = new URL(serviceURL, "xmlreader?path=catalog.xml");
     //PUT request to upload the xml file, sent in the request body
-    File xmlFile = new File("src/test/resources/catalog.xml");
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.put(url).withBody(xmlFile).build());
+    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.put(url)
+      .withBody(new File("src/test/resources/catalog.xml")).build());
   }
 
   @Test
