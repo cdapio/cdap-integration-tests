@@ -70,8 +70,8 @@ public class XMLReaderTest extends ETLTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     url = new URL(serviceURL, "xmlreader?path=catalog.xml");
     //PUT request to upload the xml file, sent in the request body
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.put(url)
-      .withBody(new File("src/test/resources/catalog.xml")).build());
+    getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/catalog.xml")).build(),
+                            getClientConfig().getAccessToken(), HttpURLConnection.HTTP_OK);
   }
 
   @Test
@@ -85,9 +85,9 @@ public class XMLReaderTest extends ETLTestBase {
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderBatchSourceTest")
       .put("path", response.getResponseBodyAsString())
       .put("nodePath", "/catalog/book/price")
-      .put("reprocessingRequired", "Yes")
+      .put("reprocessingRequired", "No")
       .put("tableName", "XMLTrackingTable")
-      .put("actionAfterProcess", "None")
+      .put("actionAfterProcess", "Delete")
       .put("tableExpiryPeriod", "30")
       .build();
 
@@ -144,5 +144,11 @@ public class XMLReaderTest extends ETLTestBase {
     Row lastRow = outputTable.get(Bytes.toBytes("128"));
     Assert.assertEquals("<price><base>49.95</base><tax><surcharge>21.00</surcharge><excise>21.00</excise></tax></price>"
       , lastRow.getString("record"));
+
+    //check if file exist or not after deletion.
+    url = new URL(serviceURL, "fileExist/xmlreader?path=catalog.xml");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    boolean fileExist = Boolean.valueOf(response.getResponseBodyAsString());
+    Assert.assertFalse(fileExist);
   }
 }
