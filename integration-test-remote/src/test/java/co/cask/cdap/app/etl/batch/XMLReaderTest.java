@@ -64,30 +64,43 @@ public class XMLReaderTest extends ETLTestBase {
                                                                            FileSetService.class.getSimpleName());
     serviceManager.start();
     serviceURL = serviceManager.getServiceURL();
-    URL url = new URL(serviceURL, "xmlreader/create");
-    //POST request to create a new file set with name xmlreader
+    URL url = new URL(serviceURL, "xmlreadersource/create");
+    //POST request to create a new file set with name xmlreadersource.
     HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
-    url = new URL(serviceURL, "xmlreader?path=catalog.xml");
+    url = new URL(serviceURL, "xmlreadersource?path=catalog.xml");
     //PUT request to upload the xml file, sent in the request body
     getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/catalog.xml")).build(),
                             getClientConfig().getAccessToken(), HttpURLConnection.HTTP_OK);
+
+    url = new URL(serviceURL, "xmlreadertarget/create");
+    //POST request to create a new file set with name xmlreadertarget.
+    response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
   }
 
   @Test
   public void test() throws Exception {
-    //GET location of the fileset xmlreader on cluster
-    URL url = new URL(serviceURL, "xmlreader?path=catalog.xml");
+    //GET location of the fileset xmlreadersource on cluster.
+    URL url = new URL(serviceURL, "xmlreadersource?path=catalog.xml");
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
+    String sourcePath = response.getResponseBodyAsString();
+
+    //GET location of the fileset xmlreadertarget on cluster.
+    url = new URL(serviceURL, "xmlreadertarget?path");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
+    String targetPath = response.getResponseBodyAsString();
 
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderBatchSourceTest")
-      .put("path", response.getResponseBodyAsString())
+      .put("path", sourcePath)
+      .put("targetFolder", targetPath)
       .put("nodePath", "/catalog/book/price")
       .put("reprocessingRequired", "No")
       .put("tableName", "XMLTrackingTable")
-      .put("actionAfterProcess", "Delete")
+      .put("actionAfterProcess", "archive")
       .put("tableExpiryPeriod", "30")
       .build();
 
@@ -145,10 +158,14 @@ public class XMLReaderTest extends ETLTestBase {
     Assert.assertEquals("<price><base>49.95</base><tax><surcharge>21.00</surcharge><excise>21.00</excise></tax></price>"
       , lastRow.getString("record"));
 
-    //check if file exist or not after deletion.
-    url = new URL(serviceURL, "fileExist/xmlreader?path=catalog.xml");
+    //File must get deleted from source location after archiving it.
+    url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
-    boolean fileExist = Boolean.valueOf(response.getResponseBodyAsString());
-    Assert.assertFalse(fileExist);
+    Assert.assertFalse(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //File must get archived to target location.
+    url = new URL(serviceURL, "fileExist/xmlreadertarget?path=catalog.xml.zip");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
   }
 }
