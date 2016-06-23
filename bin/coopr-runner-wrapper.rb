@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 #
-# Copyright © 2012-2015 Cask Data, Inc.
+# Copyright © 2012-2016 Cask Data, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -160,8 +160,8 @@ module Cask
 
       # Ensure there is sufficient input to operate with
       def _validate_opts
-        @cluster_template || fail('No clustertemplate given to wrapper')
-        @name || fail('No name argument given to wrapper')
+        @cluster_template || raise('No clustertemplate given to wrapper')
+        @name || raise('No name argument given to wrapper')
       end
 
       # Determine if this invocation of coopr-runner.rb is a cluster creation
@@ -180,6 +180,7 @@ module Cask
         #   cdap-distributed-autobuild.json
         #   cdap-distributed-insecure-autobuild.json
         #   cdap-distributed-secure-hadoop-autobuild.json
+        #   docker-all-coreos.json
 
         dimensions = []
         name = @cluster_template.downcase.split('-')
@@ -201,27 +202,21 @@ module Cask
           elsif name[1] == 'singlenode' || name[1] == 'distributed'
             dimensions.push('cdap')
             name.shift
+            if name[0] == 'singlenode'
+              dimensions.push('singlenode')
+              name.shift
+            elsif name[0] == 'distributed'
+              dimensions.push('distributed')
+              name.shift
+            end
+            # Check for insecure
+            dimensions.push('auth') if name[0] != 'insecure'
+            # Check for kerberos
+            dimensions.push('kerberos') if name[0] == 'secure' && name[1] == 'hadoop'
           end
         elsif name[0] == 'docker'
           dimensions.push('docker')
           name.shift
-        end
-
-        # Next should be singlenode/distributed
-        if name[0] == 'singlenode'
-          dimensions.push('singlenode')
-          name.shift
-        elsif name[0] == 'distributed'
-          dimensions.push('distributed')
-          name.shift
-        end
-
-        # Check for insecure
-        dimensions.push('auth') if name[0] != 'insecure'
-
-        # Check for kerberos
-        if name[0] == 'secure' && name[1] == 'hadoop'
-          dimensions.push('kerberos')
         end
         dimensions
       end
@@ -252,11 +247,12 @@ module Cask
           # Top-level keys map to cmdline arg
           dimension_json.each do |k, v|
             arg_k = "--#{k}"
-            # Value may either be json (in the case of --config) or just a string (--services)
+            # Value may either be json (in the case of --config) or else convertible to string (--services, --initial-lease-time)
             begin
               arg_v = JSON.generate(v)
             rescue JSON::GeneratorError
-              arg_v = v
+              # Not a json object, pass as string
+              arg_v = v.to_s
             end
             res_args += [arg_k, arg_v]
           end
