@@ -247,12 +247,13 @@ module Cask
           # Top-level keys map to cmdline arg
           dimension_json.each do |k, v|
             arg_k = "--#{k}"
-            # Value may either be json (in the case of --config), a string (--services), or integer (--initial-lease-time)
-            arg_v = if v.is_a?(String) || v.is_a?(Integer)
-                      v.to_s
-                    else
-                      JSON.generate(v)
-                    end
+            # Value may either be json (in the case of --config) or else convertible to string (--services, --initial-lease-time)
+            begin
+              arg_v = JSON.generate(v)
+            rescue JSON::GeneratorError
+              # Not a json object, pass as string
+              arg_v = v.to_s
+            end
             res_args += [arg_k, arg_v]
           end
         rescue => e
