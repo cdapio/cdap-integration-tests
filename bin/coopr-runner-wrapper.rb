@@ -247,9 +247,9 @@ module Cask
           # Top-level keys map to cmdline arg
           dimension_json.each do |k, v|
             arg_k = "--#{k}"
-            # Value may either be json (in the case of --config) or just a string (--services)
-            arg_v = if v.is_a?(String)
-                      v
+            # Value may either be json (in the case of --config), a string (--services), or integer (--initial-lease-time)
+            arg_v = if v.is_a?(String) || v.is_a?(Integer)
+                      v.to_s
                     else
                       JSON.generate(v)
                     end
