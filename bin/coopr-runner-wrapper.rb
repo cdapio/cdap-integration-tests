@@ -209,11 +209,11 @@ module Cask
               dimensions.push('distributed')
               name.shift
             end
-            # Check for insecure
-            dimensions.push('auth') if name[0] != 'insecure'
-            # Check for kerberos
-            dimensions.push('kerberos') if name[0] == 'secure' && name[1] == 'hadoop'
           end
+          # Check for insecure
+          dimensions.push('auth') unless name[0] == 'insecure'
+          # Check for kerberos
+          dimensions.push('kerberos') if name[0] == 'secure' && name[1] == 'hadoop'
         elsif name[0] == 'docker'
           dimensions.push('docker')
           name.shift
