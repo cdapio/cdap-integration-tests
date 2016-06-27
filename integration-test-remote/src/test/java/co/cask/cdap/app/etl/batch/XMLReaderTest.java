@@ -18,6 +18,7 @@ package co.cask.cdap.app.etl.batch;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
@@ -48,6 +49,8 @@ import org.junit.Test;
 import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -69,9 +72,13 @@ public class XMLReaderTest extends ETLTestBase {
     HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     url = new URL(serviceURL, "xmlreadersource?path=catalog.xml");
-    //PUT request to upload the xml file, sent in the request body
+    //PUT request to upload the catalog.xml file, sent in the request body
     getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/catalog.xml")).build(),
                             getClientConfig().getAccessToken(), HttpURLConnection.HTTP_OK);
+    url = new URL(serviceURL, "xmlreadersource?path=catalogProcessedFile.xml");
+    //PUT request to upload the catalogProcessedFile.xml file, sent in the request body
+    getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/catalogProcessedFile.xml"))
+                              .build(), getClientConfig().getAccessToken(), HttpURLConnection.HTTP_OK);
 
     url = new URL(serviceURL, "xmlreadertarget/create");
     //POST request to create a new file set with name xmlreadertarget.
@@ -82,7 +89,7 @@ public class XMLReaderTest extends ETLTestBase {
   @Test
   public void test() throws Exception {
     //GET location of the fileset xmlreadersource on cluster.
-    URL url = new URL(serviceURL, "xmlreadersource?path=catalog.xml");
+    URL url = new URL(serviceURL, "xmlreadersource?path");
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     String sourcePath = response.getResponseBodyAsString();
@@ -93,13 +100,15 @@ public class XMLReaderTest extends ETLTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     String targetPath = response.getResponseBodyAsString();
 
+    String xmlTrackingTable = "XMLTrackingTable";
+
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderBatchSourceTest")
       .put("path", sourcePath)
       .put("targetFolder", targetPath)
       .put("nodePath", "/catalog/book/price")
       .put("reprocessingRequired", "No")
-      .put("tableName", "XMLTrackingTable")
+      .put("tableName", xmlTrackingTable)
       .put("actionAfterProcess", "archive")
       .put("tableExpiryPeriod", "30")
       .build();
@@ -115,8 +124,8 @@ public class XMLReaderTest extends ETLTestBase {
 
     ETLStage transform =
       new ETLStage("XMLProjectionTransform", new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
-                                                         ImmutableMap.of("convert", "offset:string",
-                                                                         "schema", transformSchema.toString()), null));
+                                                           ImmutableMap.of("convert", "offset:string", "schema",
+                                                                           transformSchema.toString()), null));
 
     Schema sinkSchema = Schema.recordOf(
       "xmlSink",
@@ -127,10 +136,10 @@ public class XMLReaderTest extends ETLTestBase {
     String outputDatasetName = "output-batchsink-test";
     ETLStage sink =
       new ETLStage("XMLTableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
-                                              ImmutableMap.of(
-                                                Properties.BatchReadableWritable.NAME, outputDatasetName,
-                                                Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "offset",
-                                                Properties.Table.PROPERTY_SCHEMA, sinkSchema.toString()), null));
+                                                 ImmutableMap.of(
+                                                   Properties.BatchReadableWritable.NAME, outputDatasetName,
+                                                   Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "offset",
+                                                   Properties.Table.PROPERTY_SCHEMA, sinkSchema.toString()), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
@@ -143,6 +152,22 @@ public class XMLReaderTest extends ETLTestBase {
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
     ApplicationId appId = NamespaceId.DEFAULT.app("XMLReaderTest");
     ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
+
+    //set pre-processed file data
+    DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
+    KeyValueTable keyValueTable = trackingTable.get();
+
+    //set expired record, 30 days old
+    String expiredPreprocessedFilePath = sourcePath + "catalog.xml";
+    Calendar cal = Calendar.getInstance();
+    cal.add(Calendar.DATE, -30);
+    long expiryPreprocessedTime = cal.getTime().getTime();
+    keyValueTable.write(Bytes.toBytes(expiredPreprocessedFilePath), Bytes.toBytes(expiryPreprocessedTime));
+
+    String preprocessedFilePath = sourcePath + "catalogProcessedFile.xml";
+    long preProcessedTime = new Date().getTime();
+    keyValueTable.write(Bytes.toBytes(preprocessedFilePath), Bytes.toBytes(preProcessedTime));
+    trackingTable.flush();
 
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -167,5 +192,13 @@ public class XMLReaderTest extends ETLTestBase {
     url = new URL(serviceURL, "fileExist/xmlreadertarget?path=catalog.xml.zip");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //prepocessed file with expired period must get processed.
+    byte[] expiredFileprocessedTime = keyValueTable.read(expiredPreprocessedFilePath);
+    Assert.assertNotEquals(expiryPreprocessedTime, Bytes.toLong(expiredFileprocessedTime));
+
+    //processing time of the prepocessed file must not change.
+    byte[] preprocessedFileTime = keyValueTable.read(preprocessedFilePath);
+    Assert.assertEquals(preProcessedTime, Bytes.toLong(preprocessedFileTime));
   }
 }
