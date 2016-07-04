@@ -105,11 +105,9 @@ public class XMLReaderTest extends ETLTestBase {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderBatchSourceTest")
       .put("path", sourcePath)
-      .put("targetFolder", targetPath)
       .put("nodePath", "/catalog/book/price")
       .put("reprocessingRequired", "No")
       .put("tableName", xmlTrackingTable)
-      .put("actionAfterProcess", "archive")
       .put("tableExpiryPeriod", "30")
       .build();
 
@@ -182,16 +180,6 @@ public class XMLReaderTest extends ETLTestBase {
     Row lastRow = outputTable.get(Bytes.toBytes("128"));
     Assert.assertEquals("<price><base>49.95</base><tax><surcharge>21.00</surcharge><excise>21.00</excise></tax></price>"
       , lastRow.getString("record"));
-
-    //File must get deleted from source location after archiving it.
-    url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
-    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
-    Assert.assertFalse(Boolean.valueOf(response.getResponseBodyAsString()));
-
-    //File must get archived to target location.
-    url = new URL(serviceURL, "fileExist/xmlreadertarget?path=catalog.xml.zip");
-    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
-    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
 
     //prepocessed file with expired period must get processed.
     byte[] expiredFileprocessedTime = keyValueTable.read(expiredPreprocessedFilePath);
