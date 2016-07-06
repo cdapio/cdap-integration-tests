@@ -153,11 +153,11 @@ public class XMLReaderTest extends ETLTestBase {
     ApplicationId appId = NamespaceId.DEFAULT.app("XMLReaderTest");
     ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
 
-    //set pre-processed file data
+    //Set pre-processed file data
     DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
     KeyValueTable keyValueTable = trackingTable.get();
 
-    //set expired record, 30 days old
+    //Set expired record, 30 days old
     String expiredPreprocessedFilePath = sourcePath + "catalog.xml";
     Calendar cal = Calendar.getInstance();
     cal.add(Calendar.DATE, -30);
@@ -169,7 +169,7 @@ public class XMLReaderTest extends ETLTestBase {
     keyValueTable.write(Bytes.toBytes(preprocessedFilePath), Bytes.toBytes(preProcessedTime));
     trackingTable.flush();
 
-    // manually trigger the pipeline
+    //Manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
     workflowManager.waitForFinish(5, TimeUnit.MINUTES);
@@ -193,11 +193,11 @@ public class XMLReaderTest extends ETLTestBase {
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
 
-    //prepocessed file with expired period must get processed.
+    //Prepocessed file with expired period must get processed.
     byte[] expiredFileprocessedTime = keyValueTable.read(expiredPreprocessedFilePath);
     Assert.assertNotEquals(expiryPreprocessedTime, Bytes.toLong(expiredFileprocessedTime));
 
-    //processing time of the prepocessed file must not change.
+    //Processing time of the prepocessed file must not change.
     byte[] preprocessedFileTime = keyValueTable.read(preprocessedFilePath);
     Assert.assertEquals(preProcessedTime, Bytes.toLong(preprocessedFileTime));
   }
