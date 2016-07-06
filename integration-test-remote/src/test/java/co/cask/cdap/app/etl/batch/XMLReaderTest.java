@@ -193,7 +193,7 @@ public class XMLReaderTest extends ETLTestBase {
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
 
-    //Prepocessed file with expired period must get processed.
+    //Processing time of the prepocessed file with expired processed time must change..
     byte[] expiredFileprocessedTime = keyValueTable.read(expiredPreprocessedFilePath);
     Assert.assertNotEquals(expiryPreprocessedTime, Bytes.toLong(expiredFileprocessedTime));
 
