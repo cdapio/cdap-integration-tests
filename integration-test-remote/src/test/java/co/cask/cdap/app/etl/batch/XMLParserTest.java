@@ -44,17 +44,15 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class XMLParserTest extends ETLTestBase {
-  public static final String XMLPARSER_SOURCE = "xmlParserSource";
-  public static final String XMLPARSER_SINK = "xmlParserSink";
+  private static final String XMLPARSER_SOURCE = "xmlParserSource";
+  private static final String XMLPARSER_SINK = "xmlParserSink";
 
   private static final Schema SOURCE_SCHEMA =
-    Schema.recordOf("inputRecord",
-                    Schema.Field.of("offset", Schema.of(Schema.Type.INT)),
+    Schema.recordOf("inputRecord", Schema.Field.of("offset", Schema.of(Schema.Type.INT)),
                     Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
 
   private static final Schema SINK_SCHEMA =
-    Schema.recordOf("inputRecord",
-                    Schema.Field.of("category", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
+    Schema.recordOf("inputRecord", Schema.Field.of("category", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
                     Schema.Field.of("title", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
                     Schema.Field.of("price", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
                     Schema.Field.of("year", Schema.nullableOf(Schema.of(Schema.Type.INT))),
@@ -70,7 +68,7 @@ public class XMLParserTest extends ETLTestBase {
     Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
       .put("input", "body")
       .put("encoding", "UTF-8")
-      .put("xpathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
+      .put("xPathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
         "price:/bookstore/book[price>35.00]/price,subcategory://book/subcategory")
       .put("fieldTypeMapping", "category:string,title:string,price:double,year:int,subcategory:string")
       .put("processOnError", "Ignore error and continue")
@@ -120,10 +118,10 @@ public class XMLParserTest extends ETLTestBase {
     Assert.assertEquals("<subcategory><type>Series</type></subcategory>", row.getString("subcategory"));
 
     row = outputTable.get(Bytes.toBytes("web"));
-    Assert.assertEquals(null, row.getString("title"));
-    Assert.assertEquals(null, row.get("price"));
-    Assert.assertEquals(null, row.getInt("year"));
-    Assert.assertEquals(null, row.getString("subcategory"));
+    Assert.assertNull(row.getString("title"));
+    Assert.assertNull(row.getDouble("price"));
+    Assert.assertNull(row.getInt("year"));
+    Assert.assertNull(row.getString("subcategory"));
   }
 
   private void ingestInputData(String inputDatasetName) throws Exception {
