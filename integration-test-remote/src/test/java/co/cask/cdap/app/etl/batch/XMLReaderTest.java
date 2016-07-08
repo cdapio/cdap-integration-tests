@@ -111,6 +111,7 @@ public class XMLReaderTest extends ETLTestBase {
       .put("tableName", xmlTrackingTable)
       .put("actionAfterProcess", "archive")
       .put("tableExpiryPeriod", "30")
+      .put("temporaryFolder", "/tmp")
       .build();
 
     ETLStage source = new ETLStage("XMLReader", new ETLPlugin("XMLReader", BatchSource.PLUGIN_TYPE, sourceProperties,
