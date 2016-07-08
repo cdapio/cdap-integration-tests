@@ -44,13 +44,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class XMLParserTest extends ETLTestBase {
-  private static final String XMLPARSER_SOURCE = "xmlParserSource";
-  private static final String XMLPARSER_SINK = "xmlParserSink";
-
   private static final Schema SOURCE_SCHEMA =
     Schema.recordOf("inputRecord", Schema.Field.of("offset", Schema.of(Schema.Type.INT)),
                     Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
-
   private static final Schema SINK_SCHEMA =
     Schema.recordOf("inputRecord", Schema.Field.of("category", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
                     Schema.Field.of("title", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
@@ -58,11 +54,13 @@ public class XMLParserTest extends ETLTestBase {
                     Schema.Field.of("year", Schema.nullableOf(Schema.of(Schema.Type.INT))),
                     Schema.Field.of("subcategory", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
 
-
   @Test
-  public void test() throws Exception {
+  public void testValidXMLEvent() throws Exception {
+    String xmlParserSource = "xmlParserSource-valid-xml-event";
+    String xmlParserSink = "xmlParserSink-valid-xml-event";
+
     ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
-      Properties.BatchReadableWritable.NAME, XMLPARSER_SOURCE,
+      Properties.BatchReadableWritable.NAME, xmlParserSource,
       Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
 
     Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
@@ -79,7 +77,7 @@ public class XMLParserTest extends ETLTestBase {
 
     ETLStage sink =
       new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
-                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, XMLPARSER_SINK,
+                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, xmlParserSink,
                                                               Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
                                                               Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
                                               null));
@@ -96,13 +94,25 @@ public class XMLParserTest extends ETLTestBase {
     ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
-    ingestInputData(XMLPARSER_SOURCE);
+    DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
+    Table inputTable = inputManager.get();
+
+    putValues(inputTable, 1, 1, "<bookstore><book category=\"web\"><subcategory><type>Basics</type></subcategory>" +
+      "<title lang=\"en\">Learning XML</title><author>Erik T. Ray</author><year>NA</year><price>39.95</price>" +
+      "</book></bookstore>");
+    putValues(inputTable, 2, 2, "<bookstore><book category=\"cooking\"><subcategory><type>Continental</type>" +
+      "</subcategory><title lang=\"en\">Everyday Italian</title><author>Giada De Laurentiis</author>" +
+      "<year>2005</year><price>30.00</price></book></bookstore>");
+    putValues(inputTable, 3, 3, "<bookstore><book category=\"children\"><subcategory><type>Series</type>" +
+      "</subcategory><title lang=\"en\">Harry Potter</title><author>J K. Rowling</author>" +
+      "<year>2005</year><price>49.99</price></book></bookstore>");
+    inputManager.flush();
 
     WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     mrManager.start();
     mrManager.waitForFinish(10, TimeUnit.MINUTES);
 
-    DataSetManager<Table> outputManager = getTableDataset(XMLPARSER_SINK);
+    DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
 
     Row row = outputTable.get(Bytes.toBytes("cooking"));
@@ -124,26 +134,248 @@ public class XMLParserTest extends ETLTestBase {
     Assert.assertNull(row.getString("subcategory"));
   }
 
-  private void ingestInputData(String inputDatasetName) throws Exception {
-    DataSetManager<Table> inputManager = getTableDataset(inputDatasetName);
-    Table inputTable = inputManager.get();
-
-    putValues(inputTable, 1, 1, "<bookstore><book category=\"web\"><subcategory><type>Basics</type></subcategory>" +
-      "<title lang=\"en\">Learning XML</title><author>Erik T. Ray</author><year>NA</year><price>39.95</price>" +
-      "</book></bookstore>");
-    putValues(inputTable, 2, 2, "<bookstore><book category=\"cooking\"><subcategory><type>Continental</type>" +
-      "</subcategory><title lang=\"en\">Everyday Italian</title><author>Giada De Laurentiis</author>" +
-      "<year>2005</year><price>30.00</price></book></bookstore>");
-    putValues(inputTable, 3, 3, "<bookstore><book category=\"children\"><subcategory><type>Series</type>" +
-      "</subcategory><title lang=\"en\">Harry Potter</title><author>J K. Rowling</author>" +
-      "<year>2005</year><price>49.99</price></book></bookstore>");
-    inputManager.flush();
-  }
-
   private void putValues(Table inputTable, int index, int offset, String body) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("offset", offset);
     put.add("body", body);
     inputTable.put(put);
+  }
+
+  @Test
+  public void testWithNoXMLRecord() throws Exception {
+    String xmlParserSource = "xmlParserSource-no-xmlrecord";
+    String xmlParserSink = "xmlParserSink-no-xmlrecord";
+
+    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
+      Properties.BatchReadableWritable.NAME, xmlParserSource,
+      Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
+
+    Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
+      .put("input", "body")
+      .put("encoding", "UTF-8")
+      .put("xPathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
+        "price:/bookstore/book[price>35.00]/price,subcategory://book/subcategory")
+      .put("fieldTypeMapping", "category:string,title:string,price:double,year:int,subcategory:string")
+      .put("processOnError", "Ignore error and continue")
+      .build();
+
+    ETLStage transform = new ETLStage("transform",
+                                      new ETLPlugin("XMLParser", Transform.PLUGIN_TYPE, transformProperties, null));
+
+    ETLStage sink =
+      new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
+                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, xmlParserSink,
+                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
+                                                              Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
+                                              null));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(transform)
+      .addStage(sink)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
+
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId.toId(), request);
+
+    DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
+    Table inputTable = inputManager.get();
+
+    putValues(inputTable, 1, 1, "");
+    inputManager.flush();
+
+    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    mrManager.start();
+    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+
+    DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
+    Table outputTable = outputManager.get();
+
+    Row row = outputTable.get(Bytes.toBytes("cooking"));
+    Assert.assertTrue(row.isEmpty());
+  }
+
+  @Test
+  public void testInvalidXMLRecord() throws Exception {
+    String xmlParserSource = "xmlParserSource-invalid-xmlrecord";
+    String xmlParserSink = "xmlParserSink-invalid-xmlrecord";
+
+    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
+      Properties.BatchReadableWritable.NAME, xmlParserSource,
+      Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
+
+    Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
+      .put("input", "body")
+      .put("encoding", "UTF-8")
+      .put("xPathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
+        "price:/bookstore/book[price>35.00]/price,subcategory://book/subcategory")
+      .put("fieldTypeMapping", "category:string,title:string,price:double,year:int,subcategory:string")
+      .put("processOnError", "Ignore error and continue")
+      .build();
+
+    ETLStage transform = new ETLStage("transform",
+                                      new ETLPlugin("XMLParser", Transform.PLUGIN_TYPE, transformProperties, null));
+
+    ETLStage sink =
+      new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
+                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, xmlParserSink,
+                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
+                                                              Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
+                                              null));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(transform)
+      .addStage(sink)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
+
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId.toId(), request);
+
+    DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
+    Table inputTable = inputManager.get();
+
+    putValues(inputTable, 1, 1, "<bookstore><book category=\"cooking\"><subcategory><type>Continental</type>" +
+      "</subcategory><title lang=\"en\">Everyday Italian</title><author>Giada De Laurentiis</author>" +
+      "<year>2005</year><price>30.00</price></book>");
+    inputManager.flush();
+
+    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    mrManager.start();
+    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+
+    DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
+    Table outputTable = outputManager.get();
+
+    Row row = outputTable.get(Bytes.toBytes("cooking"));
+    Assert.assertTrue(row.isEmpty());
+  }
+
+  @Test
+  public void testInvalidXPathNode() throws Exception {
+    String xmlParserSource = "xmlParserSource-invalid-xpathnode";
+    String xmlParserSink = "xmlParserSink-invalid-xpathnode";
+
+    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
+      Properties.BatchReadableWritable.NAME, xmlParserSource,
+      Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
+
+    Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
+      .put("input", "body")
+      .put("encoding", "UTF-8")
+      .put("xPathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
+        "price:/bookstore/book[price>35.00]/price,subcategory://book/subcategory")
+      .put("fieldTypeMapping", "category:string,title:string,price:double,year:int,subcategory:string")
+      .put("processOnError", "Ignore error and continue")
+      .build();
+
+    ETLStage transform = new ETLStage("transform",
+                                      new ETLPlugin("XMLParser", Transform.PLUGIN_TYPE, transformProperties, null));
+
+    ETLStage sink =
+      new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
+                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, xmlParserSink,
+                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
+                                                              Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
+                                              null));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(transform)
+      .addStage(sink)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
+
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId.toId(), request);
+
+    DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
+    Table inputTable = inputManager.get();
+
+    putValues(inputTable, 1, 1, "<bookstore><book category=\"cooking\"><title lang=\"en\">Everyday Italian</title>" +
+      "<author>Giada De Laurentiis</author><year>2005</year><price>30.00</price></book></bookstore>");
+    inputManager.flush();
+
+    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    mrManager.start();
+    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+
+    DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
+    Table outputTable = outputManager.get();
+
+    Row row = outputTable.get(Bytes.toBytes("cooking"));
+    Assert.assertEquals("Everyday Italian", row.getString("title"));
+    Assert.assertEquals(null, row.getString("price"));
+    Assert.assertEquals(null, row.getString("year"));
+    Assert.assertNull(row.getString("subcategory"));
+  }
+
+  @Test
+  public void testXPathArray() throws Exception {
+    String xmlParserSource = "xmlParserSource-xpath-array";
+    String xmlParserSink = "xmlParserSink-xpath-array";
+
+    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
+      Properties.BatchReadableWritable.NAME, xmlParserSource,
+      Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
+
+    Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
+      .put("input", "body")
+      .put("encoding", "UTF-8")
+      .put("xPathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
+        "price:/bookstore/book[price>35.00]/price,subcategory://book/subcategory")
+      .put("fieldTypeMapping", "category:string,title:string,price:double,year:int,subcategory:string")
+      .put("processOnError", "Ignore error and continue")
+      .build();
+
+    ETLStage transform = new ETLStage("transform",
+                                      new ETLPlugin("XMLParser", Transform.PLUGIN_TYPE, transformProperties, null));
+
+    ETLStage sink =
+      new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
+                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, xmlParserSink,
+                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
+                                                              Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
+                                              null));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(transform)
+      .addStage(sink)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
+
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId.toId(), request);
+
+    DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
+    Table inputTable = inputManager.get();
+
+    putValues(inputTable, 1, 1, "<bookstore><book category=\"cooking\"><subcategory><type>Continental</type>" +
+      "</subcategory><title lang=\"en\">Everyday Italian</title><author>Giada De Laurentiis</author>" +
+      "<year>2005</year><price>30.00</price></book><book category=\"children\"><subcategory><type>Series</type>" +
+      "</subcategory><title lang=\"en\">Harry Potter</title><author>J K. Rowling</author><year>2005</year><price>" +
+      "49.99</price></book></bookstore>");
+    inputManager.flush();
+
+    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    mrManager.start();
+    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+
+    DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
+    Table outputTable = outputManager.get();
+
+    Row row = outputTable.get(Bytes.toBytes("cooking"));
+    Assert.assertTrue(row.isEmpty());
   }
 }
