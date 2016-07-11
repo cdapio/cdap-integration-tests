@@ -108,9 +108,9 @@ public class XMLParserTest extends ETLTestBase {
       "<year>2005</year><price>49.99</price></book></bookstore>");
     inputManager.flush();
 
-    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -187,9 +187,9 @@ public class XMLParserTest extends ETLTestBase {
     putValues(inputTable, 1, 1, "");
     inputManager.flush();
 
-    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -246,9 +246,9 @@ public class XMLParserTest extends ETLTestBase {
       "<year>2005</year><price>30.00</price></book>");
     inputManager.flush();
 
-    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -304,9 +304,9 @@ public class XMLParserTest extends ETLTestBase {
       "<author>Giada De Laurentiis</author><year>2005</year><price>30.00</price></book></bookstore>");
     inputManager.flush();
 
-    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -333,7 +333,7 @@ public class XMLParserTest extends ETLTestBase {
       .put("xPathMappings", "category://book/@category,title://book/title,year:/bookstore/book[price>35.00]/year," +
         "price:/bookstore/book[price>35.00]/price,subcategory://book/subcategory")
       .put("fieldTypeMapping", "category:string,title:string,price:double,year:int,subcategory:string")
-      .put("processOnError", "Ignore error and continue")
+      .put("processOnError", "Exit on error")
       .build();
 
     ETLStage transform = new ETLStage("transform",
@@ -368,9 +368,10 @@ public class XMLParserTest extends ETLTestBase {
       "49.99</price></book></bookstore>");
     inputManager.flush();
 
-    WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    Assert.assertEquals("FAILED", workflowManager.getHistory().get(0).getStatus().name());
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
