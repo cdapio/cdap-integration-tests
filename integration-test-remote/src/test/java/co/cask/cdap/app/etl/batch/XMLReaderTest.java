@@ -53,11 +53,25 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Test for XMLReaderBatchSource.
  */
 public class XMLReaderTest extends ETLTestBase {
+  private static final Schema TRANSFORM_SCHEMA = Schema.recordOf(
+    "xmlTransform",
+    Schema.Field.of("offset", Schema.of(Schema.Type.LONG)),
+    Schema.Field.of("filename", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("record", Schema.of(Schema.Type.STRING)));
+  private static final Schema SINK_SCHEMA = Schema.recordOf(
+    "xmlSink",
+    Schema.Field.of("offset", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("filename", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("record", Schema.of(Schema.Type.STRING)));
+
+  private String sourcePath;
+  private String targetPath;
   private URL serviceURL;
 
   @Before
@@ -66,6 +80,8 @@ public class XMLReaderTest extends ETLTestBase {
     ServiceManager serviceManager = applicationManager.getServiceManager(UploadFile.
                                                                            FileSetService.class.getSimpleName());
     serviceManager.start();
+    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 120);
+
     serviceURL = serviceManager.getServiceURL();
     URL url = new URL(serviceURL, "xmlreadersource/create");
     //POST request to create a new file set with name xmlreadersource.
@@ -84,63 +100,34 @@ public class XMLReaderTest extends ETLTestBase {
     //POST request to create a new file set with name xmlreadertarget.
     response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
-  }
 
-  @Test
-  public void test() throws Exception {
     //GET location of the fileset xmlreadersource on cluster.
-    URL url = new URL(serviceURL, "xmlreadersource?path");
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    url = new URL(serviceURL, "xmlreadersource?path");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
-    String sourcePath = response.getResponseBodyAsString();
+    sourcePath = response.getResponseBodyAsString();
 
     //GET location of the fileset xmlreadertarget on cluster.
     url = new URL(serviceURL, "xmlreadertarget?path");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
-    String targetPath = response.getResponseBodyAsString();
+    targetPath = response.getResponseBodyAsString();
+  }
 
-    String xmlTrackingTable = "XMLTrackingTable";
-
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderBatchSourceTest")
-      .put("path", sourcePath)
-      .put("targetFolder", targetPath)
-      .put("nodePath", "/catalog/book/price")
-      .put("reprocessingRequired", "No")
-      .put("tableName", xmlTrackingTable)
-      .put("actionAfterProcess", "archive")
-      .put("tableExpiryPeriod", "30")
-      .put("temporaryFolder", "/tmp")
-      .build();
-
+  private ApplicationManager deployApplication(Map<String, String> sourceProperties, String applicationName,
+                                               String outputDatasetName) throws Exception {
     ETLStage source = new ETLStage("XMLReader", new ETLPlugin("XMLReader", BatchSource.PLUGIN_TYPE, sourceProperties,
                                                               null));
-    Schema transformSchema = Schema.recordOf(
-      "xmlTransform",
-      Schema.Field.of("offset", Schema.of(Schema.Type.LONG)),
-      Schema.Field.of("filename", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("record", Schema.of(Schema.Type.STRING)));
-
-
     ETLStage transform =
       new ETLStage("XMLProjectionTransform", new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
                                                            ImmutableMap.of("convert", "offset:string", "schema",
-                                                                           transformSchema.toString()), null));
-
-    Schema sinkSchema = Schema.recordOf(
-      "xmlSink",
-      Schema.Field.of("offset", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("filename", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("record", Schema.of(Schema.Type.STRING)));
-
-    String outputDatasetName = "output-batchsink-test";
+                                                                           TRANSFORM_SCHEMA.toString()), null));
     ETLStage sink =
       new ETLStage("XMLTableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
                                                  ImmutableMap.of(
                                                    Properties.BatchReadableWritable.NAME, outputDatasetName,
                                                    Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "offset",
-                                                   Properties.Table.PROPERTY_SCHEMA, sinkSchema.toString()), null));
+                                                   Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
@@ -151,8 +138,41 @@ public class XMLReaderTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = NamespaceId.DEFAULT.app("XMLReaderTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
+    ApplicationId appId = NamespaceId.DEFAULT.app(applicationName);
+    return deployApplication(appId.toId(), appRequest);
+  }
+
+  private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException {
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+  }
+
+  @Test
+  /**
+   * This test case is for
+   * 1. Not to process already processed xml file.
+   * 2. Read xml with valid node path
+   * 3. Archiv xml to the target location provided
+   * 4. Delete data from file track table which is after expiry period.
+   */
+  public void testPreProcessingNotRequired() throws Exception {
+    String xmlTrackingTable = "XMLNoPreProcessingReqTrackingTable";
+    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
+      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderNoPreProcessingRequiredTest")
+      .put("path", sourcePath)
+      .put("targetFolder", targetPath)
+      .put("nodePath", "/catalog/book/price")
+      .put("reprocessingRequired", "No")
+      .put("tableName", xmlTrackingTable)
+      .put("actionAfterProcess", "archive")
+      .put("tableExpiryPeriod", "30")
+      .put("temporaryFolder", "/tmp")
+      .build();
+
+    String outputDatasetName = "output-batchsink-no-preprocessing-test";
+    ApplicationManager appManager = deployApplication(sourceProperties, "XMLPreprocessingNotRequiredTest",
+                                                      outputDatasetName);
 
     //Set pre-processed file data
     DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
@@ -171,9 +191,7 @@ public class XMLReaderTest extends ETLTestBase {
     trackingTable.flush();
 
     //Manually trigger the pipeline
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    startWorkFlow(appManager);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -185,8 +203,8 @@ public class XMLReaderTest extends ETLTestBase {
       , lastRow.getString("record"));
 
     //File must get deleted from source location after archiving it.
-    url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
-    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    URL url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertFalse(Boolean.valueOf(response.getResponseBodyAsString()));
 
     //File must get archived to target location.
@@ -201,5 +219,225 @@ public class XMLReaderTest extends ETLTestBase {
     //Processing time of the prepocessed file must not change.
     byte[] preprocessedFileTime = keyValueTable.read(preprocessedFilePath);
     Assert.assertEquals(preProcessedTime, Bytes.toLong(preprocessedFileTime));
+  }
+
+  @Test
+  /**
+   * This test case is for
+   * 1. Pre-processing required - process already processed xml file.
+   * 2. Read xml with valid node path.
+   * 3. No File action - file must not get deleted, moved or archived.
+   */
+  public void testPreProcessingRequired() throws Exception {
+    String xmlTrackingTable = "XMLPreProcessingReqTrackingTable";
+    String preprocessedFilePath = sourcePath + "catalog.xml";
+    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
+      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderPreProcessingRequiredTest")
+      .put("path", preprocessedFilePath)
+      .put("targetFolder", targetPath)
+      .put("nodePath", "/catalog/book/price")
+      .put("reprocessingRequired", "Yes")
+      .put("tableName", xmlTrackingTable)
+      .put("actionAfterProcess", "none")
+      .put("tableExpiryPeriod", "30")
+      .put("temporaryFolder", "/tmp")
+      .build();
+
+    String outputDatasetName = "output-batchsink-preprocessing-test";
+    ApplicationManager appManager = deployApplication(sourceProperties, "XMLPreprocessingRequiredTest",
+                                                      outputDatasetName);
+
+    //Set pre-processed file data
+    DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
+    KeyValueTable keyValueTable = trackingTable.get();
+
+    long preProcessedTime = new Date().getTime();
+    keyValueTable.write(Bytes.toBytes(preprocessedFilePath), Bytes.toBytes(preProcessedTime));
+    trackingTable.flush();
+
+    //Manually trigger the pipeline
+    startWorkFlow(appManager);
+
+    DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
+    Table outputTable = outputManager.get();
+    Row row = outputTable.get(Bytes.toBytes("128"));
+    Assert.assertEquals("<price><base>49.95</base><tax><surcharge>21.00</surcharge><excise>21.00</excise></tax></price>"
+      , row.getString("record"));
+
+    //File not get deleted, moved or archived.
+    URL url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //Processing time of the prepocessed file must change.
+    byte[] preprocessedFileTime = keyValueTable.read(preprocessedFilePath);
+    Assert.assertNotEquals(preProcessedTime, Bytes.toLong(preprocessedFileTime));
+  }
+
+  @Test
+  /**
+   * This test case is for
+   * 1. Not to process already processed xml file.
+   * 2. Read xml with invalid node path.
+   * 3. Move xml to the target location provided
+   * 4. No data get Deleted from file track table which is before expiry period.
+   */
+  public void testInvalidNodePathWithMoveAction() throws Exception {
+    String xmlTrackingTable = "XMLInvalidNodePathTrackingTable";
+    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
+      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderInvalidNodePathTest")
+      .put("path", sourcePath)
+      .put("targetFolder", targetPath)
+      .put("nodePath", "/catalog/book/prices") //invalid path, price changed to prices
+      .put("reprocessingRequired", "No")
+      .put("tableName", xmlTrackingTable)
+      .put("actionAfterProcess", "move")
+      .put("tableExpiryPeriod", "30")
+      .put("temporaryFolder", "/tmp")
+      .build();
+
+    String outputDatasetName = "output-batchsink-invalid-nodepath-test";
+    ApplicationManager appManager = deployApplication(sourceProperties, "XMLInvalidNodePathTest",
+                                                      outputDatasetName);
+
+    //Set pre-processed file data
+    DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
+    KeyValueTable keyValueTable = trackingTable.get();
+
+    //Set expired record, 20 days old
+    String preprocessedFilePath = sourcePath + "catalogProcessedFile.xml";
+    Calendar cal = Calendar.getInstance();
+    cal.add(Calendar.DATE, -20);
+    long preprocessedTime = cal.getTime().getTime();
+    keyValueTable.write(Bytes.toBytes(preprocessedFilePath), Bytes.toBytes(preprocessedTime));
+    trackingTable.flush();
+
+    //Manually trigger the pipeline
+    startWorkFlow(appManager);
+
+    DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
+    Table outputTable = outputManager.get();
+    Row row1 = outputTable.get(Bytes.toBytes("22"));
+    Assert.assertNull(row1.getString("record"));
+    Row row2 = outputTable.get(Bytes.toBytes("128"));
+    Assert.assertNull(row2.getString("record"));
+
+    //File must get deleted from source location after archiving it.
+    URL url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertFalse(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //File must get moved to target location.
+    url = new URL(serviceURL, "fileExist/xmlreadertarget?path=catalog.xml");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //20 days old processed file data not get deleted and no processing time changed.
+    url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalogProcessedFile.xml");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    byte[] preprocessedFileTime = keyValueTable.read(preprocessedFilePath);
+    Assert.assertEquals(preprocessedTime, Bytes.toLong(preprocessedFileTime));
+  }
+
+  @Test
+  /**
+   * This test case is for
+   * 1. Read xml file matching to pattern provided.
+   * 2. Delete xml file after processing.
+   */
+  public void testPatternWithDeleteAction() throws Exception {
+    String xmlTrackingTable = "XMLPatternTrackingTable";
+    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
+      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderPatternTest")
+      .put("path", sourcePath)
+      .put("targetFolder", targetPath)
+      .put("pattern", "log.xml$") //file name ends with log.xml
+      .put("nodePath", "/catalog/book/price")
+      .put("reprocessingRequired", "No")
+      .put("tableName", xmlTrackingTable)
+      .put("actionAfterProcess", "delete")
+      .put("tableExpiryPeriod", "30")
+      .put("temporaryFolder", "/tmp")
+      .build();
+
+    String outputDatasetName = "output-batchsink-pattern-test";
+    ApplicationManager appManager = deployApplication(sourceProperties, "XMLPatternTest",
+                                                      outputDatasetName);
+
+    //Manually trigger the pipeline
+    startWorkFlow(appManager);
+
+    DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
+    Table outputTable = outputManager.get();
+    Row firstRow = outputTable.get(Bytes.toBytes("22"));
+    Assert.assertEquals("<price><base>44.95</base><tax><surcharge>10.00</surcharge><excise>10.00</excise></tax></price>"
+      , firstRow.getString("record"));
+    Row lastRow = outputTable.get(Bytes.toBytes("128"));
+    Assert.assertEquals("<price><base>49.95</base><tax><surcharge>21.00</surcharge><excise>21.00</excise></tax></price>"
+      , lastRow.getString("record"));
+
+    //File must get deleted from source location after archiving it.
+    URL url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertFalse(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //File not matching pattern should not get processed.
+    DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
+    KeyValueTable keyValueTable = trackingTable.get();
+    byte[] processedTime = keyValueTable.read(sourcePath + "catalogProcessedFile.xml");
+    Assert.assertNull(processedTime);
+    //File not matching pattern should not get deleted.
+    url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalogProcessedFile.xml");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+  }
+
+  @Test
+  public void testInvalidPatternWithDeleteAction() throws Exception {
+    String xmlTrackingTable = "XMLInvalidPatternTrackingTable";
+    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
+      .put(Constants.Reference.REFERENCE_NAME, "XMLReaderInvalidPatternTest")
+      .put("path", sourcePath)
+      .put("targetFolder", targetPath)
+      .put("pattern", "^small") //file name start with small, invalid pattern
+      .put("nodePath", "/catalog/book/price")
+      .put("reprocessingRequired", "No")
+      .put("tableName", xmlTrackingTable)
+      .put("actionAfterProcess", "delete")
+      .put("tableExpiryPeriod", "30")
+      .put("temporaryFolder", "/tmp")
+      .build();
+
+    String outputDatasetName = "output-batchsink-invalid-pattern-test";
+    ApplicationManager appManager = deployApplication(sourceProperties, "XMLInvalidPatternTest",
+                                                      outputDatasetName);
+
+    //Manually trigger the pipeline
+    startWorkFlow(appManager);
+
+    DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
+    Table outputTable = outputManager.get();
+    //No file read, hence record must not present.
+    Row row = outputTable.get(Bytes.toBytes("22"));
+    Assert.assertNull(row.getString("record"));
+
+    //File must not get deleted from source location.
+    URL url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalog.xml");
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    url = new URL(serviceURL, "fileExist/xmlreadersource?path=catalogProcessedFile.xml");
+    response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
+    Assert.assertTrue(Boolean.valueOf(response.getResponseBodyAsString()));
+
+    //No file get processed.
+    DataSetManager<KeyValueTable> trackingTable = getKVTableDataset(xmlTrackingTable);
+    KeyValueTable keyValueTable = trackingTable.get();
+    byte[] catalogProcessTime = keyValueTable.read(sourcePath + "catalog.xml");
+    Assert.assertNull(catalogProcessTime);
+    byte[] catalogProcessedFileProcessTime = keyValueTable.read(sourcePath + "catalogProcessedFile.xml");
+    Assert.assertNull(catalogProcessedFileProcessTime);
   }
 }
