@@ -34,7 +34,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.junit.Assert;
 import org.junit.Test;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +61,6 @@ public class WordCountTest extends AudiTestBase {
 
     ApplicationClient appClient = getApplicationClient();
     ProgramClient programClient = getProgramClient();
-
     Id.Program flowId = Id.Program.from(TEST_NAMESPACE, "WordCount", ProgramType.FLOW, "WordCounter");
     Map<String, String> flowTags = getFlowTags(flowId);
     String longestWordLengthMetric = "user.longest.word.length";

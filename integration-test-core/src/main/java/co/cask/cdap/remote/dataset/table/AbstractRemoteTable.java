@@ -39,7 +39,7 @@ public abstract class AbstractRemoteTable extends AbstractTable {
 
   protected AbstractRemoteTable() {
     // fine to pass in null, since those values are only used in the RecordScanner (which this doesn't support)
-    super(null, null);
+    super(null);
   }
 
   @Override
