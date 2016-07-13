@@ -18,7 +18,7 @@ package co.cask.cdap.apps.tracker;
 
 import co.cask.cdap.api.app.AbstractApplication;
 
-import javax.swing.*;
+
 import co.cask.tracker.TrackerApp;
 import co.cask.tracker.TrackerService;
 import co.cask.tracker.entity.AuditLogTable;
@@ -29,7 +29,7 @@ import co.cask.cdap.api.dataset.DatasetProperties;
 
 import java.util.concurrent.TimeUnit;
 /**
- * Created by Yue on 7/12/16.
+ * temp app for test
  */
 public class TestTrackerApp extends AbstractApplication{
   @Override
