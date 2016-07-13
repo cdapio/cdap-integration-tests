@@ -36,6 +36,7 @@ public class TestTrackerApp extends AbstractApplication{
   public void configure() {
     setName("TestTrackerApp");
     setDescription("A temp app to test the Tracker App");
+    addStream("testStream");
     createDataset(TrackerApp.AUDIT_LOG_DATASET_NAME, AuditLogTable.class);
     String resolutions = String.format("%s,%s,%s,%s",
                                        TimeUnit.MINUTES.toSeconds(1L),
@@ -53,7 +54,7 @@ public class TestTrackerApp extends AbstractApplication{
                     .build());
     createDataset(TrackerApp.ENTITY_LATEST_TIMESTAMP_DATASET_NAME, EntityLatestTimestampTable.class);
     createDataset(TrackerApp.AUDIT_TAGS_DATASET_NAME, AuditTagsTable.class);
-//    addFlow(new StreamToAuditLogFlow());
+    addFlow(new StreamToAuditLogFlow());
     addService(new TrackerService());
   }
 }
