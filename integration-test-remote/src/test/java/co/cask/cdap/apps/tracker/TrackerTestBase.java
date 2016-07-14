@@ -63,10 +63,10 @@ public class TrackerTestBase extends AudiTestBase {
     .create();
 
   RESTClient restClient = getRestClient();
-  private static final Type DATASET_LIST = new TypeToken<List<TopDatasetsResult>>() { }.getType();
-  private static final Type PROGRAM_LIST = new TypeToken<List<TopProgramsResult>>() { }.getType();
-  private static final Type APPLICATION_LIST = new TypeToken<List<TopApplicationsResult>>() { }.getType();
-  private static final Type TIMESINCE_MAP = new TypeToken<Map<String, Long>>() { }.getRawType();
+  private static Type DATASET_LIST = new TypeToken<List<TopDatasetsResult>>() { }.getType();
+  private static Type PROGRAM_LIST = new TypeToken<List<TopProgramsResult>>() { }.getType();
+  private static Type APPLICATION_LIST = new TypeToken<List<TopApplicationsResult>>() { }.getType();
+  private static Type TIMESINCE_MAP = new TypeToken<Map<String, Long>>() { }.getRawType();
   private static ServiceManager trackerService;
   private static FlowManager trackerFlow;
   private static StreamManager trackerStream;
