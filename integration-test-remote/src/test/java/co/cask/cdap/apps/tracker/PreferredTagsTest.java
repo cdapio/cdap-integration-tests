@@ -16,12 +16,6 @@
 
 package co.cask.cdap.apps.tracker;
 
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.junit.Assert;
-import org.junit.Test;
-
 import co.cask.cdap.api.dataset.lib.cube.TimeValue;
 
 import co.cask.cdap.proto.audit.AuditMessage;
@@ -44,19 +38,22 @@ import co.cask.tracker.entity.TrackerMeterRequest;
 import co.cask.tracker.entity.TrackerMeterResult;
 import co.cask.tracker.entity.ValidateTagsResult;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  * Test various methods of preferred Tags.
  */
-public class PreferredTagsTest extends TrackerTestBase{
-
-
+public class PreferredTagsTest extends TrackerTestBase {
   private static final String TEST_JSON_TAGS = "[\"tag1\",\"tag2\",\"tag3\",\"ta*4\"]";
   private static final String DEMOTE_TAGS = "[\"tag1\"]";
   private static final String DELETE_TAGS = "[\"tag2\"]";
@@ -107,8 +104,8 @@ public class PreferredTagsTest extends TrackerTestBase{
     AuditHistogramResult auditHistogramResult = getAuditLogHistogram();
     Collection<TimeValue> valueResults = auditHistogramResult.getResults();
     int total = 0;
-    for(TimeValue t: valueResults) {
-      total +=t.getValue();
+    for (TimeValue t: valueResults) {
+      total += t.getValue();
     }
     Assert.assertEquals(14, total);
 

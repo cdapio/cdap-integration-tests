@@ -18,20 +18,21 @@ package co.cask.cdap.apps.tracker;
 
 import co.cask.cdap.api.app.AbstractApplication;
 
+import co.cask.cdap.api.dataset.DatasetProperties;
 
 import co.cask.tracker.TrackerApp;
 import co.cask.tracker.TrackerService;
 import co.cask.tracker.entity.AuditLogTable;
 import co.cask.tracker.entity.AuditMetricsCube;
-import co.cask.tracker.entity.EntityLatestTimestampTable;
 import co.cask.tracker.entity.AuditTagsTable;
-import co.cask.cdap.api.dataset.DatasetProperties;
+import co.cask.tracker.entity.EntityLatestTimestampTable;
+
 
 import java.util.concurrent.TimeUnit;
 /**
  * temp app for test
  */
-public class TestTrackerApp extends AbstractApplication{
+public class TestTrackerApp extends AbstractApplication {
   @Override
   public void configure() {
     setName("TestTrackerApp");
