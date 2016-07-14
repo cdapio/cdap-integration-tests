@@ -26,6 +26,8 @@ import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.Transform;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
+import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
+import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
@@ -34,9 +36,11 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
+import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -322,10 +326,11 @@ public class XMLParserTest extends ETLTestBase {
   public void testXPathArray() throws Exception {
     String xmlParserSource = "xmlParserSource-xpath-array";
     String xmlParserSink = "xmlParserSink-xpath-array";
-
-    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
-      Properties.BatchReadableWritable.NAME, xmlParserSource,
-      Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
+    
+    co.cask.cdap.etl.common.ETLStage source =
+      new co.cask.cdap.etl.common.ETLStage("TableSource", new Plugin("Table", ImmutableMap.of(
+        Properties.BatchReadableWritable.NAME, xmlParserSource,
+        Properties.Table.PROPERTY_SCHEMA, SOURCE_SCHEMA.toString()), null));
 
     Map<String, String> transformProperties = new ImmutableMap.Builder<String, String>()
       .put("input", "body")
@@ -336,25 +341,19 @@ public class XMLParserTest extends ETLTestBase {
       .put("processOnError", "Exit on error")
       .build();
 
-    ETLStage transform = new ETLStage("transform",
-                                      new ETLPlugin("XMLParser", Transform.PLUGIN_TYPE, transformProperties, null));
+    co.cask.cdap.etl.common.ETLStage transform =
+      new co.cask.cdap.etl.common.ETLStage("transform", new Plugin("XMLParser", transformProperties, null));
 
-    ETLStage sink =
-      new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE,
-                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, xmlParserSink,
-                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
-                                                              Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
-                                              null));
+    co.cask.cdap.etl.common.ETLStage sink =
+      new co.cask.cdap.etl.common.ETLStage("TableSink", new Plugin("Table", ImmutableMap.of(
+        Properties.BatchReadableWritable.NAME, xmlParserSink,
+        Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "category",
+        Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()), null));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
-      .addStage(source)
-      .addStage(transform)
-      .addStage(sink)
-      .addConnection(source.getName(), transform.getName())
-      .addConnection(transform.getName(), sink.getName())
-      .build();
+    co.cask.cdap.etl.batch.config.ETLBatchConfig etlBatchConfig =
+      new co.cask.cdap.etl.batch.config.ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
 
-    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
+    AppRequest<co.cask.cdap.etl.batch.config.ETLBatchConfig> request = getBatchAppRequest(etlBatchConfig);
     ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
@@ -368,10 +367,10 @@ public class XMLParserTest extends ETLTestBase {
       "49.99</price></book></bookstore>");
     inputManager.flush();
 
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
-    Assert.assertEquals("FAILED", workflowManager.getHistory().get(0).getStatus().name());
+    MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
+    mrManager.start();
+    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    Assert.assertEquals("FAILED", mrManager.getHistory().get(0).getStatus().name());
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
