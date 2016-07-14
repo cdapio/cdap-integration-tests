@@ -15,31 +15,15 @@
  */
 
 package co.cask.cdap.apps.tracker;
-import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.audit.AuditMessage;
-import co.cask.cdap.proto.codec.AuditMessageTypeAdapter;
-import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
-import co.cask.cdap.proto.id.EntityId;
-import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.AudiTestBase;
-import co.cask.cdap.test.ServiceManager;
-import co.cask.common.http.HttpRequest;
-import co.cask.common.http.HttpResponse;
-import co.cask.tracker.entity.TagsResult;
-import co.cask.tracker.entity.ValidateTagsResult;
-import co.cask.tracker.TrackerService;
+
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 import org.junit.Test;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
-import co.cask.tracker.AuditLogPublisher;
 import co.cask.cdap.api.dataset.lib.cube.TimeValue;
-import co.cask.cdap.api.metrics.RuntimeMetrics;
-import co.cask.cdap.internal.guava.reflect.TypeToken;
+
 import co.cask.cdap.proto.audit.AuditMessage;
 import co.cask.cdap.proto.audit.AuditPayload;
 import co.cask.cdap.proto.audit.AuditType;
@@ -50,108 +34,100 @@ import co.cask.cdap.proto.codec.AuditMessageTypeAdapter;
 import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.ServiceManager;
-import co.cask.cdap.test.StreamManager;
+
 import co.cask.tracker.entity.AuditHistogramResult;
 import co.cask.tracker.entity.TagsResult;
 import co.cask.tracker.entity.TopApplicationsResult;
 import co.cask.tracker.entity.TopDatasetsResult;
 import co.cask.tracker.entity.TopProgramsResult;
+import co.cask.tracker.entity.TrackerMeterRequest;
+import co.cask.tracker.entity.TrackerMeterResult;
 import co.cask.tracker.entity.ValidateTagsResult;
-import co.cask.tracker.utils.ParameterCheck;
-import com.google.common.base.Charsets;
-import com.google.common.io.ByteStreams;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.jboss.netty.handler.codec.http.HttpResponseStatus;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Test;
 
-import java.lang.reflect.Type;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+
 
 /**
  * Test various methods of preferred Tags.
  */
-public class PreferredTagsTest extends AudiTestBase{
+public class PreferredTagsTest extends TrackerTestBase{
+
+
   private static final String TEST_JSON_TAGS = "[\"tag1\",\"tag2\",\"tag3\",\"ta*4\"]";
   private static final String DEMOTE_TAGS = "[\"tag1\"]";
+  private static final String DELETE_TAGS = "[\"tag2\"]";
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(AuditMessage.class, new AuditMessageTypeAdapter())
     .registerTypeAdapter(EntityId.class, new EntityIdTypeAdapter())
     .create();
+  private String testTruthMeter = "";
 
   @Test
   public void test() throws Exception {
-    ApplicationManager applicationManager = deployApplication(TestTrackerApp.class);
-    RESTClient restClient = getRestClient();
-    ServiceManager TrackService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
-    TrackService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    FlowManager testFlowManager = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
-    testFlowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    enableTracker();
 
-    StreamManager streamManager = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
     List<AuditMessage> testData = generateTestData();
-    for (AuditMessage auditMessage : testData) {
-      streamManager.send(GSON.toJson(auditMessage));
+    sendTestAuditMessages(testData);
+
+    waitforProcessed(testData.size());
+
+    promoteTags(TEST_JSON_TAGS);
+
+    TagsResult tagsResult = getPreferredTags();
+    Assert.assertEquals(3, tagsResult.getPreferred());
+
+    demoteTags(DEMOTE_TAGS);
+    TagsResult tagsAfterDemote = getPreferredTags();
+    Assert.assertEquals(2, tagsAfterDemote.getPreferred());
+
+    demoteTags(DELETE_TAGS);
+    TagsResult tagsAfterDelete = getPreferredTags();
+    Assert.assertEquals(1, tagsAfterDelete.getPreferred());
+
+    ValidateTagsResult tagsAfterValidate = validateTags(TEST_JSON_TAGS);
+    Assert.assertEquals(3, tagsAfterValidate.getValid());
+    Assert.assertEquals(1, tagsAfterValidate.getInvalid());
+
+    List<TopDatasetsResult> topDatasetsResults = getTopNDatasets();
+    Assert.assertEquals(4, topDatasetsResults.size());
+
+    List<TopProgramsResult> topProgramsResults = getTopNPrograms();
+    Assert.assertEquals(5, topProgramsResults.size());
+
+    List<TopApplicationsResult> topApplicationsResults = getTopNApplication();
+    Assert.assertEquals(4, topApplicationsResults.size());
+
+    Map<String, Long> timeSinceResult = getTimeSince();
+    Assert.assertEquals(2, timeSinceResult.size());
+
+    AuditHistogramResult auditHistogramResult = getAuditLogHistogram();
+    Collection<TimeValue> valueResults = auditHistogramResult.getResults();
+    int total = 0;
+    for(TimeValue t: valueResults) {
+      total +=t.getValue();
     }
-    RuntimeMetrics metrics = testFlowManager.getFlowletMetrics("auditLogPublisher");
-    metrics.waitForProcessed(testData.size(), 60L, TimeUnit.SECONDS);
+    Assert.assertEquals(14, total);
 
-
-    URL serviceURL = TrackService.getServiceURL();
-    URL url_promote = new URL(serviceURL, "v1/tags/promote");
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(url_promote).withBody(TEST_JSON_TAGS).build());
-
-    URL url_getTags = new URL(serviceURL, "v1/tags?type=preferred");
-    HttpResponse response = restClient.execute(HttpRequest.get(url_getTags).build(), getClientConfig().getAccessToken());
-    Assert.assertEquals(200, response.getResponseCode());
-    TagsResult getTagsResult = GSON.fromJson(response.getResponseBodyAsString(), TagsResult.class);
-    Assert.assertEquals(3, getTagsResult.getPreferred());
-
-    URL url_demote = new URL(serviceURL, "v1/tags/demote");
-    response = restClient.execute(HttpRequest.post(url_demote).withBody(DEMOTE_TAGS).build(), getClientConfig().getAccessToken());
-    HttpResponse demoteResponse = restClient.execute(HttpRequest.get(url_getTags).build(), getClientConfig().getAccessToken());
-    Assert.assertEquals(200, demoteResponse.getResponseCode());
-    TagsResult tagsResult = GSON.fromJson(demoteResponse.getResponseBodyAsString(), TagsResult.class);
-    Assert.assertEquals(2, tagsResult.getPreferred());
-
-
-    URL url_delete = new URL(serviceURL, "v1/tags/preferred?tag=tag2");
-    response = restClient.execute(HttpRequest.delete(url_delete).build(), getClientConfig().getAccessToken());
-    HttpResponse deleteResponse = restClient.execute(HttpRequest.get(url_getTags).build(), getClientConfig().getAccessToken());
-    Assert.assertEquals(200, deleteResponse.getResponseCode());
-    TagsResult result = GSON.fromJson(deleteResponse.getResponseBodyAsString(), TagsResult.class);
-    Assert.assertEquals(1, result.getPreferred());
-
-    URL url_validate = new URL(serviceURL, "v1/tags/validate");
-    response = restClient.execute(HttpRequest.post(url_validate).withBody(TEST_JSON_TAGS).build(), getClientConfig().getAccessToken());
-    Assert.assertEquals(200, response.getResponseCode());
-    ValidateTagsResult validateTagsResult = GSON.fromJson(response.getResponseBodyAsString(), ValidateTagsResult.class);
-    Assert.assertEquals(3, validateTagsResult.getValid());
-    Assert.assertEquals(1, validateTagsResult.getInvalid());
-
-    URL url_invalidateDataError = new URL(serviceURL, "auditlog/stream/stream1?startTime=1&endTime=0");
-    //?how to allow error code?
-    response = restClient.execute(HttpRequest.get(url_invalidateDataError).build(), getClientConfig().getAccessToken(), HttpResponseStatus.BAD_REQUEST.getCode());
-    Assert.assertEquals(HttpResponseStatus.BAD_REQUEST.getCode(),response.getResponseCode());
-//    Assert.assertEquals(ParameterCheck.STARTTIME_GREATER_THAN_ENDTIME, response);
-
+    initializeTruthMeterInput();
+    TrackerMeterResult trackerMeterResult = getTrackerMeter(testTruthMeter);
+    Assert.assertEquals(3, trackerMeterResult.getDatasets().size());
+    Assert.assertEquals(1, trackerMeterResult.getStreams().size());
   }
 
 
+  private void initializeTruthMeterInput() {
+    List<String> datasets = new LinkedList<>();
+    List<String> streams = new LinkedList<>();
+    datasets.add("ds1");
+    datasets.add("ds6");
+    datasets.add("ds3");
+    streams.add("strm123");
+    testTruthMeter = GSON.toJson(new TrackerMeterRequest(datasets, streams));
+  }
 
   private List<AuditMessage> generateTestData() {
     List<AuditMessage> testData = new ArrayList<>();
