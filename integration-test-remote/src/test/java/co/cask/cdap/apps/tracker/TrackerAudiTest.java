@@ -41,6 +41,7 @@ import co.cask.tracker.entity.ValidateTagsResult;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -63,19 +64,35 @@ public class TrackerAudiTest extends TrackerTestBase {
     .create();
   private String testTruthMeter = "";
 
+
+  @After
+  public void tearDown() throws Exception {
+//    try {
+//      super.tearDown();
+//    } catch (Exception e) {
+//      super.tearDown();
+//    }
+  }
+
   @Test
   public void test() throws Exception {
     enableTracker();
 
+
     List<AuditMessage> testData = generateTestData();
     sendTestAuditMessages(testData);
 
+
     waitforProcessed(testData.size());
+
+
+    startLog();
 
     promoteTags(TEST_JSON_TAGS);
 
     TagsResult tagsResult = getPreferredTags();
     Assert.assertEquals(3, tagsResult.getPreferred());
+
 
     demoteTags(DEMOTE_TAGS);
     TagsResult tagsAfterDemote = getPreferredTags();
@@ -88,6 +105,8 @@ public class TrackerAudiTest extends TrackerTestBase {
     ValidateTagsResult tagsAfterValidate = validateTags(TEST_JSON_TAGS);
     Assert.assertEquals(3, tagsAfterValidate.getValid());
     Assert.assertEquals(1, tagsAfterValidate.getInvalid());
+
+
 
     List<TopDatasetsResult> topDatasetsResults = getTopNDatasets();
     Assert.assertEquals(4, topDatasetsResults.size());

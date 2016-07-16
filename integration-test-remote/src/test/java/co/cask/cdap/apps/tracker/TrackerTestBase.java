@@ -46,6 +46,7 @@ import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -63,24 +64,29 @@ public class TrackerTestBase extends AudiTestBase {
     .create();
 
   RESTClient restClient = getRestClient();
-  private static Type DATASET_LIST = new TypeToken<List<TopDatasetsResult>>() { }.getType();
-  private static Type PROGRAM_LIST = new TypeToken<List<TopProgramsResult>>() { }.getType();
-  private static Type APPLICATION_LIST = new TypeToken<List<TopApplicationsResult>>() { }.getType();
-  private static Type TIMESINCE_MAP = new TypeToken<Map<String, Long>>() { }.getRawType();
+  private static Type datasetList = new TypeToken<List<TopDatasetsResult>>() { }.getType();
+  private static Type programList = new TypeToken<List<TopProgramsResult>>() { }.getType();
+  private static Type applicationList = new TypeToken<List<TopApplicationsResult>>() { }.getType();
+  private static Type timesinceMap = new TypeToken<Map<String, Long>>() { }.getRawType();
   private static ServiceManager trackerService;
+  private static ServiceManager logServiceManager;
   private static FlowManager trackerFlow;
   private static StreamManager trackerStream;
 
   private URL serviceURL;
+  private  URL logserviceURL;
 
   protected void enableTracker() throws InterruptedException, IOException {
     ApplicationManager applicationManager = deployApplication(TestTrackerApp.class);
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
+    logServiceManager = applicationManager.getServiceManager(logService.SERVICE_NAME).start();
+
     trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
     serviceURL = trackerService.getServiceURL();
+    logserviceURL = logServiceManager.getServiceURL();
   }
 
   protected void waitforProcessed(long count) throws TimeoutException, InterruptedException {
@@ -129,28 +135,28 @@ public class TrackerTestBase extends AudiTestBase {
     URL urlTopNDataset = new URL(serviceURL, "v1/auditmetrics/top-entities/datasets?limit=20");
     HttpResponse datasetResponse = restClient.execute(HttpRequest.get(urlTopNDataset).build(),
                                                       getClientConfig().getAccessToken());
-    return GSON.fromJson(datasetResponse.getResponseBodyAsString(), DATASET_LIST);
+    return GSON.fromJson(datasetResponse.getResponseBodyAsString(), datasetList);
   }
 
   protected List<TopProgramsResult> getTopNPrograms() throws IOException, UnauthenticatedException {
     URL urlTopNPrograms = new URL(serviceURL, "v1/auditmetrics/top-entities/programs?limit=20");
     HttpResponse programsResponse = restClient.execute(HttpRequest.get(urlTopNPrograms).build(),
                                                        getClientConfig().getAccessToken());
-    return GSON.fromJson(programsResponse.getResponseBodyAsString(), PROGRAM_LIST);
+    return GSON.fromJson(programsResponse.getResponseBodyAsString(), programList);
   }
 
   protected List<TopApplicationsResult> getTopNApplication() throws IOException, UnauthenticatedException {
     URL urlTopNApplication = new URL(serviceURL, "v1/auditmetrics/top-entities/applications?limit=20");
     HttpResponse applicationResponse = restClient.execute(HttpRequest.get(urlTopNApplication).build(),
                                                           getClientConfig().getAccessToken());
-    return GSON.fromJson(applicationResponse.getResponseBodyAsString(), APPLICATION_LIST);
+    return GSON.fromJson(applicationResponse.getResponseBodyAsString(), applicationList);
   }
 
   protected Map<String, Long> getTimeSince() throws IOException, UnauthenticatedException {
     URL urlTimeSince = new URL(serviceURL, "v1/auditmetrics/time-since?entityType=dataset&entityName=ds1");
     HttpResponse timeSinceResponse = restClient.execute(HttpRequest.get(urlTimeSince).build(),
                                   getClientConfig().getAccessToken());
-    return GSON.fromJson(timeSinceResponse.getResponseBodyAsString(), TIMESINCE_MAP);
+    return GSON.fromJson(timeSinceResponse.getResponseBodyAsString(), timesinceMap);
   }
 
   protected AuditHistogramResult getAuditLogHistogram() throws IOException, UnauthenticatedException {
@@ -166,5 +172,11 @@ public class TrackerTestBase extends AudiTestBase {
                                              .withBody(trackerMeter).build(), getClientConfig().getAccessToken());
     return GSON.fromJson(trackerMeterResponse.getResponseBodyAsString(), TrackerMeterResult.class);
   }
+
+  protected void startLog() throws IOException, UnauthenticatedException {
+      URL urlLog = new URL(logserviceURL, "v1/loghost");
+      restClient.execute(HttpRequest.get(urlLog).build(), getClientConfig().getAccessToken());
+  }
+
 
 }
