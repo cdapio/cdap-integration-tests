@@ -57,5 +57,19 @@ public class TestTrackerApp extends AbstractApplication {
     createDataset(TrackerApp.AUDIT_TAGS_DATASET_NAME, AuditTagsTable.class);
     addFlow(new StreamToAuditLogFlow());
     addService(new TrackerService());
+    addService(new logService());
+
+    /**
+     *
+     *
+     * String hostport = request.getHeader("host");
+     if(hostport == null) {
+     return new MetadataClientHelper();
+     }
+
+     String hostname = hostport.split(":")[0];
+     Integer port = Integer.valueOf(Integer.parseInt(hostport.split(":")[1]));
+     this.metadataClient = new MetadataClientHelper(hostname, port);
+     */
   }
 }
