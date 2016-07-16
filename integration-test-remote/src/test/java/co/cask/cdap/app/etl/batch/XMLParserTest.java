@@ -31,6 +31,7 @@ import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.NamespaceId;
@@ -370,7 +371,7 @@ public class XMLParserTest extends ETLTestBase {
     MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
     mrManager.start();
     mrManager.waitForFinish(10, TimeUnit.MINUTES);
-    Assert.assertEquals("FAILED", mrManager.getHistory().get(0).getStatus().name());
+    Assert.assertEquals(ProgramRunStatus.FAILED, mrManager.getHistory().get(0).getStatus());
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();

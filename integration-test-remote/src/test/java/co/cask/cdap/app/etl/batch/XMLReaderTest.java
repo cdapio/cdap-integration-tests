@@ -83,7 +83,7 @@ public class XMLReaderTest extends ETLTestBase {
     ServiceManager serviceManager = applicationManager.getServiceManager(UploadFile.
                                                                            FileSetService.class.getSimpleName());
     serviceManager.start();
-    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 120);
+    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     serviceURL = serviceManager.getServiceURL();
     URL url = new URL(serviceURL, "xmlreadersource/create");

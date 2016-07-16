@@ -31,6 +31,7 @@ import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.NamespaceId;
@@ -44,6 +45,7 @@ import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import co.cask.hydrator.common.Constants;
+import co.cask.hydrator.plugin.batch.source.ExcelInputReader;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -61,17 +63,18 @@ import java.util.concurrent.TimeUnit;
  * Integration Test for Excel plugin.
  */
 public class ExcelInputReaderTest extends ETLTestBase {
+  private static final String EXCEL_PLUGIN_NAME = ExcelInputReader.class.getSimpleName();
 
-  private URL serviceURL;
   private String sourcePath;
+
   @Before
   public void testSetup() throws Exception {
     ApplicationManager applicationManager = deployApplication(UploadFile.class);
     String fileSetName = UploadFile.FileSetService.class.getSimpleName();
     ServiceManager serviceManager = applicationManager.getServiceManager(fileSetName);
     serviceManager.start();
-    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 120);
-    serviceURL = serviceManager.getServiceURL();
+    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    URL serviceURL = serviceManager.getServiceURL();
 
     URL url = new URL(serviceURL, "excelreader/create");
     //POST request to create a new file set with name excelreadersource.
@@ -81,12 +84,12 @@ public class ExcelInputReaderTest extends ETLTestBase {
     url = new URL(serviceURL, "excelreader?path=civil_test_data_one.xlsx");
     //PUT request to upload the civil_test_data_one.xlsx file, sent in the request body
     getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/civil_test_data_one.xlsx"))
-                              .build(), getClientConfig().getAccessToken(), HttpURLConnection.HTTP_OK);
+                              .build(), getClientConfig().getAccessToken());
 
     url = new URL(serviceURL, "excelreader?path=civil_test_data_two.xlsx");
     //PUT request to upload the civil_test_data_two.xlsx file, sent in the request body
     getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/civil_test_data_two.xlsx"))
-                              .build(), getClientConfig().getAccessToken(), HttpURLConnection.HTTP_OK);
+                              .build(), getClientConfig().getAccessToken());
 
     URL pathServiceUrl = new URL(serviceURL, "excelreader?path");
     AccessToken accessToken = getClientConfig().getAccessToken();
@@ -122,7 +125,8 @@ public class ExcelInputReaderTest extends ETLTestBase {
                                     Schema.Field.of("file", Schema.of(Schema.Type.STRING)),
                                     Schema.Field.of("sheet", Schema.of(Schema.Type.STRING)));
 
-    ETLStage source = new ETLStage("Excel", new ETLPlugin("Excel", BatchSource.PLUGIN_TYPE, sourceProperties, null));
+    ETLStage source =
+      new ETLStage("Excel", new ETLPlugin(EXCEL_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties, null));
 
     String outputDatasetName = "output-batchsourcetest-excelreader";
     ETLStage transform = new ETLStage("transform", new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
@@ -186,7 +190,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
                                     Schema.Field.of("sheet", Schema.of(Schema.Type.STRING)));
 
     co.cask.cdap.etl.common.ETLStage source =
-      new co.cask.cdap.etl.common.ETLStage("Excel", new Plugin("Excel", sourceProperties, null));
+      new co.cask.cdap.etl.common.ETLStage("Excel", new Plugin(EXCEL_PLUGIN_NAME, sourceProperties, null));
 
     String outputDatasetName = "output-batchsourcetest-terminateonemptyrow";
 
@@ -210,7 +214,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
     mrManager.start();
     mrManager.waitForFinish(10, TimeUnit.MINUTES);
-    Assert.assertEquals("FAILED", mrManager.getHistory().get(0).getStatus().name());
+    Assert.assertEquals(ProgramRunStatus.FAILED, mrManager.getHistory().get(0).getStatus());
   }
 
   @Test
@@ -241,7 +245,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
                                     Schema.Field.of("sheet", Schema.of(Schema.Type.STRING)));
 
     co.cask.cdap.etl.common.ETLStage source = new
-      co.cask.cdap.etl.common.ETLStage("Excel", new Plugin("Excel", sourceProperties, null));
+      co.cask.cdap.etl.common.ETLStage("Excel", new Plugin(EXCEL_PLUGIN_NAME, sourceProperties, null));
 
     String outputDatasetName = "output-batchsourcetest-terminateonerrorrecord";
 
@@ -266,7 +270,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
     mrManager.start();
     mrManager.waitForFinish(10, TimeUnit.MINUTES);
-    Assert.assertEquals("FAILED", mrManager.getHistory().get(0).getStatus().name());
+    Assert.assertEquals(ProgramRunStatus.FAILED, mrManager.getHistory().get(0).getStatus());
   }
 
   @Test
@@ -298,7 +302,8 @@ public class ExcelInputReaderTest extends ETLTestBase {
       Schema.Field.of("file", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("sheet", Schema.of(Schema.Type.STRING)));
 
-    ETLStage source = new ETLStage("Excel", new ETLPlugin("Excel", BatchSource.PLUGIN_TYPE, sourceProperties, null));
+    ETLStage source =
+      new ETLStage("Excel", new ETLPlugin(EXCEL_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties, null));
 
     String outputDatasetName = "output-batchsourcetest-testexcelreaderreprocessfalse";
 
