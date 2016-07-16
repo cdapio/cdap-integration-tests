@@ -109,6 +109,36 @@ public class UploadFile extends AbstractApplication {
       }
 
       /**
+       * Check if file exist or not.
+       * Respond with true for exist otherwise false.
+       *
+       * @param set      the name of the file set
+       * @param filePath the relative path within the file set
+       */
+      @GET
+      @Path("fileExist/{fileset}")
+      public void fileExist(HttpServiceRequest request, HttpServiceResponder responder,
+                            @PathParam("fileset") String set, @QueryParam("path") String filePath) {
+        FileSet fileSet;
+        try {
+          fileSet = getContext().getDataset(set);
+        } catch (DatasetInstantiationException e) {
+          LOG.warn("Error instantiating file set {}", set, e);
+          responder.sendError(400, String.format("Invalid file set name '%s'", set));
+          return;
+        }
+
+        Location location = fileSet.getLocation(filePath);
+        getContext().discardDataset(fileSet);
+
+        try {
+          responder.sendString(String.valueOf(location.exists()));
+        } catch (Exception e) {
+          responder.sendError(400, String.format("Unable to read path '%s' in file set '%s'", filePath, set));
+        }
+      }
+
+      /**
        * Upload the content for a new file at the location specified by the request.
        *
        * @param set      the name of the file set
