@@ -63,7 +63,7 @@ import java.util.concurrent.TimeUnit;
  * Integration Test for Excel plugin.
  */
 public class ExcelInputReaderTest extends ETLTestBase {
-  private static final String EXCEL_PLUGIN_NAME = ExcelInputReader.class.getSimpleName();
+  private static final String EXCEL_PLUGIN_NAME = "Excel";
 
   private String sourcePath;
 
