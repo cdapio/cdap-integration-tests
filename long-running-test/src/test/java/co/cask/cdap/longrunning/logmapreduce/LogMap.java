@@ -70,6 +70,7 @@ public class LogMap extends AbstractMapReduce {
 
     // read 5 minutes of events from the stream, ending at the logical start time of this run
     long logicalTime = context.getLogicalStartTime();
+//    StreamBatchReadable.useStreamInput(context, "events", logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime);
     context.addInput(Input.ofStream("events", logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime));
 
     // each run writes its output to a partition with the logical start time.

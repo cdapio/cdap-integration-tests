@@ -33,6 +33,8 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
 import java.util.List;
@@ -42,6 +44,8 @@ import java.util.concurrent.TimeUnit;
  * Data Cleansing long running test
  */
 public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState> {
+  private static final Logger LOG = LoggerFactory.getLogger(LogMapReduceTest.class);
+
   private static final int BATCH_SIZE = 100;
   private static final String LOG_MAPREDUCE_NAME = "LogMap";
   private static final Gson GSON = new Gson();
@@ -89,17 +93,15 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     LOG.info("Writing {} events in one batch", BATCH_SIZE);
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
-      writer.write(String.format("%010d", state.getRunId()));
+      writer.write(String.format("%010d", i));
       writer.write("\n");
     }
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
 
-    ApplicationManager appManager = getApplicationManager();
     // run the mapreduce
     final long startTime = System.currentTimeMillis() + 1;
-    MapReduceManager mapReduceManager = appManager.getMapReduceManager("StrCMap")
-//    MapReduceManager mapReduceManager = appManager.getMapReduceManager("StreamConversionMapReduce")
+    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMap")
       .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
