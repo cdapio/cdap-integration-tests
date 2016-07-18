@@ -20,7 +20,7 @@ import co.cask.cdap.test.TestState;
 import com.google.common.base.Objects;
 
 /**
- * State for DataCleansingTest
+ * State for LogMapReduceTest
  */
 public class DataCleansingTestState implements TestState {
 
