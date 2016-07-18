@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -28,6 +28,7 @@ import co.cask.tephra.Transaction;
 
 import java.lang.reflect.Type;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -38,8 +39,9 @@ import java.util.List;
 public abstract class AbstractRemoteTable extends AbstractTable {
 
   protected AbstractRemoteTable() {
-    // fine to pass in null, since those values are only used in the RecordScanner (which this doesn't support)
-    super(null, null);
+    // fine to pass in empty properties, since those values inside the properties("schema" and "schema.row.field")
+    // are only used in the RecordScanner (which this doesn't support)
+    super(new HashMap<String, String>());
   }
 
   @Override
