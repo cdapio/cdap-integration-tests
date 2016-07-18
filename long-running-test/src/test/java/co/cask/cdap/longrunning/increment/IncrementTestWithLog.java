@@ -48,6 +48,8 @@ import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -62,6 +64,8 @@ import javax.inject.Inject;
  * Tests readless increment functionality of {@link Table}.
  */
 public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState> {
+  private static final Logger LOG = LoggerFactory.getLogger(IncrementTestWithLog.class);
+
   private static final int BATCH_SIZE = 100;
   public static final int SUM_BATCH = (BATCH_SIZE * (BATCH_SIZE - 1)) / 2;
 //  private ProgramClient programClient;
@@ -81,6 +85,7 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
     FlowManager flowManager = getApplicationManager().getFlowManager(IncrementApp.IncrementFlow.NAME);
     flowManager.stop();
     flowManager.waitForStatus(false);
+    LOG.info(getLastRunLogs());
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
@@ -108,8 +113,10 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
 //        (new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
 //                        ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), pid, start, end);
 
-//      getProgramClient().getProgramLogs(new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
-//                                                       ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), start, end);
+//      getProgramClient().getProgramLogs(new Id.Program(Id.Application.from(getLongRunningNamespace(),
+// IncrementApp.NAME),
+//
+// ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), start, end);
 //    }
   }
 
@@ -172,7 +179,11 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
    */
   public static class LogClient {
 
-    private static final Gson GSON = (new GsonBuilder()).registerTypeAdapter(WorkflowActionSpecification.class, new WorkflowActionSpecificationCodec()).registerTypeAdapter(CustomActionSpecification.class, new CustomActionSpecificationCodec()).registerTypeAdapterFactory(new CaseInsensitiveEnumTypeAdapterFactory()).create();
+    private static final Gson GSON =
+      (new GsonBuilder()).registerTypeAdapter(WorkflowActionSpecification.class,
+                                              new WorkflowActionSpecificationCodec())
+        .registerTypeAdapter(CustomActionSpecification.class, new CustomActionSpecificationCodec())
+        .registerTypeAdapterFactory(new CaseInsensitiveEnumTypeAdapterFactory()).create();
 
     private final RESTClient restClient;
     private final ClientConfig config;
@@ -193,11 +204,15 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
       this(config, restClient, new ApplicationClient(config, restClient));
     }
 
-    public String getProgramRunLogs(Id.Program program, String runId, long start, long stop) throws IOException, NotFoundException, UnauthenticatedException {
-      String path = String.format("apps/%s/%s/%s/runs/%s/logs?start=%d&stop=%d", new Object[]{program.getApplicationId(), program.getType().getCategoryName(), program.getId(), runId, Long.valueOf(start), Long.valueOf(stop)});
+    public String getProgramRunLogs(Id.Program program, String runId, long start, long stop) throws IOException,
+      NotFoundException, UnauthenticatedException {
+      String path = String.format("apps/%s/%s/%s/runs/%s/logs?start=%d&stop=%d",
+                                  new Object[]{program.getApplicationId(), program.getType()
+                                    .getCategoryName(), program.getId(), runId,
+                                    Long.valueOf(start), Long.valueOf(stop)});
       URL url = this.config.resolveNamespacedURLV3(program.getNamespace(), path);
       HttpResponse response = this.restClient.execute(HttpMethod.GET, url, this.config.getAccessToken(), new int[0]);
-      if(response.getResponseCode() == 404) {
+      if (response.getResponseCode() == 404) {
         throw new ProgramNotFoundException(program);
       } else {
         return new String(response.getResponseBody(), Charsets.UTF_8);
