@@ -17,28 +17,46 @@
 package co.cask.cdap.longrunning.increment;
 
 import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.api.customaction.CustomActionSpecification;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Table;
+import co.cask.cdap.api.workflow.WorkflowActionSpecification;
+import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.StreamClient;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.NotFoundException;
+import co.cask.cdap.common.ProgramNotFoundException;
+import co.cask.cdap.common.UnauthenticatedException;
+import co.cask.cdap.common.io.CaseInsensitiveEnumTypeAdapterFactory;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRecord;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.codec.CustomActionSpecificationCodec;
+import co.cask.cdap.proto.codec.WorkflowActionSpecificationCodec;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.LongRunningTestBase;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
+import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 
+import java.io.IOException;
 import java.io.StringWriter;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import javax.inject.Inject;
 
 /**
  * Tests readless increment functionality of {@link Table}.
@@ -69,27 +87,30 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
     return getApplicationManager(getLongRunningNamespace().toEntityId().app(IncrementApp.NAME));
   }
 
-  public String getLogs() throws Exception {
+  public String getLastRunLogs() throws Exception {
     List<ProgramRecord> programRecords = getApplicationManager().getInfo().getPrograms();
     LOG.info(Arrays.toString(programRecords.toArray()));
     List<RunRecord> runRecords = getApplicationManager().getFlowManager(IncrementApp.IncrementFlow.NAME).getHistory();
-    long start = 0L;
-    long end = 0L;
-    String pid = null;
-    for(RunRecord record : runRecords) {
-      start = record.getStartTs();
-      end = record.getStopTs();
-      pid = record.getPid();
-      getProgramClient().getProgramLogs(new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
-                                                       ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), start, end);
-    }
-    ApplicationId.fromString(IncrementApp.NAME);
-//      getApplicationManager().getHistory(record, );
-//      getProgramClient().getProgramLogs
-//    Id.Program.from(ApplicationId.fromString(IncrementApp.NAME));
+    RunRecord runRecord = Iterables.getLast(runRecords);
 
+    return new LogClient(getClientConfig(), getRestClient()).getProgramRunLogs
+        (new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
+                        ProgramType.FLOW, IncrementApp.IncrementFlow.NAME),
+         runRecord.getPid(), runRecord.getStartTs(), runRecord.getStopTs());
+//    long start = 0L;
+//    long end = 0L;
+//    String pid = null;
+//    for(RunRecord record : runRecords) {
+//      start = record.getStartTs();
+//      end = record.getStopTs();
+//      pid = record.getPid();
+//      new LogClient(getClientConfig(), getRestClient()).getProgramRunLogs
+//        (new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
+//                        ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), pid, start, end);
+
+//      getProgramClient().getProgramLogs(new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
+//                                                       ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), start, end);
 //    }
-    return null;
   }
 
   @Override
@@ -144,5 +165,43 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
 
   private long readLong(byte[] bytes) {
     return bytes == null ? 0 : Bytes.toLong(bytes);
+  }
+
+  /**
+   * Provides ways to interact with CDAP Metadata.
+   */
+  public static class LogClient {
+
+    private static final Gson GSON = (new GsonBuilder()).registerTypeAdapter(WorkflowActionSpecification.class, new WorkflowActionSpecificationCodec()).registerTypeAdapter(CustomActionSpecification.class, new CustomActionSpecificationCodec()).registerTypeAdapterFactory(new CaseInsensitiveEnumTypeAdapterFactory()).create();
+
+    private final RESTClient restClient;
+    private final ClientConfig config;
+    private final ApplicationClient applicationClient;
+
+    @Inject
+    public LogClient(ClientConfig config, RESTClient restClient, ApplicationClient applicationClient) {
+      this.config = config;
+      this.restClient = restClient;
+      this.applicationClient = applicationClient;
+    }
+
+    public LogClient(ClientConfig config) {
+      this(config, new RESTClient(config));
+    }
+
+    public LogClient(ClientConfig config, RESTClient restClient) {
+      this(config, restClient, new ApplicationClient(config, restClient));
+    }
+
+    public String getProgramRunLogs(Id.Program program, String runId, long start, long stop) throws IOException, NotFoundException, UnauthenticatedException {
+      String path = String.format("apps/%s/%s/%s/runs/%s/logs?start=%d&stop=%d", new Object[]{program.getApplicationId(), program.getType().getCategoryName(), program.getId(), runId, Long.valueOf(start), Long.valueOf(stop)});
+      URL url = this.config.resolveNamespacedURLV3(program.getNamespace(), path);
+      HttpResponse response = this.restClient.execute(HttpMethod.GET, url, this.config.getAccessToken(), new int[0]);
+      if(response.getResponseCode() == 404) {
+        throw new ProgramNotFoundException(program);
+      } else {
+        return new String(response.getResponseBody(), Charsets.UTF_8);
+      }
+    }
   }
 }
