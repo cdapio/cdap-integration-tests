@@ -31,7 +31,6 @@ import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.io.CaseInsensitiveEnumTypeAdapterFactory;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.ProgramRecord;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.CustomActionSpecificationCodec;
@@ -85,7 +84,6 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
     FlowManager flowManager = getApplicationManager().getFlowManager(IncrementApp.IncrementFlow.NAME);
     flowManager.stop();
     flowManager.waitForStatus(false);
-    LOG.info(getLastRunLogs());
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
@@ -93,31 +91,18 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
   }
 
   public String getLastRunLogs() throws Exception {
-    List<ProgramRecord> programRecords = getApplicationManager().getInfo().getPrograms();
-    LOG.info(Arrays.toString(programRecords.toArray()));
     List<RunRecord> runRecords = getApplicationManager().getFlowManager(IncrementApp.IncrementFlow.NAME).getHistory();
-    RunRecord runRecord = Iterables.getLast(runRecords);
+    LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
+    if (runRecords != null) {
+      RunRecord runRecord = Iterables.getLast(runRecords);
+      LOG.info("RUN RECORDS NOT NULL {}", runRecord);
 
-    return new LogClient(getClientConfig(), getRestClient()).getProgramRunLogs
+      return new LogClient(getClientConfig(), getRestClient()).getProgramRunLogs
         (new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
                         ProgramType.FLOW, IncrementApp.IncrementFlow.NAME),
-         runRecord.getPid(), runRecord.getStartTs(), runRecord.getStopTs());
-//    long start = 0L;
-//    long end = 0L;
-//    String pid = null;
-//    for(RunRecord record : runRecords) {
-//      start = record.getStartTs();
-//      end = record.getStopTs();
-//      pid = record.getPid();
-//      new LogClient(getClientConfig(), getRestClient()).getProgramRunLogs
-//        (new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
-//                        ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), pid, start, end);
-
-//      getProgramClient().getProgramLogs(new Id.Program(Id.Application.from(getLongRunningNamespace(),
-// IncrementApp.NAME),
-//
-// ProgramType.FLOW, IncrementApp.IncrementFlow.NAME), start, end);
-//    }
+         runRecord.getPid());
+    }
+    return null;
   }
 
   @Override
@@ -153,6 +138,7 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
     long regularNum = readLong(regularTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), regularSum);
     Assert.assertEquals(state.getNumEvents(), regularNum);
+    LOG.info("HERE are RUN LOGS  {}", getLastRunLogs());
   }
 
   @Override
@@ -204,14 +190,14 @@ public class IncrementTestWithLog extends LongRunningTestBase<IncrementTestState
       this(config, restClient, new ApplicationClient(config, restClient));
     }
 
-    public String getProgramRunLogs(Id.Program program, String runId, long start, long stop) throws IOException,
+    public String getProgramRunLogs(Id.Program program, String runId) throws IOException,
       NotFoundException, UnauthenticatedException {
-      String path = String.format("apps/%s/%s/%s/runs/%s/logs?start=%d&stop=%d",
-                                  new Object[]{program.getApplicationId(), program.getType()
-                                    .getCategoryName(), program.getId(), runId,
-                                    Long.valueOf(start), Long.valueOf(stop)});
+      String path = String.format("apps/%s/%s/%s/runs/%s/logs",
+                                  program.getApplicationId(), program.getType()
+                                    .getCategoryName(), program.getId(), runId);
       URL url = this.config.resolveNamespacedURLV3(program.getNamespace(), path);
       HttpResponse response = this.restClient.execute(HttpMethod.GET, url, this.config.getAccessToken(), new int[0]);
+      LOG.info("RESPONCE {}", response);
       if (response.getResponseCode() == 404) {
         throw new ProgramNotFoundException(program);
       } else {
