@@ -51,6 +51,7 @@ public class LogMap extends AbstractMapReduce {
   @Override
   public void configure() {
     LOG.info("configure ");
+    setName(NAME);
     setDescription("Job to read a chunk of stream events and write them to a FileSet");
     setMapperResources(new Resources(512));
   }

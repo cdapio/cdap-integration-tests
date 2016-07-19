@@ -19,24 +19,32 @@ package co.cask.cdap.longrunning.logmapreduce;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.StreamClient;
+import co.cask.cdap.common.ProgramNotFoundException;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.longrunning.datacleansing.DataCleansingApp;
 import co.cask.cdap.longrunning.datacleansing.DataCleansingTestState;
 import co.cask.cdap.longrunning.datacleansing.Person;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.QueryResult;
+import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
+import java.net.URL;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -76,6 +84,8 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
     LOG.info("verifying runs for logs");
+    LOG.info("GETTING {}", getLastRunLogs());
+
     // For now, check total number of clean records and invalid records
 //    Assert.assertEquals(state.getRunId(), getTotalRecords(true) + getTotalRecords(false));
 
@@ -181,5 +191,29 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   private long readLong(byte[] bytes) {
     return bytes == null ? 0 : Bytes.toLong(bytes);
+  }
+
+  public String getLastRunLogs() throws Exception {
+    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMap.NAME).getHistory();
+    LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
+    if (runRecords != null) {
+      RunRecord runRecord = Iterables.getLast(runRecords);
+      LOG.info("RUN RECORDS NOT NULL {}", runRecord);
+      Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
+                                          ProgramType.MAPREDUCE, LogMap.NAME);
+
+      String path = String.format("apps/%s/%s/%s/runs/%s/logs", program.getApplicationId(),
+                                  program.getType().getCategoryName(), program.getId(), runRecord.getPid());
+      URL url = getClientConfig().resolveNamespacedURLV3(program.getNamespace(), path);
+      HttpResponse response = getRestClient()
+        .execute(HttpMethod.GET, url, getClientConfig().getAccessToken(), new int[0]);
+      LOG.info("RESPONSE {}", response);
+      if (response.getResponseCode() == 404) {
+        throw new ProgramNotFoundException(program);
+      } else {
+        return new String(response.getResponseBody(), Charsets.UTF_8);
+      }
+    }
+    return null;
   }
 }
