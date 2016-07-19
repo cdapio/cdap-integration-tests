@@ -25,17 +25,29 @@ import com.google.common.base.Objects;
 public class LogMapReduceTestState implements TestState {
 
   private final long timestamp;
+  private final long startTS;
+  private final long stopTS;
   private int numBatches;
   private  String runId;
 
-  public LogMapReduceTestState(long timestamp, String runId, int numBatches) {
+  public LogMapReduceTestState(long timestamp, String runId, long startTS, long stopTS, int numBatches) {
     this.timestamp = timestamp;
     this.runId = runId;
     this.numBatches = numBatches;
+    this.startTS = startTS;
+    this.stopTS = stopTS;
   }
 
   public long getTimestamp () {
     return timestamp;
+  }
+
+  public long getStartTS () {
+    return startTS;
+  }
+
+  public long getStopTS () {
+    return stopTS;
   }
 
   public String getRunId() {

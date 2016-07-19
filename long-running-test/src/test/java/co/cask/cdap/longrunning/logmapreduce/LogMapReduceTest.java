@@ -17,19 +17,12 @@
 package co.cask.cdap.longrunning.logmapreduce;
 
 import co.cask.cdap.api.common.Bytes;
-import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.ProgramNotFoundException;
-import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.longrunning.datacleansing.DataCleansingApp;
 import co.cask.cdap.longrunning.datacleansing.DataCleansingTestState;
-import co.cask.cdap.longrunning.datacleansing.Person;
 import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
-import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
@@ -37,7 +30,6 @@ import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
@@ -74,7 +66,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public LogMapReduceTestState getInitialState() {
-    return new LogMapReduceTestState(0, "0", 0);
+    return new LogMapReduceTestState(0, "0", 0, 0, 0);
   }
 
   @Override
@@ -100,10 +92,10 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   @Override
   public LogMapReduceTestState runOperations(LogMapReduceTestState state) throws Exception {
     StreamClient streamClient = getStreamClient();
-    LOG.info("Writing {} events in one batch", BATCH_SIZE);
+    LOG.info("Writing {} events in one batch", state.getRunId());
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
-      writer.write(String.format("%010d", state.getRunId()));
+      writer.write(String.format("%s: start %s, stop %s", state.getRunId(), state.getStartTS(), state.getStopTS()));
       writer.write("\n");
     }
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
@@ -117,13 +109,11 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
-    List<RunRecord> runningRecords =
-      getRunRecords(1, getProgramClient(),
-                    new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
-    ProgramType.MAPREDUCE, LogMap.NAME), ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
-
+    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMap.NAME).getHistory();
     long now = System.currentTimeMillis();
-    return new LogMapReduceTestState(now, runningRecords.get(0).getPid(), state.getNumBatches() + BATCH_SIZE);
+    RunRecord runRecord = runRecords.get(0);
+    return new LogMapReduceTestState(now, runRecord.getPid(), runRecord.getStartTs(),
+                                     runRecord.getStopTs(), state.getNumBatches() + BATCH_SIZE);
   }
 
 //  private void createPartition(URL serviceUrl, DataCleansingTestState state)
@@ -145,19 +135,6 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 //    }
 //  }
 
-  private String getRecord(long index, boolean invalid) {
-    String zip = invalid ? "84125q" : "84125";
-    return GSON.toJson(new Person(index, "bob", "02-12-1983", zip));
-  }
-
-  // pass true to get the number of invalid records; pass false to get the number of valid records processed.
-  private long getTotalRecords(boolean invalid) throws Exception {
-    DatasetId totalRecordsTableId = new DatasetId(getLongRunningNamespace().getId(),
-                                                  DataCleansingApp.TOTAL_RECORDS_TABLE);
-    KeyValueTable totalRecordsTable = getKVTableDataset(totalRecordsTableId).get();
-    byte[] recordKey = invalid ? DataCleansingApp.INVALID_RECORD_KEY : DataCleansingApp.CLEAN_RECORD_KEY;
-    return readLong(totalRecordsTable.read(recordKey));
-  }
 
   // TODO: Use serivce instead of explore as Explore is slower
   private boolean verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
@@ -180,29 +157,18 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     return false;
   }
 
-  private boolean verifyResults(ExploreExecutionResult result, long index, boolean invalid) {
-    while (result.hasNext()) {
-      QueryResult next = result.next();
-      List<Object> columns = next.getColumns();
-      String expectedRecord = getRecord(index, invalid);
-      if (!expectedRecord.equalsIgnoreCase((String) columns.get(0))) {
-        return false;
-      }
-      index++;
-    }
-    return true;
-  }
-
   private long readLong(byte[] bytes) {
     return bytes == null ? 0 : Bytes.toLong(bytes);
   }
 
   public String getLastRunLogs() throws Exception {
+//    List<RunRecord> runRecords = getProgramClient()
+//      .getProgramRuns(program, ProgramRunStatus.ALL.name(), 0L, 9223372036854775807L, 1);
     List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMap.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
-    if (runRecords != null) {
+    if (runRecords.size() != 0) {
       LOG.info("RUN RECORDS NOT NULL {}", runRecords);
-      RunRecord runRecord = Iterables.getLast(runRecords);
+      RunRecord runRecord = runRecords.get(0);
       LOG.info("RUN RECORDS NOT NULL {}", runRecord);
       Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
                                           ProgramType.MAPREDUCE, LogMap.NAME);
