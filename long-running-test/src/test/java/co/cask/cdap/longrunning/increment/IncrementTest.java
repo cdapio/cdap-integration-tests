@@ -35,8 +35,6 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
 import org.junit.Assert;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
 import java.net.URL;
@@ -51,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   private static final int BATCH_SIZE = 100;
   public static final int SUM_BATCH = (BATCH_SIZE * (BATCH_SIZE - 1)) / 2;
-  private static final Logger LOG = LoggerFactory.getLogger(IncrementTest.class);
+//  private static final Logger LOG = LoggerFactory.getLogger(IncrementTest.class);
 
   @Override
   public void deploy() throws Exception {
@@ -107,7 +105,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
     long regularNum = readLong(regularTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), regularSum);
     Assert.assertEquals(state.getNumEvents(), regularNum);
-    LOG.info("HERE are RUN LOGS  {}", getLastRunLogs());
+//    LOG.info("HERE are RUN LOGS  {}", getLastRunLogs());
   }
 
   @Override
