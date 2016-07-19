@@ -25,6 +25,7 @@ import co.cask.cdap.longrunning.datacleansing.DataCleansingApp;
 import co.cask.cdap.longrunning.datacleansing.DataCleansingTestState;
 import co.cask.cdap.longrunning.datacleansing.Person;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.RunRecord;
@@ -73,7 +74,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public LogMapReduceTestState getInitialState() {
-    return new LogMapReduceTestState(0, 0);
+    return new LogMapReduceTestState(0, "0", 0);
   }
 
   @Override
@@ -83,7 +84,6 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
-    LOG.info("verifying runs for logs");
     LOG.info("GETTING {}", getLastRunLogs());
 
     // For now, check total number of clean records and invalid records
@@ -103,7 +103,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     LOG.info("Writing {} events in one batch", BATCH_SIZE);
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
-      writer.write(String.format("%010d", i));
+      writer.write(String.format("%010d", state.getRunId()));
       writer.write("\n");
     }
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
@@ -117,9 +117,13 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
+    List<RunRecord> runningRecords =
+      getRunRecords(1, getProgramClient(),
+                    new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
+    ProgramType.MAPREDUCE, LogMap.NAME), ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
 
     long now = System.currentTimeMillis();
-    return new LogMapReduceTestState(now, state.getRunId() + 1);
+    return new LogMapReduceTestState(now, runningRecords.get(0).getPid(), state.getNumBatches() + BATCH_SIZE);
   }
 
 //  private void createPartition(URL serviceUrl, DataCleansingTestState state)
@@ -197,6 +201,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMap.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
     if (runRecords != null) {
+      LOG.info("RUN RECORDS NOT NULL {}", runRecords);
       RunRecord runRecord = Iterables.getLast(runRecords);
       LOG.info("RUN RECORDS NOT NULL {}", runRecord);
       Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),

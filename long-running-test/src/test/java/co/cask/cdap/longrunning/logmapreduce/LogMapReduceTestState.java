@@ -25,19 +25,25 @@ import com.google.common.base.Objects;
 public class LogMapReduceTestState implements TestState {
 
   private final long timestamp;
-  private final long runId;
+  private int numBatches;
+  private  String runId;
 
-  public LogMapReduceTestState(long timestamp, long runId) {
+  public LogMapReduceTestState(long timestamp, String runId, int numBatches) {
     this.timestamp = timestamp;
     this.runId = runId;
+    this.numBatches = numBatches;
   }
 
   public long getTimestamp () {
     return timestamp;
   }
 
-  public long getRunId() {
+  public String getRunId() {
     return runId;
+  }
+
+  public int getNumBatches() {
+    return numBatches;
   }
 
 
@@ -46,6 +52,7 @@ public class LogMapReduceTestState implements TestState {
     return Objects.toStringHelper(this)
       .add("timestamp", timestamp)
       .add("runId", runId)
+      .add("numBatches", numBatches)
       .toString();
   }
 }

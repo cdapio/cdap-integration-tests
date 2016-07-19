@@ -24,7 +24,6 @@ import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.api.mapreduce.AbstractMapReduce;
 import co.cask.cdap.api.mapreduce.MapReduceContext;
 import com.google.common.collect.Maps;
-import org.apache.avro.Schema;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Job;
@@ -43,14 +42,12 @@ import java.util.concurrent.TimeUnit;
 public class LogMap extends AbstractMapReduce {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogMap.class);
-  private static final Schema SCHEMA = new Schema.Parser().parse(LogMapReduceApp.SCHEMA_STRING);
   protected static final String NAME = "LogMap";
 
   private final Map<String, String> dsArguments = Maps.newHashMap();
 
   @Override
   public void configure() {
-    LOG.info("configure ");
     setName(NAME);
     setDescription("Job to read a chunk of stream events and write them to a FileSet");
     setMapperResources(new Resources(512));
@@ -58,7 +55,6 @@ public class LogMap extends AbstractMapReduce {
 
   @Override
   public void beforeSubmit(MapReduceContext context) throws Exception {
-    LOG.info("before submit ");
     Job job = context.getHadoopJob();
     job.setMapperClass(SCMaper.class);
     job.setNumReduceTasks(0);
@@ -72,7 +68,6 @@ public class LogMap extends AbstractMapReduce {
                                        logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime);
 
     context.addOutput(Output.ofDataset("converted", dsArguments));
-    LOG.info("after before submit ");
   }
 
   /**
@@ -84,7 +79,6 @@ public class LogMap extends AbstractMapReduce {
     @Override
     public void map(LongWritable timestamp, StreamEvent streamEvent, Context context)
       throws IOException, InterruptedException {
-      LOG.info("map reduce in SCMaper ");
       byte[] bytes = Bytes.toBytes(streamEvent.getTimestamp());
       context.write(bytes, bytes);
       LOG.info("Logger mapper  {}", Bytes.toString(streamEvent.getBody()));
