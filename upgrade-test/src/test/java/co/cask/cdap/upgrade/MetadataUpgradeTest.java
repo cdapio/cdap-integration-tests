@@ -17,6 +17,7 @@
 package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.data.format.FormatSpecification;
+import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.StreamViewClient;
@@ -90,7 +91,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
                                                                   Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(PURCHASE_VIEW, new ViewSpecification(new FormatSpecification("format", viewSchema)));
+    viewClient.createOrUpdate(PURCHASE_VIEW, new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     // Add some user metadata
     metadataClient.addProperties(PURCHASE_APP, APP_PROPERTIES);

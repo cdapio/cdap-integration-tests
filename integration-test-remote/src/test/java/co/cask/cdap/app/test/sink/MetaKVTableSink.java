@@ -18,6 +18,7 @@ package co.cask.cdap.app.test.sink;
 
 import co.cask.cdap.api.annotation.Name;
 import co.cask.cdap.api.annotation.Plugin;
+import co.cask.cdap.api.dataset.DatasetManagementException;
 import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.etl.api.PipelineConfigurer;
@@ -46,7 +47,7 @@ public class MetaKVTableSink extends KVTableSink {
   }
 
   @Override
-  public void prepareRun(BatchSinkContext context) {
+  public void prepareRun(BatchSinkContext context) throws DatasetManagementException {
     super.prepareRun(context);
     KeyValueTable table = context.getDataset(META_TABLE);
     table.write(PREPARE_RUN_KEY, PREPARE_RUN_KEY);
