@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState> {
   private static final Logger LOG = LoggerFactory.getLogger(LogMapReduceTest.class);
 
-  private static final int BATCH_SIZE = 100;
+  private static final int BATCH_SIZE = 10;
   private static final String LOG_MAPREDUCE_NAME = "LogMap";
   private static final Gson GSON = new Gson();
 
@@ -99,11 +99,14 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
 
+    LOG.info("Starting MapReducer");
+
     // run the mapreduce
     final long startTime = System.currentTimeMillis() + 1;
     MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMap")
       .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
+
 
     long now = System.currentTimeMillis();
     return new LogMapReduceTestState(now, state.getRunId() + 1);

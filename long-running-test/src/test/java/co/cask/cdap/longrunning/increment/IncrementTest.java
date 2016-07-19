@@ -35,6 +35,8 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
 import java.net.URL;
@@ -49,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   private static final int BATCH_SIZE = 100;
   public static final int SUM_BATCH = (BATCH_SIZE * (BATCH_SIZE - 1)) / 2;
-//  private static final Logger LOG = LoggerFactory.getLogger(IncrementTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(IncrementTest.class);
 
   @Override
   public void deploy() throws Exception {
@@ -105,7 +107,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
     long regularNum = readLong(regularTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), regularSum);
     Assert.assertEquals(state.getNumEvents(), regularNum);
-//    LOG.info("HERE are RUN LOGS  {}", getLastRunLogs());
+    LOG.info("GETTING {}", getLastRunLogs());
   }
 
   @Override
@@ -136,12 +138,12 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
       Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), IncrementApp.NAME),
                                           ProgramType.FLOW, IncrementApp.IncrementFlow.NAME);
 
-      String path = String.format("apps/%s/%s/%s/runs/%s/logs?", program.getApplicationId(),
+      String path = String.format("apps/%s/%s/%s/runs/%s/logs", program.getApplicationId(),
                                   program.getType().getCategoryName(), program.getId(), runRecord.getPid());
       URL url = getClientConfig().resolveNamespacedURLV3(program.getNamespace(), path);
       HttpResponse response = getRestClient()
         .execute(HttpMethod.GET, url, getClientConfig().getAccessToken(), new int[0]);
-      LOG.info("RESPONCE {}", response);
+      LOG.info("RESPONSE {}", response);
       if (response.getResponseCode() == 404) {
         throw new ProgramNotFoundException(program);
       } else {

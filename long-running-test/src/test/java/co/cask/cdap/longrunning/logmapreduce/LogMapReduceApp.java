@@ -19,10 +19,7 @@ package co.cask.cdap.longrunning.logmapreduce;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.data.stream.Stream;
-import co.cask.cdap.api.dataset.lib.FileSetProperties;
-import co.cask.cdap.api.dataset.lib.TimePartitionedFileSet;
-import org.apache.avro.mapreduce.AvroKeyInputFormat;
-import org.apache.avro.mapreduce.AvroKeyOutputFormat;
+import co.cask.cdap.api.dataset.lib.KeyValueTable;
 
 /**
  * An application that illustrates the use of time-partitioned file sets by the example of
@@ -41,22 +38,8 @@ public class LogMapReduceApp extends AbstractApplication {
   @Override
   public void configure() {
     addStream(new Stream(EVENTS_STREAM));
-//    addMapReduce(new StrCMR());
     addMapReduce(new LogMap());
     // create the time-partitioned file set, configure it to work with MapReduce and with Explore
-    createDataset("converted", TimePartitionedFileSet.class, FileSetProperties.builder()
-      // properties for file set
-      .setBasePath("converted")
-      .setInputFormat(AvroKeyInputFormat.class)
-      .setOutputFormat(AvroKeyOutputFormat.class)
-      .setOutputProperty("schema", SCHEMA_STRING)
-        // properties for explore (to create a partitioned hive table)
-      .setEnableExploreOnCreate(true)
-      .setSerDe("org.apache.hadoop.hive.serde2.avro.AvroSerDe")
-      .setExploreInputFormat("org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat")
-      .setExploreOutputFormat("org.apache.hadoop.hive.ql.io.avro.AvroContainerOutputFormat")
-      .setTableProperty("avro.schema.literal", SCHEMA_STRING)
-      .setDescription("Converted stream events dataset")
-      .build());
+    createDataset("converted", KeyValueTable.class);
   }
 }
