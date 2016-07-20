@@ -38,7 +38,7 @@ public class LogMapReduceApp extends AbstractApplication {
   @Override
   public void configure() {
     addStream(new Stream(EVENTS_STREAM));
-    addMapReduce(new LogMap());
+    addMapReduce(new LogMapReducer());
     // create the time-partitioned file set, configure it to work with MapReduce and with Explore
     createDataset("converted", KeyValueTable.class);
   }

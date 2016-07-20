@@ -19,7 +19,6 @@ package co.cask.cdap.longrunning.logmapreduce;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.ProgramNotFoundException;
-import co.cask.cdap.longrunning.datacleansing.DataCleansingTestState;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
@@ -51,7 +50,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   private static final Logger LOG = LoggerFactory.getLogger(LogMapReduceTest.class);
 
   private static final int BATCH_SIZE = 1;
-  private static final String LOG_MAPREDUCE_NAME = "LogMap";
+  private static final String LOG_MAPREDUCE_NAME = "LogMapReducer";
   private static final Gson GSON = new Gson();
 
   @Override
@@ -84,27 +83,23 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
     LOG.info("last map job {}", state.getRunId());
 
-    Pattern p = Pattern.compile(new StringBuilder("mapper ").append(state.getRunId()).toString());
+    Pattern mapper = Pattern.compile(new StringBuilder("mapper ").append(state.getRunId()).toString());
+    Pattern reducer = Pattern.compile(new StringBuilder("reducer ").append(state.getRunId()).toString());
     // the pattern to search for
     if (logs == null) {
       return;
     }
-    Matcher m = p.matcher(logs);
-    Assert.assertTrue(m.find());
+    Matcher mapperMatcher = mapper.matcher(logs);
+    Matcher reducerMatcher = reducer.matcher(logs);
+    boolean mapperMatched = mapperMatcher.find();
+    boolean reducerMatched = reducerMatcher.find();
+    Assert.assertTrue(mapperMatched && reducerMatched);
     // now try to find at least one match
-    if (m.find()) {
+    if (mapperMatched && reducerMatched) {
       System.out.println("Found a match");
     } else {
       System.out.println("Did not find a match");
     }
-
-
-
-    // For now, check total number of clean records and invalid records
-//    Assert.assertEquals(state.getRunId(), getTotalRecords(true) + getTotalRecords(false));
-
-    // verify segregated records
-//    Assert.assertTrue(verifyRecordsWithExplore(state));
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
@@ -127,11 +122,11 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
     // run the mapreduce
     final long startTime = System.currentTimeMillis() + 1;
-    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMap")
+    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMapReducer")
       .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
-    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMap.NAME).getHistory();
+    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
     long now = System.currentTimeMillis();
     RunRecord runRecord = runRecords.get(0);
     return new LogMapReduceTestState(now, runRecord.getPid(), runRecord.getStartTs(),
@@ -157,28 +152,6 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 //    }
 //  }
 
-
-  // TODO: Use serivce instead of explore as Explore is slower
-  private boolean verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
-//    QueryClient queryClient = new QueryClient(getClientConfig());
-//    String cleanRecordsQuery = "SELECT * FROM dataset_" + CLEAN_RECORDS_DATASET + " where TIME = "
-//      + state.getTimestamp();
-//    String invalidRecordsQuery = "SELECT * FROM dataset_" + INVALID_RECORDS_DATASET + " where TIME = "
-//      + state.getTimestamp();
-//
-//    // Reduce wait time by submitting both the queries
-//    ListenableFuture<ExploreExecutionResult> cleanRecordsExecute = queryClient.execute(getLongRunningNamespace(),
-//                                                                                       cleanRecordsQuery);
-//    ListenableFuture<ExploreExecutionResult> invalidRecordsExecute = queryClient.execute(getLongRunningNamespace(),
-//                                                                                         invalidRecordsQuery);
-//    ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
-//    ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();
-//
-//    return (verifyResults(cleanRecordsResult, state.getStartCleanRecordPid(), false) &&
-//      verifyResults(invalidRecordsResult, state.getStartInvalidRecordPid(), true));
-    return false;
-  }
-
   private long readLong(byte[] bytes) {
     return bytes == null ? 0 : Bytes.toLong(bytes);
   }
@@ -186,14 +159,14 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   public String getLastRunLogs() throws Exception {
 //    List<RunRecord> runRecords = getProgramClient()
 //      .getProgramRuns(program, ProgramRunStatus.ALL.name(), 0L, 9223372036854775807L, 1);
-    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMap.NAME).getHistory();
+    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
     if (runRecords.size() != 0) {
       LOG.info("RUN RECORDS NOT NULL {}", runRecords);
       RunRecord runRecord = runRecords.get(0);
       LOG.info("RUN RECORDS NOT NULL {}", runRecord);
       Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
-                                          ProgramType.MAPREDUCE, LogMap.NAME);
+                                          ProgramType.MAPREDUCE, LogMapReducer.NAME);
 
       String path = String.format("apps/%s/%s/%s/runs/%s/logs", program.getApplicationId(),
                                   program.getType().getCategoryName(), program.getId(), runRecord.getPid());
