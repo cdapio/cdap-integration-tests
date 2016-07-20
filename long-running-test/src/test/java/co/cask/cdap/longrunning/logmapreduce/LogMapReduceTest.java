@@ -30,7 +30,6 @@ import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
-import com.google.gson.Gson;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +50,6 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   private static final int BATCH_SIZE = 1;
   private static final String LOG_MAPREDUCE_NAME = "LogMapReducer";
-  private static final Gson GSON = new Gson();
 
   @Override
   public void deploy() throws Exception {
@@ -68,7 +66,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public LogMapReduceTestState getInitialState() {
-    return new LogMapReduceTestState(0, "0", 0, 0, 0);
+    return new LogMapReduceTestState("0", 0, 0, 0);
   }
 
   @Override
@@ -85,7 +83,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
     Pattern mapper = Pattern.compile(new StringBuilder("mapper ").append(state.getRunId()).toString());
     Pattern reducer = Pattern.compile(new StringBuilder("reducer ").append(state.getRunId()).toString());
-    // the pattern to search for
+
     if (logs == null) {
       return;
     }
@@ -127,9 +125,8 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
     List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
-    long now = System.currentTimeMillis();
     RunRecord runRecord = runRecords.get(0);
-    return new LogMapReduceTestState(now, runRecord.getPid(), runRecord.getStartTs(),
+    return new LogMapReduceTestState(runRecord.getPid(), runRecord.getStartTs(),
                                      runRecord.getStopTs(), state.getNumBatches() + BATCH_SIZE);
   }
 
@@ -157,8 +154,6 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   }
 
   public String getLastRunLogs() throws Exception {
-//    List<RunRecord> runRecords = getProgramClient()
-//      .getProgramRuns(program, ProgramRunStatus.ALL.name(), 0L, 9223372036854775807L, 1);
     List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
     if (runRecords.size() != 0) {

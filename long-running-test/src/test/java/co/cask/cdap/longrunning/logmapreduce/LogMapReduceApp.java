@@ -17,12 +17,11 @@
 package co.cask.cdap.longrunning.logmapreduce;
 
 import co.cask.cdap.api.app.AbstractApplication;
-import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 
 /**
- * An application that illustrates the use of time-partitioned file sets by the example of
+ * An application that illustrates
  * periodic stream conversion.
  */
 public class LogMapReduceApp extends AbstractApplication {
@@ -30,16 +29,10 @@ public class LogMapReduceApp extends AbstractApplication {
   public static final String NAME = "LogMapReduceApp";
   public static final String EVENTS_STREAM = "events";
 
-  static final String SCHEMA_STRING = Schema.recordOf(
-    "streamEvent",
-    Schema.Field.of("time", Schema.of(Schema.Type.LONG)),
-    Schema.Field.of("body", Schema.of(Schema.Type.STRING))).toString();
-
   @Override
   public void configure() {
     addStream(new Stream(EVENTS_STREAM));
     addMapReduce(new LogMapReducer());
-    // create the time-partitioned file set, configure it to work with MapReduce and with Explore
     createDataset("converted", KeyValueTable.class);
   }
 }
