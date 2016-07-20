@@ -19,9 +19,6 @@ package co.cask.cdap.apps.tracker;
 import co.cask.cdap.api.dataset.lib.cube.TimeValue;
 
 import co.cask.cdap.proto.audit.AuditMessage;
-import co.cask.cdap.proto.codec.AuditMessageTypeAdapter;
-import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
-import co.cask.cdap.proto.id.EntityId;
 
 import co.cask.tracker.entity.AuditHistogramResult;
 import co.cask.tracker.entity.AuditLogResponse;
@@ -32,8 +29,6 @@ import co.cask.tracker.entity.TopProgramsResult;
 import co.cask.tracker.entity.TrackerMeterResult;
 import co.cask.tracker.entity.ValidateTagsResult;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -49,14 +44,10 @@ import java.util.Set;
 public class TrackerAudiTest extends TrackerTestBase {
   private static final String TEST_JSON_TAGS = "[\"tag1\",\"tag2\",\"tag3\",\"ta*4\"]";
   private static final String DEMOTE_TAGS = "[\"tag1\"]";
-  private static final String DELETE_TAGS = "[\"tag2\"]";
+  private static final String DELETE_TAGS = "tag2";
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
-  private static final int MAXTAGLENGTH = 49;
+  private static final int MAXTAGLENGTH = 50;
   private static final int TAGNUM = 3;
-  private static final Gson GSON = new GsonBuilder()
-    .registerTypeAdapter(AuditMessage.class, new AuditMessageTypeAdapter())
-    .registerTypeAdapter(EntityId.class, new EntityIdTypeAdapter())
-    .create();
 
 
   @Test
@@ -71,7 +62,7 @@ public class TrackerAudiTest extends TrackerTestBase {
     waitforProcessed(testData.size());
 
     AuditLogResponse auditLogResponse = getAuditLog();
-    Assert.assertNotEquals(0,auditLogResponse.getTotalResults());
+    Assert.assertNotEquals(0, auditLogResponse.getTotalResults());
 
     List<TopDatasetsResult> topDatasetsResults = getTopNDatasets();
     Assert.assertEquals(6, topDatasetsResults.size());
@@ -99,9 +90,9 @@ public class TrackerAudiTest extends TrackerTestBase {
     Assert.assertEquals(17, gtotal);
 
     AuditHistogramResult auditSpecificHistogramResult = getSpecificAuditLogHistogram();
-    Collection<TimeValue> SpecificValueResults = auditSpecificHistogramResult.getResults();
+    Collection<TimeValue> specificValueResults = auditSpecificHistogramResult.getResults();
     int stotal = 0;
-    for (TimeValue t: SpecificValueResults) {
+    for (TimeValue t: specificValueResults) {
       stotal += t.getValue();
     }
     Assert.assertEquals(5, stotal);
@@ -117,7 +108,7 @@ public class TrackerAudiTest extends TrackerTestBase {
     TagsResult tagsAfterDemote = getPreferredTags();
     Assert.assertEquals(2, tagsAfterDemote.getPreferredSize());
 
-    demoteTags(DELETE_TAGS);
+    deleteTags(DELETE_TAGS);
     TagsResult tagsAfterDelete = getPreferredTags();
     Assert.assertEquals(1, tagsAfterDelete.getPreferredSize());
 

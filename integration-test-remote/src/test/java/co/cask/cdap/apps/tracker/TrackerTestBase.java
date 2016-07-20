@@ -136,7 +136,7 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   protected void deleteTags(String tagsToDelete) throws IOException, UnauthenticatedException {
-    URL urlDelete = new URL(serviceURL, new String("v1/tags/preferred?tag=" + tagsToDelete));
+    URL urlDelete = new URL(serviceURL, String.format("v1/tags/preferred?tag=%s", tagsToDelete));
     restClient.execute(HttpRequest.delete(urlDelete).build(), getClientConfig().getAccessToken());
   }
 
@@ -193,11 +193,6 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
 
-  protected void startLog() throws IOException, UnauthenticatedException {
-      URL urlLog = new URL(logserviceURL, "v1/loghost");
-      restClient.execute(HttpRequest.get(urlLog).build(), getClientConfig().getAccessToken());
-  }
-
 
   protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException {
     URL urlAuditLog = new URL (serviceURL, "auditlog/stream/stream1");
@@ -239,23 +234,27 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   private TrackerMeterResult getTrackerMeterResponse(List<String> datasets,
-                                                     List<String> streams) throws IOException, UnauthenticatedException {
+                                                     List<String> streams)
+    throws IOException, UnauthenticatedException {
     URL urlTrakerMeter = new URL (serviceURL, "v1/tracker-meter");
-    HttpResponse response = restClient.execute(HttpRequest.post(urlTrakerMeter).withBody(GSON.toJson(new TrackerMeterRequest(datasets, streams)))
+    HttpResponse response = restClient.execute(HttpRequest.post(urlTrakerMeter).
+                                                    withBody(GSON.toJson(new TrackerMeterRequest(datasets, streams)))
                                                          .build(), getClientConfig().getAccessToken());
 
     return GSON.fromJson(response.getResponseBodyAsString(), TrackerMeterResult.class);
 
   }
 
-  protected void addEntityTags(Set<String> tagSet, String entityType, String entityName) throws IOException, UnauthenticatedException {
+  protected void addEntityTags(Set<String> tagSet, String entityType, String entityName)
+                                                                throws IOException, UnauthenticatedException {
     String url = String.format("v1/tags/promote/%s/%s", entityType, entityName);
     URL urladdEntityTags = new URL (serviceURL, url);
     restClient.execute(HttpRequest.post(urladdEntityTags).withBody(GSON.toJson(tagSet))
                                                  .build(), getClientConfig().getAccessToken());
   }
 
-  protected void deleteEntityTags(Set<String> tagSet, String entityType, String entityName) throws IOException, UnauthenticatedException {
+  protected void deleteEntityTags(Set<String> tagSet, String entityType, String entityName)
+                                                                throws IOException, UnauthenticatedException {
     for (String tag : tagSet) {
       String url = String.format("v1/tags/delete/%s/%s?tagname=%s", entityType, entityName, tag);
       URL urldeleteEntityTags = new URL (serviceURL, url);
@@ -264,7 +263,8 @@ public class TrackerTestBase extends AudiTestBase {
     }
   }
 
-  protected TagsResult getEntityTags(String entityType, String entityName) throws IOException, UnauthenticatedException {
+  protected TagsResult getEntityTags(String entityType, String entityName)
+                                                                throws IOException, UnauthenticatedException {
     String url = String.format("v1/tags/%s/%s", entityType, entityName);
     URL urlgetEntityTags = new URL (serviceURL, url);
     HttpResponse response = restClient.execute(HttpRequest.get(urlgetEntityTags)
@@ -282,7 +282,7 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   private String generateString (Random rng, String characters, int maxLength) {
-    int length = rng.nextInt(maxLength)+1;
+    int length = rng.nextInt(maxLength) + 1;
     char[] text = new char[length];
     for (int i = 0; i < length; i++) {
       text[i] = characters.charAt(rng.nextInt(characters.length()));
