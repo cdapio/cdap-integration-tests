@@ -24,9 +24,9 @@ import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.api.mapreduce.AbstractMapReduce;
 import co.cask.cdap.api.mapreduce.MapReduceContext;
 import com.google.common.collect.Maps;
-import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -64,8 +64,8 @@ public class LogMap extends AbstractMapReduce {
     job.setMapperClass(SCMaper.class);
     job.setReducerClass(SCR.class);
     job.setNumReduceTasks(1);
-    job.setMapOutputKeyClass(BytesWritable.class);
-    job.setMapOutputValueClass(BytesWritable.class);
+    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(Text.class);
     // read 5 minutes of events from the stream, ending at the logical start time of this run
     long logicalTime = context.getLogicalStartTime();
 //    context.addInput(Input.ofStream("events", logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime));
@@ -80,13 +80,14 @@ public class LogMap extends AbstractMapReduce {
    * Mapper that reads events from a stream and writes them out as Avro.
    */
   public static class SCMaper extends
-    Mapper<LongWritable, StreamEvent, byte[], byte[]> {
+    Mapper<LongWritable, StreamEvent, Text, Text> {
 
     @Override
     public void map(LongWritable timestamp, StreamEvent streamEvent, Context context)
       throws IOException, InterruptedException {
-      byte[] bytes = Bytes.toBytes(streamEvent.getTimestamp());
-      context.write(bytes, bytes);
+//      byte[] bytes = Bytes.toBytes(streamEvent.getTimestamp());
+      context.write(new Text(Bytes.toString(streamEvent.getBody())),
+                    new Text(String.valueOf(streamEvent.getTimestamp())));
 //      LOG.info("Logger mapper  {}", Bytes.toString(streamEvent.getBody()));
       LOG.info("mapper {}   {}", runId, Bytes.toString(streamEvent.getBody()));
     }
@@ -96,9 +97,9 @@ public class LogMap extends AbstractMapReduce {
    * Reducer class to aggregate all purchases per user
    */
   public static class SCR extends
-    Reducer<byte[], byte[], NullWritable, NullWritable> {
+    Reducer<Text, Text, NullWritable, NullWritable> {
     @Override
-    public void reduce(byte[] timestamp, Iterable<byte[]> streamEvents, Context context)
+    public void reduce(Text timestamp, Iterable<Text> streamEvents, Context context)
       throws IOException, InterruptedException {
 //      for (byte[] streamEvent : streamEvents) {
 //        GenericRecordBuilder recordBuilder = new GenericRecordBuilder(SCHEMA)
