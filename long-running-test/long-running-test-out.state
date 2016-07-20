@@ -1,1 +1,1 @@
-{"co.cask.cdap.longrunning.logmapreduce.LogMapReduceTest":"{\"timestamp\":1468966517149,\"startTS\":1468966512,\"stopTS\":1468966516,\"numBatches\":170,\"runId\":\"43714f09-4dfe-11e6-9998-52e98e80d2d1\"}"}
+{"co.cask.cdap.longrunning.logmapreduce.LogMapReduceTest":"{\"timestamp\":1468974098139,\"startTS\":1468974093,\"stopTS\":1468974097,\"numBatches\":90,\"runId\":\"ea11cd5a-4e0f-11e6-a49c-52e98e80d2d1\"}"}

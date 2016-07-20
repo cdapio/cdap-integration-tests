@@ -43,6 +43,7 @@ public class LogMap extends AbstractMapReduce {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogMap.class);
   protected static final String NAME = "LogMap";
+  private static String runId;
 
   private final Map<String, String> dsArguments = Maps.newHashMap();
 
@@ -55,18 +56,19 @@ public class LogMap extends AbstractMapReduce {
 
   @Override
   public void beforeSubmit(MapReduceContext context) throws Exception {
+//    MapReduceContext context = getContext();
     Job job = context.getHadoopJob();
     job.setMapperClass(SCMaper.class);
     job.setNumReduceTasks(0);
     job.setMapOutputKeyClass(BytesWritable.class);
     job.setMapOutputValueClass(BytesWritable.class);
-
     // read 5 minutes of events from the stream, ending at the logical start time of this run
     long logicalTime = context.getLogicalStartTime();
 //    context.addInput(Input.ofStream("events", logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime));
     StreamBatchReadable.useStreamInput(context, LogMapReduceApp.EVENTS_STREAM,
                                        logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime);
 
+    runId = context.getRunId().getId();
     context.addOutput(Output.ofDataset("converted", dsArguments));
   }
 
@@ -81,7 +83,8 @@ public class LogMap extends AbstractMapReduce {
       throws IOException, InterruptedException {
       byte[] bytes = Bytes.toBytes(streamEvent.getTimestamp());
       context.write(bytes, bytes);
-      LOG.info("Logger mapper  {}", Bytes.toString(streamEvent.getBody()));
+//      LOG.info("Logger mapper  {}", Bytes.toString(streamEvent.getBody()));
+      LOG.info("{}   {}", runId, Bytes.toString(streamEvent.getBody()));
     }
   }
 }

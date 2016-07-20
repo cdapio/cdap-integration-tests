@@ -76,7 +76,8 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
-    LOG.info("GETTING {}", getLastRunLogs());
+    LOG.info("GETTING START !!!!  {} END!!!!!!!", getLastRunLogs());
+
 
     // For now, check total number of clean records and invalid records
 //    Assert.assertEquals(state.getRunId(), getTotalRecords(true) + getTotalRecords(false));
@@ -95,7 +96,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     LOG.info("Writing {} events in one batch", state.getRunId());
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
-      writer.write(String.format("%s: start %s, stop %s", state.getRunId(), state.getStartTS(), state.getStopTS()));
+      writer.write(String.format("%010d", i));
       writer.write("\n");
     }
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
