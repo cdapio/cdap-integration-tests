@@ -19,37 +19,29 @@ package co.cask.cdap.apps.tracker;
 import co.cask.cdap.api.dataset.lib.cube.TimeValue;
 
 import co.cask.cdap.proto.audit.AuditMessage;
-import co.cask.cdap.proto.audit.AuditPayload;
-import co.cask.cdap.proto.audit.AuditType;
-import co.cask.cdap.proto.audit.payload.access.AccessPayload;
-import co.cask.cdap.proto.audit.payload.access.AccessType;
-import co.cask.cdap.proto.audit.payload.metadata.MetadataPayload;
 import co.cask.cdap.proto.codec.AuditMessageTypeAdapter;
 import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
 import co.cask.cdap.proto.id.EntityId;
-import co.cask.cdap.proto.id.NamespaceId;
 
 import co.cask.tracker.entity.AuditHistogramResult;
+import co.cask.tracker.entity.AuditLogResponse;
 import co.cask.tracker.entity.TagsResult;
 import co.cask.tracker.entity.TopApplicationsResult;
 import co.cask.tracker.entity.TopDatasetsResult;
 import co.cask.tracker.entity.TopProgramsResult;
-import co.cask.tracker.entity.TrackerMeterRequest;
 import co.cask.tracker.entity.TrackerMeterResult;
 import co.cask.tracker.entity.ValidateTagsResult;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Test various methods of preferred Tags.
@@ -58,21 +50,14 @@ public class TrackerAudiTest extends TrackerTestBase {
   private static final String TEST_JSON_TAGS = "[\"tag1\",\"tag2\",\"tag3\",\"ta*4\"]";
   private static final String DEMOTE_TAGS = "[\"tag1\"]";
   private static final String DELETE_TAGS = "[\"tag2\"]";
+  private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
+  private static final int MAXTAGLENGTH = 49;
+  private static final int TAGNUM = 3;
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(AuditMessage.class, new AuditMessageTypeAdapter())
     .registerTypeAdapter(EntityId.class, new EntityIdTypeAdapter())
     .create();
-  private String testTruthMeter = "";
 
-
-  @After
-  public void tearDown() throws Exception {
-//    try {
-//      super.tearDown();
-//    } catch (Exception e) {
-//      super.tearDown();
-//    }
-  }
 
   @Test
   public void test() throws Exception {
@@ -85,174 +70,82 @@ public class TrackerAudiTest extends TrackerTestBase {
 
     waitforProcessed(testData.size());
 
+    AuditLogResponse auditLogResponse = getAuditLog();
+    Assert.assertNotEquals(0,auditLogResponse.getTotalResults());
 
-    startLog();
+    List<TopDatasetsResult> topDatasetsResults = getTopNDatasets();
+    Assert.assertEquals(6, topDatasetsResults.size());
+    long testTotal1 = topDatasetsResults.get(0).getRead() + topDatasetsResults.get(0).getWrite();
+    long testTotal2 = topDatasetsResults.get(1).getRead() + topDatasetsResults.get(1).getWrite();
+    Assert.assertEquals(true, testTotal1 > testTotal2);
+
+    List<TopProgramsResult> topProgramsResults = getTopNPrograms();
+    Assert.assertEquals(5, topProgramsResults.size());
+    Assert.assertEquals(true, topProgramsResults.get(0).getValue() > topProgramsResults.get(1).getValue());
+
+    List<TopApplicationsResult> topApplicationsResults = getTopNApplication();
+    Assert.assertEquals(4, topApplicationsResults.size());
+    Assert.assertEquals(true, topApplicationsResults.get(0).getValue() > topApplicationsResults.get(1).getValue());
+
+    Map<String, Long> timeSinceResult = getTimeSince();
+    Assert.assertEquals(2, timeSinceResult.size());
+
+    AuditHistogramResult auditGlobalHistogramResult = getGlobalAuditLogHistogram();
+    Collection<TimeValue> globalValueResults = auditGlobalHistogramResult.getResults();
+    int gtotal = 0;
+    for (TimeValue t: globalValueResults) {
+      gtotal += t.getValue();
+    }
+    Assert.assertEquals(17, gtotal);
+
+    AuditHistogramResult auditSpecificHistogramResult = getSpecificAuditLogHistogram();
+    Collection<TimeValue> SpecificValueResults = auditSpecificHistogramResult.getResults();
+    int stotal = 0;
+    for (TimeValue t: SpecificValueResults) {
+      stotal += t.getValue();
+    }
+    Assert.assertEquals(5, stotal);
+
 
     promoteTags(TEST_JSON_TAGS);
 
     TagsResult tagsResult = getPreferredTags();
-    Assert.assertEquals(3, tagsResult.getPreferred());
+    Assert.assertEquals(3, tagsResult.getPreferredSize());
 
 
     demoteTags(DEMOTE_TAGS);
     TagsResult tagsAfterDemote = getPreferredTags();
-    Assert.assertEquals(2, tagsAfterDemote.getPreferred());
+    Assert.assertEquals(2, tagsAfterDemote.getPreferredSize());
 
     demoteTags(DELETE_TAGS);
     TagsResult tagsAfterDelete = getPreferredTags();
-    Assert.assertEquals(1, tagsAfterDelete.getPreferred());
+    Assert.assertEquals(1, tagsAfterDelete.getPreferredSize());
 
     ValidateTagsResult tagsAfterValidate = validateTags(TEST_JSON_TAGS);
     Assert.assertEquals(3, tagsAfterValidate.getValid());
     Assert.assertEquals(1, tagsAfterValidate.getInvalid());
 
+    Set<String> tagSet = generateStringList(MAXTAGLENGTH, CHARACTERS, TAGNUM);
+    addEntityTags(tagSet, "dataset", "_auditTagsTable");
+    TagsResult dataSetUserTags = getEntityTags("dataset", "_auditTagsTable");
+    Assert.assertEquals(tagSet.size(), dataSetUserTags.getUserSize());
+    deleteEntityTags(tagSet, "dataset", "_auditTagsTable");
+    Assert.assertEquals(tagSet.size(), dataSetUserTags.getUserSize());
 
+    TrackerMeterResult truthMeter = getTruthMeter();
+    Assert.assertEquals(3, truthMeter.getDatasets().size());
+    Assert.assertEquals(1, truthMeter.getStreams().size());
 
-    List<TopDatasetsResult> topDatasetsResults = getTopNDatasets();
-    Assert.assertEquals(4, topDatasetsResults.size());
+    TrackerMeterResult timeRank = getTimeRank();
+    Assert.assertEquals(timeRank.getDatasets().get("ds8"), timeRank.getDatasets().get("ds9"));
 
-    List<TopProgramsResult> topProgramsResults = getTopNPrograms();
-    Assert.assertEquals(5, topProgramsResults.size());
-
-    List<TopApplicationsResult> topApplicationsResults = getTopNApplication();
-    Assert.assertEquals(4, topApplicationsResults.size());
-
-    Map<String, Long> timeSinceResult = getTimeSince();
-    Assert.assertEquals(2, timeSinceResult.size());
-
-    AuditHistogramResult auditHistogramResult = getAuditLogHistogram();
-    Collection<TimeValue> valueResults = auditHistogramResult.getResults();
-    int total = 0;
-    for (TimeValue t: valueResults) {
-      total += t.getValue();
+    TrackerMeterResult invalidName = getInvalidName();
+    for (Map.Entry<String, Integer> entry : invalidName.getDatasets().entrySet()) {
+      Assert.assertEquals(0, (int) entry.getValue());
     }
-    Assert.assertEquals(14, total);
+    for (Map.Entry<String, Integer> entry : invalidName.getStreams().entrySet()) {
+      Assert.assertEquals(0, (int) entry.getValue());
+    }
 
-    initializeTruthMeterInput();
-    TrackerMeterResult trackerMeterResult = getTrackerMeter(testTruthMeter);
-    Assert.assertEquals(3, trackerMeterResult.getDatasets().size());
-    Assert.assertEquals(1, trackerMeterResult.getStreams().size());
-  }
-
-
-  private void initializeTruthMeterInput() {
-    List<String> datasets = new LinkedList<>();
-    List<String> streams = new LinkedList<>();
-    datasets.add("ds1");
-    datasets.add("ds6");
-    datasets.add("ds3");
-    streams.add("strm123");
-    testTruthMeter = GSON.toJson(new TrackerMeterRequest(datasets, streams));
-  }
-
-  private List<AuditMessage> generateTestData() {
-    List<AuditMessage> testData = new ArrayList<>();
-    testData.add(new AuditMessage(1456956659461L,
-                                  NamespaceId.DEFAULT.stream("stream1"),
-                                  "user1",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program_run:ns1.app2.flow.flow1.run1"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659469L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
-                                  "user1",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("system_service:explore"))
-                 )
-    );
-    String metadataPayload = "{ \"previous\": { \"USER\": { \"properties\": { \"uk\": \"uv\", \"uk1\": \"uv2\" }, " +
-      "\"tags\": [ \"ut1\", \"ut2\" ] }, \"SYSTEM\": { \"properties\": { \"sk\": \"sv\" }, \"tags\": [] } }, " +
-      "\"additions\": { \"SYSTEM\": { \"properties\": { \"sk\": \"sv\" }, \"tags\": [ \"t1\", \"t2\" ] } }, " +
-      "\"deletions\": { \"USER\": { \"properties\": { \"uk\": \"uv\" }, \"tags\": [ \"ut1\" ] } } }";
-    MetadataPayload payload = GSON.fromJson(metadataPayload, MetadataPayload.class);
-    testData.add(new AuditMessage(1456956659470L,
-                                  EntityId.fromString("application:default.app1"),
-                                  "user1",
-                                  AuditType.METADATA_CHANGE,
-                                  payload)
-    );
-    testData.add(new AuditMessage(1456956659471L,
-                                  EntityId.fromString("dataset:default.ds1"),
-                                  "user1",
-                                  AuditType.CREATE,
-                                  AuditPayload.EMPTY_PAYLOAD));
-    testData.add(new AuditMessage(1456956659472L,
-                                  EntityId.fromString("dataset:default.ds1"),
-                                  "user1",
-                                  AuditType.CREATE,
-                                  AuditPayload.EMPTY_PAYLOAD));
-    testData.add(new AuditMessage(1456956659473L,
-                                  EntityId.fromString("dataset:default.ds6"),
-                                  "user1",
-                                  AuditType.CREATE,
-                                  AuditPayload.EMPTY_PAYLOAD));
-    testData.add(new AuditMessage(1456956659468L,
-                                  NamespaceId.DEFAULT.stream("strm123"),
-                                  "user1",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program_run:ns1.app1.flow.flow1.run1"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659460L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("system_service:explore"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659502L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("system_service:explore"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659500L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("system_service:explore"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659504L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.UNKNOWN,
-                                                    EntityId.fromString("system_service:explore"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659505L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program1"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659506L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program:ns1.a.SERVICE.program2"))
-                 )
-    );
-    testData.add(new AuditMessage(1456956659507L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
-                                  "user4",
-                                  AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program2"))
-                 )
-    );
-    return testData;
   }
 }

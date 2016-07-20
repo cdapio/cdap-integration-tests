@@ -22,17 +22,18 @@ import co.cask.cdap.api.dataset.DatasetProperties;
 
 import co.cask.tracker.TrackerApp;
 import co.cask.tracker.TrackerService;
+import co.cask.tracker.config.TrackerAppConfig;
 import co.cask.tracker.entity.AuditLogTable;
 import co.cask.tracker.entity.AuditMetricsCube;
 import co.cask.tracker.entity.AuditTagsTable;
-import co.cask.tracker.entity.EntityLatestTimestampTable;
+import co.cask.tracker.entity.LatestEntityTable;
 
 
 import java.util.concurrent.TimeUnit;
 /**
  * temp app for test
  */
-public class TestTrackerApp extends AbstractApplication {
+public class TestTrackerApp extends AbstractApplication<TrackerAppConfig> {
   @Override
   public void configure() {
     setName("TestTrackerApp");
@@ -53,23 +54,9 @@ public class TestTrackerApp extends AbstractApplication {
                     .add("dataset.cube.aggregation.agg2.dimensions",
                          "namespace,entity_type,entity_name,audit_type,program_name,app_name,program_type")
                     .build());
-    createDataset(TrackerApp.ENTITY_LATEST_TIMESTAMP_DATASET_NAME, EntityLatestTimestampTable.class);
+    createDataset(TrackerApp.ENTITY_LATEST_TIMESTAMP_DATASET_NAME, LatestEntityTable.class);
     createDataset(TrackerApp.AUDIT_TAGS_DATASET_NAME, AuditTagsTable.class);
     addFlow(new StreamToAuditLogFlow());
-    addService(new TrackerService());
-    addService(new logService());
-
-    /**
-     *
-     *
-     * String hostport = request.getHeader("host");
-     if(hostport == null) {
-     return new MetadataClientHelper();
-     }
-
-     String hostname = hostport.split(":")[0];
-     Integer port = Integer.valueOf(Integer.parseInt(hostport.split(":")[1]));
-     this.metadataClient = new MetadataClientHelper(hostname, port);
-     */
+    addService(new TrackerService(getConfig()));
   }
 }
