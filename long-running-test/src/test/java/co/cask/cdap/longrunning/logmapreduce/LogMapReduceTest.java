@@ -32,6 +32,7 @@ import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,8 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Data Cleansing long running test
@@ -47,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState> {
   private static final Logger LOG = LoggerFactory.getLogger(LogMapReduceTest.class);
 
-  private static final int BATCH_SIZE = 10;
+  private static final int BATCH_SIZE = 1;
   private static final String LOG_MAPREDUCE_NAME = "LogMap";
   private static final Gson GSON = new Gson();
 
@@ -76,7 +79,25 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
-    LOG.info("GETTING START !!!!  {} END!!!!!!!", getLastRunLogs());
+    String logs = getLastRunLogs();
+    LOG.info("GETTING START !!!!  {} END!!!!!!!", logs);
+
+    LOG.info("last map job {}", state.getRunId());
+
+    Pattern p = Pattern.compile(new StringBuilder("mapper ").append(state.getRunId()).toString());
+    // the pattern to search for
+    if (logs == null) {
+      return;
+    }
+    Matcher m = p.matcher(logs);
+    Assert.assertTrue(m.find());
+    // now try to find at least one match
+    if (m.find()) {
+      System.out.println("Found a match");
+    } else {
+      System.out.println("Did not find a match");
+    }
+
 
 
     // For now, check total number of clean records and invalid records

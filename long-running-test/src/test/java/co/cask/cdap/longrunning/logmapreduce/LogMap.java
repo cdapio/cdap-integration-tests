@@ -26,8 +26,10 @@ import co.cask.cdap.api.mapreduce.MapReduceContext;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +54,7 @@ public class LogMap extends AbstractMapReduce {
     setName(NAME);
     setDescription("Job to read a chunk of stream events and write them to a FileSet");
     setMapperResources(new Resources(512));
+    setReducerResources(new Resources(512));
   }
 
   @Override
@@ -59,7 +62,8 @@ public class LogMap extends AbstractMapReduce {
 //    MapReduceContext context = getContext();
     Job job = context.getHadoopJob();
     job.setMapperClass(SCMaper.class);
-    job.setNumReduceTasks(0);
+    job.setReducerClass(SCR.class);
+    job.setNumReduceTasks(1);
     job.setMapOutputKeyClass(BytesWritable.class);
     job.setMapOutputValueClass(BytesWritable.class);
     // read 5 minutes of events from the stream, ending at the logical start time of this run
@@ -84,7 +88,27 @@ public class LogMap extends AbstractMapReduce {
       byte[] bytes = Bytes.toBytes(streamEvent.getTimestamp());
       context.write(bytes, bytes);
 //      LOG.info("Logger mapper  {}", Bytes.toString(streamEvent.getBody()));
-      LOG.info("{}   {}", runId, Bytes.toString(streamEvent.getBody()));
+      LOG.info("mapper {}   {}", runId, Bytes.toString(streamEvent.getBody()));
+    }
+  }
+
+  /**
+   * Reducer class to aggregate all purchases per user
+   */
+  public static class SCR extends
+    Reducer<byte[], byte[], NullWritable, NullWritable> {
+    @Override
+    public void reduce(byte[] timestamp, Iterable<byte[]> streamEvents, Context context)
+      throws IOException, InterruptedException {
+//      for (byte[] streamEvent : streamEvents) {
+//        GenericRecordBuilder recordBuilder = new GenericRecordBuilder(SCHEMA)
+//          .set("time", streamEvent.toString())
+//          .set("body", streamEvent.toString());
+//        GenericRecord record = recordBuilder.build();
+//        context.write(NullWritable.get(), NullWritable.get());
+//        LOG.info("reducer {} {}", runId);
+//      }
+      LOG.info("reducer {} {}", runId);
     }
   }
 }
