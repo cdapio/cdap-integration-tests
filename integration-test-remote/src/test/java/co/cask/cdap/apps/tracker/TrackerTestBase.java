@@ -85,12 +85,10 @@ public class TrackerTestBase extends AudiTestBase {
   private static Type applicationList = new TypeToken<List<TopApplicationsResult>>() { }.getType();
   private static Type timesinceMap = new TypeToken<Map<String, Long>>() { }.getRawType();
   private static ServiceManager trackerService;
-  private static ServiceManager logServiceManager;
   private static FlowManager trackerFlow;
   private static StreamManager trackerStream;
 
   private URL serviceURL;
-  private  URL logserviceURL;
 
   protected void enableTracker() throws InterruptedException, IOException, UnauthenticatedException {
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
@@ -191,7 +189,6 @@ public class TrackerTestBase extends AudiTestBase {
                                                          getClientConfig().getAccessToken());
     return GSON.fromJson(audiLogHisResponse.getResponseBodyAsString(), AuditHistogramResult.class);
   }
-
 
 
   protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException {
@@ -422,7 +419,4 @@ public class TrackerTestBase extends AudiTestBase {
                                   AuditPayload.EMPTY_PAYLOAD));
     return testData;
   }
-
-
-
 }

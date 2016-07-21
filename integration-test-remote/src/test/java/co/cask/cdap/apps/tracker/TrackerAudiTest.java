@@ -46,7 +46,7 @@ public class TrackerAudiTest extends TrackerTestBase {
   private static final String DEMOTE_TAGS = "[\"tag1\"]";
   private static final String DELETE_TAGS = "tag2";
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
-  private static final int MAXTAGLENGTH = 50;
+  private static final int MAXTAGLENGTH = 49;
   private static final int TAGNUM = 100;
 
 
