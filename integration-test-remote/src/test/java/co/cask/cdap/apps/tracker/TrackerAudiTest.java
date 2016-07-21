@@ -97,6 +97,11 @@ public class TrackerAudiTest extends TrackerTestBase {
     }
     Assert.assertEquals(5, stotal);
 
+    AuditHistogramResult auditHistogramResultHour = getResolutionBucket("now-6d");
+    Assert.assertEquals("HOUR", auditHistogramResultHour.getBucketInterval());
+
+    AuditHistogramResult auditHistogramResultDay = getResolutionBucket("now-8d");
+    Assert.assertEquals("DAY",auditHistogramResultDay.getBucketInterval());
 
     promoteTags(TEST_JSON_TAGS);
 
