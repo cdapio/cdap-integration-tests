@@ -69,9 +69,18 @@ public class LogMapReducer extends AbstractMapReduce {
     job.setMapOutputValueClass(Text.class);
     // read 5 minutes of events from the stream, ending at the logical start time of this run
     long logicalTime = context.getLogicalStartTime();
+
+    long eventReadStartTime = Long.valueOf(context.getRuntimeArguments().get("eventReadStartTime"));
+    LOG.info("START Time of mapper for STREAMS {}  , {}, {}",
+             (context.getRuntimeArguments().get("eventReadStartTime")),
+             eventReadStartTime - TimeUnit.SECONDS.toMillis(1), logicalTime);
+//    context.addInput(Input.ofStream("events", logicalStartTime - TimeUnit.MINUTES.toMillis(1), logicalStartTime));
+//    StreamBatchReadable.useStreamInput(context, LogMapReduceApp.EVENTS_STREAM,
+//
+
 //    context.addInput(Input.ofStream("events", logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime));
     StreamBatchReadable.useStreamInput(context, LogMapReduceApp.EVENTS_STREAM,
-                                       logicalTime - TimeUnit.MINUTES.toMillis(1), logicalTime);
+                                       eventReadStartTime - TimeUnit.SECONDS.toMillis(1), logicalTime);
 
     runId = context.getRunId().getId();
     context.addOutput(Output.ofDataset("converted", dsArguments));

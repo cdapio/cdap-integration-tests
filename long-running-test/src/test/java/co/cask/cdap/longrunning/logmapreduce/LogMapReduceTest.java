@@ -28,6 +28,7 @@ import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -38,6 +39,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -115,7 +117,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   public LogMapReduceTestState runOperations(LogMapReduceTestState state) throws Exception {
     StreamClient streamClient = getStreamClient();
 //    Id.Stream streamId = Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM);
-
+    long startStream = System.currentTimeMillis();
     LOG.info("streamingfor  {} numRun", state.getNumRuns());
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
@@ -126,12 +128,15 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
 
-    LOG.info("Starting MapReducer");
+    LOG.info("!!!!!!!  Starting MapReducer, START STREAM AT  {}", startStream);
 
     // run the mapreduce
     final long startTime = System.currentTimeMillis() + 1;
-    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMapReducer")
-      .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
+    Map<String, String> args = Maps.newHashMap();
+    args.put("eventReadStartTime", String.valueOf(startStream));
+    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMapReducer");
+    mapReduceManager.setRuntimeArgs(args);
+    mapReduceManager.start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
     return new LogMapReduceTestState(state.getNumRuns() + 1);
