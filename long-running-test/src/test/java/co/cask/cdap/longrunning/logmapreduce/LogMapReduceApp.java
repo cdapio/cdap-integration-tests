@@ -21,8 +21,8 @@ import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 
 /**
- * An application that illustrates
- * periodic stream conversion.
+ * An application that runs
+ * mapReduce job.
  */
 public class LogMapReduceApp extends AbstractApplication {
 
