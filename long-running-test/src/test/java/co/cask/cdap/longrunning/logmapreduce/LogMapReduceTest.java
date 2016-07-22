@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +50,8 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   private static final int BATCH_SIZE = 10;
   private static final String LOG_MAPREDUCE_NAME = "LogMapReducer";
+  private List<RunRecord> runRecords = new ArrayList<>();
+  private int logFrequency = 10;
 
   @Override
   public void deploy() throws Exception {
@@ -76,16 +79,15 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
     String logs = getLastRunLogs();
-    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
-    LOG.info("GETTING START !!!!  {} END history !!!!!!!", logs);
+    LOG.info("GETTING START !!!!  {} END!!!!!!!", logs);
     if (logs == null) {
       return;
     }
     RunRecord runId = null;
-    if (runRecords.size() < 10) {
+    if (runRecords.size() < logFrequency) {
       runId = runRecords.get(0);
     } else {
-      runId = runRecords.get(9);
+      runId = runRecords.get(logFrequency - 1);
     }
     LOG.info("!!!!! VERIFY 10th map job {}, and  {} list size", runId.toString());
 
@@ -157,17 +159,17 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   public String getLastRunLogs() throws Exception {
 
     //each 10th  run is//
-    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
+    runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
     RunRecord runRecord;
     if (runRecords.size() == 0) {
       return null;
     }
-    if (runRecords.size() < 10) {
+    if (runRecords.size() < logFrequency) {
       runRecord = runRecords.get(0);
 //      return null;
     } else {
-      runRecord = runRecords.get(9);
+      runRecord = runRecords.get(logFrequency - 1);
     }
 //    LOG.info("RUN RECORDS NOT NULL {}", runRecords);
 //    LOG.info("RUN RECORDS NOT NULL {}", runRecord);
