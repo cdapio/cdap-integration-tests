@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -81,13 +82,15 @@ public class LogMapReducer extends AbstractMapReduce {
    */
   public static class SCMaper extends
     Mapper<LongWritable, StreamEvent, Text, Text> {
+    private static final Random RANDOM = new Random(System.currentTimeMillis());
 
     @Override
     public void map(LongWritable timestamp, StreamEvent streamEvent, Context context)
       throws IOException, InterruptedException {
       context.write(new Text(Bytes.toString(streamEvent.getBody())),
                     new Text(String.valueOf(streamEvent.getTimestamp())));
-      LOG.info("mapper {}   {}", runId, Bytes.toString(streamEvent.getBody()));
+      LOG.info("mapper runid= {} event={} eventTime={} id={}", runId, Bytes.toString(streamEvent.getBody()),
+               streamEvent.getTimestamp(), RANDOM.nextInt());
     }
   }
 

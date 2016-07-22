@@ -81,7 +81,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
     LOG.info("last map job {}", state.getRunId());
 
-    Pattern mapper = Pattern.compile(new StringBuilder("mapper ").append(state.getRunId()).toString());
+    Pattern mapper = Pattern.compile(new StringBuilder("mapper runid= ").append(state.getRunId()).toString());
     Pattern reducer = Pattern.compile(new StringBuilder("reducer ").append(state.getRunId()).toString());
 
     if (logs == null) {
@@ -154,6 +154,8 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   }
 
   public String getLastRunLogs() throws Exception {
+
+    //each 10th  run is//
     List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
     if (runRecords.size() != 0) {
@@ -163,7 +165,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
                                           ProgramType.MAPREDUCE, LogMapReducer.NAME);
 
-      String path = String.format("apps/%s/%s/%s/runs/%s/logs", program.getApplicationId(),
+      String path = String.format("apps/%s/%s/%s/runs/%s/logs?format=json", program.getApplicationId(),
                                   program.getType().getCategoryName(), program.getId(), runRecord.getPid());
       URL url = getClientConfig().resolveNamespacedURLV3(program.getNamespace(), path);
       HttpResponse response = getRestClient()
