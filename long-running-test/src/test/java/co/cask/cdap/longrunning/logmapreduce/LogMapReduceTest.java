@@ -98,14 +98,17 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
     Matcher mapperMatcher = mapper.matcher(logs);
     Matcher reducerMatcher = reducer.matcher(logs);
-    boolean mapperMatched = mapperMatcher.find();
-    boolean reducerMatched = reducerMatcher.find();
-    Assert.assertTrue(mapperMatched && reducerMatched);
-    // now try to find at least one match
-    if (mapperMatched && reducerMatched) {
-      System.out.println("Found a match");
-    } else {
-      System.out.println("Did not find a match");
+
+    for (int i = 0; i < logFrequency; i++) {
+      boolean mapperMatched = mapperMatcher.find();
+      boolean reducerMatched = reducerMatcher.find();
+      Assert.assertTrue(mapperMatched && reducerMatched);
+      // now try to find at least one match
+      if (mapperMatched && reducerMatched) {
+        System.out.println("Found a match");
+      } else {
+        System.out.println("Did not find a match");
+      }
     }
   }
 
