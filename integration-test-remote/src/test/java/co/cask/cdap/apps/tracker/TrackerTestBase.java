@@ -194,7 +194,7 @@ public class TrackerTestBase extends AudiTestBase {
 
 
   protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException {
-    URL urlAuditLog = new URL (serviceURL, "auditlog/stream/stream1");
+    URL urlAuditLog = new URL (serviceURL, "v1/auditlog/stream/stream1");
     HttpResponse auditLogResponse = restClient.execute(HttpRequest.get(urlAuditLog)
                                                          .build(), getClientConfig().getAccessToken());
     return GSON.fromJson(auditLogResponse.getResponseBodyAsString(), AuditLogResponse.class);
@@ -431,7 +431,6 @@ public class TrackerTestBase extends AudiTestBase {
                                   AuditPayload.EMPTY_PAYLOAD));
     return testData;
   }
-
 
 }
 

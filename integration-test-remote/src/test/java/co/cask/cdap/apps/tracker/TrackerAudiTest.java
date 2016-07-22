@@ -73,6 +73,8 @@ public class TrackerAudiTest extends TrackerTestBase {
     List<TopProgramsResult> topProgramsResults = getTopNPrograms();
     Assert.assertEquals(5, topProgramsResults.size());
     Assert.assertEquals(true, topProgramsResults.get(0).getValue() > topProgramsResults.get(1).getValue());
+    Assert.assertEquals("service", topProgramsResults.get(0).getProgramType());
+    Assert.assertEquals("b", topProgramsResults.get(0).getApplication());
 
     List<TopApplicationsResult> topApplicationsResults = getTopNApplication();
     Assert.assertEquals(4, topApplicationsResults.size());
@@ -101,7 +103,7 @@ public class TrackerAudiTest extends TrackerTestBase {
     Assert.assertEquals("HOUR", auditHistogramResultHour.getBucketInterval());
 
     AuditHistogramResult auditHistogramResultDay = getResolutionBucket("now-8d");
-    Assert.assertEquals("DAY",auditHistogramResultDay.getBucketInterval());
+    Assert.assertEquals("DAY", auditHistogramResultDay.getBucketInterval());
 
     promoteTags(TEST_JSON_TAGS);
 
