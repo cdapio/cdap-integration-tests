@@ -79,6 +79,7 @@ public class TrackerTestBase extends AudiTestBase {
     .registerTypeAdapter(AuditMessage.class, new AuditMessageTypeAdapter())
     .registerTypeAdapter(EntityId.class, new EntityIdTypeAdapter())
     .create();
+  private static final int SEED = 0;
 
   RESTClient restClient = getRestClient();
   private static Type datasetList = new TypeToken<List<TopDatasetsResult>>() { }.getType();
@@ -278,10 +279,10 @@ public class TrackerTestBase extends AudiTestBase {
                                                  .build(), getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
-  
+
 
   protected Set<String> generateStringList(int maxStringLength, String characters, int stringNum) {
-    Random rng = new Random();
+    Random rng = new Random(SEED);
     Set<String> set = new HashSet<>();
     for (int i = 0; i < stringNum; i++) {
       set.add(generateString(rng, characters, maxStringLength));
