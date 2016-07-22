@@ -23,42 +23,20 @@ import com.google.common.base.Objects;
  * State for LogMapReduceTest
  */
 public class LogMapReduceTestState implements TestState {
-  private final long startTS;
-  private final long stopTS;
   private int numRuns;
-  private  String runId;
 
-  public LogMapReduceTestState(String runId, long startTS, long stopTS, int numBatches) {
-    this.runId = runId;
-    this.numRuns = numBatches;
-    this.startTS = startTS;
-    this.stopTS = stopTS;
+  public LogMapReduceTestState(int numRuns) {
+    this.numRuns = numRuns;
   }
 
-  public long getStartTS () {
-    return startTS;
-  }
-
-  public long getStopTS () {
-    return stopTS;
-  }
-
-  public String getRunId() {
-    return runId;
-  }
-
-  public int getNumBatches() {
+  public int getNumRuns() {
     return numRuns;
   }
-
 
   @Override
   public String toString() {
     return Objects.toStringHelper(this)
-      .add("runId", runId)
-      .add("numBatches", numRuns)
-      .add("startTs", startTS)
-      .add("stopTs", stopTS)
+      .add("numRuns", numRuns)
       .toString();
   }
 }

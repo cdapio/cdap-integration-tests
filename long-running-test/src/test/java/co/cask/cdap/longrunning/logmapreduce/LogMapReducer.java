@@ -89,7 +89,7 @@ public class LogMapReducer extends AbstractMapReduce {
       throws IOException, InterruptedException {
       context.write(new Text(Bytes.toString(streamEvent.getBody())),
                     new Text(String.valueOf(streamEvent.getTimestamp())));
-      LOG.info("mapper runid= {} event={} eventTime={} id={}", runId, Bytes.toString(streamEvent.getBody()),
+      LOG.info("CURRENT mapper runid= {} event={} eventTime={} id={}", runId, Bytes.toString(streamEvent.getBody()),
                streamEvent.getTimestamp(), RANDOM.nextInt());
     }
   }
@@ -102,7 +102,7 @@ public class LogMapReducer extends AbstractMapReduce {
     @Override
     public void reduce(Text timestamp, Iterable<Text> streamEvents, Context context)
       throws IOException, InterruptedException {
-      LOG.info("reducer {} {}", runId);
+      LOG.info("CURRENT reducer {} {}", runId);
     }
   }
 }

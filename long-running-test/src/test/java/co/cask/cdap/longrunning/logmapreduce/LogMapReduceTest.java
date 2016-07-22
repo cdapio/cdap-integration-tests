@@ -16,7 +16,6 @@
 
 package co.cask.cdap.longrunning.logmapreduce;
 
-import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.ProgramNotFoundException;
 import co.cask.cdap.proto.Id;
@@ -48,7 +47,7 @@ import java.util.regex.Pattern;
 public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState> {
   private static final Logger LOG = LoggerFactory.getLogger(LogMapReduceTest.class);
 
-  private static final int BATCH_SIZE = 1;
+  private static final int BATCH_SIZE = 10;
   private static final String LOG_MAPREDUCE_NAME = "LogMapReducer";
 
   @Override
@@ -66,7 +65,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 
   @Override
   public LogMapReduceTestState getInitialState() {
-    return new LogMapReduceTestState("0", 0, 0, 0);
+    return new LogMapReduceTestState(0);
   }
 
   @Override
@@ -77,16 +76,22 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
     String logs = getLastRunLogs();
-    LOG.info("GETTING START !!!!  {} END!!!!!!!", logs);
-
-    LOG.info("last map job {}", state.getRunId());
-
-    Pattern mapper = Pattern.compile(new StringBuilder("mapper runid= ").append(state.getRunId()).toString());
-    Pattern reducer = Pattern.compile(new StringBuilder("reducer ").append(state.getRunId()).toString());
-
+    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
+    LOG.info("GETTING START !!!!  {} END history !!!!!!!", logs);
     if (logs == null) {
       return;
     }
+    RunRecord runId = null;
+    if (runRecords.size() < 10) {
+      runId = runRecords.get(0);
+    } else {
+      runId = runRecords.get(9);
+    }
+    LOG.info("!!!!! VERIFY 10th map job {}, and  {} list size", runId.toString());
+
+    Pattern mapper = Pattern.compile("mapper runid= ".concat(runId.getPid()));
+    Pattern reducer = Pattern.compile("reducer ".concat(runId.getPid()));
+
     Matcher mapperMatcher = mapper.matcher(logs);
     Matcher reducerMatcher = reducer.matcher(logs);
     boolean mapperMatched = mapperMatcher.find();
@@ -107,11 +112,14 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   @Override
   public LogMapReduceTestState runOperations(LogMapReduceTestState state) throws Exception {
     StreamClient streamClient = getStreamClient();
-    LOG.info("Writing {} events in one batch", state.getRunId());
+//    Id.Stream streamId = Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM);
+
+    LOG.info("streamingfor  {} numRun", state.getNumRuns());
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
       writer.write(String.format("%010d", i));
       writer.write("\n");
+//      streamClient.sendEvent(streamId, String.format("%010d", i));
     }
     streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), LogMapReduceApp.EVENTS_STREAM), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
@@ -124,10 +132,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       .start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
 
-    List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
-    RunRecord runRecord = runRecords.get(0);
-    return new LogMapReduceTestState(runRecord.getPid(), runRecord.getStartTs(),
-                                     runRecord.getStopTs(), state.getNumBatches() + BATCH_SIZE);
+    return new LogMapReduceTestState(state.getNumRuns() + 1);
   }
 
 //  private void createPartition(URL serviceUrl, DataCleansingTestState state)
@@ -149,34 +154,36 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
 //    }
 //  }
 
-  private long readLong(byte[] bytes) {
-    return bytes == null ? 0 : Bytes.toLong(bytes);
-  }
-
   public String getLastRunLogs() throws Exception {
 
     //each 10th  run is//
     List<RunRecord> runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
     LOG.info("RUN RECORDS {}", Arrays.toString(runRecords.toArray()));
-    if (runRecords.size() != 0) {
-      LOG.info("RUN RECORDS NOT NULL {}", runRecords);
-      RunRecord runRecord = runRecords.get(0);
-      LOG.info("RUN RECORDS NOT NULL {}", runRecord);
-      Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
+    RunRecord runRecord;
+    if (runRecords.size() == 0) {
+      return null;
+    }
+    if (runRecords.size() < 10) {
+      runRecord = runRecords.get(0);
+//      return null;
+    } else {
+      runRecord = runRecords.get(9);
+    }
+//    LOG.info("RUN RECORDS NOT NULL {}", runRecords);
+//    LOG.info("RUN RECORDS NOT NULL {}", runRecord);
+    Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
                                           ProgramType.MAPREDUCE, LogMapReducer.NAME);
 
-      String path = String.format("apps/%s/%s/%s/runs/%s/logs?format=json", program.getApplicationId(),
-                                  program.getType().getCategoryName(), program.getId(), runRecord.getPid());
-      URL url = getClientConfig().resolveNamespacedURLV3(program.getNamespace(), path);
-      HttpResponse response = getRestClient()
-        .execute(HttpMethod.GET, url, getClientConfig().getAccessToken(), new int[0]);
-      LOG.info("RESPONSE {}", response);
-      if (response.getResponseCode() == 404) {
-        throw new ProgramNotFoundException(program);
-      } else {
-        return new String(response.getResponseBody(), Charsets.UTF_8);
-      }
+    String path = String.format("apps/%s/%s/%s/runs/%s/logs?format=json", program.getApplicationId(),
+                                program.getType().getCategoryName(), program.getId(), runRecord.getPid());
+    URL url = getClientConfig().resolveNamespacedURLV3(program.getNamespace(), path);
+    HttpResponse response = getRestClient()
+      .execute(HttpMethod.GET, url, getClientConfig().getAccessToken(), new int[0]);
+    LOG.info("!!!!!!!  RESPONSE {}", response);
+    if (response.getResponseCode() == 404) {
+      throw new ProgramNotFoundException(program);
+    } else {
+      return new String(response.getResponseBody(), Charsets.UTF_8);
     }
-    return null;
   }
 }
