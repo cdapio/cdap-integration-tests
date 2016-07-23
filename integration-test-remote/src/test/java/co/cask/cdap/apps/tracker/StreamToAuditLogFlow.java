@@ -19,18 +19,18 @@ package co.cask.cdap.apps.tracker;
 import co.cask.cdap.api.flow.AbstractFlow;
 import co.cask.tracker.AuditLogPublisher;
 
+
 /**
  * This class is used to create a test flow connecting the Generator to the AuditLog Flowlet.
 
  */
 public class StreamToAuditLogFlow extends AbstractFlow {
   public static final String FLOW_NAME = "StreamToAuditLogFlow";
-
   @Override
   public void configure() {
     setName(FLOW_NAME);
     setDescription("A temp flow to test the audit log");
-    addFlowlet("auditLogPublisher", new AuditLogPublisher());
-    connectStream("testStream", "auditLogPublisher");
+    addFlowlet(TestTrackerApp.FLOWLET_NAME, new AuditLogPublisher());
+    connectStream(TestTrackerApp.STREAM_NAME, TestTrackerApp.FLOWLET_NAME);
   }
 }

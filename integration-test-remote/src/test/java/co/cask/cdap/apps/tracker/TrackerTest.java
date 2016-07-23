@@ -41,12 +41,12 @@ import java.util.Set;
 /**
  * Test various methods of preferred Tags.
  */
-public class TrackerAudiTest extends TrackerTestBase {
+public class TrackerTest extends TrackerTestBase {
   private static final String TEST_JSON_TAGS = "[\"tag1\",\"tag2\",\"tag3\",\"ta*4\"]";
   private static final String DEMOTE_TAGS = "[\"tag1\"]";
   private static final String DELETE_TAGS = "tag2";
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
-  private static final int MAXTAGLENGTH = 49;
+  private static final int MAX_TAG_LENGTH = 50;
   private static final int TAGNUM = 100;
 
 
@@ -54,10 +54,8 @@ public class TrackerAudiTest extends TrackerTestBase {
   public void test() throws Exception {
     enableTracker();
 
-
     List<AuditMessage> testData = generateTestData();
     sendTestAuditMessages(testData);
-
 
     waitforProcessed(testData.size());
 
@@ -110,7 +108,6 @@ public class TrackerAudiTest extends TrackerTestBase {
     TagsResult tagsResult = getPreferredTags();
     Assert.assertEquals(3, tagsResult.getPreferredSize());
 
-
     demoteTags(DEMOTE_TAGS);
     TagsResult tagsAfterDemote = getPreferredTags();
     Assert.assertEquals(2, tagsAfterDemote.getPreferredSize());
@@ -123,7 +120,7 @@ public class TrackerAudiTest extends TrackerTestBase {
     Assert.assertEquals(3, tagsAfterValidate.getValid());
     Assert.assertEquals(1, tagsAfterValidate.getInvalid());
 
-    Set<String> tagSet = generateStringList(MAXTAGLENGTH, CHARACTERS, TAGNUM);
+    Set<String> tagSet = generateStringList(MAX_TAG_LENGTH, CHARACTERS, TAGNUM);
     addEntityTags(tagSet, "dataset", "_auditTagsTable");
     TagsResult dataSetUserTags = getEntityTags("dataset", "_auditTagsTable");
     Assert.assertEquals(tagSet.size(), dataSetUserTags.getUserSize());

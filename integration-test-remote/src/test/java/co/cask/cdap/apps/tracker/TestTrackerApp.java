@@ -34,14 +34,15 @@ import java.util.concurrent.TimeUnit;
  * temp app for test
  */
 public class TestTrackerApp extends AbstractApplication<TrackerAppConfig> {
+  public static final String STREAM_NAME = "testStream";
+  public static final String FLOWLET_NAME = "auditLogPublisher";
   @Override
   public void configure() {
     setName("TestTrackerApp");
     setDescription("A temp app to test the Tracker App");
-    addStream("testStream");
+    addStream(STREAM_NAME);
     createDataset(TrackerApp.AUDIT_LOG_DATASET_NAME, AuditLogTable.class);
-    String resolutions = String.format("%s,%s,%s,%s",
-                                       TimeUnit.MINUTES.toSeconds(1L),
+    String resolutions = String.format("%s,%s,%s",
                                        TimeUnit.HOURS.toSeconds(1L),
                                        TimeUnit.DAYS.toSeconds(1L),
                                        TimeUnit.DAYS.toSeconds(365L));
