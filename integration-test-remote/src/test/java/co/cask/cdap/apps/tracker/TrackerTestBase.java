@@ -80,7 +80,6 @@ public class TrackerTestBase extends AudiTestBase {
     .registerTypeAdapter(EntityId.class, new EntityIdTypeAdapter())
     .create();
   private static final int SEED = 0;
-
   RESTClient restClient = getRestClient();
   private static Type datasetList = new TypeToken<List<TopDatasetsResult>>() { }.getType();
   private static Type programList = new TypeToken<List<TopProgramsResult>>() { }.getType();
@@ -99,7 +98,6 @@ public class TrackerTestBase extends AudiTestBase {
                                                                 zookeeperQuorum,
                                                                 null, null, 0, "offsetDataset")));
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
-
     trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
@@ -184,14 +182,12 @@ public class TrackerTestBase extends AudiTestBase {
     return GSON.fromJson(audiLogHisResponse.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-
   protected AuditHistogramResult getSpecificAuditLogHistogram() throws IOException, UnauthenticatedException {
     URL urlAuditLogHistogram = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName=ds1");
     HttpResponse audiLogHisResponse = restClient.execute(HttpRequest.get(urlAuditLogHistogram).build(),
                                                          getClientConfig().getAccessToken());
     return GSON.fromJson(audiLogHisResponse.getResponseBodyAsString(), AuditHistogramResult.class);
   }
-
 
   protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException {
     URL urlAuditLog = new URL (serviceURL, "v1/auditlog/stream/stream1");
@@ -280,7 +276,6 @@ public class TrackerTestBase extends AudiTestBase {
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-
   protected Set<String> generateStringList(int maxStringLength, String characters, int stringNum) {
     Random rng = new Random(SEED);
     Set<String> set = new HashSet<>();
@@ -291,14 +286,13 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   private String generateString (Random rng, String characters, int maxLength) {
-    int length = rng.nextInt(maxLength) + 1;
+    int length = rng.nextInt(maxLength - 1) + 1;
     char[] text = new char[length];
     for (int i = 0; i < length; i++) {
       text[i] = characters.charAt(rng.nextInt(characters.length()));
     }
     return new String(text);
   }
-
 
   protected List<AuditMessage> generateTestData() {
     List<AuditMessage> testData = new ArrayList<>();
