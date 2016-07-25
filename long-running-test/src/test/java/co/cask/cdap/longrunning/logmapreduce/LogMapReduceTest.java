@@ -31,8 +31,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import org.junit.Assert;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
 import java.net.URL;
@@ -44,13 +42,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * MapReduce LOG testing long running test
+ * LogMapReduceTest runs mapreduce job and checks that all logs from mapreduce job are exist
+ * by checking logs from 10th last run.
  */
 public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState> {
-  private static final Logger LOG = LoggerFactory.getLogger(LogMapReduceTest.class);
 
   private static final int BATCH_SIZE = 10;
-  private static final String LOG_MAPREDUCE_NAME = "LogMapReducer";
+  private static final String LOG_MAPREDUCE_NAME = "LogMapReduce";
   private List<RunRecord> runRecords = new ArrayList<>();
   private int logFrequency = 10;
 
@@ -123,7 +121,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     final long startTime = System.currentTimeMillis() + 1;
     Map<String, String> args = Maps.newHashMap();
     args.put("eventReadStartTime", String.valueOf(startStream));
-    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMapReducer");
+    MapReduceManager mapReduceManager = getApplicationManager().getMapReduceManager("LogMapReduce");
     mapReduceManager.setRuntimeArgs(args);
     mapReduceManager.start(ImmutableMap.of("logical.start.time", Long.toString(startTime)));
     mapReduceManager.waitForFinish(1, TimeUnit.MINUTES);
@@ -134,7 +132,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   public String getLastRunLogs() throws Exception {
 
     //each 10th  run//
-    runRecords = getApplicationManager().getMapReduceManager(LogMapReducer.NAME).getHistory();
+    runRecords = getApplicationManager().getMapReduceManager(LogMapReduce.NAME).getHistory();
     RunRecord runRecord;
     if (runRecords.size() == 0) {
       return null;
@@ -145,7 +143,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       runRecord = runRecords.get(logFrequency - 1);
     }
     Id.Program program = new Id.Program(Id.Application.from(getLongRunningNamespace(), LogMapReduceApp.NAME),
-                                          ProgramType.MAPREDUCE, LogMapReducer.NAME);
+                                        ProgramType.MAPREDUCE, LogMapReduce.NAME);
 
     String path = String.format("apps/%s/%s/%s/runs/%s/logs?format=json", program.getApplicationId(),
                                 program.getType().getCategoryName(), program.getId(), runRecord.getPid());

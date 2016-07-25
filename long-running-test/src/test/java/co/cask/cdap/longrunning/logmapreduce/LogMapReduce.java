@@ -39,20 +39,20 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
- * MapReduce job that reads events from a stream over a given time interval and writes LOGS.
+ * MapReduce job that reads events from a stream over a given time interval and writes logs.
  *
  */
-public class LogMapReducer extends AbstractMapReduce {
+public class LogMapReduce extends AbstractMapReduce {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LogMapReducer.class);
-  protected static final String NAME = "LogMapReducer";
+  private static final Logger LOG = LoggerFactory.getLogger(LogMapReduce.class);
+  protected static final String NAME = "LogMapReduce";
   private static String runId;
   private final Map<String, String> dsArguments = Maps.newHashMap();
 
   @Override
   public void configure() {
     setName(NAME);
-    setDescription("Job to read a chunk of stream events and write them to a FileSet");
+    setDescription("Job to read a chunk of stream events");
     setMapperResources(new Resources(512));
     setReducerResources(new Resources(512));
   }
@@ -60,17 +60,14 @@ public class LogMapReducer extends AbstractMapReduce {
   @Override
   public void beforeSubmit(MapReduceContext context) throws Exception {
     Job job = context.getHadoopJob();
-    job.setMapperClass(SCMaper.class);
-    job.setReducerClass(SCR.class);
+    job.setMapperClass(LogMapper.class);
+    job.setReducerClass(LogReducer.class);
     job.setNumReduceTasks(1);
     job.setMapOutputKeyClass(Text.class);
     job.setMapOutputValueClass(Text.class);
 
     long logicalTime = context.getLogicalStartTime();
     long eventReadStartTime = Long.valueOf(context.getRuntimeArguments().get("eventReadStartTime"));
-    LOG.info("START Time of mapper for STREAMS {}  , {}, {}",
-             (context.getRuntimeArguments().get("eventReadStartTime")),
-             eventReadStartTime - TimeUnit.SECONDS.toMillis(1), logicalTime);
 
     StreamBatchReadable.useStreamInput(context, LogMapReduceApp.EVENTS_STREAM,
                                        eventReadStartTime - TimeUnit.SECONDS.toMillis(1), logicalTime);
@@ -80,9 +77,9 @@ public class LogMapReducer extends AbstractMapReduce {
   }
 
   /**
-   * Mapper that reads events from a stream and writes them out as Avro.
+   * Mapper that reads events from a stream and writes logs.
    */
-  public static class SCMaper extends
+  public static class LogMapper extends
     Mapper<LongWritable, StreamEvent, Text, Text> {
     private static final Random RANDOM = new Random(System.currentTimeMillis());
 
@@ -97,9 +94,9 @@ public class LogMapReducer extends AbstractMapReduce {
   }
 
   /**
-   * Reducer class to aggregate all purchases per user
+   * Reducer class.
    */
-  public static class SCR extends
+  public static class LogReducer extends
     Reducer<Text, Text, NullWritable, NullWritable> {
     @Override
     public void reduce(Text timestamp, Iterable<Text> streamEvents, Context context)

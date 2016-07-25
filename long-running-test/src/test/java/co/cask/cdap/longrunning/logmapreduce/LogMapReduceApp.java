@@ -21,8 +21,7 @@ import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 
 /**
- * An application that runs
- * mapReduce job.
+ * An application that runs mapReduce job.
  */
 public class LogMapReduceApp extends AbstractApplication {
 
@@ -32,7 +31,7 @@ public class LogMapReduceApp extends AbstractApplication {
   @Override
   public void configure() {
     addStream(new Stream(EVENTS_STREAM));
-    addMapReduce(new LogMapReducer());
+    addMapReduce(new LogMapReduce());
     createDataset("converted", KeyValueTable.class);
   }
 }
