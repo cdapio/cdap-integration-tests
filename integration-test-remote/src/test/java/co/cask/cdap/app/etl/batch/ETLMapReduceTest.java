@@ -44,6 +44,7 @@ import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -192,8 +193,8 @@ public class ETLMapReduceTest extends ETLTestBase {
     verifyResult("row1", resultList.get(0).getColumns());
   }
 
-  @Test
-  public void testDAGMultipleSchemas() throws Exception {
+  @Test(expected = IOException.class)
+  public void testDAGInvalidSchema() throws Exception {
 
     /*                                  |----- userRewardsSink (TPFS)
      *                                  |
@@ -286,26 +287,9 @@ public class ETLMapReduceTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "MultipleSchemaTest");
-    // deploy should not fail
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-
-    ingestPurchaseTestData(getTableDataset("input"));
-
-    final MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
-
-    ExploreExecutionResult result = retryQueryExecutionTillFinished(Id.Namespace.DEFAULT,
-                                                                    "select * from dataset_allRewards", 5);
-    List<QueryResult> resultList = Lists.newArrayList(result);
-    Assert.assertEquals(4, resultList.size());
-    Set<Rewards> rewards = new HashSet();
-    rewards.add(new Rewards("row1", 5));
-    rewards.add(new Rewards("row1", 10));
-    rewards.add(new Rewards("row2", 5));
-    rewards.add(new Rewards("row2", 10));
-    verifyRewardResults(resultList, rewards, "rewards");
+    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "TabToTab");
+    // deploy should fail
+    deployApplication(appId, appRequest);
   }
 
   @Test
