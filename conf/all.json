@@ -1,4 +1,17 @@
 {
+  "config": {
+    "hadoop": {
+      "hdfs_site": {
+        "dfs.namenode.delegation.token.renew-interval": "600000",
+        "dfs.namenode.delegation.token.max-lifetime": "600000"
+      }
+    },
+    "hbase": {
+      "hbase_site": {
+        "hbase.auth.key.update.interval": "600000"
+      }
+    }
+  },
   "provider-fields": {
     "zone_name": "us-east1-c"
   }
