@@ -103,6 +103,12 @@ public class TrackerTest extends TrackerTestBase {
     AuditHistogramResult auditHistogramResultDay = getResolutionBucket("now-8d");
     Assert.assertEquals("DAY", auditHistogramResultDay.getBucketInterval());
 
+    AuditHistogramResult datasetFilter = getDatasetFilter();
+    Assert.assertEquals(0, datasetFilter.getResults().size());
+
+    List<TopProgramsResult> programsFilter = getEntityFilter();
+    Assert.assertEquals(0, programsFilter.size());
+
     promoteTags(TEST_JSON_TAGS);
 
     TagsResult tagsResult = getPreferredTags();

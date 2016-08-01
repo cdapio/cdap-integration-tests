@@ -39,6 +39,7 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
+import co.cask.tracker.TrackerApp;
 import co.cask.tracker.TrackerService;
 import co.cask.tracker.config.AuditLogKafkaConfig;
 import co.cask.tracker.config.TrackerAppConfig;
@@ -240,6 +241,21 @@ public class TrackerTestBase extends AudiTestBase {
 
   }
 
+  protected AuditHistogramResult getDatasetFilter() throws IOException, UnauthenticatedException {
+    URL urlDatasetFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
+                                                                + TrackerApp.AUDIT_LOG_DATASET_NAME);
+    HttpResponse response = restClient.execute(HttpRequest.get(urlDatasetFilter).build(),
+                                                         getClientConfig().getAccessToken());
+    return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
+  }
+
+  protected List<TopProgramsResult> getEntityFilter() throws IOException, UnauthenticatedException {
+    URL urlEntityFilter = new URL(serviceURL, "v1/auditmetrics/top-entities/programs?entityName=dsx&entityType=dataset");
+    HttpResponse response = restClient.execute(HttpRequest.get(urlEntityFilter).build(),
+                                               getClientConfig().getAccessToken());
+    return GSON.fromJson(response.getResponseBodyAsString(), programList);
+  }
+
   protected void addEntityTags(Set<String> tagSet, String entityType, String entityName)
                                                                 throws IOException, UnauthenticatedException {
     String url = String.format("v1/tags/promote/%s/%s", entityType, entityName);
@@ -410,7 +426,7 @@ public class TrackerTestBase extends AudiTestBase {
                                                     EntityId.fromString("program:ns1.b.SERVICE.program2"))
                  )
     );
-    testData.add(new AuditMessage(1456956659507L,
+    testData.add(new AuditMessage(1456956659511L,
                                   NamespaceId.DEFAULT.dataset("ds9"),
                                   "user4",
                                   AuditType.ACCESS,
@@ -418,11 +434,29 @@ public class TrackerTestBase extends AudiTestBase {
                                                     EntityId.fromString("program:ns1.b.SERVICE.program2"))
                  )
     );
-    testData.add(new AuditMessage(1456956659471L,
+    testData.add(new AuditMessage(1456956659512L,
                                   EntityId.fromString("dataset:default.ds5"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
+    testData.add(new AuditMessage(1456956659513L,
+                                  NamespaceId.DEFAULT.dataset(TrackerApp.AUDIT_LOG_DATASET_NAME),
+                                  "user4",
+                                  AuditType.ACCESS,
+                                  new AccessPayload(AccessType.WRITE,
+                                                    EntityId.fromString("program:ns1.b.SERVICE.program1"))
+                 )
+    );
+    testData.add(new AuditMessage(1456956659516L,
+                                  NamespaceId.DEFAULT.dataset("dsx"),
+                                  "user4",
+                                  AuditType.ACCESS,
+                                  new AccessPayload(AccessType.WRITE,
+                                                    EntityId.fromString(String.format("program:ns1.%s.SERVICE.program1",
+                                                                                      TrackerApp.APP_NAME))
+                                  )
+                 )
+    );
     return testData;
   }
 
