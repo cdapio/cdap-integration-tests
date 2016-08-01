@@ -249,9 +249,18 @@ public class TrackerTestBase extends AudiTestBase {
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-  protected List<TopProgramsResult> getEntityFilter() throws IOException, UnauthenticatedException {
-    URL urlEntityFilter = new URL(serviceURL, "v1/auditmetrics/top-entities/programs?entityName=dsx&entityType=dataset");
-    HttpResponse response = restClient.execute(HttpRequest.get(urlEntityFilter).build(),
+  protected AuditHistogramResult getKafkaFilter() throws IOException, UnauthenticatedException {
+    URL urlKafkaFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
+                                                + AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET);
+    HttpResponse response = restClient.execute(HttpRequest.get(urlKafkaFilter).build(),
+                                               getClientConfig().getAccessToken());
+    return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
+  }
+
+  protected List<TopProgramsResult> getProgramFilter() throws IOException, UnauthenticatedException {
+    URL urlPorgramFilter = new URL(serviceURL,
+                                   "v1/auditmetrics/top-entities/programs?entityName=dsx&entityType=dataset");
+    HttpResponse response = restClient.execute(HttpRequest.get(urlPorgramFilter).build(),
                                                getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), programList);
   }
@@ -455,6 +464,14 @@ public class TrackerTestBase extends AudiTestBase {
                                                     EntityId.fromString(String.format("program:ns1.%s.SERVICE.program1",
                                                                                       TrackerApp.APP_NAME))
                                   )
+                 )
+    );
+    testData.add(new AuditMessage(1456956659513L,
+                                  NamespaceId.DEFAULT.dataset(AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET),
+                                  "user4",
+                                  AuditType.ACCESS,
+                                  new AccessPayload(AccessType.WRITE,
+                                                    EntityId.fromString("program:ns1.b.SERVICE.program1"))
                  )
     );
     return testData;

@@ -47,7 +47,7 @@ public class TrackerTest extends TrackerTestBase {
   private static final String DELETE_TAGS = "tag2";
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
   private static final int MAX_TAG_LENGTH = 50;
-  private static final int TAGNUM = 100;
+  private static final int TAGNUM = 10;
 
 
   @Test
@@ -106,7 +106,10 @@ public class TrackerTest extends TrackerTestBase {
     AuditHistogramResult datasetFilter = getDatasetFilter();
     Assert.assertEquals(0, datasetFilter.getResults().size());
 
-    List<TopProgramsResult> programsFilter = getEntityFilter();
+    AuditHistogramResult kafkaFilter = getKafkaFilter();
+    Assert.assertEquals(0, kafkaFilter.getResults().size());
+
+    List<TopProgramsResult> programsFilter = getProgramFilter();
     Assert.assertEquals(0, programsFilter.size());
 
     promoteTags(TEST_JSON_TAGS);
