@@ -47,7 +47,7 @@ public class TrackerTest extends TrackerTestBase {
   private static final String DELETE_TAGS = "tag2";
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
   private static final int MAX_TAG_LENGTH = 50;
-  private static final int TAGNUM = 10;
+  private static final int TAGS_TO_ADD_AND_DELETE = 100;
 
 
   @Test
@@ -66,17 +66,17 @@ public class TrackerTest extends TrackerTestBase {
     Assert.assertEquals(6, topDatasetsResults.size());
     long testTotal1 = topDatasetsResults.get(0).getRead() + topDatasetsResults.get(0).getWrite();
     long testTotal2 = topDatasetsResults.get(1).getRead() + topDatasetsResults.get(1).getWrite();
-    Assert.assertEquals(true, testTotal1 > testTotal2);
+    Assert.assertTrue(testTotal1 > testTotal2);
 
     List<TopProgramsResult> topProgramsResults = getTopNPrograms();
     Assert.assertEquals(5, topProgramsResults.size());
-    Assert.assertEquals(true, topProgramsResults.get(0).getValue() > topProgramsResults.get(1).getValue());
+    Assert.assertTrue(topProgramsResults.get(0).getValue() > topProgramsResults.get(1).getValue());
     Assert.assertEquals("service", topProgramsResults.get(0).getProgramType());
     Assert.assertEquals("b", topProgramsResults.get(0).getApplication());
 
     List<TopApplicationsResult> topApplicationsResults = getTopNApplication();
     Assert.assertEquals(4, topApplicationsResults.size());
-    Assert.assertEquals(true, topApplicationsResults.get(0).getValue() > topApplicationsResults.get(1).getValue());
+    Assert.assertTrue(topApplicationsResults.get(0).getValue() > topApplicationsResults.get(1).getValue());
 
     Map<String, Long> timeSinceResult = getTimeSince();
     Assert.assertEquals(2, timeSinceResult.size());
@@ -129,7 +129,7 @@ public class TrackerTest extends TrackerTestBase {
     Assert.assertEquals(3, tagsAfterValidate.getValid());
     Assert.assertEquals(1, tagsAfterValidate.getInvalid());
 
-    Set<String> tagSet = generateStringList(MAX_TAG_LENGTH, CHARACTERS, TAGNUM);
+    Set<String> tagSet = generateStringList(MAX_TAG_LENGTH, CHARACTERS, TAGS_TO_ADD_AND_DELETE);
     addEntityTags(tagSet, "dataset", "_auditTagsTable");
     TagsResult dataSetUserTags = getEntityTags("dataset", "_auditTagsTable");
     Assert.assertEquals(tagSet.size(), dataSetUserTags.getUserSize());

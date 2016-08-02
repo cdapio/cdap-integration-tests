@@ -96,8 +96,8 @@ public class TrackerTestBase extends AudiTestBase {
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
     ApplicationManager applicationManager = deployApplication(Id.Namespace.DEFAULT, TestTrackerApp.class,
                                                               new TrackerAppConfig(new AuditLogKafkaConfig(
-                                                                zookeeperQuorum,
-                                                                null, null, 0, "offsetDataset")));
+                                                              zookeeperQuorum,
+                                                              null, null, 0, "offsetDataset")));
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
     trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
@@ -172,14 +172,14 @@ public class TrackerTestBase extends AudiTestBase {
   protected Map<String, Long> getTimeSince() throws IOException, UnauthenticatedException {
     URL urlTimeSince = new URL(serviceURL, "v1/auditmetrics/time-since?entityType=dataset&entityName=ds1");
     HttpResponse timeSinceResponse = restClient.execute(HttpRequest.get(urlTimeSince).build(),
-                                  getClientConfig().getAccessToken());
+                                                        getClientConfig().getAccessToken());
     return GSON.fromJson(timeSinceResponse.getResponseBodyAsString(), timesinceMap);
   }
 
   protected AuditHistogramResult getGlobalAuditLogHistogram() throws IOException, UnauthenticatedException {
     URL urlAuditLogHistogram = new URL(serviceURL, "v1/auditmetrics/audit-histogram");
     HttpResponse audiLogHisResponse = restClient.execute(HttpRequest.get(urlAuditLogHistogram).build(),
-                                                          getClientConfig().getAccessToken());
+                                                         getClientConfig().getAccessToken());
     return GSON.fromJson(audiLogHisResponse.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
@@ -193,7 +193,7 @@ public class TrackerTestBase extends AudiTestBase {
   protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException {
     URL urlAuditLog = new URL (serviceURL, "v1/auditlog/stream/stream1");
     HttpResponse auditLogResponse = restClient.execute(HttpRequest.get(urlAuditLog)
-                                                         .build(), getClientConfig().getAccessToken());
+                                                       .build(), getClientConfig().getAccessToken());
     return GSON.fromJson(auditLogResponse.getResponseBodyAsString(), AuditLogResponse.class);
   }
 
@@ -234,8 +234,8 @@ public class TrackerTestBase extends AudiTestBase {
     throws IOException, UnauthenticatedException {
     URL urlTrakerMeter = new URL (serviceURL, "v1/tracker-meter");
     HttpResponse response = restClient.execute(HttpRequest.post(urlTrakerMeter).
-                                                    withBody(GSON.toJson(new TrackerMeterRequest(datasets, streams)))
-                                                         .build(), getClientConfig().getAccessToken());
+                                               withBody(GSON.toJson(new TrackerMeterRequest(datasets, streams)))
+                                               .build(), getClientConfig().getAccessToken());
 
     return GSON.fromJson(response.getResponseBodyAsString(), TrackerMeterResult.class);
 
@@ -243,15 +243,15 @@ public class TrackerTestBase extends AudiTestBase {
 
   protected AuditHistogramResult getDatasetFilter() throws IOException, UnauthenticatedException {
     URL urlDatasetFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
-                                                                + TrackerApp.AUDIT_LOG_DATASET_NAME);
+                                               + TrackerApp.AUDIT_LOG_DATASET_NAME);
     HttpResponse response = restClient.execute(HttpRequest.get(urlDatasetFilter).build(),
-                                                         getClientConfig().getAccessToken());
+                                               getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
   protected AuditHistogramResult getKafkaFilter() throws IOException, UnauthenticatedException {
     URL urlKafkaFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
-                                                + AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET);
+                                             + AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET);
     HttpResponse response = restClient.execute(HttpRequest.get(urlKafkaFilter).build(),
                                                getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
@@ -266,38 +266,38 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   protected void addEntityTags(Set<String> tagSet, String entityType, String entityName)
-                                                                throws IOException, UnauthenticatedException {
+                                                   throws IOException, UnauthenticatedException {
     String url = String.format("v1/tags/promote/%s/%s", entityType, entityName);
     URL urladdEntityTags = new URL (serviceURL, url);
     restClient.execute(HttpRequest.post(urladdEntityTags).withBody(GSON.toJson(tagSet))
-                                                 .build(), getClientConfig().getAccessToken());
+                                                         .build(), getClientConfig().getAccessToken());
   }
 
   protected void deleteEntityTags(Set<String> tagSet, String entityType, String entityName)
-                                                                throws IOException, UnauthenticatedException {
+                                                      throws IOException, UnauthenticatedException {
     for (String tag : tagSet) {
       String url = String.format("v1/tags/delete/%s/%s?tagname=%s", entityType, entityName, tag);
       URL urldeleteEntityTags = new URL (serviceURL, url);
       restClient.execute(HttpRequest.delete(urldeleteEntityTags)
-                           .build(), getClientConfig().getAccessToken());
+                                    .build(), getClientConfig().getAccessToken());
     }
   }
 
   protected TagsResult getEntityTags(String entityType, String entityName)
-                                                                throws IOException, UnauthenticatedException {
+                                                        throws IOException, UnauthenticatedException {
     String url = String.format("v1/tags/%s/%s", entityType, entityName);
     URL urlgetEntityTags = new URL (serviceURL, url);
     HttpResponse response = restClient.execute(HttpRequest.get(urlgetEntityTags)
-                                                 .build(), getClientConfig().getAccessToken());
+                                                          .build(), getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), TagsResult.class);
   }
 
   protected AuditHistogramResult getResolutionBucket(String startTime) throws IOException, UnauthenticatedException {
     String url = String.format("v1/auditmetrics/audit-histogram?entityType=dataset" +
-                                 "&entityName=ds1&startTime=%s&endTime=now", startTime);
+                               "&entityName=ds1&startTime=%s&endTime=now", startTime);
     URL urlResolutionBucket = new URL (serviceURL, url);
     HttpResponse response = restClient.execute(HttpRequest.get(urlResolutionBucket)
-                                                 .build(), getClientConfig().getAccessToken());
+                                                          .build(), getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
@@ -343,23 +343,23 @@ public class TrackerTestBase extends AudiTestBase {
       "\"deletions\": { \"USER\": { \"properties\": { \"uk\": \"uv\" }, \"tags\": [ \"ut1\" ] } } }";
     MetadataPayload payload = GSON.fromJson(metadataPayload, MetadataPayload.class);
     testData.add(new AuditMessage(1456956659470L,
-                                  EntityId.fromString("application:default.app1"),
+                                  NamespaceId.DEFAULT.app("app1"),
                                   "user1",
                                   AuditType.METADATA_CHANGE,
                                   payload)
     );
     testData.add(new AuditMessage(1456956659471L,
-                                  EntityId.fromString("dataset:default.ds1"),
+                                  NamespaceId.DEFAULT.dataset("ds1"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
     testData.add(new AuditMessage(1456956659472L,
-                                  EntityId.fromString("dataset:default.ds1"),
+                                  NamespaceId.DEFAULT.dataset("ds1"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
     testData.add(new AuditMessage(1456956659473L,
-                                  EntityId.fromString("dataset:default.ds6"),
+                                  NamespaceId.DEFAULT.dataset("ds6"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
@@ -444,7 +444,7 @@ public class TrackerTestBase extends AudiTestBase {
                  )
     );
     testData.add(new AuditMessage(1456956659512L,
-                                  EntityId.fromString("dataset:default.ds5"),
+                                  NamespaceId.DEFAULT.dataset("ds5"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
