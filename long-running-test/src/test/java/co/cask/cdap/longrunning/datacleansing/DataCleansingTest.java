@@ -22,7 +22,6 @@ import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
@@ -100,7 +99,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     Assert.assertEquals(state.getEndInvalidRecordPid(), getTotalRecords(true) + getTotalRecords(false));
 
     // verify segregated records
-    Assert.assertTrue(verifyRecordsWithExplore(state));
+    verifyRecordsWithExplore(state);
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
@@ -132,19 +131,21 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     throws IOException, UnauthenticatedException {
     URL url = new URL(serviceUrl, "v1/records/raw");
     List<String> records = new ArrayList<>();
-    generateRecords(records, state.getEndInvalidRecordPid() + 1, false);
-    generateRecords(records, state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH + 1, true);
+    records.addAll(generateRecords(state.getEndInvalidRecordPid() + 1, false));
+    records.addAll(generateRecords(state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH + 1, true));
     String body = Joiner.on("\n").join(records) + "\n";
     HttpRequest request = HttpRequest.post(url).withBody(body).build();
     HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
   }
 
-  private void generateRecords(List<String> records, long start, boolean invalid) {
+  private List<String> generateRecords(long start, boolean invalid) {
+    List<String> records = new ArrayList<>();
     long numRecords = invalid ? INVALID_RECORDS_PER_BATCH : CLEAN_RECORDS_PER_BATCH;
     for (long i = start; i < (start + numRecords); i++) {
       records.add(getRecord(i, invalid));
     }
+    return records;
   }
 
   private String getRecord(long index, boolean invalid) {
@@ -162,7 +163,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   // TODO: Use serivce instead of explore as Explore is slower
-  private boolean verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
+  private void verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
     QueryClient queryClient = new QueryClient(getClientConfig());
     String cleanRecordsQuery = "SELECT * FROM dataset_" + CLEAN_RECORDS_DATASET + " where TIME = "
       + state.getTimestamp();
@@ -177,21 +178,18 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
     ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();
 
-    return (verifyResults(cleanRecordsResult, state.getStartCleanRecordPid(), false) &&
-      verifyResults(invalidRecordsResult, state.getStartInvalidRecordPid(), true));
+    Assert.assertEquals(generateRecords(state.getStartCleanRecordPid(), true), getRecords(cleanRecordsResult));
+    Assert.assertEquals(generateRecords(state.getStartInvalidRecordPid(), false), getRecords(invalidRecordsResult));
   }
 
-  private boolean verifyResults(ExploreExecutionResult result, long index, boolean invalid) {
+  private List<String> getRecords(ExploreExecutionResult result) {
+    List<String> records = new ArrayList<>();
     while (result.hasNext()) {
       QueryResult next = result.next();
       List<Object> columns = next.getColumns();
-      String expectedRecord = getRecord(index, invalid);
-      if (!expectedRecord.equalsIgnoreCase((String) columns.get(0))) {
-        return false;
-      }
-      index++;
+      records.add((String) columns.get(0));
     }
-    return true;
+    return records;
   }
 
   private long readLong(byte[] bytes) {
