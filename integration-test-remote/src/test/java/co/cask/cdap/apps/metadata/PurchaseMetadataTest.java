@@ -17,6 +17,7 @@
 package co.cask.cdap.apps.metadata;
 
 import co.cask.cdap.api.data.format.FormatSpecification;
+import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
@@ -503,7 +504,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Schema viewSchema = Schema.recordOf("record",
                                         Schema.Field.of("viewBody", Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(view, new ViewSpecification(new FormatSpecification("format", viewSchema)));
+    viewClient.createOrUpdate(view, new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     // search all entities that have a defined schema
     // add a user property with "schema" as key
