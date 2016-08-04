@@ -66,17 +66,22 @@ public class TrackerTest extends TrackerTestBase {
     Assert.assertEquals(6, topDatasetsResults.size());
     long testTotal1 = topDatasetsResults.get(0).getRead() + topDatasetsResults.get(0).getWrite();
     long testTotal2 = topDatasetsResults.get(1).getRead() + topDatasetsResults.get(1).getWrite();
-    Assert.assertTrue(testTotal1 > testTotal2);
+    Assert.assertTrue(String.format("Actual values: testTotal1=%s, testTotal2=%s", testTotal1, testTotal2),
+                      testTotal1 > testTotal2);
 
     List<TopProgramsResult> topProgramsResults = getTopNPrograms();
     Assert.assertEquals(5, topProgramsResults.size());
-    Assert.assertTrue(topProgramsResults.get(0).getValue() > topProgramsResults.get(1).getValue());
+    Assert.assertTrue(String.format("Actual values: result[0]=%s, result[1]=%s",
+                      topProgramsResults.get(0).getValue(), topProgramsResults.get(1).getValue()),
+                      topProgramsResults.get(0).getValue() > topProgramsResults.get(1).getValue());
     Assert.assertEquals("service", topProgramsResults.get(0).getProgramType());
     Assert.assertEquals("b", topProgramsResults.get(0).getApplication());
 
     List<TopApplicationsResult> topApplicationsResults = getTopNApplication();
     Assert.assertEquals(4, topApplicationsResults.size());
-    Assert.assertTrue(topApplicationsResults.get(0).getValue() > topApplicationsResults.get(1).getValue());
+    Assert.assertTrue(String.format("Actual values: result[0]=%s, result[1]=%s",
+                      topApplicationsResults.get(0).getValue(), topApplicationsResults.get(1).getValue()),
+                      topApplicationsResults.get(0).getValue() > topApplicationsResults.get(1).getValue());
 
     Map<String, Long> timeSinceResult = getTimeSince();
     Assert.assertEquals(2, timeSinceResult.size());
