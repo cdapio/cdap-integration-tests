@@ -16,7 +16,9 @@
 
 package co.cask.cdap.longrunning.logmapreduce;
 
+import co.cask.cdap.api.ProgramLifecycle;
 import co.cask.cdap.api.Resources;
+import co.cask.cdap.api.RuntimeContext;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.batch.Output;
 import co.cask.cdap.api.data.stream.StreamBatchReadable;
@@ -46,7 +48,6 @@ public class LogMapReduce extends AbstractMapReduce {
 
   private static final Logger LOG = LoggerFactory.getLogger(LogMapReduce.class);
   protected static final String NAME = "LogMapReduce";
-  private static String runId;
   private final Map<String, String> dsArguments = Maps.newHashMap();
 
   @Override
@@ -58,7 +59,8 @@ public class LogMapReduce extends AbstractMapReduce {
   }
 
   @Override
-  public void beforeSubmit(MapReduceContext context) throws Exception {
+  public void initialize() throws Exception {
+    MapReduceContext context = getContext();
     Job job = context.getHadoopJob();
     job.setMapperClass(LogMapper.class);
     job.setReducerClass(LogReducer.class);
@@ -72,7 +74,8 @@ public class LogMapReduce extends AbstractMapReduce {
     StreamBatchReadable.useStreamInput(context, LogMapReduceApp.EVENTS_STREAM,
                                        eventReadStartTime - TimeUnit.SECONDS.toMillis(1), logicalTime);
 
-    runId = context.getRunId().getId();
+//    String runId = context.getRunId().getId();
+//    LOG.info("RUN ID in init  " + runId);
     context.addOutput(Output.ofDataset("converted", dsArguments));
   }
 
@@ -80,16 +83,29 @@ public class LogMapReduce extends AbstractMapReduce {
    * Mapper that reads events from a stream and writes logs.
    */
   public static class LogMapper extends
-    Mapper<LongWritable, StreamEvent, Text, Text> {
+    Mapper<LongWritable, StreamEvent, Text, Text> implements ProgramLifecycle {
     private static final Random RANDOM = new Random(System.currentTimeMillis());
+    private String runId;
+    private static final Logger LOG = LoggerFactory.getLogger(LogMapper.class);
+
 
     @Override
-    public void map(LongWritable timestamp, StreamEvent streamEvent, Context context)
+    public void map(LongWritable timestamp, StreamEvent streamEvent, Context context1)
       throws IOException, InterruptedException {
-      context.write(new Text(Bytes.toString(streamEvent.getBody())),
+      context1.write(new Text(Bytes.toString(streamEvent.getBody())),
                     new Text(String.valueOf(streamEvent.getTimestamp())));
       LOG.info("CURRENT mapper runid= {} event={} eventTime={} id={}", runId, Bytes.toString(streamEvent.getBody()),
                streamEvent.getTimestamp(), RANDOM.nextInt());
+    }
+
+    @Override
+    public void initialize(RuntimeContext runtimeContext) throws Exception {
+        runId = runtimeContext.getRunId().getId();
+    }
+
+    @Override
+    public void destroy() {
+
     }
   }
 
@@ -97,11 +113,25 @@ public class LogMapReduce extends AbstractMapReduce {
    * Reducer class.
    */
   public static class LogReducer extends
-    Reducer<Text, Text, NullWritable, NullWritable> {
+    Reducer<Text, Text, NullWritable, NullWritable> implements ProgramLifecycle {
+    private String runId;
+    private static final Logger LOG = LoggerFactory.getLogger(LogReducer.class);
+
+
     @Override
     public void reduce(Text timestamp, Iterable<Text> streamEvents, Context context)
       throws IOException, InterruptedException {
       LOG.info("CURRENT reducer {}", runId);
+    }
+
+    @Override
+    public void initialize(RuntimeContext runtimeContext) throws Exception {
+      runId = runtimeContext.getRunId().getId();
+    }
+
+    @Override
+    public void destroy() {
+
     }
   }
 }
