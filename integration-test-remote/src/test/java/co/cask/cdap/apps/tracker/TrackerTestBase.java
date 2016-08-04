@@ -53,6 +53,7 @@ import co.cask.tracker.entity.TopProgramsResult;
 import co.cask.tracker.entity.TrackerMeterRequest;
 import co.cask.tracker.entity.TrackerMeterResult;
 import co.cask.tracker.entity.ValidateTagsResult;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -199,34 +200,20 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   protected TrackerMeterResult getTruthMeter() throws IOException, UnauthenticatedException {
-    List<String> datasets = new LinkedList<>();
-    List<String> streams = new LinkedList<>();
-    datasets.add("ds1");
-    datasets.add("ds6");
-    datasets.add("ds8");
-    streams.add("strm123");
+    ImmutableList<String> datasets = ImmutableList.of("ds1", "ds6", "ds8");
+    ImmutableList<String> streams = ImmutableList.of("strm123");
     return getTrackerMeterResponse(datasets, streams);
   }
 
   protected  TrackerMeterResult getTimeRank() throws IOException, UnauthenticatedException {
-    List<String> datasets = new LinkedList<>();
-    List<String> streams = new LinkedList<>();
-    datasets.add("ds6");
-    datasets.add("ds8");
-    datasets.add("ds9");
-    datasets.add("ds1");
-    streams.add("strm123");
-    streams.add("stream1");
+    ImmutableList<String> datasets = ImmutableList.of("ds6", "ds8", "ds9", "ds1");
+    ImmutableList<String> streams = ImmutableList.of("strm123", "stream1");
     return getTrackerMeterResponse(datasets, streams);
   }
 
   protected TrackerMeterResult getInvalidName() throws IOException, UnauthenticatedException {
-    List<String> datasets = new LinkedList<>();
-    List<String> streams = new LinkedList<>();
-    datasets.add("ds_invalid");
-    datasets.add("ds_does_not_exit");
-    datasets.add("ds_test");
-    streams.add("strm_test");
+    ImmutableList<String> streams = ImmutableList.of("strm_test");
+    ImmutableList<String> datasets = ImmutableList.of("ds_invalid", "ds_does_not_exit", "ds_test");
     return getTrackerMeterResponse(datasets, streams);
   }
 
