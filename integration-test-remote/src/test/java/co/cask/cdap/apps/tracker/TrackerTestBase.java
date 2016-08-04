@@ -32,6 +32,7 @@ import co.cask.cdap.proto.codec.AuditMessageTypeAdapter;
 import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.SystemServiceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -52,6 +53,7 @@ import co.cask.tracker.entity.TopProgramsResult;
 import co.cask.tracker.entity.TrackerMeterRequest;
 import co.cask.tracker.entity.TrackerMeterResult;
 import co.cask.tracker.entity.ValidateTagsResult;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -368,15 +370,13 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user1",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program_run:ns1.app1.flow.flow1.run1"))
-                 )
-    );
+                                                    EntityId.fromString("program_run:ns1.app1.flow.flow1.run1"))));
     testData.add(new AuditMessage(1456956659460L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("system_service:explore"))
+                                                    new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659502L,
@@ -384,7 +384,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("system_service:explore"))
+                                                    new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659500L,
@@ -392,7 +392,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("system_service:explore"))
+                                                    new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659504L,
@@ -400,7 +400,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.UNKNOWN,
-                                                    EntityId.fromString("system_service:explore"))
+                                                    new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659505L,
@@ -408,7 +408,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program1"))
+                                                    new NamespaceId("ns1").app("b").service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659506L,
@@ -416,7 +416,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program:ns1.a.SERVICE.program2"))
+                                                    new NamespaceId("ns1").app("a").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659507L,
@@ -424,7 +424,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program2"))
+                                                    new NamespaceId("ns1").app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659509L,
@@ -432,7 +432,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program2"))
+                                                    new NamespaceId("ns1").app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659511L,
@@ -440,7 +440,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program2"))
+                                                    new NamespaceId("ns1").app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659512L,
@@ -453,7 +453,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program1"))
+                                                    new NamespaceId("ns1").app("b").service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659516L,
@@ -461,9 +461,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString(String.format("program:ns1.%s.SERVICE.program1",
-                                                                                      TrackerApp.APP_NAME))
-                                  )
+                                                    new NamespaceId("ns1").app(TrackerApp.APP_NAME).service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659513L,
@@ -471,7 +469,7 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program:ns1.b.SERVICE.program1"))
+                                                    new NamespaceId("ns1").app("b").service("program1"))
                  )
     );
     return testData;

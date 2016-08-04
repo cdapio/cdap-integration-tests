@@ -47,7 +47,7 @@ public class TrackerTest extends TrackerTestBase {
   private static final String DELETE_TAGS = "tag2";
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123";
   private static final int MAX_TAG_LENGTH = 50;
-  private static final int TAGS_TO_ADD_AND_DELETE = 100;
+  private static final int TAGS_TO_ADD_AND_DELETE = 10;
 
 
   @Test
@@ -99,6 +99,7 @@ public class TrackerTest extends TrackerTestBase {
     int stotal = 0;
     for (TimeValue t: specificValueResults) {
       stotal += t.getValue();
+      Assert.assertEquals(1470268800L, t.getTimestamp());
     }
     Assert.assertEquals(5, stotal);
 
