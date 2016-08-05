@@ -39,8 +39,6 @@ import javax.ws.rs.PathParam;
  * Service to read PartitionedFileset
  */
 public class SnapshotFilesetService extends AbstractService {
-  public static final String ITEM_DATASET = "itemSink";
-  public static final String USER_DATASET = "userSink";
 
   @Override
   protected void configure() {
