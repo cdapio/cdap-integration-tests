@@ -200,16 +200,16 @@ module Cask
           elsif name[1] == 'sdk'
             dimensions.push('cdap_sdk')
             name.shift && name.shift
-          elsif name[1] == 'singlenode' || name[1] == 'distributed'
+          else
             dimensions.push('cdap')
             name.shift
-            if name[0] == 'singlenode'
-              dimensions.push('singlenode')
-              name.shift
-            elsif name[0] == 'distributed'
-              dimensions.push('distributed')
-              name.shift
-            end
+          end
+          if name[0] == 'singlenode'
+            dimensions.push('singlenode')
+            name.shift
+          elsif name[0] == 'distributed'
+            dimensions.push('distributed')
+            name.shift
           end
           # Check for insecure
           dimensions.push('auth') unless name[0] == 'insecure'
