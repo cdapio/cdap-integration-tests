@@ -86,8 +86,6 @@ public class LogMapReduce extends AbstractMapReduce {
     Mapper<LongWritable, StreamEvent, Text, Text> implements ProgramLifecycle {
     private static final Random RANDOM = new Random(System.currentTimeMillis());
     private String runId;
-    private static final Logger LOG = LoggerFactory.getLogger(LogMapper.class);
-
 
     @Override
     public void map(LongWritable timestamp, StreamEvent streamEvent, Context context1)
@@ -115,8 +113,6 @@ public class LogMapReduce extends AbstractMapReduce {
   public static class LogReducer extends
     Reducer<Text, Text, NullWritable, NullWritable> implements ProgramLifecycle {
     private String runId;
-    private static final Logger LOG = LoggerFactory.getLogger(LogReducer.class);
-
 
     @Override
     public void reduce(Text timestamp, Iterable<Text> streamEvents, Context context)
