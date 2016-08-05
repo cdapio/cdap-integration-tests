@@ -99,7 +99,6 @@ public class TrackerTest extends TrackerTestBase {
     int stotal = 0;
     for (TimeValue t: specificValueResults) {
       stotal += t.getValue();
-      Assert.assertEquals(1470268800L, t.getTimestamp());
     }
     Assert.assertEquals(5, stotal);
 
