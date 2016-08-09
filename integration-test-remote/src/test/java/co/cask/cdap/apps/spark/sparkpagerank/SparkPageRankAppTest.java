@@ -190,9 +190,9 @@ public class SparkPageRankAppTest extends AudiTestBase {
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(RANKS_COUNTS_DATASET, RANKS_COUNTER_PROGRAM, AccessType.WRITE,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(RANKS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
+          new Relation(RANKS_DATASET, PAGE_RANK_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRanRecords.get(0).getPid())),
-          new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.UNKNOWN,
+          new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRanRecords.get(0).getPid()))
         )), ImmutableSet.<CollapseType>of());
     testLineage(url, expected);
