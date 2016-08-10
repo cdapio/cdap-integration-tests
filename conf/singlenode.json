@@ -2,9 +2,7 @@
   "config": {
     "cdap": {
       "cdap_site": {
-        "metrics.processor.memory.mb": "512",
-        "stream.container.memory.mb": "512",
-	"master.service.memory.mb": "512"
+        "metrics.processor.memory.mb": "512"
       }
     }
   }
