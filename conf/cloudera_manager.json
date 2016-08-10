@@ -1,3 +1,12 @@
 {
+  "config": {
+    "cloudera_manager": {
+      "csd": {
+        "install": {
+          "CDAP": "http://repository.prerelease.cask.co/downloads/cdap-csd/CDAP-3.5.0-0rc2.jar"
+        }
+      }
+    }
+  },
   "initial-lease-duration": 82800000
 }
