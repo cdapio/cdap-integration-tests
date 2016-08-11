@@ -39,7 +39,6 @@ import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Map;
@@ -87,7 +86,7 @@ public class NormalizeTest extends ETLTestBase {
   private static String validFieldNormalizing;
 
   @BeforeClass
-  public static void initialiseData() {
+  public static void initializeData() {
     validFieldMapping = CUSTOMER_ID + ":" + ID + "," + PURCHASE_DATE + ":" + DATE;
     validFieldNormalizing = ITEM_ID + ":" + ATTRIBUTE_TYPE + ":" + ATTRIBUTE_VALUE + "," + ITEM_COST + ":"
       + ATTRIBUTE_TYPE + ":" + ATTRIBUTE_VALUE;
@@ -130,7 +129,14 @@ public class NormalizeTest extends ETLTestBase {
     workflowManager.waitForFinish(5, TimeUnit.MINUTES);
   }
 
-  @Ignore
+  private void putData(int rowId, byte[] custId, byte[] itemId, byte[] itemCost, byte[] date, Table targetTable) {
+    Put put = new Put(Bytes.toBytes(rowId)).add(CUSTOMER_ID, custId).add(ITEM_ID, itemId).add(ITEM_COST, itemCost)
+      .add(PURCHASE_DATE, date);
+    targetTable.put(put);
+  }
+
+
+  @Test
   public void testNormalize() throws Exception {
     String inputTable = "customerPurchaseTable";
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
@@ -145,35 +151,36 @@ public class NormalizeTest extends ETLTestBase {
     DataSetManager<Table> inputManager = getTableDataset(inputTable);
     Table customerPurchaseTable = inputManager.get();
 
-    Put put1 = new Put(Bytes.toBytes(1)).add(CUSTOMER_ID, CUSTOMER_ID_FIRST).add(ITEM_ID, ITEM_ID_ROW1)
-      .add(ITEM_COST, ITEM_COST_ROW1).add(PURCHASE_DATE, PURCHASE_DATE_ROW1);
-    customerPurchaseTable.put(put1);
+    putData(1, Bytes.toBytes(CUSTOMER_ID_FIRST), Bytes.toBytes(ITEM_ID_ROW1), Bytes.toBytes(ITEM_COST_ROW1),
+            Bytes.toBytes(PURCHASE_DATE_ROW1), customerPurchaseTable);
+    putData(2, Bytes.toBytes(CUSTOMER_ID_FIRST), Bytes.toBytes(ITEM_ID_ROW2), Bytes.toBytes(ITEM_COST_ROW2),
+            Bytes.toBytes(PURCHASE_DATE_ROW2), customerPurchaseTable);
+    putData(3, Bytes.toBytes(CUSTOMER_ID_SECOND), Bytes.toBytes(ITEM_ID_ROW3), Bytes.toBytes(ITEM_COST_ROW3),
+            Bytes.toBytes(PURCHASE_DATE_ROW3), customerPurchaseTable);
 
-    Put put2 = new Put(Bytes.toBytes(2)).add(CUSTOMER_ID, CUSTOMER_ID_FIRST).add(ITEM_ID, ITEM_ID_ROW2)
-      .add(ITEM_COST, ITEM_COST_ROW2).add(PURCHASE_DATE, PURCHASE_DATE_ROW2);
-    customerPurchaseTable.put(put2);
-
-    Put put3 = new Put(Bytes.toBytes(3)).add(CUSTOMER_ID, CUSTOMER_ID_SECOND).add(ITEM_ID, ITEM_ID_ROW3)
-      .add(ITEM_COST, ITEM_COST_ROW3).add(PURCHASE_DATE, PURCHASE_DATE_ROW3);
-    customerPurchaseTable.put(put3);
     inputManager.flush();
 
     startWorkFlow(appManager);
 
     DataSetManager<Table> tableManager = getTableDataset(outputTable);
     Table table = tableManager.get();
-    Row row1 = table.get(Bytes.toBytes(ITEM_ID_ROW1));
-    verifyOutput(row1, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW1);
-    Row row2 = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW1)));
-    verifyOutput(row2, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW1);
-    Row row3 = table.get(Bytes.toBytes(ITEM_ID_ROW2));
-    verifyOutput(row3, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW2);
-    Row row4 = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW2)));
-    verifyOutput(row4, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW2);
-    Row row5 = table.get(Bytes.toBytes(ITEM_ID_ROW3));
-    verifyOutput(row5, CUSTOMER_ID_SECOND, PURCHASE_DATE_ROW3);
-    Row row6 = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW3)));
-    verifyOutput(row6, CUSTOMER_ID_SECOND, PURCHASE_DATE_ROW3);
+    Row row = table.get(Bytes.toBytes(ITEM_ID_ROW1));
+    verifyOutput(row, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW1);
+
+    row = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW1)));
+    verifyOutput(row, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW1);
+
+    row = table.get(Bytes.toBytes(ITEM_ID_ROW2));
+    verifyOutput(row, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW2);
+
+    row = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW2)));
+    verifyOutput(row, CUSTOMER_ID_FIRST, PURCHASE_DATE_ROW2);
+
+    row = table.get(Bytes.toBytes(ITEM_ID_ROW3));
+    verifyOutput(row, CUSTOMER_ID_SECOND, PURCHASE_DATE_ROW3);
+
+    row = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW3)));
+    verifyOutput(row, CUSTOMER_ID_SECOND, PURCHASE_DATE_ROW3);
   }
 
   private void verifyOutput(Row row, String id, String date) {
@@ -197,17 +204,13 @@ public class NormalizeTest extends ETLTestBase {
     DataSetManager<Table> inputManager = getTableDataset(inputTable);
     Table customerPurchaseTable = inputManager.get();
 
-    Put put = new Put(Bytes.toBytes(1)).add(ITEM_ID, (byte[]) null).add(CUSTOMER_ID, CUSTOMER_ID_FIRST)
-      .add(ITEM_COST, ITEM_COST_ROW1).add(PURCHASE_DATE, PURCHASE_DATE_ROW1);
-    customerPurchaseTable.put(put);
+    putData(1, Bytes.toBytes(CUSTOMER_ID_FIRST), (byte[]) null, Bytes.toBytes(ITEM_COST_ROW1),
+            Bytes.toBytes(PURCHASE_DATE_ROW1), customerPurchaseTable);
+    putData(2, Bytes.toBytes(CUSTOMER_ID_FIRST), Bytes.toBytes(ITEM_ID_ROW2), (byte[]) null,
+            Bytes.toBytes(PURCHASE_DATE_ROW2), customerPurchaseTable);
+    putData(3, Bytes.toBytes(CUSTOMER_ID_SECOND), Bytes.toBytes(ITEM_ID_ROW3), Bytes.toBytes(ITEM_COST_ROW3),
+            Bytes.toBytes(PURCHASE_DATE_ROW3), customerPurchaseTable);
 
-    put = new Put(Bytes.toBytes(2)).add(ITEM_ID, ITEM_ID_ROW2).add(CUSTOMER_ID, CUSTOMER_ID_FIRST)
-      .add(ITEM_COST, (byte[]) null).add(PURCHASE_DATE, PURCHASE_DATE_ROW2);
-    customerPurchaseTable.put(put);
-
-    put = new Put(Bytes.toBytes(3)).add(ITEM_ID, ITEM_ID_ROW3).add(CUSTOMER_ID, CUSTOMER_ID_SECOND)
-      .add(ITEM_COST, ITEM_COST_ROW3).add(PURCHASE_DATE, PURCHASE_DATE_ROW3);
-    customerPurchaseTable.put(put);
     inputManager.flush();
 
     startWorkFlow(appManager);
@@ -215,14 +218,15 @@ public class NormalizeTest extends ETLTestBase {
     DataSetManager<Table> tableManager = getTableDataset(outputTable);
     Table table = tableManager.get();
     //Row for ItemId with null value must be empty
-    Row row1 = table.get(Bytes.toBytes(ITEM_ID_ROW1));
-    Assert.assertNull(row1.getString(ID));
-    Assert.assertNull(row1.getString(DATE));
-    Assert.assertNull(row1.getString(ATTRIBUTE_TYPE));
+    Row row = table.get(Bytes.toBytes(ITEM_ID_ROW1));
+    Assert.assertNull(row.getString(ID));
+    Assert.assertNull(row.getString(DATE));
+    Assert.assertNull(row.getString(ATTRIBUTE_TYPE));
+
     //Row for ItemCost with null value must be empty
-    Row row2 = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW2)));
-    Assert.assertNull(row2.getString(ID));
-    Assert.assertNull(row2.getString(DATE));
-    Assert.assertNull(row2.getString(ATTRIBUTE_TYPE));
+    row = table.get(Bytes.toBytes(String.valueOf(ITEM_COST_ROW2)));
+    Assert.assertNull(row.getString(ID));
+    Assert.assertNull(row.getString(DATE));
+    Assert.assertNull(row.getString(ATTRIBUTE_TYPE));
   }
 }
