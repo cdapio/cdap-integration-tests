@@ -88,9 +88,10 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     } else {
       runId = runRecords.get(logFrequency - 1);
     }
+    LOG.info("LOGS IN VERIFY: {}", logs);
 
     LOG.info("RUN ID TO COMPARE " + runId.getPid());
-    Pattern mapper = Pattern.compile("mapper runid= ".concat(runId.getPid()));
+    Pattern mapper = Pattern.compile("mapper ".concat(runId.getPid()));
     Pattern reducer = Pattern.compile("reducer ".concat(runId.getPid()));
 
     if (logs != null) {
