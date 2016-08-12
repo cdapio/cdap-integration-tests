@@ -33,6 +33,7 @@ import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.SystemServiceId;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -57,15 +58,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -94,7 +92,8 @@ public class TrackerTestBase extends AudiTestBase {
 
   private URL serviceURL;
 
-  protected void enableTracker() throws InterruptedException, IOException, UnauthenticatedException {
+  protected void enableTracker()
+    throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException {
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
     ApplicationManager applicationManager = deployApplication(Id.Namespace.DEFAULT, TestTrackerApp.class,
                                                               new TrackerAppConfig(new AuditLogKafkaConfig(
@@ -131,87 +130,91 @@ public class TrackerTestBase extends AudiTestBase {
     }
   }
 
-  protected void demoteTags(String tagsToDemote) throws IOException, UnauthenticatedException {
+  protected void demoteTags(String tagsToDemote) throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlDemote = new URL(serviceURL, "v1/tags/demote");
     restClient.execute(HttpRequest.post(urlDemote).withBody(tagsToDemote).build(), getClientConfig().getAccessToken());
   }
 
-  protected void deleteTags(String tagsToDelete) throws IOException, UnauthenticatedException {
+  protected void deleteTags(String tagsToDelete) throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlDelete = new URL(serviceURL, String.format("v1/tags/preferred?tag=%s", tagsToDelete));
     restClient.execute(HttpRequest.delete(urlDelete).build(), getClientConfig().getAccessToken());
   }
 
-  protected ValidateTagsResult validateTags(String tagsToValidate) throws IOException, UnauthenticatedException {
+  protected ValidateTagsResult validateTags(String tagsToValidate)
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlValidate = new URL(serviceURL, "v1/tags/validate");
     HttpResponse validateResponse = restClient.execute(HttpRequest.post(urlValidate).withBody(tagsToValidate).build(),
                                                        getClientConfig().getAccessToken());
-    ValidateTagsResult validateTagsResult = GSON.fromJson(validateResponse.getResponseBodyAsString(),
-                                                          ValidateTagsResult.class);
-    return validateTagsResult;
+    return GSON.fromJson(validateResponse.getResponseBodyAsString(), ValidateTagsResult.class);
   }
 
-  protected List<TopDatasetsResult> getTopNDatasets() throws IOException, UnauthenticatedException {
+  protected List<TopDatasetsResult> getTopNDatasets()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlTopNDataset = new URL(serviceURL, "v1/auditmetrics/top-entities/datasets?limit=20");
     HttpResponse datasetResponse = restClient.execute(HttpRequest.get(urlTopNDataset).build(),
                                                       getClientConfig().getAccessToken());
     return GSON.fromJson(datasetResponse.getResponseBodyAsString(), datasetList);
   }
 
-  protected List<TopProgramsResult> getTopNPrograms() throws IOException, UnauthenticatedException {
+  protected List<TopProgramsResult> getTopNPrograms()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlTopNPrograms = new URL(serviceURL, "v1/auditmetrics/top-entities/programs?limit=20");
     HttpResponse programsResponse = restClient.execute(HttpRequest.get(urlTopNPrograms).build(),
                                                        getClientConfig().getAccessToken());
     return GSON.fromJson(programsResponse.getResponseBodyAsString(), programList);
   }
 
-  protected List<TopApplicationsResult> getTopNApplication() throws IOException, UnauthenticatedException {
+  protected List<TopApplicationsResult> getTopNApplication()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlTopNApplication = new URL(serviceURL, "v1/auditmetrics/top-entities/applications?limit=20");
     HttpResponse applicationResponse = restClient.execute(HttpRequest.get(urlTopNApplication).build(),
                                                           getClientConfig().getAccessToken());
     return GSON.fromJson(applicationResponse.getResponseBodyAsString(), applicationList);
   }
 
-  protected Map<String, Long> getTimeSince() throws IOException, UnauthenticatedException {
+  protected Map<String, Long> getTimeSince() throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlTimeSince = new URL(serviceURL, "v1/auditmetrics/time-since?entityType=dataset&entityName=ds1");
     HttpResponse timeSinceResponse = restClient.execute(HttpRequest.get(urlTimeSince).build(),
                                                         getClientConfig().getAccessToken());
     return GSON.fromJson(timeSinceResponse.getResponseBodyAsString(), timesinceMap);
   }
 
-  protected AuditHistogramResult getGlobalAuditLogHistogram() throws IOException, UnauthenticatedException {
+  protected AuditHistogramResult getGlobalAuditLogHistogram()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlAuditLogHistogram = new URL(serviceURL, "v1/auditmetrics/audit-histogram");
     HttpResponse audiLogHisResponse = restClient.execute(HttpRequest.get(urlAuditLogHistogram).build(),
                                                          getClientConfig().getAccessToken());
     return GSON.fromJson(audiLogHisResponse.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-  protected AuditHistogramResult getSpecificAuditLogHistogram() throws IOException, UnauthenticatedException {
+  protected AuditHistogramResult getSpecificAuditLogHistogram()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlAuditLogHistogram = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName=ds1");
     HttpResponse audiLogHisResponse = restClient.execute(HttpRequest.get(urlAuditLogHistogram).build(),
                                                          getClientConfig().getAccessToken());
     return GSON.fromJson(audiLogHisResponse.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-  protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException {
+  protected AuditLogResponse getAuditLog() throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlAuditLog = new URL (serviceURL, "v1/auditlog/stream/stream1");
-    HttpResponse auditLogResponse = restClient.execute(HttpRequest.get(urlAuditLog)
-                                                       .build(), getClientConfig().getAccessToken());
+    HttpResponse auditLogResponse = restClient.execute(HttpRequest.get(urlAuditLog).build(),
+                                                       getClientConfig().getAccessToken());
     return GSON.fromJson(auditLogResponse.getResponseBodyAsString(), AuditLogResponse.class);
   }
 
-  protected TrackerMeterResult getTruthMeter() throws IOException, UnauthenticatedException {
+  protected TrackerMeterResult getTruthMeter() throws IOException, UnauthenticatedException, UnauthorizedException {
     ImmutableList<String> datasets = ImmutableList.of("ds1", "ds6", "ds8");
     ImmutableList<String> streams = ImmutableList.of("strm123");
     return getTrackerMeterResponse(datasets, streams);
   }
 
-  protected  TrackerMeterResult getTimeRank() throws IOException, UnauthenticatedException {
+  protected  TrackerMeterResult getTimeRank() throws IOException, UnauthenticatedException, UnauthorizedException {
     ImmutableList<String> datasets = ImmutableList.of("ds6", "ds8", "ds9", "ds1");
     ImmutableList<String> streams = ImmutableList.of("strm123", "stream1");
     return getTrackerMeterResponse(datasets, streams);
   }
 
-  protected TrackerMeterResult getInvalidName() throws IOException, UnauthenticatedException {
+  protected TrackerMeterResult getInvalidName() throws IOException, UnauthenticatedException, UnauthorizedException {
     ImmutableList<String> streams = ImmutableList.of("strm_test");
     ImmutableList<String> datasets = ImmutableList.of("ds_invalid", "ds_does_not_exit", "ds_test");
     return getTrackerMeterResponse(datasets, streams);
@@ -219,17 +222,18 @@ public class TrackerTestBase extends AudiTestBase {
 
   private TrackerMeterResult getTrackerMeterResponse(List<String> datasets,
                                                      List<String> streams)
-    throws IOException, UnauthenticatedException {
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlTrakerMeter = new URL (serviceURL, "v1/tracker-meter");
-    HttpResponse response = restClient.execute(HttpRequest.post(urlTrakerMeter).
-                                               withBody(GSON.toJson(new TrackerMeterRequest(datasets, streams)))
-                                               .build(), getClientConfig().getAccessToken());
+    HttpResponse response = restClient.execute(
+      HttpRequest.post(urlTrakerMeter).withBody(GSON.toJson(new TrackerMeterRequest(datasets, streams))).build(),
+      getClientConfig().getAccessToken());
 
     return GSON.fromJson(response.getResponseBodyAsString(), TrackerMeterResult.class);
 
   }
 
-  protected AuditHistogramResult getDatasetFilter() throws IOException, UnauthenticatedException {
+  protected AuditHistogramResult getDatasetFilter()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlDatasetFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
                                                + TrackerApp.AUDIT_LOG_DATASET_NAME);
     HttpResponse response = restClient.execute(HttpRequest.get(urlDatasetFilter).build(),
@@ -237,7 +241,7 @@ public class TrackerTestBase extends AudiTestBase {
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-  protected AuditHistogramResult getKafkaFilter() throws IOException, UnauthenticatedException {
+  protected AuditHistogramResult getKafkaFilter() throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlKafkaFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
                                              + AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET);
     HttpResponse response = restClient.execute(HttpRequest.get(urlKafkaFilter).build(),
@@ -245,7 +249,8 @@ public class TrackerTestBase extends AudiTestBase {
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
   }
 
-  protected List<TopProgramsResult> getProgramFilter() throws IOException, UnauthenticatedException {
+  protected List<TopProgramsResult> getProgramFilter()
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlPorgramFilter = new URL(serviceURL,
                                    "v1/auditmetrics/top-entities/programs?entityName=dsx&entityType=dataset");
     HttpResponse response = restClient.execute(HttpRequest.get(urlPorgramFilter).build(),
@@ -254,7 +259,7 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   protected void addEntityTags(Set<String> tagSet, String entityType, String entityName)
-                                                   throws IOException, UnauthenticatedException {
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     String url = String.format("v1/tags/promote/%s/%s", entityType, entityName);
     URL urladdEntityTags = new URL (serviceURL, url);
     restClient.execute(HttpRequest.post(urladdEntityTags).withBody(GSON.toJson(tagSet))
@@ -262,7 +267,7 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   protected void deleteEntityTags(Set<String> tagSet, String entityType, String entityName)
-                                                      throws IOException, UnauthenticatedException {
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     for (String tag : tagSet) {
       String url = String.format("v1/tags/delete/%s/%s?tagname=%s", entityType, entityName, tag);
       URL urldeleteEntityTags = new URL (serviceURL, url);
@@ -272,7 +277,7 @@ public class TrackerTestBase extends AudiTestBase {
   }
 
   protected TagsResult getEntityTags(String entityType, String entityName)
-                                                        throws IOException, UnauthenticatedException {
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     String url = String.format("v1/tags/%s/%s", entityType, entityName);
     URL urlgetEntityTags = new URL (serviceURL, url);
     HttpResponse response = restClient.execute(HttpRequest.get(urlgetEntityTags)
@@ -280,7 +285,8 @@ public class TrackerTestBase extends AudiTestBase {
     return GSON.fromJson(response.getResponseBodyAsString(), TagsResult.class);
   }
 
-  protected AuditHistogramResult getResolutionBucket(String startTime) throws IOException, UnauthenticatedException {
+  protected AuditHistogramResult getResolutionBucket(String startTime)
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     String url = String.format("v1/auditmetrics/audit-histogram?entityType=dataset" +
                                "&entityName=ds1&startTime=%s&endTime=now", startTime);
     URL urlResolutionBucket = new URL (serviceURL, url);
