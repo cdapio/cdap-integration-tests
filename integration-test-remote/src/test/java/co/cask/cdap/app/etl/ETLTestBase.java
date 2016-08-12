@@ -35,6 +35,7 @@ import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Throwables;
 import org.junit.Before;
@@ -148,12 +149,9 @@ public abstract class ETLTestBase extends AudiTestBase {
    *
    * @param streamName: the name of the stream
    * @return {@link Id.Stream} the id of the created stream
-   * @throws UnauthenticatedException
-   * @throws BadRequestException
-   * @throws IOException
    */
-  protected Id.Stream createSourceStream(String streamName) throws UnauthenticatedException, BadRequestException,
-    IOException {
+  protected Id.Stream createSourceStream(String streamName)
+    throws UnauthenticatedException, BadRequestException, IOException, UnauthorizedException {
     Id.Stream sourceStreamId = Id.Stream.from(TEST_NAMESPACE, streamName);
     streamClient.create(sourceStreamId);
     return sourceStreamId;

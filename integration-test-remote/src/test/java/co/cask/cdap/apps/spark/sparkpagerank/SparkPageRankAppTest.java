@@ -32,6 +32,7 @@ import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.MapReduceManager;
@@ -214,7 +215,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE);
   }
 
-  private void testLineage(URL url, LineageRecord expected) throws IOException, UnauthenticatedException {
+  private void testLineage(URL url, LineageRecord expected)
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     LineageRecord lineageRecord = GSON.fromJson(response.getResponseBodyAsString(), LineageRecord.class);
     Assert.assertEquals(expected, lineageRecord);
