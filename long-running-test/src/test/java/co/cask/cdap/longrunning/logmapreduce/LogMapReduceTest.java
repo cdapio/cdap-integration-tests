@@ -99,7 +99,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       Matcher reducerMatcher = reducer.matcher(logs);
 
 
-      for (int i = 0; i < logFrequency; i++) {
+      for (int i = 0; i < BATCH_SIZE; i++) {
         boolean mapperMatched = mapperMatcher.find();
         boolean reducerMatched = reducerMatcher.find();
         Assert.assertTrue(mapperMatched && reducerMatched);
