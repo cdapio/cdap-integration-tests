@@ -102,6 +102,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       for (int i = 0; i < BATCH_SIZE; i++) {
         boolean mapperMatched = mapperMatcher.find();
         boolean reducerMatched = reducerMatcher.find();
+        LOG.info("BEFORE ASSERT 105: {}", i);
         Assert.assertTrue(mapperMatched && reducerMatched);
 //      Assert.assertTrue(true);
 
