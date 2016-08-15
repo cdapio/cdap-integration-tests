@@ -78,7 +78,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   @Override
   public void verifyRuns(LogMapReduceTestState state) throws Exception {
     String logs = getLastRunLogs();
-    LOG.info("LAST 10 LOGS  " + logs);
+//    LOG.info("LAST 10 LOGS  " + logs);
     if (logs == null) {
       return;
     }
@@ -102,7 +102,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       for (int i = 0; i < BATCH_SIZE; i++) {
         boolean mapperMatched = mapperMatcher.find();
         boolean reducerMatched = reducerMatcher.find();
-        LOG.info("BEFORE ASSERT 105: {}", i);
+        LOG.info("BEFORE ASSERT 105 i=: {}, {}, {}", i, mapperMatched, reducerMatcher);
         Assert.assertTrue(mapperMatched && reducerMatched);
 //      Assert.assertTrue(true);
 
