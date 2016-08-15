@@ -50,7 +50,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   private static final int BATCH_SIZE = 10;
   private static final String LOG_MAPREDUCE_NAME = "LogMapReduce";
   private List<RunRecord> runRecords = new ArrayList<>();
-  private int logFrequency = 10;
+  private int logFrequency = 1;
 
   @Override
   public void deploy() throws Exception {
