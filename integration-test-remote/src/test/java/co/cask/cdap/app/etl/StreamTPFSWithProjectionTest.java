@@ -25,6 +25,7 @@ import co.cask.cdap.etl.common.ETLStage;
 import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -102,7 +103,7 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
   }
 
   private void verifyTPFSData(ServiceManager serviceManager, String tpfsName)
-    throws IOException, UnauthenticatedException {
+    throws IOException, UnauthenticatedException, UnauthorizedException {
 
     URL tpfsURL = new URL(serviceManager.getServiceURL(), TPFSService.TPFS_PATH +
       String.format("/%s?time=1", tpfsName));

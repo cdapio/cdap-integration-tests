@@ -126,10 +126,9 @@ public class PurchaseMetadataTest extends AudiTestBase {
       LineageSerializer.toLineageRecord(
         startTime, endTime,
         new Lineage(ImmutableSet.of(
-          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.WRITE,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
-
           new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader")))
@@ -194,7 +193,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
-          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.WRITE,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_BUILDER, AccessType.WRITE,
@@ -203,7 +202,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(FREQUENT_CUSTOMERS_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
-          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRuns.get(0).getPid()))
         )), ImmutableSet.<CollapseType>of());
 
@@ -230,7 +229,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "reader"))),
-          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.UNKNOWN,
+          new Relation(PURCHASES_DS, PURCHASE_FLOW, AccessType.WRITE,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(Id.Flow.Flowlet.from(PURCHASE_FLOW, "collector"))),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_BUILDER, AccessType.WRITE,
@@ -240,9 +239,9 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(FREQUENT_CUSTOMERS_DS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN,
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           // TODO : After CDAP-3623, the following will become one entry with runids in the set.
-          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRuns.get(0).getPid())),
-          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.UNKNOWN,
+          new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRuns.get(1).getPid()))
         )), ImmutableSet.<CollapseType>of());
 
