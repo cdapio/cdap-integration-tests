@@ -159,6 +159,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     URL url = getClientConfig().resolveNamespacedURLV3(program.getNamespace(), path);
     HttpResponse response = getRestClient()
       .execute(HttpMethod.GET, url, getClientConfig().getAccessToken(), new int[0]);
+
     if (response.getResponseCode() == 404) {
       throw new ProgramNotFoundException(program);
     } else {
