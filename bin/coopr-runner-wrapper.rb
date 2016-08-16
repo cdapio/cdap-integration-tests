@@ -181,6 +181,7 @@ module Cask
         #   cdap-distributed-insecure-autobuild.json
         #   cdap-distributed-secure-hadoop-autobuild.json
         #   docker-all-coreos.json
+        #   cloudera-manager.json
 
         dimensions = []
         name = @cluster_template.downcase.split('-')
@@ -217,6 +218,9 @@ module Cask
         elsif name[0] == 'docker'
           dimensions.push('docker')
           name.shift
+        elsif name[0] == 'cloudera' && name[1] == 'manager'
+          dimensions.push('cloudera_manager')
+          name.shift && name.shift
         end
         dimensions
       end

@@ -24,6 +24,7 @@ import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.DatasetMeta;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -151,19 +152,20 @@ public class DatasetTest extends AudiTestBase {
                          new TypeToken<Map<String, Object>>() { }.getType());
   }
 
-  private Set<Id.Program> getPrograms(String endPoint) throws IOException, UnauthenticatedException {
+  private Set<Id.Program> getPrograms(String endPoint)
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.Program>>() {
-    }.getType());
+    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.Program>>() { }.getType());
   }
 
-  private Set<Id.DatasetInstance> getDatasetInstances(String endPoint) throws IOException, UnauthenticatedException {
+  private Set<Id.DatasetInstance> getDatasetInstances(String endPoint)
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.DatasetInstance>>() {
-    }.getType());
+    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.DatasetInstance>>() { }.getType());
   }
 
-  private HttpResponse makeRequest(String endPoint) throws IOException, UnauthenticatedException {
+  private HttpResponse makeRequest(String endPoint)
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     ClientConfig clientConfig = getClientConfig();
     URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, endPoint);
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, clientConfig.getAccessToken());
