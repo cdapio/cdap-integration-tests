@@ -50,7 +50,7 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
   private static final int BATCH_SIZE = 10;
   private static final String LOG_MAPREDUCE_NAME = "LogMapReduce";
   private List<RunRecord> runRecords = new ArrayList<>();
-  private int logFrequency = 1;
+  private int logFrequency = 10;
 
   @Override
   public void deploy() throws Exception {
@@ -83,7 +83,8 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
       return;
     }
     RunRecord runId = null;
-    if (runRecords.size() < logFrequency) {
+//    if (runRecords.size() < logFrequency) {
+    if (state.getNumRuns() < logFrequency) {
       runId = runRecords.get(0);
     } else {
       runId = runRecords.get(logFrequency - 1);
@@ -97,7 +98,6 @@ public class LogMapReduceTest extends LongRunningTestBase<LogMapReduceTestState>
     if (logs != null) {
       Matcher mapperMatcher = mapper.matcher(logs);
       Matcher reducerMatcher = reducer.matcher(logs);
-
 
       for (int i = 0; i < BATCH_SIZE; i++) {
         boolean mapperMatched = mapperMatcher.find();
