@@ -26,6 +26,7 @@ import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamProperties;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
@@ -125,7 +126,8 @@ public class StreamTest extends AudiTestBase {
 
   // We have to use RestClient directly to attempt to create a stream with an invalid name (negative test against the
   // StreamHandler), because the StreamClient throws an IllegalArgumentException when passing in an invalid stream name.
-  private void createStream(String streamName) throws BadRequestException, IOException, UnauthenticatedException {
+  private void createStream(String streamName)
+    throws BadRequestException, IOException, UnauthenticatedException, UnauthorizedException {
     ClientConfig clientConfig = getClientConfig();
     URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, String.format("streams/%s", streamName));
     HttpResponse response = getRestClient().execute(HttpMethod.PUT, url, clientConfig.getAccessToken(),
