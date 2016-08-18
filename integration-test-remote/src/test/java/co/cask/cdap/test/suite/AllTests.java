@@ -36,6 +36,8 @@ import co.cask.cdap.apps.NamespacedStreamTest;
 import co.cask.cdap.apps.StreamTest;
 import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
+import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
+import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
@@ -67,6 +69,8 @@ import org.junit.runners.Suite;
   KVTableWithProjectionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
+  PartitionCorrectorTest.class,
+  PartitionedFileSetUpdateTest.class,
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
   RealtimeCubeSinkTest.class,
