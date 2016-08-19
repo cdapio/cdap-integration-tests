@@ -24,7 +24,7 @@ import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Scan;
 import co.cask.cdap.api.dataset.table.Scanner;
 import co.cask.cdap.data2.dataset2.lib.table.AbstractTable;
-import co.cask.tephra.Transaction;
+import org.apache.tephra.Transaction;
 
 import java.lang.reflect.Type;
 import java.util.Collection;
