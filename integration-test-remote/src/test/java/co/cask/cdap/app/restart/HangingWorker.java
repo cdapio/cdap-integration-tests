@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.restart;
+package co.cask.cdap.app.restart;
 
 import co.cask.cdap.api.TxRunnable;
 import co.cask.cdap.api.common.Bytes;

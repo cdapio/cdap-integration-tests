@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.restart;
+package co.cask.cdap.app.restart;
 
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
