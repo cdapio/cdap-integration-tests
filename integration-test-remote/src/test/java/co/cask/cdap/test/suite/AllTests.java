@@ -22,6 +22,7 @@ import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.realtime.ETLWorkerTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
+import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.DatasetTest;
 import co.cask.cdap.apps.NamespaceTest;
@@ -47,6 +48,9 @@ import org.junit.runners.Suite;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+//
+// Note: all the class names below are in sorted order
+//
   BatchCubeSinkTest.class,
   ETLMapReduceTest.class,
   KVTableWithProjectionTest.class,
@@ -57,6 +61,7 @@ import org.junit.runners.Suite;
   DatasetTest.class,
   ExploreTest.class,
   FileSetTest.class,
+  HangingWorkerTest.class,
   PurchaseMetadataTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
