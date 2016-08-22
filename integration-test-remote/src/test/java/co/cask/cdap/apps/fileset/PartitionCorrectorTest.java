@@ -24,12 +24,15 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -42,6 +45,11 @@ import java.util.concurrent.TimeoutException;
 /**
  * Tests that the partition corrector worker can recreate missing partitions, with or without dropping the hive table.
  */
+@Category({
+  // Do not run the tests on the distros which has older version of hive.
+  HDP20Incompatible.class,
+  CDH51Incompatible.class
+})
 public class PartitionCorrectorTest extends AudiTestBase {
 
   @Test
