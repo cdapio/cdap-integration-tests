@@ -32,7 +32,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 /**
- * Tests functionalities of namespaces (create, get, list, delete, etc)
+ * Tests functionality of namespaces (create, get, list, delete, etc)
  */
 public class NamespaceTest extends AudiTestBase {
   private static final Id.Namespace NS1 = Id.Namespace.from("ns1");

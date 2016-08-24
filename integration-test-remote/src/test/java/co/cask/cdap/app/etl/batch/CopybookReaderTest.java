@@ -135,7 +135,7 @@ public class CopybookReaderTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "CopybookReaderTest");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "CopybookReaderTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // manually trigger the pipeline

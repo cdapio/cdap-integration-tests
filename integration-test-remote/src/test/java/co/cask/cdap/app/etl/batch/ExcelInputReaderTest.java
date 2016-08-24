@@ -146,7 +146,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = NamespaceId.DEFAULT.app("ExcelReaderTest");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderTest");
     ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
 
     // manually trigger the pipeline
@@ -208,7 +208,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
       new co.cask.cdap.etl.batch.config.ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
 
     AppRequest<co.cask.cdap.etl.batch.config.ETLBatchConfig> request = getBatchAppRequest(etlBatchConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("ExcelReaderTest-terminateonemptyrow");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderTest-terminateonemptyrow");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
@@ -264,7 +264,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
       new co.cask.cdap.etl.batch.config.ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
 
     AppRequest<co.cask.cdap.etl.batch.config.ETLBatchConfig> request = getBatchAppRequest(etlBatchConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("ExcelReaderTest-terminateonerrorrecord");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderTest-terminateonerrorrecord");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
@@ -325,7 +325,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = NamespaceId.DEFAULT.app("ExcelReaderreprocessfalse");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderreprocessfalse");
     ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
 
     // Set preprocessed file data
