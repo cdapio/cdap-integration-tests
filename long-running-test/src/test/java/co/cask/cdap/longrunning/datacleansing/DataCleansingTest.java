@@ -22,9 +22,9 @@ import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.ServiceManager;
@@ -129,7 +129,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   private void createPartition(URL serviceUrl, DataCleansingTestState state)
-    throws IOException, UnauthenticatedException {
+    throws IOException, UnauthenticatedException, UnauthorizedException {
     URL url = new URL(serviceUrl, "v1/records/raw");
     List<String> records = new ArrayList<>();
     generateRecords(records, state.getEndInvalidRecordPid() + 1, false);

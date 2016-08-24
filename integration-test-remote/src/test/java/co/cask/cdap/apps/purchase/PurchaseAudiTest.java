@@ -29,6 +29,7 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.ScheduledRuntime;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -172,7 +173,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).suspend();
   }
 
-  private List<ScheduledRuntime> getNextRuntime(RESTClient restClient) throws UnauthenticatedException, IOException {
+  private List<ScheduledRuntime> getNextRuntime(RESTClient restClient)
+    throws UnauthenticatedException, IOException, UnauthorizedException {
     String path = String.format("apps/%s/workflows/%s/nextruntime",
                                 PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW.getId());
     URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, path);

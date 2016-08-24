@@ -5,6 +5,17 @@
         "explore.enabled": "true"
       },
       "version": "3.4.0-1"
+    },
+    "hadoop": {
+      "hdfs_site": {
+        "dfs.namenode.delegation.token.renew-interval": "600000",
+        "dfs.namenode.delegation.token.max-lifetime": "600000"
+      }
+    },
+    "hbase": {
+      "hbase_site": {
+        "hbase.auth.key.update.interval": "600000"
+      }
     }
   },
   "initial-lease-duration": 82800000

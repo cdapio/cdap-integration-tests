@@ -13,9 +13,6 @@
           "hydrator-plugins": {
             "branch": "develop"
           }
-        },
-        "hydrator_plugins": {
-          "branch": "develop"
         }
       }
     }
