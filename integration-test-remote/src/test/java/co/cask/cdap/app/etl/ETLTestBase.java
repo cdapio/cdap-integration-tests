@@ -75,9 +75,9 @@ public abstract class ETLTestBase extends AudiTestBase {
     artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
 
     version = getVersion();
-    final Id.Artifact batchId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-batch", version);
-    final Id.Artifact realtimeId = Id.Artifact.from(Id.Namespace.DEFAULT, "cdap-etl-realtime", version);
-    final ArtifactId datapipelineId = NamespaceId.DEFAULT.artifact("cdap-data-pipeline", version);
+    final Id.Artifact batchId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-batch", version);
+    final Id.Artifact realtimeId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-realtime", version);
+    final ArtifactId datapipelineId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-pipeline", version);
 
     // wait until we see extensions for cdap-etl-batch and cdap-etl-realtime and cdap-data-pipeline
     Tasks.waitFor(true, new Callable<Boolean>() {

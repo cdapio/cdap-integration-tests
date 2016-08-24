@@ -97,13 +97,13 @@ public class ExploreTest extends AudiTestBase {
 
     // Query: insert into other dataset, different type
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "insert into table dataset_wordcounts2 select word,count from dataset_extendedwordcounts").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
 
     results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select * from dataset_wordcounts2 order by word").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
@@ -134,13 +134,13 @@ public class ExploreTest extends AudiTestBase {
 
     // Query: insert into other dataset, same type
     results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "insert into table dataset_wordcounts2 select * from dataset_wordcounts").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
 
     results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select * from dataset_wordcounts2 order by word").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
@@ -172,13 +172,13 @@ public class ExploreTest extends AudiTestBase {
 
     // insert into cdap_user_wordcounts from itself
     results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "insert into table dataset_wordcounts2 select * from dataset_wordcounts2").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
 
     results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select * from dataset_wordcounts2 order by word").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
@@ -218,9 +218,9 @@ public class ExploreTest extends AudiTestBase {
     ServiceManager wordCountService = app.getServiceManager("WordCountService").start();
     waitForStatus(true, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
 
-    Id.Stream listsStreamId = Id.Stream.from(Id.Namespace.DEFAULT, "lists");
-    Id.Stream wordsStreamId = Id.Stream.from(Id.Namespace.DEFAULT, "words");
-    Id.Stream words2StreamId = Id.Stream.from(Id.Namespace.DEFAULT, "words2");
+    Id.Stream listsStreamId = Id.Stream.from(TEST_NAMESPACE, "lists");
+    Id.Stream wordsStreamId = Id.Stream.from(TEST_NAMESPACE, "words");
+    Id.Stream words2StreamId = Id.Stream.from(TEST_NAMESPACE, "words2");
 
     StreamClient streamClient = getStreamClient();
     streamClient.sendEvent(listsStreamId, "Mike 12 32 0");
@@ -252,7 +252,7 @@ public class ExploreTest extends AudiTestBase {
   private void testEqualityJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select t1.word,t1.count,t2.key,t2.value "
         + "from dataset_wordcounts t1 "
         + "join dataset_kvtable t2 "
@@ -287,7 +287,7 @@ public class ExploreTest extends AudiTestBase {
   private void testLeftOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select t1.word,t1.count,t2.key,t2.value from dataset_wordcounts t1 "
         + "LEFT OUTER JOIN dataset_kvtable t2 "
         + "ON (t1.word = t2.key) order by t1.word").get();
@@ -329,7 +329,7 @@ public class ExploreTest extends AudiTestBase {
   private void testRightOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select t1.word,t1.count,t2.key,t2.value from dataset_wordcounts t1 "
         + "RIGHT OUTER JOIN dataset_kvtable t2 "
         + "ON (t1.word = t2.key) order by t1.word").get();
@@ -367,7 +367,7 @@ public class ExploreTest extends AudiTestBase {
   private void testFullOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select t1.word,t1.count,t2.key,t2.value from dataset_wordcounts t1 "
         + "FULL OUTER JOIN dataset_kvtable t2 "
         + "ON (t1.word = t2.key) order by t1.word").get();
@@ -413,7 +413,7 @@ public class ExploreTest extends AudiTestBase {
   private void testCountEqualityJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select t1.count,count(*) as rowCount from dataset_wordcounts t1 "
         + "JOIN  dataset_kvtable t2 ON (t1.word = t2.key) group by t1.count").get();
 
@@ -438,7 +438,7 @@ public class ExploreTest extends AudiTestBase {
   private void testSumLeftOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select sum(t1.count) as sum from dataset_wordcounts t1 "
         + "LEFT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
@@ -458,7 +458,7 @@ public class ExploreTest extends AudiTestBase {
   private void testAvgLeftOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select avg(t1.count) as avg from dataset_wordcounts t1 "
         + "LEFT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
@@ -478,7 +478,7 @@ public class ExploreTest extends AudiTestBase {
   private void testMinRightOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select min(t1.count) as min from dataset_wordcounts t1 "
         + "RIGHT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
@@ -498,7 +498,7 @@ public class ExploreTest extends AudiTestBase {
   private void testMaxRightOuterJoin() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select max(t1.count) as max from dataset_wordcounts t1 "
         + "RIGHT OUTER JOIN dataset_kvtable t2 ON (t1.word = t2.key)").get();
 
@@ -518,7 +518,7 @@ public class ExploreTest extends AudiTestBase {
   private void testCheckKVTable() throws Exception {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select * from dataset_kvtable order by key").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
@@ -567,7 +567,7 @@ public class ExploreTest extends AudiTestBase {
     QueryClient client = new QueryClient(getClientConfig());
     String subquery = "select key from dataset_kvtable t2 where t1.word = t2.key";
     ExploreExecutionResult results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select * from dataset_wordcounts t1 where exists (" + subquery + ") order by t1.word").get();
 
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
@@ -597,7 +597,7 @@ public class ExploreTest extends AudiTestBase {
     StreamClient streamClient = getStreamClient();
 
     // send stream events for stream explore testing
-    Id.Stream tradesStreamId = Id.Stream.from(Id.Namespace.DEFAULT, "trades");
+    Id.Stream tradesStreamId = Id.Stream.from(TEST_NAMESPACE, "trades");
     streamClient.create(tradesStreamId);
     streamClient.sendEvent(tradesStreamId, "AAPL,50,112.98");
     streamClient.sendEvent(tradesStreamId, "AAPL,100,112.87");
@@ -605,7 +605,7 @@ public class ExploreTest extends AudiTestBase {
     streamClient.sendEvent(tradesStreamId, "NFLX,10,437.45");
 
     QueryClient client = new QueryClient(getClientConfig());
-    ExploreExecutionResult results = client.execute(Id.Namespace.DEFAULT, "select * from stream_trades").get();
+    ExploreExecutionResult results = client.execute(TEST_NAMESPACE, "select * from stream_trades").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     Assert.assertEquals(4, rows.size());
@@ -626,7 +626,7 @@ public class ExploreTest extends AudiTestBase {
     streamClient.setStreamProperties(tradesStreamId, streamProperties);
 
     results = client.execute(
-      Id.Namespace.DEFAULT,
+      TEST_NAMESPACE,
       "select ticker, count(*) as transactions, sum(num_traded) as volume from stream_trades " +
         "group by ticker order by volume desc").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
