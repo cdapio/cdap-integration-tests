@@ -45,7 +45,7 @@ public class ApplicationTest extends AudiTestBase {
       appClient.delete(Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME));
       Assert.fail();
     } catch (IOException expected) {
-      Assert.assertTrue(expected.getMessage().startsWith("403"));
+      Assert.assertTrue(expected.getMessage().startsWith("409"));
       Assert.assertTrue(expected.getMessage().contains("PurchaseFlow"));
     }
 
