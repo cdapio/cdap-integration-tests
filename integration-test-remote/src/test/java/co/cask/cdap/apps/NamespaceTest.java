@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -49,12 +49,13 @@ public class NamespaceTest extends AudiTestBase {
 
   @Test
   public void testNamespaces() throws Exception {
-    NamespaceClient namespaceClient = new NamespaceClient(getClientConfig(), getRestClient());
+    NamespaceClient namespaceClient = getNamespaceClient();
 
-    // initially, there should only be the default namespace
+    // initially, there should be at least the default namespace
     List<NamespaceMeta> list = namespaceClient.list();
-    Assert.assertEquals(1, list.size());
-    Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
+    int initialNamespaceCount = list.size();
+    NamespaceMeta defaultMeta = getById(list, Id.Namespace.DEFAULT);
+    Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
 
     try {
       namespaceClient.get(NS1);
@@ -70,6 +71,7 @@ public class NamespaceTest extends AudiTestBase {
     }
 
     // namespace create should work with or without description
+    registerForDeletion(NS1.toEntityId(), NS2.toEntityId());
     namespaceClient.create(ns1Meta);
     namespaceClient.create(ns2Meta);
 
@@ -90,7 +92,7 @@ public class NamespaceTest extends AudiTestBase {
 
     // list should contain the default namespace as well as the two explicitly created
     list = namespaceClient.list();
-    Assert.assertEquals(3, list.size());
+    Assert.assertEquals(initialNamespaceCount + 2, list.size());
     Assert.assertTrue(list.contains(ns1Meta));
     NamespaceMeta retrievedNs1Meta = getById(list, NS1);
     Assert.assertNotNull(String.format("Failed to find namespace with name %s in list: %s",
@@ -108,17 +110,14 @@ public class NamespaceTest extends AudiTestBase {
     Assert.assertEquals(ns1Meta, namespaceClient.get(NS1));
     Assert.assertEquals(ns2Meta, namespaceClient.get(NS2));
 
-    // default namespace should still exist after delete of it
-    namespaceClient.delete(Id.Namespace.DEFAULT);
-    namespaceClient.get(Id.Namespace.DEFAULT);
-
     // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
     namespaceClient.delete(NS1);
     namespaceClient.delete(NS2);
 
     list = namespaceClient.list();
-    Assert.assertEquals(1, list.size());
-    Assert.assertEquals(NamespaceMeta.DEFAULT, list.get(0));
+    Assert.assertEquals(initialNamespaceCount, list.size());
+    defaultMeta = getById(list, Id.Namespace.DEFAULT);
+    Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
   }
 
   // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
