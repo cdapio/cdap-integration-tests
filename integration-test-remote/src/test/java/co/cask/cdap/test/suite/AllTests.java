@@ -23,12 +23,13 @@ import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
+import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
 import co.cask.cdap.app.etl.batch.SparkPluginsTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
-import co.cask.cdap.app.etl.realtime.ETLWorkerTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
+import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.DatasetTest;
 import co.cask.cdap.apps.NamespaceTest;
@@ -36,6 +37,8 @@ import co.cask.cdap.apps.NamespacedStreamTest;
 import co.cask.cdap.apps.StreamTest;
 import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
+import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
+import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
@@ -54,19 +57,25 @@ import org.junit.runners.Suite;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+//
+// Note: all the class names below are in sorted order
+//
   ApplicationTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   CopybookReaderTest.class,
   DatasetTest.class,
   ETLMapReduceTest.class,
-  ETLWorkerTest.class,
   ExcelInputReaderTest.class,
   ExploreTest.class,
   FileSetTest.class,
+  HangingWorkerTest.class,
   KVTableWithProjectionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
+  NormalizeTest.class,
+  PartitionCorrectorTest.class,
+  PartitionedFileSetUpdateTest.class,
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
   RealtimeCubeSinkTest.class,

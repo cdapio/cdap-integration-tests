@@ -1,0 +1,12 @@
+{
+  "config": {
+    "cloudera_manager": {
+      "distribution_version": "5.7",
+      "csd": {
+        "install": {
+          "CDAP": "http://repository.prerelease.cask.co/downloads/cdap-csd/CDAP-3.5.0-0rc2.jar"
+        }
+      }
+    }
+  }
+}
