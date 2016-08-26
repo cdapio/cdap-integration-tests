@@ -64,6 +64,10 @@ public class SnapshotFilesetService extends AbstractService {
 
       try {
         Location partitionLocation = new SnapshotFileSet(fileset).getLocation();
+        if (partitionLocation == null) {
+          responder.sendStatus(HttpURLConnection.HTTP_NO_CONTENT);
+          return;
+        }
         responder.sendJson(readOutput(partitionLocation));
       } catch (InterruptedException e) {
         responder.sendError(HttpURLConnection.HTTP_INTERNAL_ERROR,
