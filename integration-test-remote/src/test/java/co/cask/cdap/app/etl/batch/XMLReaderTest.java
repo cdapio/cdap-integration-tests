@@ -141,7 +141,7 @@ public class XMLReaderTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = NamespaceId.DEFAULT.app(applicationName);
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app(applicationName);
     return deployApplication(appId.toId(), appRequest);
   }
 

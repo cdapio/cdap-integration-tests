@@ -71,9 +71,9 @@ import javax.annotation.Nullable;
 public class WorkflowTest extends AudiTestBase {
 
   private static final Id.Artifact ARTIFACT_ID =
-    Id.Artifact.from(Id.Namespace.DEFAULT, "WikipediaPipelineArtifact", new ArtifactVersion("1.0"));
+    Id.Artifact.from(TEST_NAMESPACE, "WikipediaPipelineArtifact", new ArtifactVersion("1.0"));
   private static final Id.Application APP_ID =
-    Id.Application.from(Id.Namespace.DEFAULT, WikipediaPipelineApp.class.getSimpleName());
+    Id.Application.from(TEST_NAMESPACE, WikipediaPipelineApp.class.getSimpleName());
   private static final ArtifactSummary ARTIFACT_SUMMARY = new ArtifactSummary("WikipediaPipelineArtifact", "1.0");
 
   @Before
@@ -111,13 +111,13 @@ public class WorkflowTest extends AudiTestBase {
   }
 
   private void createTestData() throws Exception {
-    Id.Stream likesStream = Id.Stream.from(Id.Namespace.DEFAULT, "pageTitleStream");
+    Id.Stream likesStream = Id.Stream.from(TEST_NAMESPACE, "pageTitleStream");
     StreamManager likesStreamManager = getTestManager().getStreamManager(likesStream);
     String like1 = "{\"name\":\"Metallica\",\"id\":\"107926539230502\",\"created_time\":\"2015-06-25T17:14:47+0000\"}";
     String like2 = "{\"name\":\"grunge\",\"id\":\"911679552186992\",\"created_time\":\"2015-07-20T17:37:04+0000\"}";
     likesStreamManager.send(like1);
     likesStreamManager.send(like2);
-    Id.Stream rawWikiDataStream = Id.Stream.from(Id.Namespace.DEFAULT, "wikiStream");
+    Id.Stream rawWikiDataStream = Id.Stream.from(TEST_NAMESPACE, "wikiStream");
     StreamManager rawWikipediaStreamManager = getTestManager().getStreamManager(rawWikiDataStream);
     String data1 = "{\"batchcomplete\":\"\",\"query\":{\"normalized\":[{\"from\":\"metallica\",\"to\":\"Metallica\"}]" +
       ",\"pages\":{\"18787\":{\"pageid\":18787,\"ns\":0,\"title\":\"Metallica\",\"revisions\":[{\"contentformat\":" +

@@ -76,7 +76,7 @@ public class BatchCubeSinkTest extends ETLTestBase {
     ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, Lists.<ETLStage>newArrayList());
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testCubeAdapter");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testCubeAdapter");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table

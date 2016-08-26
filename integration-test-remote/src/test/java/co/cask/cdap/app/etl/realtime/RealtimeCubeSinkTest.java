@@ -67,7 +67,7 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
 
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testCubeSink");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testCubeSink");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
