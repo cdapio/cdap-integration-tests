@@ -263,6 +263,7 @@
                 <exclude>**/Apache-LICENSE-2.0</exclude>
                 <exclude>**/*.state</exclude>
                 <exclude>**/*.json</exclude>
+                <exclude>**/*.csv</exclude>
               </excludes>
             </configuration>
           </execution>
