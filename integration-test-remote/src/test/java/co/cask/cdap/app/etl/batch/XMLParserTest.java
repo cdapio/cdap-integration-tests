@@ -96,7 +96,7 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
@@ -183,7 +183,7 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
@@ -240,7 +240,7 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
@@ -299,7 +299,7 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
@@ -355,7 +355,7 @@ public class XMLParserTest extends ETLTestBase {
       new co.cask.cdap.etl.batch.config.ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
 
     AppRequest<co.cask.cdap.etl.batch.config.ETLBatchConfig> request = getBatchAppRequest(etlBatchConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app("XMLParserTest");
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
     ApplicationManager appManager = deployApplication(appId.toId(), request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);

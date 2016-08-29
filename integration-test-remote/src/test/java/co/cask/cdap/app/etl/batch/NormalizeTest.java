@@ -119,7 +119,7 @@ public class NormalizeTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = NamespaceId.DEFAULT.app(applicationName);
+    ApplicationId appId = TEST_NAMESPACE.toEntityId().app(applicationName);
     return deployApplication(appId.toId(), appRequest);
   }
 
