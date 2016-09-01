@@ -3,6 +3,11 @@
     "hadoop": {
       "distribution": "hdp",
       "distribution_version": "2.0.13.0"
+    },
+    "hive": {
+      "hive_site": {
+        "hive.metastore.ds.retry.attempts": "0"
+      }
     }
   }
 }
