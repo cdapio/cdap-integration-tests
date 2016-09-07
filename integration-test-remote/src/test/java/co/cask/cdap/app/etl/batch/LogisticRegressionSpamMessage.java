@@ -48,8 +48,8 @@ public class LogisticRegressionSpamMessage {
   @Override
   public int hashCode() {
     int result = text.hashCode();
-    result =   31 * result + read.hashCode();
-    result = 31 * result + spamPrediction.hashCode();
+    result = 31 * result + read.hashCode();
+    result = 31 * result + (spamPrediction != null ? spamPrediction.hashCode() : 0);
     return result;
   }
 
@@ -70,6 +70,7 @@ public class LogisticRegressionSpamMessage {
     if (!read.equals(that.read)) {
       return false;
     }
-    return spamPrediction.equals(that.spamPrediction);
+
+    return !(spamPrediction != null ? !spamPrediction.equals(that.spamPrediction) : that.spamPrediction != null);
   }
 }

@@ -125,7 +125,7 @@ public class LogisticRegressionTest extends ETLTestBase {
                                                      "ham this is an even more genuine message,no,0.0",
                                                      "ham could you send me the report,no,0.0");
 
-    Id.Stream stream = Id.Stream.from(Id.Namespace.DEFAULT, "logisticRegressionTrainingStream");
+    Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, "logisticRegressionTrainingStream");
 
     // write records to source
     StreamManager streamManager = getTestManager().getStreamManager(stream);
@@ -179,7 +179,7 @@ public class LogisticRegressionTest extends ETLTestBase {
       .addConnection("sparkCompute", "sink")
       .build();
 
-    Id.Application app = Id.Application.from(Id.Namespace.DEFAULT, "SpamClassifier");
+    Id.Application app = Id.Application.from(TEST_NAMESPACE, "SpamClassifier");
     ApplicationManager appManager = deployApplication(app, getBatchAppRequestV2(etlConfig));
 
     List<String> trainingMessages = ImmutableList.of("how are you doing today,no",
@@ -187,7 +187,7 @@ public class LogisticRegressionTest extends ETLTestBase {
                                                      "what are you doing today,no",
                                                      "genuine report,no");
 
-    Id.Stream stream = Id.Stream.from(Id.Namespace.DEFAULT, textsToClassify);
+    Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, textsToClassify);
 
     // write records to source
     StreamManager streamManager = getTestManager().getStreamManager(stream);
