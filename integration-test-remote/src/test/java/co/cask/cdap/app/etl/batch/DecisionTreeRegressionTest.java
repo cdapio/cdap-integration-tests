@@ -75,12 +75,12 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
   private final Schema sourceSchema = Schema.recordOf("sourceRecord",
                                                       Schema.Field.of("dofM", Schema.of(Schema.Type.INT)),
                                                       Schema.Field.of("dofW", Schema.of(Schema.Type.INT)),
-                                                      Schema.Field.of("carrier", Schema.of(Schema.Type.STRING)),
+                                                      Schema.Field.of("carrier", Schema.of(Schema.Type.DOUBLE)),
                                                       Schema.Field.of("tailNum", Schema.of(Schema.Type.STRING)),
                                                       Schema.Field.of("flightNum", Schema.of(Schema.Type.INT)),
-                                                      Schema.Field.of("originID", Schema.of(Schema.Type.STRING)),
+                                                      Schema.Field.of("originId", Schema.of(Schema.Type.INT)),
                                                       Schema.Field.of("origin", Schema.of(Schema.Type.STRING)),
-                                                      Schema.Field.of("destId", Schema.of(Schema.Type.STRING)),
+                                                      Schema.Field.of("destId", Schema.of(Schema.Type.INT)),
                                                       Schema.Field.of("dest", Schema.of(Schema.Type.STRING)),
                                                       Schema.Field.of("scheduleDepTime", Schema.of(Schema.Type.DOUBLE)),
                                                       Schema.Field.of("deptime", Schema.of(Schema.Type.DOUBLE)),
@@ -114,8 +114,8 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
     Map<String, String> properties = new ImmutableMap.Builder<String, String>()
       .put("fileSetName", "decision-tree-regression-model")
       .put("path", "decisionTreeRegression")
-      .put("features", "dofM,dofW,scheduleDepTime,scheduledArrTime,carrier,elapsedTime,origin,dest")
-      .put("predictionField", "delayed")
+      .put("featuresToInclude", "dofM,dofW,carrier,originId,destId,scheduleDepTime,scheduledArrTime,elapsedTime")
+      .put("labelField", "delayed")
       .put("maxBins", "100")
       .put("maxDepth", "9")
       .build();
@@ -140,12 +140,12 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(Id.Namespace.DEFAULT, "FlightDelayTrainer"),
+    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "FlightDelayTrainer"),
                                                       getBatchAppRequestV2(etlConfig));
 
     // write records to source
     StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(Id.Namespace.DEFAULT, "trainingStream"));
+      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "trainingStream"));
     File file = new File(this.getClass().getResource("/trainData.csv").getFile());
     BufferedReader bufferedInputStream = new BufferedReader(new FileReader(file));
     String line;
@@ -163,7 +163,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
     Map<String, String> properties = new ImmutableMap.Builder<String, String>()
       .put("fileSetName", "decision-tree-regression-model")
       .put("path", "decisionTreeRegression")
-      .put("features", "dofM,dofW,scheduleDepTime,scheduledArrTime,carrier,elapsedTime,origin,dest")
+      .put("featuresToInclude", "dofM,dofW,carrier,originId,destId,scheduleDepTime,scheduledArrTime,elapsedTime")
       .put("predictionField", "delayed")
       .build();
 
@@ -174,6 +174,11 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
                                                                      Properties.Stream.FORMAT, "csv",
                                                                      Properties.Stream.SCHEMA, sourceSchema.toString()),
                                                      null)))
+      .addStage(new ETLStage("projectionTransform", new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
+                                                                  ImmutableMap.of("name", "headers",
+                                                                                  "drop", "id,headers",
+                                                                                  "schema", sourceSchema.toString()),
+                                                                  null)))
       .addStage(new ETLStage("sparkCompute", new ETLPlugin("DecisionTreeRegressor", SparkCompute.PLUGIN_TYPE,
                                                            properties, null)))
       .addStage(new ETLStage("sink",
@@ -181,24 +186,25 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
                                            ImmutableMap.of("name", "decisiontreesink",
                                                            "schema", getSinkSchema(sourceSchema).toString()),
                                            null)))
-      .addConnection("source", "sparkCompute")
+      .addConnection("source", "projectionTransform")
+      .addConnection("projectionTransform", "sparkCompute")
       .addConnection("sparkCompute", "sink")
       .setDriverResources(new Resources(1024))
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(Id.Namespace.DEFAULT, "DecisionRegression"),
+    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "DecisionRegression"),
                                                       getBatchAppRequestV2(etlConfig));
 
     // write some some messages to be classified
     StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(Id.Namespace.DEFAULT, "testStream"));
-    streamManager.send("4,6,AA,N327AA,1,12478,JFK,12892,LAX,900,1005,65,1225,1324,59,385,2475");
-    streamManager.send("25,6,MQ,N0EGMQ,3419,10397,ATL,12953,LGA,1150,1229,39,1359,1448,49,129,762");
-    streamManager.send("4,6,EV,N14991,6159,13930,ORD,13198,MCI,2030,2118,48,2205,2321,76,95,403");
-    streamManager.send("29,3,AA,N355AA,2407,12892,LAX,11298,DFW,1025,1023,0,1530,1523,0,185,1235");
-    streamManager.send("2,4,DL,N919DE,1908,13930,ORD,11433,DTW,1641,1902,141,1905,2117,132,84,235");
-    streamManager.send("2,4,DL,N933DN,1791,10397,ATL,15376,TUS,1855,2014,79,2108,2159,51,253,1541");
+      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
+    streamManager.send("4,6,1,N327AA,1,12478,JFK,12892,LAX,900,1005,65,1225,1324,59,385,2475");
+    streamManager.send("25,6,2,N0EGMQ,3419,10397,ATL,12953,LGA,1150,1229,39,1359,1448,49,129,762");
+    streamManager.send("4,6,3,N14991,6159,13930,ORD,13198,MCI,2030,2118,48,2205,2321,76,95,403");
+    streamManager.send("29,3,1,N355AA,2407,12892,LAX,11298,DFW,1025,1023,0,1530,1523,0,185,1235");
+    streamManager.send("2,4,4,N919DE,1908,13930,ORD,11433,DTW,1641,1902,141,1905,2117,132,84,235");
+    streamManager.send("2,4,4,N933DN,1791,10397,ATL,15376,TUS,1855,2014,79,2108,2159,51,253,1541");
 
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
