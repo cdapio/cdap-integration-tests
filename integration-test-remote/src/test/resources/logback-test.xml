@@ -40,7 +40,6 @@
     </appender>
 
     <root level="DEBUG">
-      <appender-ref ref="CLOG"/>
       <appender-ref ref="STDOUT"/>
     </root>
 </configuration>
