@@ -17,6 +17,7 @@
 package co.cask.cdap.test.standalone;
 
 import co.cask.cdap.StandaloneTester;
+import co.cask.cdap.common.app.MainClassLoader;
 import co.cask.cdap.common.lang.ClassLoaders;
 import co.cask.cdap.test.runner.AutoSuiteRunner;
 import com.google.common.base.Splitter;
@@ -30,7 +31,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,7 +107,7 @@ public class StandaloneTestSuite {
       }
     }
 
-    URLClassLoader classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), null);
+    ClassLoader classLoader = new MainClassLoader(urls.toArray(new URL[urls.size()]), null);
     try {
       Class<?> clz = classLoader.loadClass(StandaloneTester.class.getName());
       Constructor<?> constructor = clz.getConstructor(Object[].class);
