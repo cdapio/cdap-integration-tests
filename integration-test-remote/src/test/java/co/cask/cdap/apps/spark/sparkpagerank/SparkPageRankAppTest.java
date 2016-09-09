@@ -47,6 +47,7 @@ import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -58,6 +59,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -115,7 +117,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
     // Start Spark Page Rank and await completion
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getId());
-    pageRankManager.start();
+    Map<String, String> runtimeArgs = ImmutableMap.of("task.client.system.resources.memory", "1024");
+    pageRankManager.start(runtimeArgs);
 
     // wait until the spark program is running or completes. It completes too fast on standalone to rely on
     // programManager#waitForStatus(true, ...)
