@@ -72,12 +72,13 @@ public class CopybookReaderTest extends ETLTestBase {
 
   @Test
   public void test() throws Exception {
-    //GET location of the fileset copybook on cluster
+    // GET location of the fileset copybook on cluster
     URL url = new URL(serviceURL, "copybook?path=DTAR020_FB.bin");
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
-    String cblContents = "000100*                                                                         \n" +
+    String cblContents =
+      "000100*                                                                         \n" +
       "000200*   DTAR020 IS THE OUTPUT FROM DTAB020 FROM THE IML                       \n" +
       "000300*   CENTRAL REPORTING SYSTEM                                              \n" +
       "000400*                                                                         \n" +
