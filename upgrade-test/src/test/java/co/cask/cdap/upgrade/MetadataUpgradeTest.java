@@ -19,6 +19,7 @@ package co.cask.cdap.upgrade;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.client.LineageClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
@@ -30,6 +31,8 @@ import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
+import co.cask.cdap.proto.metadata.lineage.CollapseType;
+import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -39,6 +42,7 @@ import org.junit.Assert;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Upgrade tests for metadata
@@ -77,9 +81,11 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private static Predicate<MetadataSearchResultRecord> purchaseAppPredicate;
 
   private final MetadataClient metadataClient;
+  private final LineageClient lineageClient;
 
   public MetadataUpgradeTest() {
     this.metadataClient = new MetadataClient(getClientConfig(), getRestClient());
+    this.lineageClient = new LineageClient(getClientConfig(), getRestClient());
   }
 
   @Override
@@ -112,6 +118,13 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     // currently we don't have any properties for programs
     verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
     verifySystemMetadata(PURCHASE_STREAM, true, true);
+
+    // test lineage
+    long now = TimeUnit.MICROSECONDS.toSeconds(System.currentTimeMillis());
+    long oneHour = TimeUnit.HOURS.toSeconds(1);
+    LineageRecord lineage = lineageClient.getLineage(HISTORY, now - oneHour, now + oneHour, toSet(CollapseType.ACCESS),
+                                                     10);
+
   }
 
   @Override
@@ -255,5 +268,10 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));
     }
     return transformed;
+  }
+
+  @SafeVarargs
+  private static <T> Set<T> toSet(T... elements) {
+    return ImmutableSet.copyOf(elements);
   }
 }
