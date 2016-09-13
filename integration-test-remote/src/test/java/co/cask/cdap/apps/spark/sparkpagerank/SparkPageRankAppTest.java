@@ -27,9 +27,12 @@ import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
+import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.ProgramId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
@@ -80,17 +83,15 @@ public class SparkPageRankAppTest extends AudiTestBase {
   private static final String RANK = "14";
   private static final String TOTAL_PAGES = "1";
 
-  private static final Id.Application SPARK_PAGE_RANK_APP = Id.Application.from(TEST_NAMESPACE, "SparkPageRank");
-  private static final Id.Stream STREAM = Id.Stream.from(TEST_NAMESPACE, SparkPageRankApp.BACKLINK_URL_STREAM);
-  private static final Id.Service PAGE_RANK_SERVICE = Id.Service.from(
-    SPARK_PAGE_RANK_APP, SparkPageRankApp.SERVICE_HANDLERS);
-  private static final Id.Program RANKS_COUNTER_PROGRAM = Id.Program.from(
-    SPARK_PAGE_RANK_APP, ProgramType.MAPREDUCE, SparkPageRankApp.RanksCounter.class.getSimpleName());
-  private static final Id.Program PAGE_RANK_PROGRAM = Id.Program.from(SPARK_PAGE_RANK_APP, ProgramType.SPARK,
-                                                                      SparkPageRankApp.PageRankSpark.class
-                                                                        .getSimpleName());
-  private static final Id.DatasetInstance RANKS_DATASET = Id.DatasetInstance.from(TEST_NAMESPACE, "ranks");
-  private static final Id.DatasetInstance RANKS_COUNTS_DATASET = Id.DatasetInstance.from(TEST_NAMESPACE, "rankscount");
+  private static final ApplicationId SPARK_PAGE_RANK_APP = TEST_NAMESPACE_ENTITY.app("SparkPageRank");
+  private static final StreamId STREAM = TEST_NAMESPACE_ENTITY.stream(SparkPageRankApp.BACKLINK_URL_STREAM);
+  private static final ProgramId PAGE_RANK_SERVICE = SPARK_PAGE_RANK_APP.service(SparkPageRankApp.SERVICE_HANDLERS);
+  private static final ProgramId RANKS_COUNTER_PROGRAM = SPARK_PAGE_RANK_APP.mr(
+    SparkPageRankApp.RanksCounter.class.getSimpleName());
+  private static final ProgramId PAGE_RANK_PROGRAM = SPARK_PAGE_RANK_APP.spark(
+    SparkPageRankApp.PageRankSpark.class.getSimpleName());
+  private static final DatasetId RANKS_DATASET = TEST_NAMESPACE_ENTITY.dataset("ranks");
+  private static final DatasetId RANKS_COUNTS_DATASET = TEST_NAMESPACE_ENTITY.dataset("rankscount");
 
   @Test
   public void test() throws Exception {
@@ -100,21 +101,22 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(SparkPageRankApp.class);
 
     // none of the programs should have any run records
-    assertRuns(0, programClient, ProgramRunStatus.ALL, PAGE_RANK_SERVICE, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
+    assertRuns(0, programClient, ProgramRunStatus.ALL, PAGE_RANK_SERVICE.toId(), RANKS_COUNTER_PROGRAM.toId(), 
+               PAGE_RANK_PROGRAM.toId());
 
-    StreamManager backlinkURLStream = getTestManager().getStreamManager(STREAM);
+    StreamManager backlinkURLStream = getTestManager().getStreamManager(STREAM.toId());
     backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_2));
     backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_3));
     backlinkURLStream.send(Joiner.on(" ").join(URL_2, URL_1));
     backlinkURLStream.send(Joiner.on(" ").join(URL_3, URL_1));
 
     // Start service
-    ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getId()).start();
+    ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getEntityName()).start();
     serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     Assert.assertTrue(serviceManager.isRunning());
 
     // Start Spark Page Rank and await completion
-    SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getId());
+    SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getEntityName());
     pageRankManager.start();
 
     // wait until the spark program is running or completes. It completes too fast on standalone to rely on
@@ -123,7 +125,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
       @Override
       public Boolean call() throws Exception {
         List<RunRecord> pageRankRuns =
-          programClient.getAllProgramRuns(PAGE_RANK_PROGRAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
+          programClient.getAllProgramRuns(PAGE_RANK_PROGRAM.toId(), 0, Long.MAX_VALUE, Integer.MAX_VALUE);
         if (pageRankRuns.size() != 1) {
           return false;
         }
@@ -134,22 +136,23 @@ public class SparkPageRankAppTest extends AudiTestBase {
     pageRankManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> sparkRanRecords =
-      getRunRecords(1, programClient, PAGE_RANK_PROGRAM,
+      getRunRecords(1, programClient, PAGE_RANK_PROGRAM.toId(),
                     ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE);
 
     // Start mapreduce and await completion
-    MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(RANKS_COUNTER_PROGRAM.getId());
+    MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(
+      RANKS_COUNTER_PROGRAM.getEntityName());
     ranksCounterManager.start();
     ranksCounterManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     // wait 10 minutes for the mapreduce to execute
     ranksCounterManager.waitForStatus(false, 10 * 60, 1);
 
     List<RunRecord> mrRanRecords =
-      getRunRecords(1, programClient, RANKS_COUNTER_PROGRAM,
+      getRunRecords(1, programClient, RANKS_COUNTER_PROGRAM.toId(),
                     ProgramRunStatus.COMPLETED.name(), 0, Long.MAX_VALUE);
 
     // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
-    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
+    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM.toId(), PAGE_RANK_PROGRAM.toId());
 
     URL url = new URL(serviceManager.getServiceURL(),
                       SparkPageRankApp.SparkPageRankServiceHandler.TOTAL_PAGES_PATH + "/" + RANK);
@@ -167,7 +170,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     serviceManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     List<RunRecord> serviceRanRecords =
-      getRunRecords(1, programClient, PAGE_RANK_SERVICE,
+      getRunRecords(1, programClient, PAGE_RANK_SERVICE.toId(),
                     ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE);
 
     long endTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + 100;
@@ -212,7 +215,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
 
     // services should 'KILLED' state because they were explicitly stopped with a single run
-    assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE);
+    assertRuns(1, programClient, ProgramRunStatus.KILLED, PAGE_RANK_SERVICE.toId());
   }
 
   private void testLineage(URL url, LineageRecord expected)
