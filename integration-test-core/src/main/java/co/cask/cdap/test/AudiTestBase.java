@@ -35,6 +35,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.cube.CubeDatasetApp;
 import co.cask.cdap.remote.dataset.cube.RemoteCube;
@@ -76,6 +77,7 @@ public class AudiTestBase extends IntegrationTestBase {
   protected static final int PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
 
   protected static final Id.Namespace TEST_NAMESPACE = getConfiguredNamespace().toId();
+  protected static final NamespaceId TEST_NAMESPACE_ENTITY = getConfiguredNamespace();
 
   // avoid logging of HttpRequest's body by default, to avoid verbose logging
   private static final int logBodyLimit = Integer.valueOf(System.getProperty("logRequestBodyLimit", "0"));
