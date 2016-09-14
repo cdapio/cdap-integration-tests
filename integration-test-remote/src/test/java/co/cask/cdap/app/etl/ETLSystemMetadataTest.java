@@ -21,6 +21,8 @@ import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
+import co.cask.cdap.proto.id.ArtifactId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
 import com.google.common.collect.ImmutableSet;
@@ -40,7 +42,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
   public void testSearchETLArtifactsWithSystemMetadata() throws Exception {
     MetadataClient metadataClient = new MetadataClient(getClientConfig(), getRestClient());
     String version = getMetaClient().getVersion().getVersion();
-    Id.Artifact batchId = Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-batch", version);
+    ArtifactId batchId = NamespaceId.SYSTEM.artifact("cdap-etl-batch", version);
     Set<MetadataSearchResultRecord> expected = ImmutableSet.of(new MetadataSearchResultRecord(batchId));
     Set<MetadataSearchResultRecord> result =
       searchMetadata(metadataClient, Id.Namespace.SYSTEM, "cdap-etl-batch", null);
@@ -52,17 +54,17 @@ public class ETLSystemMetadataTest extends ETLTestBase {
                                                                        ArtifactScope.SYSTEM);
     Assert.assertTrue("Expected at least one core-plugins artifact.", allCorePlugins.size() > 0);
     String corePluginsVersion = allCorePlugins.get(0).getVersion();
-    Id.Artifact corePlugins = Id.Artifact.from(Id.Namespace.SYSTEM, "core-plugins", corePluginsVersion);
+    ArtifactId corePlugins = NamespaceId.SYSTEM.artifact("core-plugins", corePluginsVersion);
     expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
     result = searchMetadata(metadataClient, Id.Namespace.SYSTEM, "table", MetadataSearchTargetType.ARTIFACT);
     Assert.assertEquals(expected, result);
     // Searching in some user namespace should also surface entities from the system namespace
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
-      Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-batch", getMetaClient().getVersion().getVersion())));
+      NamespaceId.SYSTEM.artifact("cdap-etl-batch", getMetaClient().getVersion().getVersion())));
     result = searchMetadata(metadataClient, TEST_NAMESPACE, "batch", null);
     Assert.assertEquals(expected, result);
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
-      Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-realtime", getMetaClient().getVersion().getVersion())));
+      NamespaceId.SYSTEM.artifact("cdap-etl-realtime", getMetaClient().getVersion().getVersion())));
     result = searchMetadata(metadataClient, TEST_NAMESPACE, "realtime", null);
     Assert.assertEquals(expected, result);
   }

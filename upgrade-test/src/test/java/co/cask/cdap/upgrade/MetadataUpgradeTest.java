@@ -24,8 +24,14 @@ import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
 import co.cask.cdap.proto.Id;
-import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.ViewSpecification;
+import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.ArtifactId;
+import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespacedEntityId;
+import co.cask.cdap.proto.id.ProgramId;
+import co.cask.cdap.proto.id.StreamId;
+import co.cask.cdap.proto.id.StreamViewId;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
@@ -45,17 +51,16 @@ import java.util.Set;
  */
 public class MetadataUpgradeTest extends UpgradeTestBase {
 
-  private static final Id.Application PURCHASE_APP = Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME);
-  private static final Id.Program PURCHASE_HISTORY_BUILDER =
-    Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE, PurchaseHistoryBuilder.class.getSimpleName());
-  private static final Id.Stream PURCHASE_STREAM = Id.Stream.from(TEST_NAMESPACE, "purchaseStream");
-  private static final Id.Stream.View PURCHASE_VIEW = Id.Stream.View.from(PURCHASE_STREAM,
-                                                                          PURCHASE_STREAM.getId() + "View");
-  private static final Id.DatasetInstance HISTORY = Id.DatasetInstance.from(TEST_NAMESPACE, "history");
-  private static final Id.DatasetInstance FREQUENT_CUSTOMERS = Id.DatasetInstance.from(TEST_NAMESPACE,
-                                                                                       "frequentCustomers");
-  private static final Id.DatasetInstance USER_PROFILES = Id.DatasetInstance.from(TEST_NAMESPACE, "userProfiles");
-  private static final Id.DatasetInstance PURCHASES = Id.DatasetInstance.from(TEST_NAMESPACE, "purchases");
+  private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE_ENTITY.app(PurchaseApp.APP_NAME);
+  private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr(
+    PurchaseHistoryBuilder.class.getSimpleName());
+  private static final StreamId PURCHASE_STREAM = TEST_NAMESPACE_ENTITY.stream("purchaseStream");
+  private static final StreamViewId PURCHASE_VIEW = PURCHASE_STREAM.view(
+    PURCHASE_STREAM.getEntityName() + "View");
+  private static final DatasetId HISTORY = TEST_NAMESPACE_ENTITY.dataset("history");
+  private static final DatasetId FREQUENT_CUSTOMERS = TEST_NAMESPACE_ENTITY.dataset("frequentCustomers");
+  private static final DatasetId USER_PROFILES = TEST_NAMESPACE_ENTITY.dataset("userProfiles");
+  private static final DatasetId PURCHASES = TEST_NAMESPACE_ENTITY.dataset("purchases");
   private static final Map<String, String> EMPTY_PROPERTIES = ImmutableMap.of();
   private static final Map<String, String> APP_PROPERTIES = ImmutableMap.of("env", "prod");
   private static final Set<MetadataRecord> EXPECTED_APP_METADATA = ImmutableSet.of(
@@ -91,37 +96,43 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
                                                                   Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(PURCHASE_VIEW, new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
+    viewClient.createOrUpdate(PURCHASE_VIEW.toId(),
+                              new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     // Add some user metadata
-    metadataClient.addProperties(PURCHASE_APP, APP_PROPERTIES);
-    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP, MetadataScope.USER));
+    metadataClient.addProperties(PURCHASE_APP.toId(), APP_PROPERTIES);
+    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP.toId(), MetadataScope.USER));
 
-    metadataClient.addTags(PURCHASE_STREAM, STREAM_TAGS);
-    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM, MetadataScope.USER));
+    metadataClient.addTags(PURCHASE_STREAM.toId(), STREAM_TAGS);
+    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM.toId(), 
+                                                                             MetadataScope.USER));
 
-    metadataClient.addTags(PURCHASE_HISTORY_BUILDER, MR_TAGS);
-    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER, MetadataScope.USER));
+    metadataClient.addTags(PURCHASE_HISTORY_BUILDER.toId(), MR_TAGS);
+    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER.toId(), 
+                                                                         MetadataScope.USER));
 
-    metadataClient.addTags(HISTORY, DS_TAGS);
-    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY, MetadataScope.USER));
+    metadataClient.addTags(HISTORY.toId(), DS_TAGS);
+    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY.toId(), MetadataScope.USER));
 
     // there should be system metadata records for these entities
-    verifySystemMetadata(PURCHASE_APP, true, true);
-    verifySystemMetadata(HISTORY, true, true);
+    verifySystemMetadata(PURCHASE_APP.toId(), true, true);
+    verifySystemMetadata(HISTORY.toId(), true, true);
     // currently we don't have any properties for programs
-    verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
-    verifySystemMetadata(PURCHASE_STREAM, true, true);
+    verifySystemMetadata(PURCHASE_HISTORY_BUILDER.toId(), false, true);
+    verifySystemMetadata(PURCHASE_STREAM.toId(), true, true);
   }
 
   @Override
   protected void postStage() throws Exception {
-    Assert.assertTrue("PurchaseApp must exist after upgrade.", getApplicationClient().exists(PURCHASE_APP));
+    Assert.assertTrue("PurchaseApp must exist after upgrade.", getApplicationClient().exists(PURCHASE_APP.toId()));
     // verify user metadata added prior to upgrade
-    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP, MetadataScope.USER));
-    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM, MetadataScope.USER));
-    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER, MetadataScope.USER));
-    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY, MetadataScope.USER));
+    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP.toId(), MetadataScope.USER));
+    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM.toId(), 
+                                                                             MetadataScope.USER));
+    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER.toId(),
+                                                                         MetadataScope.USER));
+    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY.toId(),
+                                                                         MetadataScope.USER));
     // verify search using user metadata added prior to upgrade
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PURCHASE_APP)),
@@ -147,11 +158,11 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     );
 
     // there should be system metadata records for these entities
-    verifySystemMetadata(PURCHASE_APP, true, true);
-    verifySystemMetadata(HISTORY, true, true);
+    verifySystemMetadata(PURCHASE_APP.toId(), true, true);
+    verifySystemMetadata(HISTORY.toId(), true, true);
     // currently we don't have any properties for programs
-    verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
-    verifySystemMetadata(PURCHASE_STREAM, true, true);
+    verifySystemMetadata(PURCHASE_HISTORY_BUILDER.toId(), false, true);
+    verifySystemMetadata(PURCHASE_STREAM.toId(), true, true);
 
     // makes some searches: this should get system entities such as dataset, artifacts, flow, services, programs
     Set<MetadataSearchResultRecord> searchResults = filterNonPurchaseEntities(
@@ -172,12 +183,12 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(4, searchResults.size());
 
     // system metadata for app check
-    searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_APP.getId(),
+    searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_APP.getEntityName(),
                                    MetadataSearchTargetType.ALL);
     Assert.assertEquals(1, searchResults.size());
 
     // system metadata for stream check
-    searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getId(),
+    searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
                                    MetadataSearchTargetType.ALL);
     // 3 = stream: purchaseStream + app: PurchaseHistory + view: purchaseStreamView
     Assert.assertEquals(3, searchResults.size());
@@ -221,25 +232,25 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
       purchaseAppPredicate = new Predicate<MetadataSearchResultRecord>() {
         @Override
         public boolean apply(MetadataSearchResultRecord input) {
-          Id.NamespacedId entityId = input.getEntityId();
-          if (entityId instanceof Id.DatasetInstance) {
+          NamespacedEntityId entityId = input.getEntityId();
+          if (entityId instanceof DatasetId) {
             return ImmutableSet.of(HISTORY, USER_PROFILES, PURCHASES, FREQUENT_CUSTOMERS).contains(entityId);
-          } else if (entityId instanceof Id.Stream.View) {
+          } else if (entityId instanceof StreamViewId) {
             return PURCHASE_VIEW.equals(entityId);
-          } else if (entityId instanceof Id.Stream) {
+          } else if (entityId instanceof StreamId) {
             return PURCHASE_STREAM.equals(entityId);
-          } else if (entityId instanceof Id.Application) {
+          } else if (entityId instanceof ApplicationId) {
             return PURCHASE_APP.equals(entityId);
-          } else if (entityId instanceof Id.Program) {
-            return PURCHASE_APP.equals(((Id.Program) entityId).getApplication());
-          } else if (entityId instanceof Id.Artifact) {
+          } else if (entityId instanceof ProgramId) {
+            return PURCHASE_APP.equals(((ProgramId) entityId).getParent());
+          } else if (entityId instanceof ArtifactId) {
             String version = null;
             try {
               version = getMetaClient().getVersion().getVersion();
             } catch (Exception e) {
               Assert.fail("Unable to retrieve CDAP version. Exception: " + e.getMessage());
             }
-            return Id.Artifact.from(TEST_NAMESPACE, PurchaseApp.class.getSimpleName(), version).equals(entityId);
+            return TEST_NAMESPACE_ENTITY.artifact(PurchaseApp.class.getSimpleName(), version).equals(entityId);
           }
           return false;
         }
