@@ -96,7 +96,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
   public void testSparkPlugins() throws Exception {
     // use the SparkSink(DecisionTreeTrainer) to train a model
     testSparkSink();
-    // use a SparkCompute(DecisionTreeRegressor) to label all records going through the pipeline, using the model
+    // use a SparkCompute(DecisionTreePredictor) to label all records going through the pipeline, using the model
     // build with the SparkSink
     testSparkCompute();
   }
@@ -179,7 +179,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
                                                                                   "drop", "id,headers",
                                                                                   "schema", sourceSchema.toString()),
                                                                   null)))
-      .addStage(new ETLStage("sparkCompute", new ETLPlugin("DecisionTreeRegressor", SparkCompute.PLUGIN_TYPE,
+      .addStage(new ETLStage("sparkCompute", new ETLPlugin("DecisionTreePredictor", SparkCompute.PLUGIN_TYPE,
                                                            properties, null)))
       .addStage(new ETLStage("sink",
                              new ETLPlugin("TPFSAvro", BatchSink.PLUGIN_TYPE,
