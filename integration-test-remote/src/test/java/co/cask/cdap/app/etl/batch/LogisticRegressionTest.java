@@ -44,6 +44,7 @@ import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,13 +69,13 @@ import java.util.concurrent.TimeUnit;
 })
 public class LogisticRegressionTest extends ETLTestBase {
 
-  public static final String TEXT_FIELD = "text";
+  public static final String IMP_FIELD = "imp";
   public static final String READ_FIELD = "boolField";
   public static final String SPAM_PREDICTION_FIELD = "isSpam";
 
   static final Schema SCHEMA = Schema.recordOf("simpleMessage",
-                                               Schema.Field.of(TEXT_FIELD, Schema.of(Schema.Type.STRING)),
-                                               Schema.Field.of(READ_FIELD, Schema.of(Schema.Type.STRING)),
+                                               Schema.Field.of(IMP_FIELD, Schema.of(Schema.Type.INT)),
+                                               Schema.Field.of(READ_FIELD, Schema.of(Schema.Type.INT)),
                                                Schema.Field.of(SPAM_PREDICTION_FIELD, Schema.of(Schema.Type.DOUBLE)));
 
   @Test
@@ -94,12 +95,11 @@ public class LogisticRegressionTest extends ETLTestBase {
                                                      "format", "csv",
                                                      "schema", SCHEMA.toString());
 
-    String fieldsToClassify = LogisticRegressionSpamMessage.TEXT_FIELD + "," + LogisticRegressionSpamMessage.READ_FIELD;
+    String fieldsToClassify = LogisticRegressionSpamMessage.IMP_FIELD + "," + LogisticRegressionSpamMessage.READ_FIELD;
     Map<String, String> sinkProp = ImmutableMap.of("fileSetName", "modelFileSet",
                                                    "path", "output",
-                                                   "fieldsToClassify", fieldsToClassify,
-                                                   "predictionField",
-                                                   LogisticRegressionSpamMessage.SPAM_PREDICTION_FIELD,
+                                                   "featureFieldsToInclude", fieldsToClassify,
+                                                   "labelField", LogisticRegressionSpamMessage.SPAM_PREDICTION_FIELD,
                                                    "numClasses", "2");
     ETLPlugin sparkPlugin = new ETLPlugin("LogisticRegressionTrainer", SparkSink.PLUGIN_TYPE, sinkProp, null);
 
@@ -114,16 +114,16 @@ public class LogisticRegressionTest extends ETLTestBase {
     ApplicationManager appManager = deployApplication(appId, request);
 
     // set up five spam messages and five non-spam messages to be used for classification
-    List<String> trainingMessages = ImmutableList.of("spam buy our clothes,yes,1.0",
-                                                     "spam sell your used books to us,yes,1.0",
-                                                     "spam earn money for free,yes,1.0",
-                                                     "spam this is definitely not spam,yes,1.0",
-                                                     "spam you won the lottery,yes,1.0",
-                                                     "ham how was your day,no,0.0",
-                                                     "ham what are you up to,no,0.0",
-                                                     "ham this is a genuine message,no,0.0",
-                                                     "ham this is an even more genuine message,no,0.0",
-                                                     "ham could you send me the report,no,0.0");
+    List<String> trainingMessages = ImmutableList.of("11,1,1.0",
+                                                     "12,1,1.0",
+                                                     "13,1,1.0",
+                                                     "14,1,1.0",
+                                                     "15,1,1.0",
+                                                     "21,0,0.0",
+                                                     "22,0,0.0",
+                                                     "23,0,0.0",
+                                                     "24,0,0.0",
+                                                     "25,0,0.0");
 
     Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, "logisticRegressionTrainingStream");
 
@@ -147,19 +147,19 @@ public class LogisticRegressionTest extends ETLTestBase {
 
     Schema simpleMessageSchema =
       Schema.recordOf("simpleMessage",
-                      Schema.Field.of(LogisticRegressionSpamMessage.TEXT_FIELD, Schema.of(Schema.Type.STRING)),
-                      Schema.Field.of(LogisticRegressionSpamMessage.READ_FIELD, Schema.of(Schema.Type.STRING)));
+                      Schema.Field.of(LogisticRegressionSpamMessage.IMP_FIELD, Schema.of(Schema.Type.INT)),
+                      Schema.Field.of(LogisticRegressionSpamMessage.READ_FIELD, Schema.of(Schema.Type.INT)));
 
     Map<String, String> sourceProp = ImmutableMap.of("name", textsToClassify,
                                                      "duration", "1d",
                                                      "format", "csv",
                                                      "schema", simpleMessageSchema.toString());
 
-    String fieldsToClassify = LogisticRegressionSpamMessage.TEXT_FIELD + "," + LogisticRegressionSpamMessage.READ_FIELD;
+    String fieldsToClassify = LogisticRegressionSpamMessage.IMP_FIELD + "," + LogisticRegressionSpamMessage.READ_FIELD;
 
     Map<String, String> sparkProp = ImmutableMap.of("fileSetName", "modelFileSet",
                                                     "path", "output",
-                                                    "fieldsToClassify", fieldsToClassify,
+                                                    "featureFieldsToInclude", fieldsToClassify,
                                                     "predictionField",
                                                     LogisticRegressionSpamMessage.SPAM_PREDICTION_FIELD);
 
@@ -167,7 +167,7 @@ public class LogisticRegressionTest extends ETLTestBase {
 
     Map<String, String> sinkProp = ImmutableMap.of("name", "classifiedTexts",
                                                    "schema", LogisticRegressionSpamMessage.SCHEMA.toString(),
-                                                   "schema.row.field", LogisticRegressionSpamMessage.TEXT_FIELD);
+                                                   "schema.row.field", LogisticRegressionSpamMessage.IMP_FIELD);
 
     ETLPlugin sinkPlugin = new ETLPlugin("Table", BatchSink.PLUGIN_TYPE, sinkProp, null);
 
@@ -182,10 +182,9 @@ public class LogisticRegressionTest extends ETLTestBase {
     Id.Application app = Id.Application.from(TEST_NAMESPACE, "SpamClassifier");
     ApplicationManager appManager = deployApplication(app, getBatchAppRequestV2(etlConfig));
 
-    List<String> trainingMessages = ImmutableList.of("how are you doing today,no",
-                                                     "free money money,yes",
-                                                     "what are you doing today,no",
-                                                     "genuine report,no");
+    List<String> trainingMessages = ImmutableList.of("21,0",
+                                                     "13,1",
+                                                     "23,0");
 
     Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, textsToClassify);
 
@@ -201,11 +200,9 @@ public class LogisticRegressionTest extends ETLTestBase {
     workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
     Set<LogisticRegressionSpamMessage> expected = new HashSet<>();
-    expected.add(new LogisticRegressionSpamMessage("how are you doing today", "no", 0.0));
-    // only 'free money money' should be predicated as spam
-    expected.add(new LogisticRegressionSpamMessage("free money money", "yes", 1.0));
-    expected.add(new LogisticRegressionSpamMessage("what are you doing today", "no", 0.0));
-    expected.add(new LogisticRegressionSpamMessage("genuine report", "no", 0.0));
+    expected.add(new LogisticRegressionSpamMessage(21, 0, 0.0));
+    expected.add(new LogisticRegressionSpamMessage(13, 1, 1.0));
+    expected.add(new LogisticRegressionSpamMessage(23, 0, 0.0));
 
     Assert.assertEquals(expected, getClassifiedMessages());
   }
@@ -219,7 +216,7 @@ public class LogisticRegressionTest extends ETLTestBase {
     while (exploreExecutionResult.hasNext()) {
       List<Object> columns = exploreExecutionResult.next().getColumns();
       classifiedMessages.add(
-        new LogisticRegressionSpamMessage((String) columns.get(1), (String) columns.get(2), (double) columns.get(0)));
+        new LogisticRegressionSpamMessage((Integer) columns.get(1), (Integer) columns.get(2), (double) columns.get(0)));
     }
     return classifiedMessages;
   }

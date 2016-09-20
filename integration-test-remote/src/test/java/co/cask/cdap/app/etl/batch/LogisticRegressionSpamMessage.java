@@ -18,6 +18,7 @@ package co.cask.cdap.app.etl.batch;
 
 import co.cask.cdap.api.data.schema.Schema;
 
+import java.util.Objects;
 import javax.annotation.Nullable;
 
 /**
@@ -25,29 +26,29 @@ import javax.annotation.Nullable;
  */
 public class LogisticRegressionSpamMessage {
   public static final String SPAM_PREDICTION_FIELD = "isSpam";
-  public static final String TEXT_FIELD = "text";
+  public static final String IMP_FIELD = "imp";
   public static final String READ_FIELD = "boolField";
   static final Schema SCHEMA = Schema.recordOf("simpleMessage",
                                                Schema.Field.of(SPAM_PREDICTION_FIELD, Schema.of(Schema.Type.DOUBLE)),
-                                               Schema.Field.of(TEXT_FIELD, Schema.of(Schema.Type.STRING)),
-                                               Schema.Field.of(READ_FIELD, Schema.of(Schema.Type.STRING))
+                                               Schema.Field.of(IMP_FIELD, Schema.of(Schema.Type.INT)),
+                                               Schema.Field.of(READ_FIELD, Schema.of(Schema.Type.INT))
   );
 
-  private final String text;
-  private final String read;
+  private final Integer imp;
+  private final Integer read;
 
   @Nullable
   private final Double spamPrediction;
 
-  public LogisticRegressionSpamMessage(String text, String read, @Nullable Double spamPrediction) {
-    this.text = text;
+  public LogisticRegressionSpamMessage(Integer imp, Integer read, @Nullable Double spamPrediction) {
+    this.imp = imp;
     this.read = read;
     this.spamPrediction = spamPrediction;
   }
 
   @Override
   public int hashCode() {
-    int result = text.hashCode();
+    int result = imp.hashCode();
     result = 31 * result + read.hashCode();
     result = 31 * result + (spamPrediction != null ? spamPrediction.hashCode() : 0);
     return result;
@@ -64,13 +65,8 @@ public class LogisticRegressionSpamMessage {
 
     LogisticRegressionSpamMessage that = (LogisticRegressionSpamMessage) o;
 
-    if (!text.equals(that.text)) {
-      return false;
-    }
-    if (!read.equals(that.read)) {
-      return false;
-    }
-
-    return !(spamPrediction != null ? !spamPrediction.equals(that.spamPrediction) : that.spamPrediction != null);
+    return Objects.equals(imp, that.imp) &&
+      Objects.equals(read, that.read) &&
+      Objects.equals(spamPrediction, that.spamPrediction);
   }
 }
