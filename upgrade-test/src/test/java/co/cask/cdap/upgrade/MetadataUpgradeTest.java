@@ -156,9 +156,9 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     // makes some searches: this should get system entities such as dataset, artifacts, flow, services, programs
     Set<MetadataSearchResultRecord> searchResults = filterNonPurchaseEntities(
       searchMetadata(Id.Namespace.DEFAULT, "explore", MetadataSearchTargetType.ALL));
-    // 5 = dataset: frequentCustomers + dataset: userProfiles + dataset: purchases + dataset: history +
-    // stream: purchaseStream
-    Assert.assertEquals(5, searchResults.size());
+    // 4 = dataset: frequentCustomers + dataset: userProfiles + dataset: purchases + dataset: history
+    Assert.assertEquals(4, searchResults.size());
+
     searchResults = filterNonPurchaseEntities(searchMetadata(Id.Namespace.DEFAULT, "batch",
                                                              MetadataSearchTargetType.ALL));
     // 6 = dataset: frequentCustomers + dataset: userProfiles +
