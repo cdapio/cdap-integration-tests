@@ -28,9 +28,11 @@ import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.codec.NamespacedEntityIdCodec;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespacedEntityId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
@@ -75,8 +77,10 @@ import java.util.concurrent.TimeUnit;
   MapR5Incompatible.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
-  private static final Gson GSON = new GsonBuilder().
-    registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec()).create();
+  private static final Gson GSON = new GsonBuilder()
+    .registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec())
+    .registerTypeAdapter(NamespacedEntityId.class, new NamespacedEntityIdCodec())
+    .create();
   private static final String URL_1 = "http://example.com/page1";
   private static final String URL_2 = "http://example.com/page2";
   private static final String URL_3 = "http://example.com/page3";
