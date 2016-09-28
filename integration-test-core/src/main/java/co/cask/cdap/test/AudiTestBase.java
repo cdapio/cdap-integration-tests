@@ -24,8 +24,11 @@ import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.lib.cube.Cube;
 import co.cask.cdap.api.dataset.table.Table;
+import co.cask.cdap.cli.util.InstanceURIParser;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.ProgramClient;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.config.ConnectionConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.DatasetInstanceConfiguration;
@@ -43,6 +46,8 @@ import co.cask.cdap.remote.dataset.kvtable.KVTableDatasetApp;
 import co.cask.cdap.remote.dataset.kvtable.RemoteKeyValueTable;
 import co.cask.cdap.remote.dataset.table.RemoteTable;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
+import co.cask.cdap.security.authentication.client.AccessToken;
+import co.cask.cdap.security.authentication.client.basic.BasicAuthenticationClient;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
@@ -56,13 +61,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -85,7 +93,8 @@ public class AudiTestBase extends IntegrationTestBase {
   private final RESTClient restClient;
 
   public AudiTestBase() {
-    restClient = createRestClient();
+    restClient = new RESTClient(getClientConfig());
+    restClient.addListener(createRestClientListener());
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
@@ -94,10 +103,9 @@ public class AudiTestBase extends IntegrationTestBase {
     return restClient;
   }
 
-  // constructs a RestClient with logging upon each request
-  private RESTClient createRestClient() {
-    RESTClient restClient = new RESTClient(getClientConfig());
-    restClient.addListener(new RESTClient.Listener() {
+  // constructs a RestClient.Listener with logging upon each request
+  protected RESTClient.Listener createRestClientListener() {
+    return new RESTClient.Listener() {
       @Override
       public void onRequest(HttpRequest httpRequest, int i) {
         try {
@@ -126,8 +134,7 @@ public class AudiTestBase extends IntegrationTestBase {
         LOG.info("Received response: [{}] Response Body: {}",
                  httpResponse.getResponseCode(), httpResponse.getResponseBodyAsString());
       }
-    });
-    return restClient;
+    };
   }
 
   protected void checkMetric(final Map<String, String> tags, final String metric,
