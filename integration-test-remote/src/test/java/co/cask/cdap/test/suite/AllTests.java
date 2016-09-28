@@ -23,6 +23,7 @@ import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
+import co.cask.cdap.app.etl.batch.GDTreeTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
 import co.cask.cdap.app.etl.batch.SparkPluginsTest;
@@ -69,6 +70,7 @@ import org.junit.runners.Suite;
   ExcelInputReaderTest.class,
   ExploreTest.class,
   FileSetTest.class,
+  GDTreeTest.class,
   HangingWorkerTest.class,
   KVTableWithProjectionTest.class,
   NamespacedStreamTest.class,
