@@ -315,20 +315,19 @@ public class TrackerTestBase extends AudiTestBase {
 
   protected List<AuditMessage> generateTestData() {
     List<AuditMessage> testData = new ArrayList<>();
+    NamespaceId ns1 = new NamespaceId("ns1");
     testData.add(new AuditMessage(1456956659461L,
                                   NamespaceId.DEFAULT.stream("stream1"),
                                   "user1",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program_run:ns1.app2.flow.flow1.run1"))
+                                  new AccessPayload(AccessType.WRITE, ns1.app("app2").flow("flow1").run("run1"))
                  )
     );
     testData.add(new AuditMessage(1456956659469L,
                                   NamespaceId.DEFAULT.dataset("ds1"),
                                   "user1",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("system_service:explore"))
+                                  new AccessPayload(AccessType.WRITE, new SystemServiceId("explore"))
                  )
     );
     String metadataPayload = "{ \"previous\": { \"USER\": { \"properties\": { \"uk\": \"uv\", \"uk1\": \"uv2\" }, " +
@@ -361,78 +360,68 @@ public class TrackerTestBase extends AudiTestBase {
                                   NamespaceId.DEFAULT.stream("strm123"),
                                   "user1",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program_run:ns1.app1.flow.flow1.run1"))));
+                                  new AccessPayload(AccessType.READ, ns1.app("app1").flow("flow1").run("run1"))));
     testData.add(new AuditMessage(1456956659460L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    new SystemServiceId("explore"))
+                                  new AccessPayload(AccessType.READ, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659502L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    new SystemServiceId("explore"))
+                                  new AccessPayload(AccessType.READ, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659500L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    new SystemServiceId("explore"))
+                                  new AccessPayload(AccessType.WRITE, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659504L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.UNKNOWN,
-                                                    new SystemServiceId("explore"))
+                                  new AccessPayload(AccessType.UNKNOWN, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659505L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    new NamespaceId("ns1").app("b").service("program1"))
+                                  new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659506L,
                                   NamespaceId.DEFAULT.dataset("ds1"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    new NamespaceId("ns1").app("a").service("program2"))
+                                  new AccessPayload(AccessType.WRITE, ns1.app("a").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659507L,
                                   NamespaceId.DEFAULT.dataset("ds1"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    new NamespaceId("ns1").app("b").service("program2"))
+                                  new AccessPayload(AccessType.READ, ns1.app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659509L,
                                   NamespaceId.DEFAULT.dataset("ds8"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    new NamespaceId("ns1").app("b").service("program2"))
+                                  new AccessPayload(AccessType.READ, ns1.app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659511L,
                                   NamespaceId.DEFAULT.dataset("ds9"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.READ,
-                                                    new NamespaceId("ns1").app("b").service("program2"))
+                                  new AccessPayload(AccessType.READ, ns1.app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659512L,
@@ -444,24 +433,21 @@ public class TrackerTestBase extends AudiTestBase {
                                   NamespaceId.DEFAULT.dataset(TrackerApp.AUDIT_LOG_DATASET_NAME),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    new NamespaceId("ns1").app("b").service("program1"))
+                                  new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659516L,
                                   NamespaceId.DEFAULT.dataset("dsx"),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    new NamespaceId("ns1").app(TrackerApp.APP_NAME).service("program1"))
+                                  new AccessPayload(AccessType.WRITE, ns1.app(TrackerApp.APP_NAME).service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659513L,
                                   NamespaceId.DEFAULT.dataset(AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET),
                                   "user4",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    new NamespaceId("ns1").app("b").service("program1"))
+                                  new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
                  )
     );
     return testData;
