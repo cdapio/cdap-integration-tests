@@ -22,6 +22,7 @@ import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.audit.AuditMessage;
 import co.cask.cdap.proto.audit.AuditPayload;
 import co.cask.cdap.proto.audit.AuditType;
@@ -32,6 +33,7 @@ import co.cask.cdap.proto.codec.AuditMessageTypeAdapter;
 import co.cask.cdap.proto.codec.EntityIdTypeAdapter;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.ProgramRunId;
 import co.cask.cdap.proto.id.SystemServiceId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
@@ -320,15 +322,14 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user1",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("program_run:ns1.app2.flow.flow1.run1"))
+                                                    new ProgramRunId("ns1", "app2", ProgramType.FLOW, "flow1", "run1"))
                  )
     );
     testData.add(new AuditMessage(1456956659469L,
                                   NamespaceId.DEFAULT.dataset("ds1"),
                                   "user1",
                                   AuditType.ACCESS,
-                                  new AccessPayload(AccessType.WRITE,
-                                                    EntityId.fromString("system_service:explore"))
+                                  new AccessPayload(AccessType.WRITE, new SystemServiceId("explore"))
                  )
     );
     String metadataPayload = "{ \"previous\": { \"USER\": { \"properties\": { \"uk\": \"uv\", \"uk1\": \"uv2\" }, " +
@@ -362,7 +363,8 @@ public class TrackerTestBase extends AudiTestBase {
                                   "user1",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ,
-                                                    EntityId.fromString("program_run:ns1.app1.flow.flow1.run1"))));
+                                                    new ProgramRunId("ns1", "app1", ProgramType.FLOW, "flow1", "run1"))
+    ));
     testData.add(new AuditMessage(1456956659460L,
                                   NamespaceId.DEFAULT.dataset("ds3"),
                                   "user4",
