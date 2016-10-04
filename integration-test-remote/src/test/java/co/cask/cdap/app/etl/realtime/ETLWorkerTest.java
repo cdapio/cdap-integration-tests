@@ -143,6 +143,7 @@ public class ETLWorkerTest extends ETLTestBase {
 
     workerManager.start();
     DataSetManager<Table> tableManager = getTableDataset("table1");
+    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     waitForTableToBePopulated(tableManager);
     workerManager.stop();
 
