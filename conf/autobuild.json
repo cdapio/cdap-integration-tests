@@ -5,13 +5,13 @@
         "local_user": "root",
         "repos": {
           "cask-tracker": {
-            "branch": "release/0.2"
+            "branch": "develop"
           },
           "cdap-navigator": {
-            "branch": "release/0.2"
+            "branch": "develop"
           },
           "hydrator-plugins": {
-            "branch": "release/1.4"
+            "branch": "develop"
           }
         }
       }
