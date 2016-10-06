@@ -24,9 +24,11 @@ import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
 import co.cask.cdap.app.etl.batch.LogisticRegressionTest;
+import co.cask.cdap.app.etl.batch.NGramTransformTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
 import co.cask.cdap.app.etl.batch.SparkPluginsTest;
+import co.cask.cdap.app.etl.batch.TokenizerTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
@@ -75,6 +77,7 @@ import org.junit.runners.Suite;
   LogisticRegressionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
+  NGramTransformTest.class,
   NormalizeTest.class,
   PartitionCorrectorTest.class,
   PartitionedFileSetUpdateTest.class,
@@ -91,6 +94,7 @@ import org.junit.runners.Suite;
   StreamTest.class,
   SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
+  TokenizerTest.class,
   ValueMapperTest.class,
   WordCountTest.class,
   WorkflowTest.class,

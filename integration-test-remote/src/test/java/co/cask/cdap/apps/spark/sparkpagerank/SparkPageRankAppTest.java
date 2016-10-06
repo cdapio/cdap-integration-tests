@@ -28,9 +28,11 @@ import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.codec.NamespacedEntityIdCodec;
 import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespacedEntityId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
@@ -50,6 +52,7 @@ import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -61,6 +64,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -75,8 +79,10 @@ import java.util.concurrent.TimeUnit;
   MapR5Incompatible.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
-  private static final Gson GSON = new GsonBuilder().
-    registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec()).create();
+  private static final Gson GSON = new GsonBuilder()
+    .registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec())
+    .registerTypeAdapter(NamespacedEntityId.class, new NamespacedEntityIdCodec())
+    .create();
   private static final String URL_1 = "http://example.com/page1";
   private static final String URL_2 = "http://example.com/page2";
   private static final String URL_3 = "http://example.com/page3";
@@ -117,7 +123,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
     // Start Spark Page Rank and await completion
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getEntityName());
-    pageRankManager.start();
+    Map<String, String> runtimeArgs = ImmutableMap.of("task.client.system.resources.memory", "1024");
+    pageRankManager.start(runtimeArgs);
 
     // wait until the spark program is running or completes. It completes too fast on standalone to rely on
     // programManager#waitForStatus(true, ...)
