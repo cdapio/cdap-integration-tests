@@ -31,9 +31,19 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.CDH52Incompatible;
+import co.cask.cdap.test.suite.category.CDH53Incompatible;
+import co.cask.cdap.test.suite.category.CDH54Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
+import co.cask.cdap.test.suite.category.HDP21Incompatible;
+import co.cask.cdap.test.suite.category.HDP22Incompatible;
+import co.cask.cdap.test.suite.category.HDP23Incompatible;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +55,23 @@ import java.util.concurrent.TimeUnit;
 /**
  * Integration Test for NGramTransform.
  */
+@Category({
+  // We don't support spark on these distros
+  HDP20Incompatible.class,
+  HDP21Incompatible.class,
+  CDH51Incompatible.class,
+  CDH52Incompatible.class,
+
+  // this test is only compatible with spark v1.5.0 onwards and hdp2.2 uses spark v1.3.1, hdp2.3 uses spark v1.4.1
+  HDP22Incompatible.class,
+  HDP23Incompatible.class,
+
+  // this test is only compatible with spark v1.5.0 onwards and cdh5.3 uses spark v1.2.0, cdh5.4 uses spark v1.3.0
+  CDH53Incompatible.class,
+  CDH54Incompatible.class,
+  // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
+  MapR5Incompatible.class // MapR5x category is used for all MapR version
+})
 public class NGramTransformTest extends ETLTestBase {
     private static final Schema OUTPUT_SCHEMA = Schema.recordOf("outputSchema",
             Schema.Field.of("ngrams", Schema.arrayOf(Schema.of(Schema.Type.STRING))));
