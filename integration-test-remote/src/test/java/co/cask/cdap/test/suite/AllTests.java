@@ -20,6 +20,7 @@ import co.cask.cdap.app.etl.KVTableWithProjectionTest;
 import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
+import co.cask.cdap.app.etl.batch.BatchJoinerTest;
 import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
@@ -65,6 +66,7 @@ import org.junit.runners.Suite;
   ApplicationTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
+  BatchJoinerTest.class,
   CopybookReaderTest.class,
   DatasetTest.class,
   ETLMapReduceTest.class,
