@@ -76,6 +76,7 @@ import java.util.concurrent.TimeUnit;
   HDP21Incompatible.class,
   CDH51Incompatible.class,
   CDH52Incompatible.class,
+  // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
   MapR5Incompatible.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
