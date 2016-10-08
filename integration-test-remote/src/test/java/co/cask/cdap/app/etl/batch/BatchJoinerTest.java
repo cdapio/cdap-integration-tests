@@ -75,6 +75,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class BatchJoinerTest extends ETLTestBase {
 
+  @Category({
+    // Temporarily disable this test on MapR clusters till we increase the memory on cluster. Enable it
+    // once as per CDAP-7421
+    MapR5Incompatible.class
+  })
   @Test
   public void testJoinerMR() throws Exception {
     testJoiner(Engine.MAPREDUCE);
