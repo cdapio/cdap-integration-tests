@@ -16,6 +16,7 @@
 
 package co.cask.cdap.app.etl.batch;
 
+import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.table.Put;
@@ -203,6 +204,8 @@ public class BatchJoinerTest extends ETLTestBase {
       .addConnection(innerJoinStage.getName(), outerJoinStage.getName())
       .addConnection(outerJoinStage.getName(), joinSinkStage.getName())
       .setEngine(engine)
+      .setDriverResources(new Resources(1024))
+      .setResources(new Resources(1024))
       .build();
 
     AppRequest<ETLBatchConfig> request =  getBatchAppRequestV2(config);
