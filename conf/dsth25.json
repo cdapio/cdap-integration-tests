@@ -6,6 +6,7 @@
     },
     "hive": {
       "hive_site": {
+        "hive.metastore.schema.verification": "false",
         "hive.metastore.schema.verification.record.version": "true"
       }
     }
