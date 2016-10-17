@@ -35,6 +35,7 @@ import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
 import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
+import co.cask.cdap.apps.ApplicationVersionTest;
 import co.cask.cdap.apps.DatasetTest;
 import co.cask.cdap.apps.NamespaceTest;
 import co.cask.cdap.apps.NamespacedStreamTest;
@@ -65,6 +66,7 @@ import org.junit.runners.Suite;
 // Note: all the class names below are in sorted order
 //
   ApplicationTest.class,
+  ApplicationVersionTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   BatchJoinerTest.class,
