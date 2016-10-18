@@ -186,10 +186,10 @@ public class BatchJoinerTest extends ETLTestBase {
 
     ETLStage joinSinkStage =
       new ETLStage("sink", new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-                                          ImmutableMap.<String, String>builder()
-                                            .put(Properties.SnapshotFileSetSink.NAME, joinedDatasetName)
-                                            .put("schema", outputSchema.toString())
-                                            .build(), null));
+                                         ImmutableMap.<String, String>builder()
+                                           .put(Properties.SnapshotFileSetSink.NAME, joinedDatasetName)
+                                           .put("schema", outputSchema.toString())
+                                           .build(), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(filmStage)
@@ -212,11 +212,6 @@ public class BatchJoinerTest extends ETLTestBase {
     Id.Application appId = Id.Application.from(TEST_NAMESPACE, "joiner-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
-    // Deploy an application with a service to get partitionedFileset data for verification
-    ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager(SnapshotFilesetService.class.getSimpleName());
-    serviceManager.start();
-
     // ingest data
     ingestToFilmTable(filmDatasetName);
     ingestToFilmActorTable(filmActorDatasetName);
@@ -226,6 +221,12 @@ public class BatchJoinerTest extends ETLTestBase {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
     workflowManager.waitForFinish(15, TimeUnit.MINUTES);
+
+    // Deploy an application with a service to get partitionedFileset data for verification
+    ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
+    ServiceManager serviceManager = applicationManager.getServiceManager(SnapshotFilesetService.class.getSimpleName());
+    serviceManager.start();
+    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     org.apache.avro.Schema avroOutputSchema = new Parser().parse(outputSchema.toString());
     GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
