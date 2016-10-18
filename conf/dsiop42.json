@@ -1,0 +1,8 @@
+{
+  "config": {
+    "hadoop": {
+      "distribution": "iop",
+      "distribution_version": "4.2.0.0"
+    }
+  }
+}
