@@ -4,5 +4,9 @@
       "distribution": "iop",
       "distribution_version": "4.2.0.0"
     }
-  }
+  },
+  "java": {
+    "jdk_version": "8"
+  },
+  "services": "spark-historyserver"
 }
