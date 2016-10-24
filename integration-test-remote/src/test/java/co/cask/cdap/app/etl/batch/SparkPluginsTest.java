@@ -64,8 +64,8 @@ import java.util.concurrent.TimeUnit;
   CDH52Incompatible.class,
   // this test is only compatible with spark v1.3.0 onwards and cdh5.3 uses spark v1.2.0
   CDH53Incompatible.class,
-  // Currently, coopr doesn't provision MapR cluster with Spark
-  MapR5Incompatible.class // MapR51 category is used for all MapR version
+  // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
+  MapR5Incompatible.class // MapR5x category is used for all MapR version
 })
 public class SparkPluginsTest extends ETLTestBase {
 

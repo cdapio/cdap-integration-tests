@@ -46,7 +46,7 @@ import java.util.Map;
  */
 public class StreamTest extends AudiTestBase {
   private static final Id.Stream NONEXISTENT_STREAM = Id.Stream.from(TEST_NAMESPACE, "nonexistentStream");
-  private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "testStream");
+  private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "streamTest");
 
   @Test
   public void testStreams() throws Exception {
@@ -89,22 +89,26 @@ public class StreamTest extends AudiTestBase {
       streamClient.getConfig(NONEXISTENT_STREAM);
       Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
     } catch (StreamNotFoundException expected) {
+      // expected
     }
     try {
       streamClient.sendEvent(NONEXISTENT_STREAM, "testEvent");
       Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
     } catch (StreamNotFoundException expected) {
+      // expected
     }
     try {
       streamClient.getEvents(NONEXISTENT_STREAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                              Lists.<StreamEvent>newArrayList());
       Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
     } catch (StreamNotFoundException expected) {
+      // expected
     }
     try {
       streamClient.truncate(NONEXISTENT_STREAM);
       Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
     } catch (StreamNotFoundException expected) {
+      // expected
     }
 
     // creation with invalid characters should fail
@@ -112,15 +116,13 @@ public class StreamTest extends AudiTestBase {
       createStream(STREAM_NAME.getId() + "&");
       Assert.fail();
     } catch (BadRequestException expected) {
-      Assert.assertTrue(expected.getMessage().contains(
-        "Stream name can only contain alphanumeric, '-' and '_' characters"));
+      // expected
     }
     try {
       createStream(STREAM_NAME.getId() + ".");
       Assert.fail();
     } catch (BadRequestException expected) {
-      Assert.assertTrue(expected.getMessage().contains(
-        "Stream name can only contain alphanumeric, '-' and '_' characters"));
+      // expected
     }
   }
 

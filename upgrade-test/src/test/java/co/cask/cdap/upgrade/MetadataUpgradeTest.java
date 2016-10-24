@@ -261,7 +261,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
   private Set<MetadataSearchResultRecord> searchMetadata(Id.Namespace namespace, String query,
                                                          MetadataSearchTargetType targetType) throws Exception {
-    Set<MetadataSearchResultRecord> results = metadataClient.searchMetadata(namespace, query, targetType);
+    Set<MetadataSearchResultRecord> results = metadataClient.searchMetadata(namespace, query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));

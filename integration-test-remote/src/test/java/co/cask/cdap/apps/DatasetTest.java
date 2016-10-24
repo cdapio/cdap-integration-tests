@@ -24,6 +24,8 @@ import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.DatasetMeta;
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -152,16 +154,16 @@ public class DatasetTest extends AudiTestBase {
                          new TypeToken<Map<String, Object>>() { }.getType());
   }
 
-  private Set<Id.Program> getPrograms(String endPoint)
+  private Set<ProgramId> getPrograms(String endPoint)
     throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.Program>>() { }.getType());
+    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<ProgramId>>() { }.getType());
   }
 
-  private Set<Id.DatasetInstance> getDatasetInstances(String endPoint)
+  private Set<DatasetId> getDatasetInstances(String endPoint)
     throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<Id.DatasetInstance>>() { }.getType());
+    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<DatasetId>>() { }.getType());
   }
 
   private HttpResponse makeRequest(String endPoint)
