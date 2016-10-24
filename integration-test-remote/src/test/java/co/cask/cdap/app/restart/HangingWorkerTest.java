@@ -40,61 +40,61 @@ public class HangingWorkerTest extends AudiTestBase {
   public void testRestart() throws Exception {
     ApplicationManager applicationManager = deployApplication(HangingWorkerApp.class);
 
-    try {
-      // start the worker
-      WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME).start();
-      workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    // start the worker
+    WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME).start();
+    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-      // the worker writes current time into workerDataset every HangingWorkerApp.WORKER_SLEEP_SECS secs
-      final DataSetManager<KeyValueTable> workerDataset = getKVTableDataset(HangingWorkerApp.WORKER_DATASET_NAME);
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        private final long currentTime = System.currentTimeMillis();
-        @Override
-        public Boolean call() throws Exception {
-          byte[] bytes = workerDataset.get().read(HangingWorker.getKey(0));
-          LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
-          return bytes != null && Bytes.toLong(bytes) > currentTime;
-        }
-      }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 0 is not running");
+    // the worker writes current time into workerDataset every HangingWorkerApp.WORKER_SLEEP_SECS secs
+    final DataSetManager<KeyValueTable> workerDataset = getKVTableDataset(HangingWorkerApp.WORKER_DATASET_NAME);
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      private final long currentTime = System.currentTimeMillis();
 
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        private final long currentTime = System.currentTimeMillis();
-        @Override
-        public Boolean call() throws Exception {
-          byte[] bytes = workerDataset.get().read(HangingWorker.getKey(1));
-          LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
-          return bytes != null && Bytes.toLong(bytes) > currentTime;
-        }
-      }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 1 is not running");
+      @Override
+      public Boolean call() throws Exception {
+        byte[] bytes = workerDataset.get().read(HangingWorker.getKey(0));
+        LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
+        return bytes != null && Bytes.toLong(bytes) > currentTime;
+      }
+    }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 0 is not running");
 
-      LOG.info("Both instances of workers have started");
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      private final long currentTime = System.currentTimeMillis();
 
-      LOG.info("Scale down the worker instance to 1");
-      workerManager.setInstances(1);
+      @Override
+      public Boolean call() throws Exception {
+        byte[] bytes = workerDataset.get().read(HangingWorker.getKey(1));
+        LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
+        return bytes != null && Bytes.toLong(bytes) > currentTime;
+      }
+    }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 1 is not running");
 
-      // Worker with instance id 1 should stop now
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          byte[] bytes = workerDataset.get().read(HangingWorker.getKey(1));
-          LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
-          return bytes != null &&
-            (System.currentTimeMillis() - Bytes.toLong(bytes)) > (HangingWorkerApp.WORKER_SLEEP_SECS + 10);
-        }
-      }, 180, TimeUnit.SECONDS, 5, TimeUnit.SECONDS, "Worker 1 has not stopped");
+    LOG.info("Both instances of workers have started");
 
-      // However worker with instance id 0 should still be running
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        private final long currentTime = System.currentTimeMillis();
-        @Override
-        public Boolean call() throws Exception {
-          byte[] bytes = workerDataset.get().read(HangingWorker.getKey(0));
-          LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
-          return bytes != null && Bytes.toLong(bytes) > currentTime;
-        }
-      }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 0 is not running");
-    } finally {
-      applicationManager.stopAll();
-    }
+    LOG.info("Scale down the worker instance to 1");
+    workerManager.setInstances(1);
+
+    // Worker with instance id 1 should stop now
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        byte[] bytes = workerDataset.get().read(HangingWorker.getKey(1));
+        LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
+        return bytes != null &&
+          (System.currentTimeMillis() - Bytes.toLong(bytes)) >
+            TimeUnit.MILLISECONDS.convert(HangingWorkerApp.WORKER_SLEEP_SECS + 10, TimeUnit.SECONDS);
+      }
+    }, 180, TimeUnit.SECONDS, 5, TimeUnit.SECONDS, "Worker 1 has not stopped");
+
+    // However worker with instance id 0 should still be running
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      private final long currentTime = System.currentTimeMillis();
+
+      @Override
+      public Boolean call() throws Exception {
+        byte[] bytes = workerDataset.get().read(HangingWorker.getKey(0));
+        LOG.info("Got time = {}", bytes == null ? null : Bytes.toLong(bytes));
+        return bytes != null && Bytes.toLong(bytes) > currentTime;
+      }
+    }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 0 is not running");
   }
 }

@@ -16,6 +16,7 @@
 
 package co.cask.cdap.app.etl.batch;
 
+import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.table.Put;
@@ -39,6 +40,11 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.cdap.test.suite.category.CDH51Incompatible;
+import co.cask.cdap.test.suite.category.CDH52Incompatible;
+import co.cask.cdap.test.suite.category.HDP20Incompatible;
+import co.cask.cdap.test.suite.category.HDP21Incompatible;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
@@ -54,6 +60,7 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DatumReader;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -69,11 +76,25 @@ import java.util.concurrent.TimeUnit;
  */
 public class BatchJoinerTest extends ETLTestBase {
 
+  @Category({
+    // Temporarily disable this test on MapR clusters till we increase the memory on cluster. Enable it
+    // once as per CDAP-7421
+    MapR5Incompatible.class
+  })
   @Test
   public void testJoinerMR() throws Exception {
     testJoiner(Engine.MAPREDUCE);
   }
 
+  @Category({
+    // We don't support spark on these distros
+    HDP20Incompatible.class,
+    HDP21Incompatible.class,
+    CDH51Incompatible.class,
+    CDH52Incompatible.class,
+    // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
+    MapR5Incompatible.class // MapR5x category is used for all MapR version
+  })
   @Test
   public void testJoinerSpark() throws Exception {
     testJoiner(Engine.SPARK);
@@ -183,6 +204,8 @@ public class BatchJoinerTest extends ETLTestBase {
       .addConnection(innerJoinStage.getName(), outerJoinStage.getName())
       .addConnection(outerJoinStage.getName(), joinSinkStage.getName())
       .setEngine(engine)
+      .setDriverResources(new Resources(1024))
+      .setResources(new Resources(1024))
       .build();
 
     AppRequest<ETLBatchConfig> request =  getBatchAppRequestV2(config);
