@@ -221,6 +221,9 @@ module Cask
         elsif name[0] == 'cloudera' && name[1] == 'manager'
           dimensions.push('cloudera_manager')
           name.shift && name.shift
+        elsif name[0] == 'ambari'
+          dimensions.push('ambari')
+          name.shift
         end
         dimensions
       end
