@@ -114,7 +114,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
     Map<String, String> properties = new ImmutableMap.Builder<String, String>()
       .put("fileSetName", "decision-tree-regression-model")
       .put("path", "decisionTreeRegression")
-      .put("featuresToInclude", "dofM,dofW,carrier,originId,destId,scheduleDepTime,scheduledArrTime,elapsedTime")
+      .put("featureFieldsToInclude", "dofM,dofW,carrier,originId,destId,scheduleDepTime,scheduledArrTime,elapsedTime")
       .put("labelField", "delayed")
       .put("maxBins", "100")
       .put("maxDepth", "9")
@@ -163,7 +163,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
     Map<String, String> properties = new ImmutableMap.Builder<String, String>()
       .put("fileSetName", "decision-tree-regression-model")
       .put("path", "decisionTreeRegression")
-      .put("featuresToInclude", "dofM,dofW,carrier,originId,destId,scheduleDepTime,scheduledArrTime,elapsedTime")
+      .put("featureFieldsToInclude", "dofM,dofW,carrier,originId,destId,scheduleDepTime,scheduledArrTime,elapsedTime")
       .put("predictionField", "delayed")
       .build();
 
