@@ -40,7 +40,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -56,8 +55,6 @@ import java.util.concurrent.TimeUnit;
  * <li>{@link TimePartitionedFileSetDatasetAvroSink}</li>
  * <li>{@link TimePartitionedFileSetDatasetAvroSource}</li>
  */
-// https://issues.cask.co/browse/CDAP-4629
-@Ignore
 public class StreamTPFSWithProjectionTest extends ETLTestBase {
 
   private static final String SOURCE_STREAM = "sourceStream";
