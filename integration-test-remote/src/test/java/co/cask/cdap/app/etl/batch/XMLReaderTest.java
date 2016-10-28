@@ -31,7 +31,6 @@ import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.ServiceManager;
@@ -44,7 +43,6 @@ import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -59,8 +57,6 @@ import java.util.concurrent.TimeoutException;
 /**
  * Test for XMLReaderBatchSource.
  */
-// TODO: re-enable once plugin implementation is merged: https://github.com/caskdata/hydrator-plugins/pull/285
-@Ignore
 public class XMLReaderTest extends ETLTestBase {
   private static final Schema TRANSFORM_SCHEMA = Schema.recordOf(
     "xmlTransform",
