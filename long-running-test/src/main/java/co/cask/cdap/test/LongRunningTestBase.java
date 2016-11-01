@@ -72,7 +72,7 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   public void setUp() throws Exception {
     checkSystemServices();
     longRunningNamespace =
-      configureLongRunningNamespace(System.getProperty("long.running.namespace", NamespaceId.DEFAULT.getNamespace()));
+      configureLongRunningNamespace(System.getProperty("long.running.namespace", TEST_NAMESPACE.getId()));
 
     boolean firstRun = false;
     Type stateType = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -39,7 +39,8 @@ public class NamespacedStreamTest extends AudiTestBase {
 
   @Test
   public void testNamespacedStreams() throws Exception {
-    NamespaceClient namespaceClient = new NamespaceClient(getClientConfig(), getRestClient());
+    NamespaceClient namespaceClient = getNamespaceClient();
+    registerForDeletion(NS1.toEntityId(), NS2.toEntityId());
     namespaceClient.create(new NamespaceMeta.Builder().setName(NS1).build());
     namespaceClient.create(new NamespaceMeta.Builder().setName(NS2).build());
 
