@@ -75,7 +75,7 @@ public class AudiTestBase extends IntegrationTestBase {
   // For now, make it same as PROGRAM_START_STOP_TIMEOUT_SECONDS.
   protected static final int PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
 
-  protected static final Id.Namespace TEST_NAMESPACE = Id.Namespace.DEFAULT;
+  protected static final Id.Namespace TEST_NAMESPACE = getConfiguredNamespace().toId();
 
   // avoid logging of HttpRequest's body by default, to avoid verbose logging
   private static final int logBodyLimit = Integer.valueOf(System.getProperty("logRequestBodyLimit", "0"));
@@ -150,7 +150,7 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final Id.Program program,
-                                        final String status, final long startTime, final long endTime)
+                                          final String status, final long startTime, final long endTime)
     throws Exception {
     final List<RunRecord> runRecords = new ArrayList<>();
     // Tasks.waitFor can be removed when CDAP-3656 is fixed
