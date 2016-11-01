@@ -18,7 +18,15 @@ package co.cask.cdap.app.restart;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
+import co.cask.cdap.client.ProgramClient;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.config.ConnectionConfig;
+import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.ProgramNotFoundException;
+import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.proto.id.ProgramId;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.DataSetManager;
@@ -27,6 +35,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -40,9 +49,9 @@ public class HangingWorkerTest extends AudiTestBase {
   public void testRestart() throws Exception {
     ApplicationManager applicationManager = deployApplication(HangingWorkerApp.class);
 
+    // start the worker
+    WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME).start();
     try {
-      // start the worker
-      WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME).start();
       workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
       // the worker writes current time into workerDataset every HangingWorkerApp.WORKER_SLEEP_SECS secs
@@ -94,7 +103,18 @@ public class HangingWorkerTest extends AudiTestBase {
         }
       }, 60, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, "Worker 0 is not running");
     } finally {
-      applicationManager.stopAll();
+      stopHangingWorkerWithIncreasedTimeout();
     }
+  }
+
+  private void stopHangingWorkerWithIncreasedTimeout() throws Exception {
+    // have an increased read timeout for stopping the HangingWorker, because the HTTP request will take longer
+    ClientConfig originalClientConfig = getClientConfig();
+    ClientConfig modifiedClientConfig =
+      new ClientConfig.Builder(originalClientConfig).setDefaultReadTimeout((int) TimeUnit.MINUTES.toMillis(3)).build();
+    ProgramId workerId = TEST_NAMESPACE.toEntityId().app(HangingWorkerApp.NAME).worker(HangingWorkerApp.WORKER_NAME);
+    ProgramClient programClient = new ProgramClient(modifiedClientConfig, new RESTClient(modifiedClientConfig));
+    LOG.info("Stopping HangingWorker.");
+    programClient.stop(workerId.toId());
   }
 }

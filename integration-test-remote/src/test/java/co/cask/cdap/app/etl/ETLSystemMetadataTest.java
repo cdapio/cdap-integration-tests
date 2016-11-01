@@ -48,7 +48,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     result = searchMetadata(metadataClient, Id.Namespace.SYSTEM, "cdap-etl-b*", MetadataSearchTargetType.ARTIFACT);
     Assert.assertEquals(expected, result);
     ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
-    List<ArtifactSummary> allCorePlugins = artifactClient.listVersions(Id.Namespace.DEFAULT, "core-plugins",
+    List<ArtifactSummary> allCorePlugins = artifactClient.listVersions(TEST_NAMESPACE, "core-plugins",
                                                                        ArtifactScope.SYSTEM);
     Assert.assertTrue("Expected at least one core-plugins artifact.", allCorePlugins.size() > 0);
     String corePluginsVersion = allCorePlugins.get(0).getVersion();
@@ -56,14 +56,14 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
     result = searchMetadata(metadataClient, Id.Namespace.SYSTEM, "table", MetadataSearchTargetType.ARTIFACT);
     Assert.assertEquals(expected, result);
-    // Searching in the default namespace should also surface entities from the system namespace
+    // Searching in some user namespace should also surface entities from the system namespace
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
       Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-batch", getMetaClient().getVersion().getVersion())));
-    result = searchMetadata(metadataClient, Id.Namespace.DEFAULT, "batch", null);
+    result = searchMetadata(metadataClient, TEST_NAMESPACE, "batch", null);
     Assert.assertEquals(expected, result);
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
       Id.Artifact.from(Id.Namespace.SYSTEM, "cdap-etl-realtime", getMetaClient().getVersion().getVersion())));
-    result = searchMetadata(metadataClient, Id.Namespace.DEFAULT, "realtime", null);
+    result = searchMetadata(metadataClient, TEST_NAMESPACE, "realtime", null);
     Assert.assertEquals(expected, result);
   }
   

@@ -68,7 +68,7 @@ public class ETLWorkerTest extends ETLTestBase {
 
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.newArrayList(transform));
 
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testAdap");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testAdap");
     ApplicationManager appManager = deployApplication(appId, getRealtimeAppRequest(etlConfig));
     Assert.assertNotNull(appManager);
   }
@@ -92,7 +92,7 @@ public class ETLWorkerTest extends ETLTestBase {
     );
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(1, source, sinks, null, null, null);
 
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testToStream");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testToStream");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
@@ -102,9 +102,9 @@ public class ETLWorkerTest extends ETLTestBase {
     workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     List<StreamManager> streamManagers = Lists.newArrayList(
-      getTestManager().getStreamManager(Id.Stream.from(Id.Namespace.DEFAULT, "streamA")),
-      getTestManager().getStreamManager(Id.Stream.from(Id.Namespace.DEFAULT, "streamB")),
-      getTestManager().getStreamManager(Id.Stream.from(Id.Namespace.DEFAULT, "streamC"))
+      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "streamA")),
+      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "streamB")),
+      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "streamC"))
     );
 
     int retries = 0;
@@ -135,7 +135,7 @@ public class ETLWorkerTest extends ETLTestBase {
     ETLStage sink = new ETLStage("TableSink", sinkConfig);
     ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
 
-    Id.Application appId = Id.Application.from(Id.Namespace.DEFAULT, "testToStream");
+    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testToStream");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
