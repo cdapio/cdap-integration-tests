@@ -23,6 +23,7 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
  *
  */
 public class HangingWorkerApp extends AbstractApplication {
+  public static final String NAME = "HangingWorkerApp";
   public static final String WORKER_DATASET_NAME = "HangingWorkerDataset";
   public static final String WORKER_NAME = "HangingWorker";
   public static final String WORKER_DATASET_TEST_KEY = "updateTime";
@@ -30,7 +31,7 @@ public class HangingWorkerApp extends AbstractApplication {
 
   @Override
   public void configure() {
-    setName("HangingWorkerApp");
+    setName(NAME);
     setDescription("Application to test restart of non-responding programs");
     createDataset(WORKER_DATASET_NAME, KeyValueTable.class);
     addWorker(new HangingWorker());
