@@ -85,7 +85,7 @@ public class XMLReaderTest extends ETLTestBase {
     serviceManager.start();
     serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    serviceURL = serviceManager.getServiceURL();
+    serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "xmlreadersource/create");
     //POST request to create a new file set with name xmlreadersource.
     HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
