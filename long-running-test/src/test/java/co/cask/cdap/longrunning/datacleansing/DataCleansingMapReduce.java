@@ -19,6 +19,7 @@ package co.cask.cdap.longrunning.datacleansing;
 import co.cask.cdap.api.ProgramLifecycle;
 import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.annotation.UseDataSet;
+import co.cask.cdap.api.data.batch.Output;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.DynamicPartitioner;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
@@ -79,12 +80,12 @@ public class DataCleansingMapReduce extends AbstractMapReduce {
     Map<String, String> invalidRecordsArgs = new HashMap<>();
     PartitionedFileSetArguments.setOutputPartitionKey(invalidRecordsArgs, outputKey);
     PartitionedFileSetArguments.setOutputPartitionMetadata(invalidRecordsArgs, metadataToAssign);
-    context.addOutput(DataCleansingApp.INVALID_RECORDS, invalidRecordsArgs);
+    context.addOutput(Output.ofDataset(DataCleansingApp.INVALID_RECORDS, invalidRecordsArgs));
 
     Map<String, String> cleanRecordsArgs = new HashMap<>();
     PartitionedFileSetArguments.setDynamicPartitioner(cleanRecordsArgs, TimeAndZipPartitioner.class);
     PartitionedFileSetArguments.setOutputPartitionMetadata(cleanRecordsArgs, metadataToAssign);
-    context.addOutput(DataCleansingApp.CLEAN_RECORDS, cleanRecordsArgs);
+    context.addOutput(Output.ofDataset(DataCleansingApp.CLEAN_RECORDS, cleanRecordsArgs));
 
     Job job = context.getHadoopJob();
     job.setMapperClass(SchemaMatchingFilter.class);
