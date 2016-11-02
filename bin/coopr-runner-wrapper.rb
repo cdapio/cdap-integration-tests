@@ -128,7 +128,7 @@ module Cask
           opts.on('-a', '--action ACTION', '"create", "reconfigure[-without-restart], "add-services", "[re]start", "stop", or "delete". Defaults to "create"') do |a|
             @action = a
           end
-          opts.on('-T', '--cluster-template CLUSTERTEMPLATE', 'ClusterTemplate, defaults to ENV[\'COOPR_DRIVER_CLUSTERTEMPLATE\'] else "cdap-singlenode-insecure-autobuild"') do |t|
+          opts.on('-T', '--cluster-template CLUSTERTEMPLATE', 'ClusterTemplate, defaults to ENV[\'COOPR_DRIVER_CLUSTERTEMPLATE\'] else "cdap-singlenode"') do |t|
             @cluster_template = t
           end
           opts.on('-n', '--name NAME', 'Cluster Name, defaults to ENV[\'COOPR_DRIVER_NAME\'] else "coopr-driver"') do |n|
@@ -177,20 +177,15 @@ module Cask
       # Parse clustertemplate name to determine the dimensions whose config we should include
       def _extract_dimensions_from_template_name
         # Example names:
-        #   cdap-distributed-autobuild.json
-        #   cdap-distributed-insecure-autobuild.json
-        #   cdap-distributed-secure-hadoop-autobuild.json
-        #   docker-all-coreos.json
-        #   cloudera-manager.json
+        #   ambari
+        #   cdap-singlenode
+        #   cdap-distributed
+        #   cdap-distributed-secure-hadoop
+        #   docker-all-coreos
+        #   cloudera-manager
 
         dimensions = []
         name = @cluster_template.downcase.split('-')
-
-        # First determine autobuild or not
-        if name[-1] == 'autobuild'
-          dimensions.push('autobuild')
-          name.pop
-        end
 
         # Check for base and singlenode/distributed
         if name[0] == 'cdap'
@@ -211,8 +206,9 @@ module Cask
             dimensions.push('distributed')
             name.shift
           end
-          # Check for insecure
-          dimensions.push('auth') unless name[0] == 'insecure'
+          # All CDAP clusters get Auth and Autobuild
+          dimensions.push('auth')
+          dimensions.push('autobuild')
           # Check for kerberos
           dimensions.push('kerberos') if name[0] == 'secure' && name[1] == 'hadoop'
         elsif name[0] == 'docker'
