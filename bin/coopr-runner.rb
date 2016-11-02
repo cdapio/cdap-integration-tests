@@ -46,7 +46,7 @@ begin
     opts.on('-n', '--name NAME', 'Cluster Name, defaults to ENV[\'COOPR_DRIVER_NAME\'] else "coopr-driver"') do |n|
       options[:name] = n
     end
-    opts.on('-T', '--cluster-template CLUSTERTEMPLATE', 'ClusterTemplate, defaults to ENV[\'COOPR_DRIVER_CLUSTERTEMPLATE\'] else "cdap-singlenode-insecure-autobuild"') do |t|
+    opts.on('-T', '--cluster-template CLUSTERTEMPLATE', 'ClusterTemplate, defaults to ENV[\'COOPR_DRIVER_CLUSTERTEMPLATE\'] else "cdap-singlenode"') do |t|
       options[:cluster_template] = t
     end
     opts.on('-N', '--num-machines NUMMACHINES', 'Size of Cluster, defaults to ENV[\'COOPR_DRIVER_NUMMACHINES\'] else cluster-template minimum') do |n|
@@ -121,7 +121,7 @@ options[:user] = options[:user] || ENV['COOPR_API_USER'] || 'admin'
 
 options[:name] = options[:name] || ENV['COOPR_DRIVER_NAME'] || 'coopr-driver'
 options[:action] = options[:action] || 'create'
-options[:cluster_template] = options[:cluster_template] || ENV['COOPR_DRIVER_CLUSTERTEMPLATE'] || 'cdap-singlenode-insecure-autobuild'
+options[:cluster_template] = options[:cluster_template] || ENV['COOPR_DRIVER_CLUSTERTEMPLATE'] || 'cdap-singlenode'
 options[:provider] = options[:provider] || ENV['COOPR_DRIVER_PROVIDER'] || 'google'
 options[:hardwaretype] = options[:hardwaretype] || ENV['COOPR_DRIVER_HARDWARETYPE'] || nil
 options[:imagetype] = options[:imagetype] || ENV['COOPR_DRIVER_IMAGETYPE'] || nil
