@@ -20,28 +20,29 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.config.ClientConfig;
-import co.cask.cdap.client.config.ConnectionConfig;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.ProgramNotFoundException;
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.id.ProgramId;
-import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.WorkerManager;
+import co.cask.cdap.test.suite.category.SDKIncompatible;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Test restarting non-responding program
  */
+@Category({
+  // we don't support stopping a hanging worker on CDAP SDK.
+  SDKIncompatible.class
+})
 public class HangingWorkerTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(HangingWorkerTest.class);
 
