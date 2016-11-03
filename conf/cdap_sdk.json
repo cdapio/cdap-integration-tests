@@ -1,1 +1,10 @@
-{}
+{
+  "config": {
+    "cdap": {
+      "cdap_site": {
+        "audit.enabled": "false"
+      }
+    }
+  },
+  "initial-lease-duration": 82800000
+}
