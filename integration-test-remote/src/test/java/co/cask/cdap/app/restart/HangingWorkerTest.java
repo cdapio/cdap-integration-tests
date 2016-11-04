@@ -23,7 +23,9 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.WorkerManager;
+import co.cask.cdap.test.suite.category.SDKIncompatible;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +35,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * Test restarting non-responding program
  */
+@Category({
+  // we don't support stopping a hanging worker on CDAP SDK.
+  SDKIncompatible.class
+})
 public class HangingWorkerTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(HangingWorkerTest.class);
 
