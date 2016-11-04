@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -159,30 +159,17 @@ public class PurchaseAudiTest extends AudiTestBase {
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
 
-    // TODO: CDAP-3616 have a nextRuntime method in ScheduleClient?
     // workflow should not have a next runtime since its schedule was not 'resumed' and it was simply run once
-    List<ScheduledRuntime> scheduledRuntimes = getNextRuntime(restClient);
+    List<ScheduledRuntime> scheduledRuntimes = scheduleClient.nextRuntimes(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertTrue(scheduledRuntimes.isEmpty());
 
     Assert.assertEquals("SUSPENDED", purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).status(200));
     purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).resume();
 
-    scheduledRuntimes = getNextRuntime(restClient);
+    scheduledRuntimes = scheduleClient.nextRuntimes(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(1, scheduledRuntimes.size());
 
     purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).suspend();
-  }
-
-  private List<ScheduledRuntime> getNextRuntime(RESTClient restClient)
-    throws UnauthenticatedException, IOException, UnauthorizedException {
-    String path = String.format("apps/%s/workflows/%s/nextruntime",
-                                PurchaseApp.APP_NAME, PURCHASE_HISTORY_WORKFLOW.getId());
-    URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, path);
-    HttpResponse response = restClient.execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
-
-    Type scheduledRuntimeListType = new TypeToken<List<ScheduledRuntime>>() { }.getType();
-    return ObjectResponse.<List<ScheduledRuntime>>fromJsonBody(response, scheduledRuntimeListType, GSON)
-      .getResponseObject();
   }
 
   private void checkScheduleState(ScheduleClient scheduleClient, Scheduler.ScheduleState state,
