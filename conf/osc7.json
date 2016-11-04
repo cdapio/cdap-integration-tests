@@ -1,10 +1,4 @@
 {
-  "config": {
-    "hadoop": {
-      "distribution": "hdp",
-      "distribution_version": "2.3.2.0"
-    }
-  },
   "imagetype": "centos7",
   "services": "spark-historyserver"
 }
