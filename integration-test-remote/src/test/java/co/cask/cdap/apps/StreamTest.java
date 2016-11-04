@@ -46,7 +46,7 @@ import java.util.Map;
  */
 public class StreamTest extends AudiTestBase {
   private static final Id.Stream NONEXISTENT_STREAM = Id.Stream.from(TEST_NAMESPACE, "nonexistentStream");
-  private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "testStream");
+  private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "streamTest");
 
   @Test
   public void testStreams() throws Exception {
