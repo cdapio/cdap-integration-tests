@@ -50,11 +50,6 @@ public class TableDatasetApp extends AbstractDatasetApp {
     }
 
     @Override
-    protected void configure() {
-      useDatasets(datasetName);
-    }
-
-    @Override
     protected Table getTable() {
       return getContext().getDataset(datasetName);
     }
