@@ -52,11 +52,6 @@ public class CubeDatasetApp extends AbstractDatasetApp {
     }
 
     @Override
-    protected void configure() {
-      useDatasets(datasetName);
-    }
-
-    @Override
     protected Cube getCube() {
       return getContext().getDataset(datasetName);
     }

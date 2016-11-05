@@ -50,11 +50,6 @@ public class KVTableDatasetApp extends AbstractDatasetApp {
     }
 
     @Override
-    protected void configure() {
-      useDatasets(datasetName);
-    }
-
-    @Override
     protected KeyValueTable getKVTable() {
       return getContext().getDataset(datasetName);
     }
