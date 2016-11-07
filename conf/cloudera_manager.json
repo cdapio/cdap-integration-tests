@@ -1,8 +1,5 @@
 {
   "config": {
-    "coopr_base_to_cm": {
-      "--sentry": ""
-    },
     "cloudera_manager": {
       "services": {
         "cdap": {
