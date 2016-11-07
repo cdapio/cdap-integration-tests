@@ -152,7 +152,8 @@ public class AudiTestBase extends IntegrationTestBase {
     return timeValues[0].getValue();
   }
 
-  protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final Id.Program program,
+  protected List<RunRecord> getRunRecords(int expectedSize, long timeout, TimeUnit timeoutUnit,
+                                          final ProgramClient programClient, final Id.Program program,
                                           final String status, final long startTime, final long endTime)
     throws Exception {
     final List<RunRecord> runRecords = new ArrayList<>();
@@ -165,20 +166,31 @@ public class AudiTestBase extends IntegrationTestBase {
           programClient.getProgramRuns(program, status, startTime, endTime, Integer.MAX_VALUE));
         return runRecords.size();
       }
-    }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+    }, timeout, timeoutUnit, 500, TimeUnit.MILLISECONDS);
     return runRecords;
   }
 
-  protected void assertRuns(int count, ProgramClient programClient,
+  protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final Id.Program program,
+                                          final String status, final long startTime, final long endTime)
+    throws Exception {
+    return getRunRecords(expectedSize, 30, TimeUnit.SECONDS, programClient, program, status, startTime, endTime);
+  }
+
+  protected void assertRuns(int count, long timeout, TimeUnit timeoutUnit, ProgramClient programClient,
                             ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
     for (Id.Program programId : programIds) {
       List<RunRecord> runRecords =
-        getRunRecords(count, programClient, programId, expectedStatus.name(), 0, Long.MAX_VALUE);
+        getRunRecords(count, timeout, timeoutUnit, programClient, programId, expectedStatus.name(), 0, Long.MAX_VALUE);
       Assert.assertEquals(count, runRecords.size());
       for (RunRecord runRecord : runRecords) {
         Assert.assertEquals(expectedStatus, runRecord.getStatus());
       }
     }
+  }
+
+  protected void assertRuns(int count, ProgramClient programClient,
+                            ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
+    assertRuns(count, 30, TimeUnit.SECONDS, programClient, expectedStatus, programIds);
   }
 
   // TODO: move the following four methods into IntegrationTestBase
