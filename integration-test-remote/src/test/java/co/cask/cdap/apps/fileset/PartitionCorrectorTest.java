@@ -58,12 +58,11 @@ public class PartitionCorrectorTest extends AudiTestBase {
 
     ServiceManager pfsService = applicationManager.getServiceManager("PFSService").start();
     pfsService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    URL serviceURL = pfsService.getServiceURL();
+    URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     for (int i = 0; i < 100; i++) {
-      // we have to make the first handler call after service starts with a retry
-      HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                                             HttpRequest.put(new URL(serviceURL, String.valueOf(i))).build());
+      HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, String.valueOf(i))).build(),
+                                                      getClientConfig().getAccessToken());
       Assert.assertEquals(200, response.getResponseCode());
     }
 

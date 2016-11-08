@@ -70,10 +70,8 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   public void start() throws Exception {
     ServiceManager serviceManager = getApplicationManager().getServiceManager(DataCleansingService.NAME).start();
     serviceManager.waitForStatus(true);
-    URL serviceURL = serviceManager.getServiceURL();
-    // until the service starts, the endpoint will return 503. Once it's up, it'll return 404
-    retryRestCalls(HttpURLConnection.HTTP_NOT_FOUND,
-                   HttpRequest.get(new URL(serviceURL, "nonExistentEndpoint")).build());
+    // wait for it to be available
+    serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   @Override

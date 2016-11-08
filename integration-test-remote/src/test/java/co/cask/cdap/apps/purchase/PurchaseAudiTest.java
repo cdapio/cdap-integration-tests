@@ -109,15 +109,16 @@ public class PurchaseAudiTest extends AudiTestBase {
     userProfileService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    URL serviceURL = userProfileService.getServiceURL();
+    URL serviceURL = userProfileService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "user");
     String body = "{\"id\":\"Milo\",\"firstName\":\"Milo\",\"lastName\":\"Bernard\",\"categories\":[\"drink\"]}";
 
-    // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(url).withBody(body).build());
+    HttpResponse response =
+      restClient.execute(HttpRequest.post(url).withBody(body).build(), getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     url = new URL(serviceURL, "user/Milo");
-    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals(new JsonParser().parse(body), new JsonParser().parse(response.getResponseBodyAsString()));
 
@@ -142,10 +143,9 @@ public class PurchaseAudiTest extends AudiTestBase {
     Assert.assertTrue(purchaseHistoryService.isRunning());
     Assert.assertTrue(userProfileService.isRunning());
 
-    serviceURL = purchaseHistoryService.getServiceURL();
+    serviceURL = purchaseHistoryService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     url = new URL(serviceURL, "history/Milo");
-    // we have to make the first handler call after service starts with a retry
-    response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build());
+    response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());

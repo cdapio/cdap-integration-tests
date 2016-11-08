@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test worker that writes to dataset and service that reads from it.
@@ -47,12 +48,12 @@ public class ServiceWorkerTest extends AudiTestBase {
     serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
 
-    URL serviceURL = serviceManager.getServiceURL();
+    URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "read/" + DatasetWorker.WORKER_DATASET_TEST_KEY);
 
-    // we have to make the first handler call after service starts with a retry
     // hit the service endpoint, get for worker_key, should return 204 (null)
-    retryRestCalls(HttpURLConnection.HTTP_NO_CONTENT, HttpRequest.get(url).build());
+    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_NO_CONTENT, response.getResponseCode());
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
@@ -61,7 +62,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     workerManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     // check if the worker's write to the table was successful
-    HttpResponse response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals("\"" + DatasetWorker.WORKER_DATASET_TEST_VALUE + "\"",
                         Bytes.toString(response.getResponseBody()));

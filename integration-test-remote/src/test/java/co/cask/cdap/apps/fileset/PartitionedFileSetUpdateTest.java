@@ -70,11 +70,10 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
 
     ServiceManager pfsService = applicationManager.getServiceManager("PFSService").start();
     pfsService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    URL serviceURL = pfsService.getServiceURL();
+    URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    // we have to make the first handler call after service starts with a retry
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                                           HttpRequest.put(new URL(serviceURL, "1")).build());
+    HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, "1")).build(),
+                                                    getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
     response = getRestClient().execute(HttpMethod.PUT, new URL(serviceURL, "2"), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());

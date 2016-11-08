@@ -74,7 +74,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     ServiceManager serviceManager = applicationManager.getServiceManager(fileSetName);
     serviceManager.start();
     serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    URL serviceURL = serviceManager.getServiceURL();
+    URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL url = new URL(serviceURL, "excelreader/create");
     //POST request to create a new file set with name excelreadersource.

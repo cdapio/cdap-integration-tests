@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,13 +20,7 @@ import co.cask.cdap.api.Config;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.dataset.Dataset;
 import co.cask.cdap.api.service.AbstractService;
-import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceHandler;
-import co.cask.cdap.api.service.http.HttpServiceRequest;
-import co.cask.cdap.api.service.http.HttpServiceResponder;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
 
 /**
  * Abstract base class for Applications with Service to interact with Datasets.
@@ -83,19 +77,7 @@ public abstract class AbstractDatasetApp extends AbstractApplication<AbstractDat
     @Override
     protected void configure() {
       addHandler(getDatasetHttpHandler(datasetName));
-      addHandler(new PingHandler());
     }
   }
 
-  /**
-   * Ping Handler.
-   */
-  public static class PingHandler extends AbstractHttpServiceHandler {
-
-    @Path("ping")
-    @GET
-    public void handler(HttpServiceRequest request, HttpServiceResponder responder) {
-      responder.sendStatus(200);
-    }
-  }
 }

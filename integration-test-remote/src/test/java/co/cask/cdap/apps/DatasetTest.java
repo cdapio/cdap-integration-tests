@@ -146,9 +146,8 @@ public class DatasetTest extends AudiTestBase {
   }
 
   private Map<String, Object> getWordCountStats(ServiceManager wordCountService) throws Exception {
-    URL url = new URL(wordCountService.getServiceURL(), "stats");
-    // we have to make the first handler call after service starts with a retry
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build());
+    URL url = new URL(wordCountService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS), "stats");
+    HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     return GSON.fromJson(response.getResponseBodyAsString(),
                          new TypeToken<Map<String, Object>>() { }.getType());

@@ -57,6 +57,7 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
+import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
@@ -582,10 +583,12 @@ public class PurchaseMetadataTest extends AudiTestBase {
     purchaseHistoryService.start();
     purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    URL historyURL = new URL(purchaseHistoryService.getServiceURL(), "history/Milo");
+    URL serviceURL = purchaseHistoryService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    URL historyURL = new URL(serviceURL, "history/Milo");
 
-    // we have to make the first handler call after service starts with a retry
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(historyURL).build());
+    HttpResponse response = getRestClient().execute(HttpRequest.get(historyURL).build(),
+                                                    getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     List<RunRecord> runRecords = getRunRecords(1, getProgramClient(), PURCHASE_HISTORY_SERVICE.toId(),
                                                ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);

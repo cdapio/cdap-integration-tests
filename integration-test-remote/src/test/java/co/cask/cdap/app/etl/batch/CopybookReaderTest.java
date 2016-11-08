@@ -56,18 +56,19 @@ public class CopybookReaderTest extends ETLTestBase {
   @Before
   public void testSetup() throws Exception {
     ApplicationManager applicationManager = deployApplication(UploadFile.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager(UploadFile.
-                                                                           FileSetService.class.getSimpleName());
+    ServiceManager serviceManager =
+      applicationManager.getServiceManager(UploadFile.FileSetService.class.getSimpleName());
     serviceManager.start();
-    serviceURL = serviceManager.getServiceURL();
+    serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "copybook/create");
     //POST request to create a new file set with name copybook
     HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     url = new URL(serviceURL, "copybook?path=DTAR020_FB.bin");
     //PUT request to upload the binary file, sent in the request body
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.put(url).
-      withBody(new File("src/test/resources/DTAR020_FB.bin")).build());
+    response = getRestClient().execute(HttpRequest.put(url).
+      withBody(new File("src/test/resources/DTAR020_FB.bin")).build(), getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
   }
 
   @Test

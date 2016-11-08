@@ -162,15 +162,17 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // mapreduce and spark should have 'COMPLETED' state because they complete on their own with a single run
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, RANKS_COUNTER_PROGRAM.toId(), PAGE_RANK_PROGRAM.toId());
 
-    URL url = new URL(serviceManager.getServiceURL(),
+
+    URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    URL url = new URL(serviceURL,
                       SparkPageRankApp.SparkPageRankServiceHandler.TOTAL_PAGES_PATH + "/" + RANK);
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.get(url).build());
+    HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(TOTAL_PAGES, response.getResponseBodyAsString());
 
-    url = new URL(serviceManager.getServiceURL(), SparkPageRankApp.SparkPageRankServiceHandler.RANKS_PATH);
-    response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                              HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build());
+    url = new URL(serviceURL, SparkPageRankApp.SparkPageRankServiceHandler.RANKS_PATH);
+    response = getRestClient().execute(HttpRequest.post(url).withBody("{\"url\":\"" + URL_1 + "\"}").build(),
+                                       getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
 
