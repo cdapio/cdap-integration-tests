@@ -39,6 +39,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Tests the functionality of {@link co.cask.cdap.data2.dataset2.lib.file.FileSetDataset}
@@ -65,12 +66,11 @@ public class FileSetTest extends AudiTestBase {
 
     fileSetService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    URL serviceURL = fileSetService.getServiceURL();
+    URL serviceURL = fileSetService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "lines?path=myFile.txt");
 
-    // we have to make the first handler call after service starts with a retry
-    HttpResponse response = retryRestCalls(HttpURLConnection.HTTP_OK,
-                                           HttpRequest.put(url).withBody(DATA_UPLOAD).build());
+    HttpResponse response = getRestClient().execute(HttpRequest.put(url).withBody(DATA_UPLOAD).build(),
+                                                    getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());

@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -178,32 +179,6 @@ public class AudiTestBase extends IntegrationTestBase {
     }
   }
 
-  protected HttpResponse retryRestCalls(int expectedStatusCode, HttpRequest request) throws Exception {
-    return retryRestCalls(expectedStatusCode, request, 120, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
-  }
-
-  protected HttpResponse retryRestCalls(final int expectedStatusCode, final HttpRequest request,
-                                        long timeout, TimeUnit timeoutUnit,
-                                        long pollInterval, TimeUnit pollIntervalUnit) throws Exception {
-    final AtomicReference<HttpResponse> ref = new AtomicReference<>();
-    Tasks.waitFor(expectedStatusCode, new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        try {
-          HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken(),
-                                                          expectedStatusCode);
-          ref.set(response);
-          return response.getResponseCode();
-        } catch (Throwable t) {
-          LOG.error("Error while executing Http request.", t);
-          return null;
-        }
-      }
-    }, timeout, timeoutUnit, pollInterval, pollIntervalUnit);
-    Preconditions.checkNotNull(ref.get(), "No Httprequest was attempted.");
-    return ref.get();
-  }
-
   // TODO: move the following four methods into IntegrationTestBase
   protected <T> DataSetManager<T> getDataset(String datasetName) throws Exception {
     return getTestManager().getDataset(TEST_NAMESPACE, datasetName);
@@ -262,13 +237,11 @@ public class AudiTestBase extends IntegrationTestBase {
     ServiceManager serviceManager =
       appManager.getServiceManager(AbstractDatasetApp.DatasetService.class.getSimpleName());
 
-    URL serviceURL = serviceManager.getServiceURL();
+    // start the service and wait until it becomes reachable
     if (!serviceManager.isRunning()) {
-      // start the service and wait until it becomes reachable. AbstractDatasetApp#DatasetService adds a PingHandler
       serviceManager.start();
-      retryRestCalls(200, HttpRequest.get(new URL(serviceURL, "ping")).build());
     }
-    return serviceURL;
+    return serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   // wraps a Dataset within a DatasetManager

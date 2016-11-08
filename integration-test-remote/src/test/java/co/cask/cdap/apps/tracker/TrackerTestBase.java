@@ -57,6 +57,7 @@ import co.cask.tracker.entity.ValidateTagsResult;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.junit.Assert;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -104,7 +105,7 @@ public class TrackerTestBase extends AudiTestBase {
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
-    serviceURL = trackerService.getServiceURL();
+    serviceURL = trackerService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   protected void waitforProcessed(long count) throws TimeoutException, InterruptedException {
@@ -114,7 +115,9 @@ public class TrackerTestBase extends AudiTestBase {
 
   protected void promoteTags(String tags) throws Exception {
     URL urlPromote = new URL(serviceURL, "v1/tags/promote");
-    retryRestCalls(HttpURLConnection.HTTP_OK, HttpRequest.post(urlPromote).withBody(tags).build());
+    HttpResponse response = restClient.execute(HttpRequest.post(urlPromote).withBody(tags).build(),
+                                               getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
   }
 
   protected TagsResult getPreferredTags() throws Exception {
