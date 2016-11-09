@@ -81,7 +81,8 @@ begin
       options[:config].push(c)
     end
     opts.on('-s', '--services SERVICES', 'comma-separated list of service names to be added to the clustertemplate defaults, default empty') do |s|
-      options[:services] = s.split(',')
+      options[:services] = [] unless options[:services]
+      options[:services] += s.split(',')
     end
     opts.on('-l', '--initial-lease-duration LEASETIME', 'Initial lease duration in milliseconds, else template default') do |l|
       options[:lease] = l
