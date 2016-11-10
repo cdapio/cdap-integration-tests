@@ -52,11 +52,11 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   }
 
   private Id.Namespace configureLongRunningNamespace(String namespace) throws Exception {
-    Id.Namespace namespaceId = Id.Namespace.from(namespace);
+    NamespaceId namespaceId = new NamespaceId(namespace);
     if (!getNamespaceClient().exists(namespaceId)) {
       createNamespace(namespace);
     }
-    return namespaceId;
+    return namespaceId.toId();
   }
 
   public static Map<String, String> getInMemoryMap() {
