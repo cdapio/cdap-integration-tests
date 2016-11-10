@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.purchase;
+package co.cask.cdap.apps.purchase.stream;
 
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;

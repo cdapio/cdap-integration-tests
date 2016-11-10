@@ -132,7 +132,10 @@ public class AutoSuiteRunner extends ParentRunner<Runner> {
 
   @Override
   protected void runChild(Runner child, RunNotifier notifier) {
-    child.run(notifier);
+    for (int i = 0; i < 10; i++) {
+      System.out.println("abcd: " + i);
+      child.run(notifier);
+    }
   }
 
   /**
