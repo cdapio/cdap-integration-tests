@@ -31,11 +31,15 @@ import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests the functionality of workflows triggered by stream data.
  */
 public class StreamSchedulerTest extends AudiTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(StreamSchedulerTest.class);
+
   private static final Id.Workflow PURCHASE_HISTORY_WORKFLOW =
     Id.Workflow.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER =
@@ -93,11 +97,19 @@ public class StreamSchedulerTest extends AudiTestBase {
     scheduleClient.resume(dataSchedule);
     Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
-    purchaseHistoryWorkflow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryBuilder.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    // wait 5 minutes for the mapreduce to execute
-    purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
-    purchaseHistoryWorkflow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    try {
+      purchaseHistoryWorkflow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+      purchaseHistoryBuilder.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+      // wait 5 minutes for the mapreduce to execute
+      purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
+      purchaseHistoryWorkflow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    } catch (Exception e) {
+      LOG.info("Workflow Runs: {}",
+               programClient.getAllProgramRuns(PURCHASE_HISTORY_WORKFLOW, 0, Long.MAX_VALUE, Integer.MAX_VALUE));
+      LOG.info("MapReduce Runs: {}",
+               programClient.getAllProgramRuns(PURCHASE_HISTORY_BUILDER, 0, Long.MAX_VALUE, Integer.MAX_VALUE));
+      throw e;
+    }
 
     assertRuns(2, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
   }
