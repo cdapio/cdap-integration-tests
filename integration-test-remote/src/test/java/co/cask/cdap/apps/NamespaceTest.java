@@ -21,6 +21,7 @@ import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.NamespaceNotFoundException;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
@@ -35,8 +36,8 @@ import javax.annotation.Nullable;
  * Tests functionality of namespaces (create, get, list, delete, etc)
  */
 public class NamespaceTest extends AudiTestBase {
-  private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
-  private static final Id.Namespace NS2 = Id.Namespace.from("ns2");
+  private static final NamespaceId NS1 = new NamespaceId("ns1");
+  private static final NamespaceId NS2 = new NamespaceId("ns2");
 
   private static final NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
     .setName(NS1)
@@ -54,7 +55,7 @@ public class NamespaceTest extends AudiTestBase {
     // initially, there should be at least the default namespace
     List<NamespaceMeta> list = namespaceClient.list();
     int initialNamespaceCount = list.size();
-    NamespaceMeta defaultMeta = getById(list, Id.Namespace.DEFAULT);
+    NamespaceMeta defaultMeta = getById(list, NamespaceId.DEFAULT);
     Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
 
     try {
@@ -71,7 +72,7 @@ public class NamespaceTest extends AudiTestBase {
     }
 
     // namespace create should work with or without description
-    registerForDeletion(NS1.toEntityId(), NS2.toEntityId());
+    registerForDeletion(NS1, NS2);
     namespaceClient.create(ns1Meta);
     namespaceClient.create(ns2Meta);
 
@@ -116,17 +117,17 @@ public class NamespaceTest extends AudiTestBase {
 
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount, list.size());
-    defaultMeta = getById(list, Id.Namespace.DEFAULT);
+    defaultMeta = getById(list, NamespaceId.DEFAULT);
     Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
   }
 
   // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
   @Nullable
-  private NamespaceMeta getById(List<NamespaceMeta> namespaces, final Id.Namespace namespaceId) {
+  private NamespaceMeta getById(List<NamespaceMeta> namespaces, final NamespaceId namespaceId) {
     Iterable<NamespaceMeta> filter = Iterables.filter(namespaces, new Predicate<NamespaceMeta>() {
       @Override
       public boolean apply(@Nullable NamespaceMeta namespaceMeta) {
-        return namespaceMeta != null && namespaceId.getId().equals(namespaceMeta.getName());
+        return namespaceMeta != null && namespaceId.getNamespace().equals(namespaceMeta.getName());
       }
     });
     return Iterables.getFirst(filter, null);

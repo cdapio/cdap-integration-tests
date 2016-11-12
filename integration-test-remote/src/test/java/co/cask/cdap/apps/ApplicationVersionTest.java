@@ -232,7 +232,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Cannot delete the namespace because service v1 and v2 are running
     NamespaceClient namespaceClient = getNamespaceClient();
     try {
-      namespaceClient.delete(TEST_NAMESPACE_ENTITY.toId());
+      namespaceClient.delete(TEST_NAMESPACE_ENTITY);
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains("Some programs are currently running"));
@@ -244,7 +244,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Cannot delete the namespace because service v2 is running
     try {
-      namespaceClient.delete(TEST_NAMESPACE_ENTITY.toId());
+      namespaceClient.delete(TEST_NAMESPACE_ENTITY);
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains("Some programs are currently running"));
