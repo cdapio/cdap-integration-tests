@@ -53,7 +53,7 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
 
   private Id.Namespace configureLongRunningNamespace(String namespace) throws Exception {
     NamespaceId namespaceId = new NamespaceId(namespace);
-    if (!getNamespaceClient().exists(namespaceId)) {
+    if (!getNamespaceClient().exists(namespaceId.toId())) {
       createNamespace(namespace);
     }
     return namespaceId.toId();
