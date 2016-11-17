@@ -28,11 +28,13 @@ import co.cask.cdap.test.WorkerManager;
 import co.cask.hydrator.common.Constants;
 import co.cask.hydrator.plugin.realtime.source.DataGeneratorSource;
 import com.google.common.collect.ImmutableMap;
+import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,18 +46,19 @@ import java.util.concurrent.TimeUnit;
 
 public class RealtimeSolrSearchTest extends ETLTestBase {
   private static final String SINGLE_NODE_MODE = "SingleNode";
+  private SolrClient client;
 
   @Test
   public void testSolrSingleNodeMode() throws Exception {
     // Test case requires the below used Solr server to be always running, with the mentioned collection.
-    final HttpSolrClient client = new HttpSolrClient("http://104.198.198.29:8983/solr/hydrator");
+    client = new HttpSolrClient("http://104.198.198.29:8983/solr/hydrator");
     Map<String, String> sinkConfigProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "BatchSolrSink")
       .put("solrMode", SINGLE_NODE_MODE)
       .put("solrHost", "104.198.198.29:8983")
       .put("collectionName", "hydrator")
       .put("keyField", "id")
-      .put("outputFieldMappings", "name:fname_s")
+      .put("outputFieldMappings", "name:fname_s,score:score_d,graduated:graduated_b,time:time_l")
       .build();
 
     Plugin sourceConfig = new Plugin("DataGenerator",
@@ -63,8 +66,8 @@ public class RealtimeSolrSearchTest extends ETLTestBase {
                                                      Constants.Reference.REFERENCE_NAME, "DataGenerator"));
 
     Plugin sinkConfig = new Plugin("SolrSearch", sinkConfigProperties);
-    Plugin transformConfig = new Plugin("Projection", ImmutableMap.of("name", "classifiedTexts",
-                                                                      "drop", "score,graduated,binary,time"), null);
+    Plugin transformConfig = new Plugin("Projection", ImmutableMap.of("name", "solrInputData",
+                                                                      "drop", "binary"), null);
 
     ETLStage sourceStage = new ETLStage("DataGeneratorSource", sourceConfig);
     ETLStage sinkStage = new ETLStage("SolrSearchSink", sinkConfig);
@@ -94,10 +97,16 @@ public class RealtimeSolrSearchTest extends ETLTestBase {
 
     Assert.assertEquals(1, resultList.size());
     SolrDocument document = resultList.get(0);
-    if (document.get("id").equals("1"))
+    if (document.get("id").equals("1")) {
       Assert.assertEquals("Bob", document.get("fname_s"));
+      Assert.assertEquals(3.4, document.get("score_d"));
+      Assert.assertEquals(false, document.get("graduated_b"));
+      Assert.assertNotNull(document.get("time_l"));
+    }
+  }
 
-    // Clean the indexes
+  @After
+  public void deleteSolrIndexes() throws Exception {
     client.deleteByQuery("*:*");
     client.commit();
     client.shutdown();

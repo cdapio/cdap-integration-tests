@@ -40,6 +40,7 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -124,7 +125,10 @@ public class BatchSolrSearchTest extends ETLTestBase {
         Assert.assertEquals(480004, document.get("pincode_i"));
       }
     }
-    // Clean the indexes
+  }
+
+  @After
+  public void deleteSolrIndexes() throws Exception {
     client.deleteByQuery("*:*");
     client.commit();
     client.shutdown();
