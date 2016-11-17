@@ -25,6 +25,7 @@ import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.DecisionTreeRegressionTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
+import co.cask.cdap.app.etl.batch.LogisticRegressionTest;
 import co.cask.cdap.app.etl.batch.NGramTransformTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
@@ -79,6 +80,7 @@ import org.junit.runners.Suite;
   FileSetTest.class,
   HangingWorkerTest.class,
   KVTableWithProjectionTest.class,
+  LogisticRegressionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
   NGramTransformTest.class,
