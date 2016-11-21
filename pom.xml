@@ -43,6 +43,7 @@
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
     <hadoop.version>2.3.0</hadoop.version>
+    <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
 
     <!-- Skip all test cases by default. The different test cases are enabled in the profiles defined below -->
@@ -167,6 +168,12 @@
       <groupId>co.cask.cdap</groupId>
       <artifactId>cdap-common</artifactId>
       <version>${cdap.version}</version>
+    </dependency>
+    <!-- to test Hydrator Kafka plugins -->
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka_2.10</artifactId>
+      <version>${kafka.version}</version>
     </dependency>
     <dependency>
       <groupId>org.xerial.snappy</groupId>
