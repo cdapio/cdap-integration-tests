@@ -42,6 +42,7 @@ import co.cask.cdap.test.suite.category.HDP23Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -72,6 +73,8 @@ import java.util.concurrent.TimeUnit;
   // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
   MapR5Incompatible.class // MapR5x category is used for all MapR version
 })
+// Refactor the test once https://github.com/caskdata/hydrator-plugins/pull/504 is merged.
+@Ignore
 public class NGramTransformTest extends ETLTestBase {
     private static final Schema OUTPUT_SCHEMA = Schema.recordOf("outputSchema",
             Schema.Field.of("ngrams", Schema.arrayOf(Schema.of(Schema.Type.STRING))));
