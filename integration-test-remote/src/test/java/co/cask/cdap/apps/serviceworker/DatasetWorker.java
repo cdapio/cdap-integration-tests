@@ -21,8 +21,6 @@ import co.cask.cdap.api.data.DatasetContext;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.worker.AbstractWorker;
 import org.apache.tephra.TransactionFailureException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
