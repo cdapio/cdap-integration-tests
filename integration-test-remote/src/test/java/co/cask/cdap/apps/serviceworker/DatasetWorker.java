@@ -20,6 +20,7 @@ import co.cask.cdap.api.TxRunnable;
 import co.cask.cdap.api.data.DatasetContext;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.worker.AbstractWorker;
+import org.apache.tephra.TransactionFailureException;
 
 import java.util.concurrent.TimeUnit;
 
@@ -27,8 +28,8 @@ import java.util.concurrent.TimeUnit;
  * worker that writes to a dataset.
  */
 public class DatasetWorker extends AbstractWorker {
-  public static final String WORKER_DATASET_TEST_KEY = "testKey";
-  public static final String WORKER_DATASET_TEST_VALUE = "testValue";
+  static final String WORKER_DATASET_TEST_KEY = "testKey";
+  static final String WORKER_DATASET_TEST_VALUE = "testValue";
 
   @Override
   public void configure() {
@@ -36,14 +37,17 @@ public class DatasetWorker extends AbstractWorker {
   }
   @Override
   public void run() {
-    getContext().execute(new TxRunnable() {
-      @Override
-      public void run(DatasetContext context) throws Exception {
-        KeyValueTable table = context.getDataset(ServiceApplication.WORKER_DATASET_NAME);
-        table.write(WORKER_DATASET_TEST_KEY, WORKER_DATASET_TEST_VALUE);
-        TimeUnit.SECONDS.sleep(2);
-      }
-    });
+    try {
+      getContext().execute(new TxRunnable() {
+        @Override
+        public void run(DatasetContext context) throws Exception {
+          KeyValueTable table = context.getDataset(ServiceApplication.WORKER_DATASET_NAME);
+          table.write(WORKER_DATASET_TEST_KEY, WORKER_DATASET_TEST_VALUE);
+          TimeUnit.SECONDS.sleep(2);
+        }
+      });
+    } catch (TransactionFailureException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
-

@@ -41,6 +41,7 @@ import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -74,6 +75,7 @@ public class TokenizerTest extends ETLTestBase {
             Schema.Field.of("words", Schema.arrayOf(Schema.of(Schema.Type.STRING))));
 
     @Test
+    @Ignore
     public void testTokenizer() throws Exception {
         String textsToTokenize = "textToTokenize";
         ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, "/");
@@ -90,6 +92,7 @@ public class TokenizerTest extends ETLTestBase {
     }
 
     @Test
+    @Ignore
     public void testTokenizerCommaPattern() throws Exception {
         String textsToTokenize = "commaToTokenize";
         ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, ",");
@@ -106,6 +109,7 @@ public class TokenizerTest extends ETLTestBase {
     }
 
     @Test(expected = NullPointerException.class)
+    @Ignore
     public void testNullPattern() throws Exception {
         //pattern is mandatory and if its null then NullPointerException is expected.
         deployApplication("NegativeTestForPattern", OUTPUT_SCHEMA, null);
