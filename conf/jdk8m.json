@@ -11,6 +11,9 @@
     },
     "hadoop_mapr": {
       "distribution_version": "5.1.0",
+      "hdfs_site": {
+        "dfs.namenode.delegation.token.max-lifetime": "1200000"
+      },
       "yarn_site": {
         "yarn.scheduler.minimum-allocation-mb": "768"
       }

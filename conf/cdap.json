@@ -9,7 +9,7 @@
     "hadoop": {
       "hdfs_site": {
         "dfs.namenode.delegation.token.renew-interval": "600000",
-        "dfs.namenode.delegation.token.max-lifetime": "1200000"
+        "dfs.namenode.delegation.token.max-lifetime": "600000"
       }
     },
     "hbase": {
