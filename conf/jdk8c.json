@@ -12,6 +12,9 @@
     "hadoop": {
       "distribution": "cdh",
       "distribution_version": "5.8.2",
+      "hdfs_site": {
+        "dfs.namenode.delegation.token.max-lifetime": "1200000"
+      },
       "yarn_site": {
         "yarn.scheduler.minimum-allocation-mb": "768"
       }
