@@ -124,7 +124,7 @@ public class DataStreamsTest extends ETLTestBase {
 
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
     sparkManager.start();
-    sparkManager.waitForStatus(true, 30, 10);
+    sparkManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     final DataSetManager<Table> tableManager = getTableDataset(outputTableName);
     Tasks.waitFor(true, new Callable<Boolean>() {
@@ -138,7 +138,7 @@ public class DataStreamsTest extends ETLTestBase {
     }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
 
     sparkManager.stop();
-    sparkManager.waitForStatus(false, 30, 10);
+    sparkManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
   }
 
 }
