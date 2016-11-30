@@ -28,13 +28,13 @@ import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.batch.config.ETLBatchConfig;
+import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
-import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Throwables;
@@ -78,6 +78,7 @@ public abstract class ETLTestBase extends AudiTestBase {
     final Id.Artifact batchId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-batch", version);
     final Id.Artifact realtimeId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-realtime", version);
     final ArtifactId datapipelineId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-pipeline", version);
+    final ArtifactId datastreamsId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-streams", version);
 
     // wait until we see extensions for cdap-etl-batch and cdap-etl-realtime and cdap-data-pipeline
     Tasks.waitFor(true, new Callable<Boolean>() {
@@ -108,7 +109,15 @@ public abstract class ETLTestBase extends AudiTestBase {
               break;
             }
           }
-          return batchReady && realtimeReady && datapipelineReady;
+          boolean datastreamsReady = false;
+          plugins = artifactClient.getPluginSummaries(datastreamsId.toId(), "batchaggregator", ArtifactScope.SYSTEM);
+          for (PluginSummary plugin : plugins) {
+            if ("GroupByAggregate".equals(plugin.getName())) {
+              datastreamsReady = true;
+              break;
+            }
+          }
+          return batchReady && realtimeReady && datapipelineReady && datastreamsReady;
         } catch (ArtifactNotFoundException e) {
           // happens if etl-batch or etl-realtime were not added yet
           return false;
@@ -125,6 +134,10 @@ public abstract class ETLTestBase extends AudiTestBase {
   protected AppRequest<ETLRealtimeConfig> getRealtimeAppRequest(ETLRealtimeConfig config)
     throws IOException, UnauthenticatedException {
     return new AppRequest<>(new ArtifactSummary("cdap-etl-realtime", version, ArtifactScope.SYSTEM), config);
+  }
+
+  protected AppRequest<DataStreamsConfig> getStreamingAppRequest(DataStreamsConfig config) {
+    return new AppRequest<>(new ArtifactSummary("cdap-data-streams", version, ArtifactScope.SYSTEM), config);
   }
 
   // make the above two methods use this method instead

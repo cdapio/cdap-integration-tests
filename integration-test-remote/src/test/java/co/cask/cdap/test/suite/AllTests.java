@@ -33,6 +33,7 @@ import co.cask.cdap.app.etl.batch.SparkPluginsTest;
 import co.cask.cdap.app.etl.batch.TokenizerTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
+import co.cask.cdap.app.etl.realtime.DataStreamsTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
 import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
@@ -73,6 +74,7 @@ import org.junit.runners.Suite;
   BatchJoinerTest.class,
   CopybookReaderTest.class,
   DatasetTest.class,
+  DataStreamsTest.class,
   DecisionTreeRegressionTest.class,
   ETLMapReduceTest.class,
   ExcelInputReaderTest.class,
