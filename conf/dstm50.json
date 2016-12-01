@@ -9,5 +9,6 @@
   },
   "provider-fields": {
     "google_data_disk_size_gb": "200,200"
-  }
+  },
+  "services": "mapr-spark-historyserver"
 }
