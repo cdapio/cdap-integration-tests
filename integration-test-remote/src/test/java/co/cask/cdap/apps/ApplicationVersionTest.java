@@ -24,6 +24,8 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
+import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.ServiceId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -157,14 +159,16 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Verify that calling non-versioned service endpoint of ping method is routed to ConfigTestApp v1
     String pingMethod = "ping";
-    HttpResponse response = serviceClient.callServiceMethod(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME,
-                                                            ConfigTestApp.SERVICE_NAME, pingMethod);
+    ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+                                        ConfigTestApp.SERVICE_NAME);
+    HttpResponse response = serviceClient.callServiceMethod(serviceId, pingMethod);
+
+
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals("tV1", response.getResponseBodyAsString());
 
     // Verify that getting empty RouteConfig initially
-    Assert.assertTrue(serviceClient.getRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME,
-                                                   ConfigTestApp.SERVICE_NAME).isEmpty());
+    Assert.assertTrue(serviceClient.getRouteConfig(serviceId).isEmpty());
 
     // Setting RouteConfig with non-existing version will fail
     storeInvalidRouteConfig(ImmutableMap.of(version1, 100,
@@ -199,22 +203,18 @@ public class ApplicationVersionTest extends AudiTestBase {
     storeInvalidRouteConfig(ImmutableMap.of(version1, 98, version2, 1), "Percentage");
 
     // Route all traffic to v1
-    serviceClient.storeRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME, ConfigTestApp.SERVICE_NAME,
-                                   ImmutableMap.of(version1, 100, version2, 0));
+    serviceClient.storeRouteConfig(serviceId, ImmutableMap.of(version1, 100, version2, 0));
     for (int i = 0; i < 20; i++) {
-      response = serviceClient.callServiceMethod(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME,
-                                                 ConfigTestApp.SERVICE_NAME, pingMethod);
+      response = serviceClient.callServiceMethod(serviceId, pingMethod);
       if ("tV2".equals(response.getResponseBodyAsString())) {
         Assert.fail("All traffic should be routed to service v1 but service v2 is also reached.");
       }
     }
 
     // Route all traffic to v2
-    serviceClient.storeRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME, ConfigTestApp.SERVICE_NAME,
-                                   ImmutableMap.of(version1, 0, version2, 100));
+    serviceClient.storeRouteConfig(serviceId, ImmutableMap.of(version1, 0, version2, 100));
     for (int i = 0; i < 20; i++) {
-      response = serviceClient.callServiceMethod(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME,
-                                                 ConfigTestApp.SERVICE_NAME, pingMethod);
+      response = serviceClient.callServiceMethod(serviceId, pingMethod);
       if ("tV1".equals(response.getResponseBodyAsString())) {
         Assert.fail("All traffic should be routed to service v2 but service v1 is also reached.");
       }
@@ -226,7 +226,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     storeAndGetValidRouteConfig(ImmutableMap.of(version1, 60, version2, 40));
 
     // Delete RouteConfig and verify that both service v1 and v2 can be reached after deletion
-    serviceClient.deleteRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME, ConfigTestApp.SERVICE_NAME);
+    serviceClient.deleteRouteConfig(serviceId);
     assureBothVersionsReached(pingMethod);
 
     // Cannot delete the namespace because service v1 and v2 are running
@@ -257,8 +257,9 @@ public class ApplicationVersionTest extends AudiTestBase {
 
   private void storeInvalidRouteConfig(Map<String, Integer> routeConfig, String expectedMsg) throws Exception {
     try {
-      serviceClient.storeRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME, ConfigTestApp.SERVICE_NAME,
-                                     routeConfig);
+      ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+                                          ConfigTestApp.SERVICE_NAME);
+      serviceClient.storeRouteConfig(serviceId, routeConfig);
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains(expectedMsg));
@@ -266,9 +267,10 @@ public class ApplicationVersionTest extends AudiTestBase {
   }
 
   private void storeAndGetValidRouteConfig(Map<String, Integer> routeConfig) throws Exception {
-    serviceClient.storeRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME, ConfigTestApp.SERVICE_NAME, routeConfig);
-    Assert.assertEquals(routeConfig, serviceClient.getRouteConfig(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME,
-                                                                  ConfigTestApp.SERVICE_NAME));
+    ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+                                        ConfigTestApp.SERVICE_NAME);
+    serviceClient.storeRouteConfig(serviceId, routeConfig);
+    Assert.assertEquals(routeConfig, serviceClient.getRouteConfig(serviceId));
   }
 
   private void assureBothVersionsReached(String pingMethod) throws
@@ -277,8 +279,9 @@ public class ApplicationVersionTest extends AudiTestBase {
     boolean v2Chosen = false;
     int i = 0;
     while (i < MAX_NUM_CALLS) {
-      HttpResponse response = serviceClient.callServiceMethod(TEST_NAMESPACE_ENTITY, ConfigTestApp.NAME,
-                                                              ConfigTestApp.SERVICE_NAME, pingMethod);
+      ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+                                          ConfigTestApp.SERVICE_NAME);
+      HttpResponse response = serviceClient.callServiceMethod(serviceId, pingMethod);
       String responseString = response.getResponseBodyAsString();
       v1Chosen = v1Chosen || "tV1".equals(responseString);
       v2Chosen = v2Chosen || "tV2".equals(responseString);
