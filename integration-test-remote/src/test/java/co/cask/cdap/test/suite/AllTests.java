@@ -21,6 +21,7 @@ import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.BatchJoinerTest;
+import co.cask.cdap.app.etl.batch.BatchSolrSearchTest;
 import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.DecisionTreeRegressionTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
@@ -35,6 +36,7 @@ import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
+import co.cask.cdap.app.etl.realtime.RealtimeSolrSearchTest;
 import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.ApplicationVersionTest;
@@ -72,6 +74,7 @@ import org.junit.runners.Suite;
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   BatchJoinerTest.class,
+  BatchSolrSearchTest.class,
   CopybookReaderTest.class,
   DatasetTest.class,
   DataStreamsTest.class,
@@ -92,6 +95,7 @@ import org.junit.runners.Suite;
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
   RealtimeCubeSinkTest.class,
+  RealtimeSolrSearchTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
   RemoteTableTest.class,
