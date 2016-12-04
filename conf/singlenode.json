@@ -4,7 +4,8 @@
       "cdap_site": {
         "metrics.processor.memory.mb": "512",
         "metrics.memory.mb": "512",
-        "stream.container.memory.mb": "512"
+        "stream.container.memory.mb": "512",
+        "messaging.container.memory.mb": "257"
       }
     }
   }
