@@ -17,6 +17,7 @@
 package co.cask.cdap.test;
 
 import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.id.NamespaceId;
 import com.google.gson.Gson;
 import org.junit.After;
@@ -54,7 +55,8 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   private Id.Namespace configureLongRunningNamespace(String namespace) throws Exception {
     NamespaceId namespaceId = new NamespaceId(namespace);
     if (!getNamespaceClient().exists(namespaceId)) {
-      createNamespace(namespace);
+      NamespaceMeta namespaceMeta = new NamespaceMeta.Builder().setName(namespaceId).build();
+      getNamespaceClient().create(namespaceMeta);
     }
     return namespaceId.toId();
   }

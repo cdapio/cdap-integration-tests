@@ -27,7 +27,6 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -80,7 +79,7 @@ public class TokenizerTest extends ETLTestBase {
         String textsToTokenize = "textToTokenize";
         ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, "/");
         StreamManager streamManager =
-                getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, textsToTokenize));
+                getTestManager().getStreamManager(TEST_NAMESPACE_ENTITY.stream(textsToTokenize).toId());
         streamManager.send("cask data/application platform");
         streamManager.send("spark is/an engine");
         streamManager.send("cdap belongs/to apache");
@@ -97,7 +96,7 @@ public class TokenizerTest extends ETLTestBase {
         String textsToTokenize = "commaToTokenize";
         ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, ",");
         StreamManager streamManager =
-                getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, textsToTokenize));
+                getTestManager().getStreamManager(TEST_NAMESPACE_ENTITY.stream(textsToTokenize).toId());
         streamManager.send("cask data,application platform");
         streamManager.send("spark is,an engine");
         streamManager.send("cdap belongs,to apache");
@@ -136,7 +135,7 @@ public class TokenizerTest extends ETLTestBase {
                 .addConnection("source", "sparkCompute")
                 .addConnection("sparkCompute", "sink")
                 .build();
-        return deployApplication(Id.Application.from(TEST_NAMESPACE, "Tokenizer"),
+        return deployApplication(TEST_NAMESPACE_ENTITY.app("Tokenizer"),
                 getBatchAppRequestV2(etlConfig));
     }
 

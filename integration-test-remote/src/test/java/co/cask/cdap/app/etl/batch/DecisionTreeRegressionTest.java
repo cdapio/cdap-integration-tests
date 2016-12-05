@@ -140,7 +140,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "FlightDelayTrainer"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE_ENTITY.app("FlightDelayTrainer"),
                                                       getBatchAppRequestV2(etlConfig));
 
     // write records to source

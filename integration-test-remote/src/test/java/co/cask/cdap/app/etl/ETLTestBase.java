@@ -27,14 +27,15 @@ import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.etl.batch.config.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
+import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
 import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Throwables;
@@ -75,7 +76,6 @@ public abstract class ETLTestBase extends AudiTestBase {
     artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
 
     version = getVersion();
-    final Id.Artifact batchId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-batch", version);
     final Id.Artifact realtimeId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-realtime", version);
     final ArtifactId datapipelineId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-pipeline", version);
     final ArtifactId datastreamsId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-streams", version);
@@ -85,16 +85,9 @@ public abstract class ETLTestBase extends AudiTestBase {
       @Override
       public Boolean call() throws Exception {
         try {
-          boolean batchReady = false;
-          List<PluginSummary> plugins = artifactClient.getPluginSummaries(batchId, "batchsource", ArtifactScope.SYSTEM);
-          for (PluginSummary plugin : plugins) {
-            if ("Table".equals(plugin.getName())) {
-              batchReady = true;
-              break;
-            }
-          }
           boolean realtimeReady = false;
-          plugins = artifactClient.getPluginSummaries(realtimeId, "realtimesource", ArtifactScope.SYSTEM);
+          List<PluginSummary> plugins =
+            artifactClient.getPluginSummaries(realtimeId, "realtimesource", ArtifactScope.SYSTEM);
           for (PluginSummary plugin : plugins) {
             if ("DataGenerator".equals(plugin.getName())) {
               realtimeReady = true;
@@ -117,18 +110,13 @@ public abstract class ETLTestBase extends AudiTestBase {
               break;
             }
           }
-          return batchReady && realtimeReady && datapipelineReady && datastreamsReady;
+          return realtimeReady && datapipelineReady && datastreamsReady;
         } catch (ArtifactNotFoundException e) {
           // happens if etl-batch or etl-realtime were not added yet
           return false;
         }
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
-  }
-
-  protected AppRequest<ETLBatchConfig> getBatchAppRequest(ETLBatchConfig config)
-    throws IOException, UnauthenticatedException {
-    return new AppRequest<>(new ArtifactSummary("cdap-etl-batch", version, ArtifactScope.SYSTEM), config);
   }
 
   protected AppRequest<ETLRealtimeConfig> getRealtimeAppRequest(ETLRealtimeConfig config)
@@ -141,7 +129,7 @@ public abstract class ETLTestBase extends AudiTestBase {
   }
 
   // make the above two methods use this method instead
-  protected AppRequest<co.cask.cdap.etl.proto.v2.ETLBatchConfig> getBatchAppRequestV2(
+  protected AppRequest<ETLBatchConfig> getBatchAppRequestV2(
     co.cask.cdap.etl.proto.v2.ETLBatchConfig config) throws IOException, UnauthenticatedException {
     return new AppRequest<>(new ArtifactSummary("cdap-data-pipeline", version, ArtifactScope.SYSTEM), config);
   }
@@ -161,12 +149,12 @@ public abstract class ETLTestBase extends AudiTestBase {
    * Creates a {@link Stream} with the given name
    *
    * @param streamName: the name of the stream
-   * @return {@link Id.Stream} the id of the created stream
+   * @return {@link StreamId} the id of the created stream
    */
-  protected Id.Stream createSourceStream(String streamName)
+  protected StreamId createSourceStream(String streamName)
     throws UnauthenticatedException, BadRequestException, IOException, UnauthorizedException {
-    Id.Stream sourceStreamId = Id.Stream.from(TEST_NAMESPACE, streamName);
-    streamClient.create(sourceStreamId);
+    StreamId sourceStreamId = TEST_NAMESPACE_ENTITY.stream(streamName);
+    streamClient.create(sourceStreamId.toId());
     return sourceStreamId;
   }
 }

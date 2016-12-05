@@ -30,7 +30,6 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -112,7 +111,7 @@ public class SparkPluginsTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "SpamTrainer"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE_ENTITY.app("SpamTrainer"),
                                                       getBatchAppRequestV2(etlConfig));
 
 
@@ -130,7 +129,7 @@ public class SparkPluginsTest extends ETLTestBase {
                        "ham could you send me the report");
     // write records to source
     StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "trainingStream"));
+      getTestManager().getStreamManager(TEST_NAMESPACE_ENTITY.stream("trainingStream").toId());
     for (String spamMessage : trainingMessages) {
       streamManager.send(spamMessage);
     }
@@ -184,13 +183,13 @@ public class SparkPluginsTest extends ETLTestBase {
       .build();
 
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "SpamClassifier"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE_ENTITY.app("SpamClassifier"),
                                                       getBatchAppRequestV2(etlConfig));
 
 
     // write some some messages to be classified
     StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, textsToClassify));
+      getTestManager().getStreamManager(TEST_NAMESPACE_ENTITY.stream(textsToClassify).toId());
     streamManager.send("how are you doing today");
     streamManager.send("free money money");
     streamManager.send("what are you doing today");

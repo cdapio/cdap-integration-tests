@@ -31,7 +31,6 @@ import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -204,9 +203,9 @@ public class NormalizeTest extends ETLTestBase {
     DataSetManager<Table> inputManager = getTableDataset(inputTable);
     Table customerPurchaseTable = inputManager.get();
 
-    putData(1, Bytes.toBytes(CUSTOMER_ID_FIRST), (byte[]) null, Bytes.toBytes(ITEM_COST_ROW1),
+    putData(1, Bytes.toBytes(CUSTOMER_ID_FIRST), null, Bytes.toBytes(ITEM_COST_ROW1),
             Bytes.toBytes(PURCHASE_DATE_ROW1), customerPurchaseTable);
-    putData(2, Bytes.toBytes(CUSTOMER_ID_FIRST), Bytes.toBytes(ITEM_ID_ROW2), (byte[]) null,
+    putData(2, Bytes.toBytes(CUSTOMER_ID_FIRST), Bytes.toBytes(ITEM_ID_ROW2), null,
             Bytes.toBytes(PURCHASE_DATE_ROW2), customerPurchaseTable);
     putData(3, Bytes.toBytes(CUSTOMER_ID_SECOND), Bytes.toBytes(ITEM_ID_ROW3), Bytes.toBytes(ITEM_COST_ROW3),
             Bytes.toBytes(PURCHASE_DATE_ROW3), customerPurchaseTable);

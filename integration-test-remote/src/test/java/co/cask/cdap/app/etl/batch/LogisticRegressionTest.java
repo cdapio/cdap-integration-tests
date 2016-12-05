@@ -28,8 +28,9 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -111,7 +112,7 @@ public class LogisticRegressionTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "LogisticRegressionSpamTrainer");
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("LogisticRegressionSpamTrainer");
     ApplicationManager appManager = deployApplication(appId, request);
 
     // set up five spam messages and five non-spam messages to be used for classification
@@ -126,10 +127,10 @@ public class LogisticRegressionTest extends ETLTestBase {
                                                      "24,0,0.0",
                                                      "25,0,0.0");
 
-    Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, "logisticRegressionTrainingStream");
+    StreamId stream = TEST_NAMESPACE_ENTITY.stream("logisticRegressionTrainingStream");
 
     // write records to source
-    StreamManager streamManager = getTestManager().getStreamManager(stream);
+    StreamManager streamManager = getTestManager().getStreamManager(stream.toId());
     for (String spamMessage : trainingMessages) {
       streamManager.send(spamMessage);
     }
@@ -180,17 +181,17 @@ public class LogisticRegressionTest extends ETLTestBase {
       .addConnection("sparkCompute", "sink")
       .build();
 
-    Id.Application app = Id.Application.from(TEST_NAMESPACE, "SpamClassifier");
+    ApplicationId app = TEST_NAMESPACE_ENTITY.app("SpamClassifier");
     ApplicationManager appManager = deployApplication(app, getBatchAppRequestV2(etlConfig));
 
     List<String> trainingMessages = ImmutableList.of("21,0",
                                                      "13,1",
                                                      "23,0");
 
-    Id.Stream stream = Id.Stream.from(TEST_NAMESPACE, textsToClassify);
+    StreamId stream = TEST_NAMESPACE_ENTITY.stream(textsToClassify);
 
     // write records to source
-    StreamManager streamManager = getTestManager().getStreamManager(stream);
+    StreamManager streamManager = getTestManager().getStreamManager(stream.toId());
     for (String spamMessage : trainingMessages) {
       streamManager.send(spamMessage);
     }

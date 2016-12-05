@@ -24,29 +24,29 @@ import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.client.QueryClient;
-import co.cask.cdap.etl.batch.config.ETLBatchConfig;
-import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
-import co.cask.cdap.etl.common.Connection;
-import co.cask.cdap.etl.common.ETLStage;
-import co.cask.cdap.etl.common.Plugin;
+import co.cask.cdap.datapipeline.SmartWorkflow;
+import co.cask.cdap.etl.api.Transform;
+import co.cask.cdap.etl.api.batch.BatchSink;
+import co.cask.cdap.etl.api.batch.BatchSource;
+import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
+import co.cask.cdap.etl.proto.v2.ETLPlugin;
+import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
-import co.cask.cdap.test.MapReduceManager;
+import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.common.Properties;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -74,18 +74,23 @@ public class ETLMapReduceTest extends ETLTestBase {
   public void testKVToKV() throws Exception {
     // kv table to kv table pipeline
     ETLStage source = new ETLStage("KVTableSource",
-                                   new Plugin("KVTable", ImmutableMap.of(Properties.BatchReadableWritable.NAME,
-                                                                         "table1")));
+                                   new ETLPlugin("KVTable",
+                                                 BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Properties.BatchReadableWritable.NAME, "table1"),
+                                                 null));
     ETLStage sink = new ETLStage("KVTableSink",
-                                 new Plugin("KVTable", ImmutableMap.of(Properties.BatchReadableWritable.NAME,
-                                                                       "table2")));
-    ETLStage transform = new ETLStage("ProjectionTransform", new Plugin("Projection",
-                                                                        ImmutableMap.<String, String>of()));
-    List<ETLStage> transformList = Lists.newArrayList(transform);
-    ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, transformList);
+                                 new ETLPlugin("KVTable",
+                                               BatchSink.PLUGIN_TYPE,
+                                               ImmutableMap.of(Properties.BatchReadableWritable.NAME, "table2"),
+                                               null));
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "KVToKV");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("KVToKV");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table
@@ -96,9 +101,9 @@ public class ETLMapReduceTest extends ETLTestBase {
     }
     table1.flush();
 
-    MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(5, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
 
     DataSetManager<KeyValueTable> table2 = getKVTableDataset("table2");
     KeyValueTable outputTable = table2.get();
@@ -118,65 +123,64 @@ public class ETLMapReduceTest extends ETLTestBase {
      */
 
     ETLStage source = new ETLStage("SourceTable",
-                                   new Plugin("Table",
-                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
-                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
-                                                              Properties.Table.PROPERTY_SCHEMA,
-                                                              purchaseSchema.toString())));
-    ETLStage lpFilter = new ETLStage("LowPassFilter", new Plugin(
-      "JavaScript", ImmutableMap.of("script",
-                                      "function transform(input, emitter, context) {" +
-                                        "  if (input.count <= 8) {" +
-                                        "    emitter.emit(input);" +
-                                        "  }" +
-                                        "}")));
+                                   new ETLPlugin("Table",
+                                                 BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
+                                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
+                                                                 Properties.Table.PROPERTY_SCHEMA,
+                                                                 purchaseSchema.toString()),
+                                                 null));
+    ETLStage lpFilter = new ETLStage("LowPassFilter", new ETLPlugin(
+      "ScriptFilter", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script", "function shouldFilter(inputRecord) { return inputRecord.count > 8; }"),
+      null));
 
-    ETLStage hpFilter = new ETLStage("HighPassFilter", new Plugin(
-      "JavaScript", ImmutableMap.of("script",
-                                      "function transform(input, emitter, context) {" +
-                                        "  if (input.count >= 6) {" +
-                                        "    emitter.emit(input);" +
-                                        "  }" +
-                                        "}")));
+    ETLStage hpFilter = new ETLStage("HighPassFilter", new ETLPlugin(
+      "ScriptFilter", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script", "function shouldFilter(inputRecord) { return inputRecord.count < 6; }"),
+      null));
 
-    List<ETLStage> transforms = ImmutableList.of(lpFilter, hpFilter);
-
-    ETLStage tableSink = new ETLStage("SinkTable", new Plugin(
-      "Table", ImmutableMap.of(Properties.BatchReadableWritable.NAME, "hbase",
-                               Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
-                               Properties.Table.PROPERTY_SCHEMA, purchaseSchema.toString())));
-    ETLStage hdfsSink = new ETLStage("TPFSAvro", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, purchaseSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "hdfs")));
-    ETLStage hdfsSink2 = new ETLStage("TPFSAvro2", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, purchaseSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "hdfs2")));
-
-    List<ETLStage> sinks = ImmutableList.of(tableSink, hdfsSink, hdfsSink2);
-    List<Connection> connections = ImmutableList.of(
-      new Connection("SourceTable", "LowPassFilter"),
-      new Connection("SourceTable", "HighPassFilter"),
-      new Connection("LowPassFilter", "SinkTable"),
-      new Connection("HighPassFilter", "SinkTable"),
-      new Connection("LowPassFilter", "TPFSAvro"),
-      new Connection("HighPassFilter", "TPFSAvro"),
-      new Connection("LowPassFilter", "TPFSAvro2"));
+    ETLStage tableSink = new ETLStage("SinkTable", new ETLPlugin(
+      "Table", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.BatchReadableWritable.NAME, "hbase",
+                      Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
+                      Properties.Table.PROPERTY_SCHEMA, purchaseSchema.toString()),
+      null));
+    ETLStage hdfsSink = new ETLStage("TPFSAvro", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, purchaseSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "hdfs"),
+      null));
+    ETLStage hdfsSink2 = new ETLStage("TPFSAvro2", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, purchaseSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "hdfs2"),
+      null));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
-      .setSource(source)
-      .addSinks(sinks)
-      .addTransforms(transforms)
-      .addConnections(connections)
+      .addStage(source)
+      .addStage(tableSink)
+      .addStage(hdfsSink)
+      .addStage(hdfsSink2)
+      .addStage(lpFilter)
+      .addStage(hpFilter)
+      .addConnection(source.getName(), lpFilter.getName())
+      .addConnection(source.getName(), hpFilter.getName())
+      .addConnection(lpFilter.getName(), tableSink.getName())
+      .addConnection(hpFilter.getName(), tableSink.getName())
+      .addConnection(lpFilter.getName(), hdfsSink.getName())
+      .addConnection(hpFilter.getName(), hdfsSink.getName())
+      .addConnection(lpFilter.getName(), hdfsSink2.getName())
       .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "TabToTab");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TabToTab");
     ApplicationManager appManager = deployApplication(appId, appRequest);
     ingestPurchaseTestData(getTableDataset("input"));
 
-    final MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(5, TimeUnit.MINUTES);
+    final WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
 
     QueryClient client = new QueryClient(getClientConfig());
 
@@ -216,12 +220,14 @@ public class ETLMapReduceTest extends ETLTestBase {
      */
 
     ETLStage source = new ETLStage("SourceTable",
-                                   new Plugin("Table",
-                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
-                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD,
-                                                              "rowkey",
-                                                              Properties.Table.PROPERTY_SCHEMA,
-                                                              purchaseSchema.toString())));
+                                   new ETLPlugin("Table",
+                                                 BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
+                                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD,
+                                                                 "rowkey",
+                                                                 Properties.Table.PROPERTY_SCHEMA,
+                                                                 purchaseSchema.toString()),
+                                                 null));
     Schema userRewardsSchema = Schema.recordOf(
       "rewards",
       Schema.Field.of("rowkey", Schema.of(Schema.Type.STRING)),
@@ -234,69 +240,79 @@ public class ETLMapReduceTest extends ETLTestBase {
       Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("rewards", Schema.of(Schema.Type.INT))
     );
-    ETLStage userRewards = new ETLStage("userRewardsTransform", new Plugin(
-      "JavaScript", ImmutableMap.of("script",
-                                    "function transform(input, emitter, context) " +
-                                      "{ emitter.emit({" +
-                                      "'rowkey' : input.rowkey," +
-                                      "'userId' : input.userId," +
-                                      "'rewards' : 10" +
-                                      "}); }",
-                                    "schema", userRewardsSchema.toString()
-    )));
-    ETLStage itemRewards = new ETLStage("itemRewardsTransform", new Plugin(
-      "JavaScript", ImmutableMap.of("script",
-                                    "function transform(input, emitter, context) " +
-                                      "{ emitter.emit({" +
-                                      "'rowkey' : input.rowkey," +
-                                      "'item' : input.item," +
-                                      "'rewards' : 5" +
-                                      "}); }",
-                                    "schema", itemRewardsSchema.toString()
-    )));
+    ETLStage userRewards = new ETLStage("userRewardsTransform", new ETLPlugin(
+      "JavaScript", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script",
+                      "function transform(input, emitter, context) " +
+                        "{ emitter.emit({" +
+                        "'rowkey' : input.rowkey," +
+                        "'userId' : input.userId," +
+                        "'rewards' : 10" +
+                        "}); }",
+                      "schema", userRewardsSchema.toString()
+      ),
+      null));
+    ETLStage itemRewards = new ETLStage("itemRewardsTransform", new ETLPlugin(
+      "JavaScript", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script",
+                      "function transform(input, emitter, context) " +
+                        "{ emitter.emit({" +
+                        "'rowkey' : input.rowkey," +
+                        "'item' : input.item," +
+                        "'rewards' : 5" +
+                        "}); }",
+                      "schema", itemRewardsSchema.toString()
+      ),
+      null));
 
-    ETLStage userDropProjection = new ETLStage("userProjection", new Plugin("Projection",
-                                                                            ImmutableMap.of("drop", "userId")));
-    List<ETLStage> transforms = ImmutableList.of(userRewards, itemRewards, userDropProjection);
+    ETLStage userDropProjection = new ETLStage("userProjection",
+                                               new ETLPlugin("Projection",
+                                                             Transform.PLUGIN_TYPE,
+                                                             ImmutableMap.of("drop", "userId"),
+                                                             null));
     Schema rewardsSchema = Schema.recordOf(
       "rewards",
       Schema.Field.of("rowkey", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("rewards", Schema.of(Schema.Type.INT))
     );
 
-    ETLStage allRewardsSink = new ETLStage("allRewards", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, rewardsSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "allRewards")));
+    ETLStage allRewardsSink = new ETLStage("allRewards", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, rewardsSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "allRewards"),
+      null));
 
-    ETLStage userRewardsSink = new ETLStage("userRewards", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, userRewardsSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "userRewards")));
+    ETLStage userRewardsSink = new ETLStage("userRewards", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, userRewardsSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "userRewards"),
+      null));
 
-    ETLStage itemRewardsSink = new ETLStage("itemRewards", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, itemRewardsSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "itemRewards")));
-
-    List<ETLStage> sinks = ImmutableList.of(allRewardsSink, userRewardsSink, itemRewardsSink);
-
-    List<Connection> connections = ImmutableList.of(
-      new Connection("SourceTable", "userRewardsTransform"),
-      new Connection("SourceTable", "itemRewardsTransform"),
-      new Connection("userRewardsTransform", "userProjection"),
-      new Connection("userProjection", "allRewards"),
-      new Connection("itemRewardsTransform", "allRewards"),
-      new Connection("userRewardsTransform", "userRewards"),
-      new Connection("itemRewardsTransform", "itemRewards")
-    );
+    ETLStage itemRewardsSink = new ETLStage("itemRewards", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, itemRewardsSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "itemRewards"),
+      null));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
-      .setSource(source)
-      .addSinks(sinks)
-      .addTransforms(transforms)
-      .addConnections(connections)
+      .addStage(source)
+      .addStage(userRewards)
+      .addStage(itemRewards)
+      .addStage(userDropProjection)
+      .addStage(allRewardsSink)
+      .addStage(userRewardsSink)
+      .addStage(itemRewardsSink)
+      .addConnection(source.getName(), userRewards.getName())
+      .addConnection(source.getName(), itemRewards.getName())
+      .addConnection(userRewards.getName(), userDropProjection.getName())
+      .addConnection(userDropProjection.getName(), allRewardsSink.getName())
+      .addConnection(itemRewards.getName(), allRewardsSink.getName())
+      .addConnection(userRewards.getName(), userRewardsSink.getName())
+      .addConnection(itemRewards.getName(), itemRewardsSink.getName())
       .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "TabToTab");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TabToTab");
     // deploy should fail
     deployApplication(appId, appRequest);
   }
@@ -315,12 +331,14 @@ public class ETLMapReduceTest extends ETLTestBase {
      */
 
     ETLStage source = new ETLStage("SourceTable",
-                                   new Plugin("Table",
-                                              ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
-                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD,
-                                                              "rowkey",
-                                                              Properties.Table.PROPERTY_SCHEMA,
-                                                              purchaseSchema.toString())));
+                                   new ETLPlugin("Table",
+                                                 BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Properties.BatchReadableWritable.NAME, "input",
+                                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD,
+                                                                 "rowkey",
+                                                                 Properties.Table.PROPERTY_SCHEMA,
+                                                                 purchaseSchema.toString()),
+                                                 null));
     Schema userRewardsSchema = Schema.recordOf(
       "rewards",
       Schema.Field.of("rowkey", Schema.of(Schema.Type.STRING)),
@@ -333,32 +351,37 @@ public class ETLMapReduceTest extends ETLTestBase {
       Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
       Schema.Field.of("rewards", Schema.of(Schema.Type.INT))
     );
-    ETLStage userRewards = new ETLStage("userRewardsTransform", new Plugin(
-      "JavaScript", ImmutableMap.of("script",
-                                    "function transform(input, emitter, context) " +
-                                      "{ emitter.emit({" +
-                                      "'rowkey' : input.rowkey," +
-                                      "'userId' : input.userId," +
-                                      "'rewards' : 10" +
-                                      "}); }",
-                                    "schema", userRewardsSchema.toString()
-    )));
+    ETLStage userRewards = new ETLStage("userRewardsTransform", new ETLPlugin(
+      "JavaScript", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script",
+                      "function transform(input, emitter, context) " +
+                        "{ emitter.emit({" +
+                        "'rowkey' : input.rowkey," +
+                        "'userId' : input.userId," +
+                        "'rewards' : 10" +
+                        "}); }",
+                      "schema", userRewardsSchema.toString()),
+      null));
 
-    ETLStage itemRewards = new ETLStage("itemRewardsTransform", new Plugin(
-      "JavaScript", ImmutableMap.of("script",
-                                    "function transform(input, emitter, context) " +
-                                      "{ emitter.emit({" +
-                                      "'rowkey' : input.rowkey," +
-                                      "'item' : input.item," +
-                                      "'rewards' : 5" +
-                                      "}); }",
-                                    "schema", itemRewardsSchema.toString()
-    )));
-    ETLStage userDropProjection = new ETLStage("userProjection", new Plugin("Projection",
-                                                                            ImmutableMap.of("drop", "userId")));
-    ETLStage itemDropProjection = new ETLStage("itemProjection", new Plugin("Projection",
-                                                                            ImmutableMap.of("drop", "item")));
-    List<ETLStage> transforms = ImmutableList.of(userRewards, itemRewards, userDropProjection, itemDropProjection);
+    ETLStage itemRewards = new ETLStage("itemRewardsTransform", new ETLPlugin(
+      "JavaScript", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script",
+                      "function transform(input, emitter, context) " +
+                        "{ emitter.emit({" +
+                        "'rowkey' : input.rowkey," +
+                        "'item' : input.item," +
+                        "'rewards' : 5" +
+                        "}); }",
+                      "schema", itemRewardsSchema.toString()),
+      null));
+    ETLStage userDropProjection = new ETLStage("userProjection", new ETLPlugin("Projection",
+                                                                               Transform.PLUGIN_TYPE,
+                                                                               ImmutableMap.of("drop", "userId"),
+                                                                               null));
+    ETLStage itemDropProjection = new ETLStage("itemProjection", new ETLPlugin("Projection",
+                                                                               Transform.PLUGIN_TYPE,
+                                                                               ImmutableMap.of("drop", "item"),
+                                                                               null));
 
     Schema rewardsSchema = Schema.recordOf(
       "rewards",
@@ -366,46 +389,51 @@ public class ETLMapReduceTest extends ETLTestBase {
       Schema.Field.of("rewards", Schema.of(Schema.Type.INT))
     );
 
-    ETLStage allRewardsSink = new ETLStage("allRewards", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, rewardsSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "allRewards")));
+    ETLStage allRewardsSink = new ETLStage("allRewards", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, rewardsSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "allRewards"),
+      null));
 
-    ETLStage userRewardsSink = new ETLStage("userRewards", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, userRewardsSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "userRewards")));
+    ETLStage userRewardsSink = new ETLStage("userRewards", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, userRewardsSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "userRewards"),
+      null));
 
-    ETLStage itemRewardsSink = new ETLStage("itemRewards", new Plugin(
-      "TPFSAvro", ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, itemRewardsSchema.toString(),
-                                  Properties.TimePartitionedFileSetDataset.TPFS_NAME, "itemRewards")));
-
-    List<ETLStage> sinks = ImmutableList.of(allRewardsSink, userRewardsSink, itemRewardsSink);
-
-    List<Connection> connections = ImmutableList.of(
-      new Connection("SourceTable", "userRewardsTransform"),
-      new Connection("SourceTable", "itemRewardsTransform"),
-      new Connection("userRewardsTransform", "userProjection"),
-      new Connection("itemRewardsTransform", "itemProjection"),
-      new Connection("userProjection", "allRewards"),
-      new Connection("itemProjection", "allRewards"),
-      new Connection("userRewardsTransform", "userRewards"),
-      new Connection("itemRewardsTransform", "itemRewards")
-    );
+    ETLStage itemRewardsSink = new ETLStage("itemRewards", new ETLPlugin(
+      "TPFSAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.of(Properties.TimePartitionedFileSetDataset.SCHEMA, itemRewardsSchema.toString(),
+                      Properties.TimePartitionedFileSetDataset.TPFS_NAME, "itemRewards"),
+      null));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
-      .setSource(source)
-      .addSinks(sinks)
-      .addTransforms(transforms)
-      .addConnections(connections)
+      .addStage(source)
+      .addStage(userRewards)
+      .addStage(itemRewards)
+      .addStage(userDropProjection)
+      .addStage(itemDropProjection)
+      .addStage(allRewardsSink)
+      .addStage(userRewardsSink)
+      .addStage(itemRewardsSink)
+      .addConnection(source.getName(), userRewards.getName())
+      .addConnection(source.getName(), itemRewards.getName())
+      .addConnection(userRewards.getName(), userDropProjection.getName())
+      .addConnection(itemRewards.getName(), itemDropProjection.getName())
+      .addConnection(userDropProjection.getName(), allRewardsSink.getName())
+      .addConnection(itemDropProjection.getName(), allRewardsSink.getName())
+      .addConnection(userRewards.getName(), userRewardsSink.getName())
+      .addConnection(itemRewards.getName(), itemRewardsSink.getName())
       .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "TabToTab");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TabToTab");
     ApplicationManager appManager = deployApplication(appId, appRequest);
     ingestPurchaseTestData(getTableDataset("input"));
 
-    final MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(5, TimeUnit.MINUTES);
+    final WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
 
     ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY,
                                                                     "select * from dataset_allRewards", 5);
@@ -486,7 +514,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     }
 
     public int hashCode() {
-      return Objects.hash(new Object[]{this.rowKey, this.userId, this.item, this.rewards});
+      return Objects.hash(rowKey, userId, item, rewards);
     }
 
     public String toString() {
@@ -500,11 +528,13 @@ public class ETLMapReduceTest extends ETLTestBase {
   public void testTableToTableWithValidations() throws Exception {
 
     Schema schema = purchaseSchema;
-    ETLStage source = new ETLStage("TableSource", new Plugin("Table",
-                                                             ImmutableMap.of(
-                                                               Properties.BatchReadableWritable.NAME, "inputTable",
-                                                               Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
-                                                               Properties.Table.PROPERTY_SCHEMA, schema.toString())));
+    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table",
+                                                                BatchSource.PLUGIN_TYPE,
+                                                                ImmutableMap.of(
+                                                                  Properties.BatchReadableWritable.NAME, "inputTable",
+                                                                  Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
+                                                                  Properties.Table.PROPERTY_SCHEMA, schema.toString()),
+                                                                null));
 
     String validationScript = "function isValid(input) {  " +
       "var errCode = 0; var errMsg = 'none'; var isValid = true;" +
@@ -513,20 +543,29 @@ public class ETLMapReduceTest extends ETLTestBase {
       "return {'isValid': isValid, 'errorCode': errCode, 'errorMsg': errMsg}; " +
       "};";
     ETLStage transform =
-      new ETLStage("ValidatorTransform", new Plugin("Validator", ImmutableMap.of(
-        "validators", "core", "validationScript", validationScript)), "keyErrors");
-    List<ETLStage> transformList = new ArrayList<>();
-    transformList.add(transform);
+      new ETLStage("ValidatorTransform", new ETLPlugin("Validator",
+                                                       Transform.PLUGIN_TYPE,
+                                                       ImmutableMap.of(
+                                                         "validators", "core", "validationScript", validationScript),
+                                                       null), "keyErrors");
 
-    ETLStage sink = new ETLStage("TableSink", new Plugin("Table",
-                                                         ImmutableMap.of(
-                                                           Properties.BatchReadableWritable.NAME, "outputTable",
-                                                           Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey")));
+    ETLStage sink = new ETLStage("TableSink", new ETLPlugin("Table",
+                                                            BatchSink.PLUGIN_TYPE,
+                                                            ImmutableMap.of(
+                                                              Properties.BatchReadableWritable.NAME, "outputTable",
+                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey"),
+                                                            null));
 
-    ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, transformList);
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(sink)
+      .addStage(transform)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "TableToTable");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TableToTable");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table
@@ -551,9 +590,9 @@ public class ETLMapReduceTest extends ETLTestBase {
     inputTable.put(put);
     inputManager.flush();
 
-    MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(5, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset("outputTable");
     Table outputTable = outputManager.get();

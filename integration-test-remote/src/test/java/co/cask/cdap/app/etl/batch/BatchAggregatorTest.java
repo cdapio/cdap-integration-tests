@@ -25,14 +25,15 @@ import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.app.etl.dataset.DatasetAccessApp;
 import co.cask.cdap.app.etl.dataset.SnapshotFilesetService;
 import co.cask.cdap.common.UnauthenticatedException;
+import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.batch.BatchAggregator;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
@@ -65,7 +66,7 @@ import java.util.concurrent.TimeUnit;
  * Tests GroupByAggregator
  */
 public class BatchAggregatorTest extends ETLTestBase {
-  public static final String SMARTWORKFLOW_NAME = "DataPipelineWorkflow";
+  public static final String SMARTWORKFLOW_NAME = SmartWorkflow.NAME;
   public static final String PURCHASE_SOURCE = "purchaseSource";
   public static final String ITEM_SINK = "itemSink";
   public static final String USER_SINK = "userSink";
@@ -143,7 +144,7 @@ public class BatchAggregatorTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "groupby-test");
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("groupby-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
     // Deploy an application with a service to get partitionedFileset data for verification
@@ -239,15 +240,15 @@ public class BatchAggregatorTest extends ETLTestBase {
     DataSetManager<Table> purchaseManager = getTableDataset(purchasesDatasetName);
     Table purchaseTable = purchaseManager.get();
     // 1: 1234567890000, samuel, island, 1000
-    putValues(purchaseManager, purchaseTable, 1, 1234567890000L, "samuel", "island", 1000L);
-    putValues(purchaseManager, purchaseTable, 2, 1234567890001L, "samuel", "shirt", 15L);
-    putValues(purchaseManager, purchaseTable, 3, 1234567890001L, "samuel", "pie", 20L);
-    putValues(purchaseManager, purchaseTable, 4, 1234567890002L, "john", "pie", 25L);
-    putValues(purchaseManager, purchaseTable, 5, 1234567890003L, "john", "shirt", 30L);
+    putValues(purchaseTable, 1, 1234567890000L, "samuel", "island", 1000L);
+    putValues(purchaseTable, 2, 1234567890001L, "samuel", "shirt", 15L);
+    putValues(purchaseTable, 3, 1234567890001L, "samuel", "pie", 20L);
+    putValues(purchaseTable, 4, 1234567890002L, "john", "pie", 25L);
+    putValues(purchaseTable, 5, 1234567890003L, "john", "shirt", 30L);
     purchaseManager.flush();
   }
 
-  private void putValues(DataSetManager<Table> purchaseManager, Table purchaseTable, int index, long timestamp,
+  private void putValues(Table purchaseTable, int index, long timestamp,
                          String user, String item, long price) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("ts", timestamp);

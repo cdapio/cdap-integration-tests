@@ -27,8 +27,8 @@ import co.cask.cdap.etl.api.streaming.StreamingSource;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.SparkManager;
@@ -126,7 +126,7 @@ public class DataStreamsTest extends ETLTestBase {
       .setBatchInterval("60s")
       .build();
 
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "kafkaStreaming");
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("kafkaStreaming");
     AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 

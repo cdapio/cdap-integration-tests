@@ -17,17 +17,19 @@
 package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.etl.batch.config.ETLBatchConfig;
-import co.cask.cdap.etl.common.ETLStage;
-import co.cask.cdap.etl.common.Plugin;
-import co.cask.cdap.proto.Id;
+import co.cask.cdap.datapipeline.SmartWorkflow;
+import co.cask.cdap.etl.api.Transform;
+import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
+import co.cask.cdap.etl.proto.v2.ETLPlugin;
+import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.MapReduceManager;
+import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.batch.source.KVTableSource;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,25 +47,33 @@ public class KVTableWithProjectionTest extends ETLTestBase {
   @Test
   public void testKVTableWithProjection() throws Exception {
     //1. create a source stream and send an event
-    Id.Stream sourceStreamId = createSourceStream(SOURCE_STREAM);
-    streamClient.sendEvent(sourceStreamId, DUMMY_STREAM_EVENT);
+    StreamId sourceStreamId = createSourceStream(SOURCE_STREAM);
+    streamClient.sendEvent(sourceStreamId.toId(), DUMMY_STREAM_EVENT);
 
     // 2. Run Stream To KVTable with Projection Transform plugin
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "StreamToKVTableWithProjection");
+    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("StreamToKVTableWithProjection");
 
     ETLStage source = etlStageProvider.getStreamBatchSource(SOURCE_STREAM, "10m", "0d", Formats.CSV,
                                                             DUMMY_STREAM_EVENT_SCHEMA, "|");
     ETLStage sink = etlStageProvider.getTableSource(KVTABLE_NAME, "ticker", "price");
     ETLStage transform = new ETLStage("ProjectionTransform1",
-                                      new Plugin("Projection", ImmutableMap.of("convert", "ticker:bytes,price:bytes")));
-    ETLBatchConfig etlBatchConfig = new ETLBatchConfig("*/10 * * * *", source, sink, Lists.newArrayList(transform));
+                                      new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
+                                                    ImmutableMap.of("convert", "ticker:bytes,price:bytes"),
+                                                    null));
+    ETLBatchConfig etlBatchConfig = ETLBatchConfig.builder("*/10 * * * *")
+      .addStage(source)
+      .addStage(sink)
+      .addStage(transform)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlBatchConfig);
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlBatchConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
-    MapReduceManager mrManager = appManager.getMapReduceManager("ETLMapReduce");
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
 
     byte[] result = getKVTableDataset(KVTABLE_NAME).get().read("AAPL");
     Assert.assertNotNull(result);

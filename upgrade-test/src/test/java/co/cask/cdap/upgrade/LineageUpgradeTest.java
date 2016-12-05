@@ -31,6 +31,7 @@ import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
 import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramStatus;
 import co.cask.cdap.proto.RunRecord;
@@ -81,7 +82,8 @@ public class LineageUpgradeTest extends UpgradeTestBase {
   @Override
   public void preStage() throws Exception {
     // create lineage test namespace
-    createNamespace(LINEAGE_NAMESPACE.getNamespace());
+    NamespaceMeta namespaceMeta = new NamespaceMeta.Builder().setName(LINEAGE_NAMESPACE).build();
+    getNamespaceClient().create(namespaceMeta);
 
     // deploy an application
     deployApplication(LINEAGE_NAMESPACE.toId(), PurchaseApp.class);

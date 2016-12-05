@@ -17,8 +17,10 @@
 package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.etl.common.ETLStage;
-import co.cask.cdap.etl.common.Plugin;
+import co.cask.cdap.etl.api.Transform;
+import co.cask.cdap.etl.api.batch.BatchSource;
+import co.cask.cdap.etl.proto.v2.ETLPlugin;
+import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.hydrator.plugin.batch.sink.TimePartitionedFileSetDatasetAvroSink;
 import co.cask.hydrator.plugin.batch.source.KVTableSource;
 import co.cask.hydrator.plugin.batch.source.StreamBatchSource;
@@ -56,7 +58,7 @@ public final class ETLStageProvider {
     if (delimiter != null) {
       builder.put("format.setting.delimiter", delimiter);
     }
-    return new ETLStage(streamName, new Plugin("Stream", builder.build()));
+    return new ETLStage(streamName, new ETLPlugin("Stream", BatchSource.PLUGIN_TYPE, builder.build(), null));
   }
 
   /**
@@ -80,14 +82,15 @@ public final class ETLStageProvider {
     if (duration != null) {
       builder.put(Properties.TimePartitionedFileSetDataset.DURATION, duration);
     }
-    return new ETLStage(fileSetName, new Plugin("TPFSAvro", builder.build()));
+    return new ETLStage(fileSetName, new ETLPlugin("TPFSAvro", BatchSource.PLUGIN_TYPE, builder.build(), null));
   }
 
   /**
    * Returns an {@link ETLStage} of empty {@link ProjectionTransform}
    */
   public ETLStage getEmptyProjectionTranform(String stageName) {
-    return new ETLStage(stageName, new Plugin("Projection", ImmutableMap.<String, String>of()));
+    return new ETLStage(stageName, new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
+                                                 ImmutableMap.<String, String>of(), null));
   }
 
   /**
@@ -105,6 +108,6 @@ public final class ETLStageProvider {
       builder.put(Properties.KeyValueTable.VALUE_FIELD, valueField);
     }
 
-    return new ETLStage(tableName, new Plugin("KVTable", builder.build()));
+    return new ETLStage(tableName, new ETLPlugin("KVTable", BatchSource.PLUGIN_TYPE, builder.build(), null));
   }
 }
