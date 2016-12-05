@@ -88,7 +88,7 @@ public class DataStreamsTest extends ETLTestBase {
     // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
     MapR5Incompatible.class // MapR5x category is used for all MapR version
   })
-  @Test
+//  @Test
   public void testKafkaAggregatorTable() throws Exception {
     String hostname = getClientConfig().getConnectionConfig().getHostname();
     String topic = UUID.randomUUID().toString();
