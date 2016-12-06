@@ -223,7 +223,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
   private Map<Double, Double> getDelayedPredictionMap() throws ExecutionException, InterruptedException {
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult exploreExecutionResult =
-      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_decisiontreesink").get();
+      queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_decisiontreesink").get();
 
     Map<Double, Double> predictionMap = new HashMap<>();
     while (exploreExecutionResult.hasNext()) {
