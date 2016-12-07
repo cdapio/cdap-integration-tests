@@ -70,11 +70,7 @@ import org.junit.runners.Suite;
   ApplicationVersionTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
-<<<<<<< HEAD
   BatchJoinerTest.class,
-  CopybookReaderTest.class,
-=======
->>>>>>> release/3.6
   DatasetTest.class,
   DataStreamsTest.class,
   DecisionTreeRegressionTest.class,
