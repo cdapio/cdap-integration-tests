@@ -79,7 +79,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
     // delete about half of the partitions directly in hive
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult results = queryClient
-      .execute(TEST_NAMESPACE, "alter table dataset_pfs drop partition (key>'49')").get();
+      .execute(TEST_NAMESPACE_ENTITY, "alter table dataset_pfs drop partition (key>'49')").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     validate(queryClient, 45); // (5-9, 50-99 were dropped)
 
@@ -93,11 +93,11 @@ public class PartitionCorrectorTest extends AudiTestBase {
   private void validate(QueryClient client, int expected)
     throws ExecutionException, InterruptedException, ExploreException {
 
-    ExploreExecutionResult results = client.execute(TEST_NAMESPACE, "show partitions dataset_pfs").get();
+    ExploreExecutionResult results = client.execute(TEST_NAMESPACE_ENTITY, "show partitions dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     Assert.assertEquals(expected, Iterators.size(results));
 
-    results = client.execute(TEST_NAMESPACE, "select * from dataset_pfs").get();
+    results = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     Assert.assertEquals(expected, Iterators.size(results));
   }

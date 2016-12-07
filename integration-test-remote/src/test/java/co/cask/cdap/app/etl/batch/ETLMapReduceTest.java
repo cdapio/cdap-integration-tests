@@ -34,6 +34,7 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.MapReduceManager;
@@ -123,12 +124,20 @@ public class ETLMapReduceTest extends ETLTestBase {
                                                               Properties.Table.PROPERTY_SCHEMA,
                                                               purchaseSchema.toString())));
     ETLStage lpFilter = new ETLStage("LowPassFilter", new Plugin(
-      "ScriptFilter", ImmutableMap.of("script",
-                                      "function shouldFilter(inputRecord) { return inputRecord.count > 8; }")));
+      "JavaScript", ImmutableMap.of("script",
+                                      "function transform(input, emitter, context) {" +
+                                        "  if (input.count <= 8) {" +
+                                        "    emitter.emit(input);" +
+                                        "  }" +
+                                        "}")));
 
     ETLStage hpFilter = new ETLStage("HighPassFilter", new Plugin(
-      "ScriptFilter", ImmutableMap.of("script",
-                                      "function shouldFilter(inputRecord) { return inputRecord.count < 6; }")));
+      "JavaScript", ImmutableMap.of("script",
+                                      "function transform(input, emitter, context) {" +
+                                        "  if (input.count >= 6) {" +
+                                        "    emitter.emit(input);" +
+                                        "  }" +
+                                        "}")));
 
     List<ETLStage> transforms = ImmutableList.of(lpFilter, hpFilter);
 
@@ -171,7 +180,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     QueryClient client = new QueryClient(getClientConfig());
 
-    ExploreExecutionResult result = client.execute(TEST_NAMESPACE, "select * from dataset_hbase")
+    ExploreExecutionResult result = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_hbase")
       .get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
     List<QueryResult> resultList = Lists.newArrayList(result);
@@ -179,14 +188,14 @@ public class ETLMapReduceTest extends ETLTestBase {
     verifyResult("row1", resultList.get(0).getColumns());
     verifyResult("row2", resultList.get(1).getColumns());
 
-    result = client.execute(TEST_NAMESPACE, "select * from dataset_hdfs").get(5, TimeUnit.MINUTES);
+    result = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_hdfs").get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
     verifyResult("row1", resultList.get(0).getColumns());
     verifyResult("row2", resultList.get(1).getColumns());
 
-    result = client.execute(TEST_NAMESPACE, "select * from dataset_hdfs2").get(5, TimeUnit.MINUTES);
+    result = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_hdfs2").get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(1, resultList.size());
@@ -398,30 +407,30 @@ public class ETLMapReduceTest extends ETLTestBase {
     mrManager.start();
     mrManager.waitForFinish(5, TimeUnit.MINUTES);
 
-    ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE,
+    ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY,
                                                                     "select * from dataset_allRewards", 5);
     List<QueryResult> resultList = Lists.newArrayList(result);
     Assert.assertEquals(4, resultList.size());
 
-    Set<Rewards> rewards = new HashSet();
+    Set<Rewards> rewards = new HashSet<>();
     rewards.add(new Rewards("row1", 5));
     rewards.add(new Rewards("row1", 10));
     rewards.add(new Rewards("row2", 5));
     rewards.add(new Rewards("row2", 10));
     verifyRewardResults(resultList, rewards, "rewards");
 
-    result = retryQueryExecutionTillFinished(TEST_NAMESPACE, "select * from dataset_userRewards", 5);
+    result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY, "select * from dataset_userRewards", 5);
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
-    rewards = new HashSet();
+    rewards = new HashSet<>();
     rewards.add(new Rewards("row1", null, "samuel", 10));
     rewards.add(new Rewards("row2", null, "jackson", 10));
     verifyRewardResults(resultList, rewards, "user");
 
-    result = retryQueryExecutionTillFinished(TEST_NAMESPACE, "select * from dataset_itemRewards", 5);
+    result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY, "select * from dataset_itemRewards", 5);
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
-    rewards = new HashSet();
+    rewards = new HashSet<>();
     rewards.add(new Rewards("row1", "scotch", null, 5));
     rewards.add(new Rewards("row2", "island", null, 5));
     verifyRewardResults(resultList, rewards, "item");
@@ -429,7 +438,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
   // have noticed errors with hivemetastore for table not found,
   // which didn't appear on consecutive run, so adding retry logic for query execute
-  private ExploreExecutionResult retryQueryExecutionTillFinished(Id.Namespace namespace, String query, int retryCount)
+  private ExploreExecutionResult retryQueryExecutionTillFinished(NamespaceId namespace, String query, int retryCount)
     throws InterruptedException, ExecutionException, TimeoutException {
     QueryClient client = new QueryClient(getClientConfig());
     ExploreExecutionResult result = null;

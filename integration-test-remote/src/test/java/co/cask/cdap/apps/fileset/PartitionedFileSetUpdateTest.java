@@ -145,13 +145,13 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
       ));
     }
 
-    ExploreExecutionResult results = client.execute(TEST_NAMESPACE, "show partitions dataset_pfs").get();
+    ExploreExecutionResult results = client.execute(TEST_NAMESPACE_ENTITY, "show partitions dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     LOG.info("rows: {}", new Gson().toJson(rows));
     Assert.assertEquals(expectedResults.size(), rows.size());
 
-    results = client.execute(TEST_NAMESPACE, "select * from dataset_pfs").get();
+    results = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     rows = executionResult2Rows(results);
     LOG.info("rows: {}", new Gson().toJson(rows));
@@ -181,6 +181,5 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     }
     return rows;
   }
-
 
 }

@@ -69,14 +69,15 @@ import java.util.concurrent.TimeUnit;
 })
 public class LogisticRegressionTest extends ETLTestBase {
 
-  public static final String IMP_FIELD = "imp";
-  public static final String READ_FIELD = "boolField";
-  public static final String SPAM_PREDICTION_FIELD = "isSpam";
+  private static final String IMP_FIELD = "imp";
+  private static final String READ_FIELD = "boolField";
+  private static final String SPAM_PREDICTION_FIELD = "isSpam";
 
-  static final Schema SCHEMA = Schema.recordOf("simpleMessage",
-                                               Schema.Field.of(IMP_FIELD, Schema.of(Schema.Type.INT)),
-                                               Schema.Field.of(READ_FIELD, Schema.of(Schema.Type.INT)),
-                                               Schema.Field.of(SPAM_PREDICTION_FIELD, Schema.of(Schema.Type.DOUBLE)));
+  private static final Schema SCHEMA =
+    Schema.recordOf("simpleMessage",
+                    Schema.Field.of(IMP_FIELD, Schema.of(Schema.Type.INT)),
+                    Schema.Field.of(READ_FIELD, Schema.of(Schema.Type.INT)),
+                    Schema.Field.of(SPAM_PREDICTION_FIELD, Schema.of(Schema.Type.DOUBLE)));
 
   @Test
   public void testSparkPlugins() throws Exception {
@@ -210,7 +211,7 @@ public class LogisticRegressionTest extends ETLTestBase {
   private Set<LogisticRegressionSpamMessage> getClassifiedMessages() throws ExecutionException, InterruptedException {
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult exploreExecutionResult =
-      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_classifiedTexts").get();
+      queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_classifiedTexts").get();
 
     Set<LogisticRegressionSpamMessage> classifiedMessages = new HashSet<>();
     while (exploreExecutionResult.hasNext()) {

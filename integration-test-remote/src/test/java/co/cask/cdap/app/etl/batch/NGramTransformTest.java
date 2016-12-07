@@ -151,14 +151,14 @@ public class NGramTransformTest extends ETLTestBase {
     }
 
     private Set<String> getExpectedForTwoTerms() {
-        Set<String> expectedSet = new HashSet();
+        Set<String> expectedSet = new HashSet<>();
         expectedSet.add("[\"hi hello\",\"hello hie\"]");
         expectedSet.add("[\"how are\",\"are you\"]");
         return expectedSet;
     }
 
     private Set<String> getExpectedForThreeTerms() {
-        Set<String> expectedSet = new HashSet();
+        Set<String> expectedSet = new HashSet<>();
         expectedSet.add("[\"hi hello hie\",\"hello hie hi\"]");
         return expectedSet;
     }
@@ -166,9 +166,9 @@ public class NGramTransformTest extends ETLTestBase {
     private Set<String> getNgramTerms() throws ExecutionException, InterruptedException {
         QueryClient queryClient = new QueryClient(getClientConfig());
         ExploreExecutionResult exploreExecutionResult =
-                queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_ngramTable").get();
+                queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_ngramTable").get();
 
-        Set<String> classifiedMessages = new HashSet();
+        Set<String> classifiedMessages = new HashSet<>();
         while (exploreExecutionResult.hasNext()) {
             List<Object> columns = exploreExecutionResult.next().getColumns();
             classifiedMessages.add((String) columns.get(0));

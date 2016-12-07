@@ -141,7 +141,7 @@ public class TokenizerTest extends ETLTestBase {
     }
 
     private Set<String> getExpected() {
-        Set<String> expectedSet = new HashSet();
+        Set<String> expectedSet = new HashSet<>();
         expectedSet.add("[\"cask data\",\"application platform\"]");
         expectedSet.add("[\"spark is\",\"an engine\"]");
         expectedSet.add("[\"cdap belongs\",\"to apache\"]");
@@ -151,9 +151,9 @@ public class TokenizerTest extends ETLTestBase {
     private Set<String> getTokenizedMessages() throws ExecutionException, InterruptedException {
         QueryClient queryClient = new QueryClient(getClientConfig());
         ExploreExecutionResult exploreExecutionResult =
-                queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_tokenTable").get();
+                queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_tokenTable").get();
 
-        Set<String> classifiedMessages = new HashSet();
+        Set<String> classifiedMessages = new HashSet<>();
         while (exploreExecutionResult.hasNext()) {
             List<Object> columns = exploreExecutionResult.next().getColumns();
             classifiedMessages.add((String) columns.get(0));

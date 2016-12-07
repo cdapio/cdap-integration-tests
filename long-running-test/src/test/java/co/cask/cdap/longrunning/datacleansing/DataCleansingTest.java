@@ -37,7 +37,6 @@ import com.google.gson.Gson;
 import org.junit.Assert;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -168,10 +167,10 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
       + state.getTimestamp();
 
     // Reduce wait time by submitting both the queries
-    ListenableFuture<ExploreExecutionResult> cleanRecordsExecute = queryClient.execute(getLongRunningNamespace(),
-                                                                                       cleanRecordsQuery);
-    ListenableFuture<ExploreExecutionResult> invalidRecordsExecute = queryClient.execute(getLongRunningNamespace(),
-                                                                                         invalidRecordsQuery);
+    ListenableFuture<ExploreExecutionResult> cleanRecordsExecute =
+      queryClient.execute(getLongRunningNamespace().toEntityId(), cleanRecordsQuery);
+    ListenableFuture<ExploreExecutionResult> invalidRecordsExecute =
+      queryClient.execute(getLongRunningNamespace().toEntityId(), invalidRecordsQuery);
     ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
     ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();
 

@@ -215,7 +215,7 @@ public class SparkPluginsTest extends ETLTestBase {
   private Set<SpamMessage> getClassifiedMessages() throws ExecutionException, InterruptedException {
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult exploreExecutionResult =
-      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_classifiedTexts").get();
+      queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_classifiedTexts").get();
 
     Set<SpamMessage> classifiedMessages = new HashSet<>();
     while (exploreExecutionResult.hasNext()) {
