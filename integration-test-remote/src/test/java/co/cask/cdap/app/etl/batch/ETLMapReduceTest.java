@@ -124,12 +124,20 @@ public class ETLMapReduceTest extends ETLTestBase {
                                                               Properties.Table.PROPERTY_SCHEMA,
                                                               purchaseSchema.toString())));
     ETLStage lpFilter = new ETLStage("LowPassFilter", new Plugin(
-      "ScriptFilter", ImmutableMap.of("script",
-                                      "function shouldFilter(inputRecord) { return inputRecord.count > 8; }")));
+      "JavaScript", ImmutableMap.of("script",
+                                      "function transform(input, emitter, context) {" +
+                                        "  if (input.count <= 8) {" +
+                                        "    emitter.emit(input);" +
+                                        "  }" +
+                                        "}")));
 
     ETLStage hpFilter = new ETLStage("HighPassFilter", new Plugin(
-      "ScriptFilter", ImmutableMap.of("script",
-                                      "function shouldFilter(inputRecord) { return inputRecord.count < 6; }")));
+      "JavaScript", ImmutableMap.of("script",
+                                      "function transform(input, emitter, context) {" +
+                                        "  if (input.count >= 6) {" +
+                                        "    emitter.emit(input);" +
+                                        "  }" +
+                                        "}")));
 
     List<ETLStage> transforms = ImmutableList.of(lpFilter, hpFilter);
 
