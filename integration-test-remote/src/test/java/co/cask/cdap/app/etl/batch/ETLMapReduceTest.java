@@ -90,7 +90,7 @@ public class ETLMapReduceTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("KVToKV");
+    ApplicationId appId = TEST_NAMESPACE.app("KVToKV");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table
@@ -131,13 +131,23 @@ public class ETLMapReduceTest extends ETLTestBase {
                                                                  purchaseSchema.toString()),
                                                  null));
     ETLStage lpFilter = new ETLStage("LowPassFilter", new ETLPlugin(
-      "ScriptFilter", Transform.PLUGIN_TYPE,
-      ImmutableMap.of("script", "function shouldFilter(inputRecord) { return inputRecord.count > 8; }"),
+      "JavaScript", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script",
+                      "function transform(input, emitter, context) {" +
+                        "  if (input.count <=8) {" +
+                        "    emitter.emit(input);" +
+                        "  }" +
+                        "}"),
       null));
 
     ETLStage hpFilter = new ETLStage("HighPassFilter", new ETLPlugin(
-      "ScriptFilter", Transform.PLUGIN_TYPE,
-      ImmutableMap.of("script", "function shouldFilter(inputRecord) { return inputRecord.count < 6; }"),
+      "JavaScript", Transform.PLUGIN_TYPE,
+      ImmutableMap.of("script",
+                      "function transform(input, emitter, context) {" +
+                        "  if (input.count >=6) {" +
+                        "    emitter.emit(input);" +
+                        "  }" +
+                        "}"),
       null));
 
     ETLStage tableSink = new ETLStage("SinkTable", new ETLPlugin(
@@ -174,7 +184,7 @@ public class ETLMapReduceTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TabToTab");
+    ApplicationId appId = TEST_NAMESPACE.app("TabToTab");
     ApplicationManager appManager = deployApplication(appId, appRequest);
     ingestPurchaseTestData(getTableDataset("input"));
 
@@ -184,7 +194,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     QueryClient client = new QueryClient(getClientConfig());
 
-    ExploreExecutionResult result = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_hbase")
+    ExploreExecutionResult result = client.execute(TEST_NAMESPACE, "select * from dataset_hbase")
       .get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
     List<QueryResult> resultList = Lists.newArrayList(result);
@@ -192,14 +202,14 @@ public class ETLMapReduceTest extends ETLTestBase {
     verifyResult("row1", resultList.get(0).getColumns());
     verifyResult("row2", resultList.get(1).getColumns());
 
-    result = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_hdfs").get(5, TimeUnit.MINUTES);
+    result = client.execute(TEST_NAMESPACE, "select * from dataset_hdfs").get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
     verifyResult("row1", resultList.get(0).getColumns());
     verifyResult("row2", resultList.get(1).getColumns());
 
-    result = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_hdfs2").get(5, TimeUnit.MINUTES);
+    result = client.execute(TEST_NAMESPACE, "select * from dataset_hdfs2").get(5, TimeUnit.MINUTES);
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(1, resultList.size());
@@ -312,7 +322,7 @@ public class ETLMapReduceTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TabToTab");
+    ApplicationId appId = TEST_NAMESPACE.app("TabToTab");
     // deploy should fail
     deployApplication(appId, appRequest);
   }
@@ -427,7 +437,7 @@ public class ETLMapReduceTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TabToTab");
+    ApplicationId appId = TEST_NAMESPACE.app("TabToTab");
     ApplicationManager appManager = deployApplication(appId, appRequest);
     ingestPurchaseTestData(getTableDataset("input"));
 
@@ -435,7 +445,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     workflowManager.start();
     workflowManager.waitForFinish(5, TimeUnit.MINUTES);
 
-    ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY,
+    ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE,
                                                                     "select * from dataset_allRewards", 5);
     List<QueryResult> resultList = Lists.newArrayList(result);
     Assert.assertEquals(4, resultList.size());
@@ -447,7 +457,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     rewards.add(new Rewards("row2", 10));
     verifyRewardResults(resultList, rewards, "rewards");
 
-    result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY, "select * from dataset_userRewards", 5);
+    result = retryQueryExecutionTillFinished(TEST_NAMESPACE, "select * from dataset_userRewards", 5);
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
     rewards = new HashSet<>();
@@ -455,7 +465,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     rewards.add(new Rewards("row2", null, "jackson", 10));
     verifyRewardResults(resultList, rewards, "user");
 
-    result = retryQueryExecutionTillFinished(TEST_NAMESPACE_ENTITY, "select * from dataset_itemRewards", 5);
+    result = retryQueryExecutionTillFinished(TEST_NAMESPACE, "select * from dataset_itemRewards", 5);
     resultList = Lists.newArrayList(result);
     Assert.assertEquals(2, resultList.size());
     rewards = new HashSet<>();
@@ -565,7 +575,7 @@ public class ETLMapReduceTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("TableToTable");
+    ApplicationId appId = TEST_NAMESPACE.app("TableToTable");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table

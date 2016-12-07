@@ -91,8 +91,8 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
+    ApplicationId appId = TEST_NAMESPACE.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
     Table inputTable = inputManager.get();
@@ -178,8 +178,8 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
+    ApplicationId appId = TEST_NAMESPACE.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
     Table inputTable = inputManager.get();
@@ -235,8 +235,8 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
+    ApplicationId appId = TEST_NAMESPACE.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
     Table inputTable = inputManager.get();
@@ -294,8 +294,8 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
+    ApplicationId appId = TEST_NAMESPACE.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
     Table inputTable = inputManager.get();
@@ -359,8 +359,8 @@ public class XMLParserTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlBatchConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("XMLParserTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
+    ApplicationId appId = TEST_NAMESPACE.app("XMLParserTest");
+    ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<Table> inputManager = getTableDataset(xmlParserSource);
     Table inputTable = inputManager.get();

@@ -93,7 +93,7 @@ public class RowDenormalizerTest extends ETLTestBase {
     ingestInputData(DENORMALIZER_SOURCE);
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("denormalizer-test");
+    ApplicationId appId = TEST_NAMESPACE.app("denormalizer-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);

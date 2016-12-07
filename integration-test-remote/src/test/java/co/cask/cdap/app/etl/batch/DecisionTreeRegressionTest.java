@@ -30,7 +30,6 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -140,12 +139,12 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(TEST_NAMESPACE_ENTITY.app("FlightDelayTrainer"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE.app("FlightDelayTrainer"),
                                                       getBatchAppRequestV2(etlConfig));
 
     // write records to source
     StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "trainingStream"));
+      getTestManager().getStreamManager(TEST_NAMESPACE.stream("trainingStream"));
     File file = new File(this.getClass().getResource("/trainData.csv").getFile());
     BufferedReader bufferedInputStream = new BufferedReader(new FileReader(file));
     String line;
@@ -193,12 +192,12 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "DecisionRegression"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE.app("DecisionRegression"),
                                                       getBatchAppRequestV2(etlConfig));
 
     // write some some messages to be classified
     StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
+      getTestManager().getStreamManager(TEST_NAMESPACE.stream("testStream"));
     streamManager.send("4,6,1,N327AA,1,12478,JFK,12892,LAX,900,1005,65,1225,1324,59,385,2475");
     streamManager.send("25,6,2,N0EGMQ,3419,10397,ATL,12953,LGA,1150,1229,39,1359,1448,49,129,762");
     streamManager.send("4,6,3,N14991,6159,13930,ORD,13198,MCI,2030,2118,48,2205,2321,76,95,403");
@@ -223,7 +222,7 @@ public class DecisionTreeRegressionTest extends ETLTestBase {
   private Map<Double, Double> getDelayedPredictionMap() throws ExecutionException, InterruptedException {
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult exploreExecutionResult =
-      queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_decisiontreesink").get();
+      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_decisiontreesink").get();
 
     Map<Double, Double> predictionMap = new HashMap<>();
     while (exploreExecutionResult.hasNext()) {

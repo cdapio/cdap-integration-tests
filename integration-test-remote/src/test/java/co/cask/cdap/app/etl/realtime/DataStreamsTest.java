@@ -126,7 +126,7 @@ public class DataStreamsTest extends ETLTestBase {
       .setBatchInterval("60s")
       .build();
 
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("kafkaStreaming");
+    ApplicationId appId = TEST_NAMESPACE.app("kafkaStreaming");
     AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 

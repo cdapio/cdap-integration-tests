@@ -144,7 +144,7 @@ public class BatchAggregatorTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("groupby-test");
+    ApplicationId appId = TEST_NAMESPACE.app("groupby-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
     // Deploy an application with a service to get partitionedFileset data for verification

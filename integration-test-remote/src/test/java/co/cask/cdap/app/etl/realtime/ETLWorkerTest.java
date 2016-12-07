@@ -22,12 +22,15 @@ import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.etl.common.ETLStage;
-import co.cask.cdap.etl.common.Plugin;
+import co.cask.cdap.etl.api.Transform;
+import co.cask.cdap.etl.api.realtime.RealtimeSink;
+import co.cask.cdap.etl.api.realtime.RealtimeSource;
+import co.cask.cdap.etl.proto.v2.ETLPlugin;
+import co.cask.cdap.etl.proto.v2.ETLRealtimeConfig;
+import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.etl.realtime.ETLWorker;
-import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.SlowTests;
@@ -60,15 +63,31 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   public void testEmptyProperties() throws Exception {
     ETLStage source = new ETLStage("DataGeneratorSource",
-                                   new Plugin("DataGenerator", ImmutableMap.of(Constants.Reference.REFERENCE_NAME,
-                                                                               "DataGenerator")));
+                                   new ETLPlugin("DataGenerator",
+                                                 RealtimeSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Constants.Reference.REFERENCE_NAME, "DataGenerator"),
+                                                 null));
     // Set properties to null to test if ETLTemplate can handle it.
-    ETLStage transform = new ETLStage("Projection", new Plugin("Projection", null));
-    ETLStage sink = new ETLStage("StreamSink", new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "testS")));
+    ETLStage transform = new ETLStage("Projection",
+                                      new ETLPlugin("Projection",
+                                                    Transform.PLUGIN_TYPE,
+                                                    ImmutableMap.<String, String>of(),
+                                                    null));
+    ETLStage sink = new ETLStage("StreamSink",
+                                 new ETLPlugin("Stream",
+                                               RealtimeSink.PLUGIN_TYPE,
+                                               ImmutableMap.of(Properties.Stream.NAME, "testS"),
+                                               null));
 
-    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.newArrayList(transform));
+    ETLRealtimeConfig etlConfig = ETLRealtimeConfig.builder()
+      .addStage(source)
+      .addStage(sink)
+      .addStage(transform)
+      .addConnection(source.getName(), transform.getName())
+      .addConnection(transform.getName(), sink.getName())
+      .build();
 
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testAdap");
+    ApplicationId appId = TEST_NAMESPACE.app("testAdap");
     ApplicationManager appManager = deployApplication(appId, getRealtimeAppRequest(etlConfig));
     Assert.assertNotNull(appManager);
   }
@@ -76,23 +95,39 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   @Category(SlowTests.class)
   public void testStreamSinks() throws Exception {
-    Plugin sourceConfig = new Plugin("DataGenerator",
-                                     ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.STREAM_TYPE,
-                                                     Constants.Reference.REFERENCE_NAME, "DataGenerator"));
+    ETLPlugin sourceConfig =
+      new ETLPlugin("DataGenerator",
+                    RealtimeSource.PLUGIN_TYPE,
+                    ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.STREAM_TYPE,
+                                    Constants.Reference.REFERENCE_NAME, "DataGenerator"),
+                    null);
     ETLStage source = new ETLStage("DataGeneratorSource", sourceConfig);
 
-    Plugin sink1 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamA"));
-    Plugin sink2 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamB"));
-    Plugin sink3 = new Plugin("Stream", ImmutableMap.of(Properties.Stream.NAME, "streamC"));
+    ETLStage sink1 = new ETLStage("StreamA", new ETLPlugin("Stream",
+                                                           RealtimeSink.PLUGIN_TYPE,
+                                                           ImmutableMap.of(Properties.Stream.NAME, "streamA"),
+                                                           null));
+    ETLStage sink2 = new ETLStage("StreamB", new ETLPlugin("Stream",
+                                                           RealtimeSink.PLUGIN_TYPE,
+                                                           ImmutableMap.of(Properties.Stream.NAME, "streamA"),
+                                                           null));
+    ETLStage sink3 = new ETLStage("StreamC", new ETLPlugin("Stream",
+                                                           RealtimeSink.PLUGIN_TYPE,
+                                                           ImmutableMap.of(Properties.Stream.NAME, "streamA"),
+                                                           null));
 
-    List<ETLStage> sinks = Lists.newArrayList(
-      new ETLStage("StreamA", sink1),
-      new ETLStage("StreamB", sink2),
-      new ETLStage("StreamC", sink3)
-    );
-    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(1, source, sinks, null, null, null);
+    ETLRealtimeConfig etlConfig = ETLRealtimeConfig.builder()
+      .setInstances(1)
+      .addStage(source)
+      .addStage(sink1)
+      .addStage(sink2)
+      .addStage(sink3)
+      .addConnection(source.getName(), sink1.getName())
+      .addConnection(source.getName(), sink2.getName())
+      .addConnection(source.getName(), sink3.getName())
+      .build();
 
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testToStream");
+    ApplicationId appId = TEST_NAMESPACE.app("testToStream");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
@@ -102,9 +137,9 @@ public class ETLWorkerTest extends ETLTestBase {
     workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     List<StreamManager> streamManagers = Lists.newArrayList(
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "streamA")),
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "streamB")),
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "streamC"))
+      getTestManager().getStreamManager(TEST_NAMESPACE.stream("streamA")),
+      getTestManager().getStreamManager(TEST_NAMESPACE.stream("streamB")),
+      getTestManager().getStreamManager(TEST_NAMESPACE.stream("streamC"))
     );
 
     int retries = 0;
@@ -125,17 +160,27 @@ public class ETLWorkerTest extends ETLTestBase {
   @Test
   @SuppressWarnings("ConstantConditions")
   public void testTableSink() throws Exception {
-    Plugin sourceConfig = new Plugin("DataGenerator",
-                                     ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.TABLE_TYPE,
-                                                     Constants.Reference.REFERENCE_NAME, "DataGenerator"));
-    Plugin sinkConfig = new Plugin("Table",
-                                   ImmutableMap.of(Properties.Table.NAME, "table1",
-                                                   Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "binary"));
+    ETLPlugin sourceConfig =
+      new ETLPlugin("DataGenerator",
+                    RealtimeSource.PLUGIN_TYPE,
+                    ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.TABLE_TYPE,
+                                    Constants.Reference.REFERENCE_NAME, "DataGenerator"),
+                    null);
+    ETLPlugin sinkConfig =
+      new ETLPlugin("Table",
+                    RealtimeSink.PLUGIN_TYPE,
+                    ImmutableMap.of(Properties.Table.NAME, "table1",
+                                    Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "binary"),
+                    null);
     ETLStage source = new ETLStage("DataGenSource", sourceConfig);
     ETLStage sink = new ETLStage("TableSink", sinkConfig);
-    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
+    ETLRealtimeConfig etlConfig = ETLRealtimeConfig.builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .build();
 
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testToStream");
+    ApplicationId appId = TEST_NAMESPACE.app("testToStream");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 

@@ -64,7 +64,6 @@ public class LineageUpgradeTest extends UpgradeTestBase {
   private static final StreamViewId PURCHASE_VIEW = PURCHASE_STREAM.view(
     PURCHASE_STREAM.getEntityName() + "View");
   private static final DatasetId HISTORY = LINEAGE_NAMESPACE.dataset("history");
-  private static final DatasetId FREQUENT_CUSTOMERS = LINEAGE_NAMESPACE.dataset("frequentCustomers");
   private static final DatasetId PURCHASES = LINEAGE_NAMESPACE.dataset("purchases");
 
   private static final String PURCHASE_VIEW_FIELD = "purchaseViewBody";
@@ -86,22 +85,22 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     getNamespaceClient().create(namespaceMeta);
 
     // deploy an application
-    deployApplication(LINEAGE_NAMESPACE.toId(), PurchaseApp.class);
+    deployApplication(LINEAGE_NAMESPACE, PurchaseApp.class);
 
     // create a view
     Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
                                                                   Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(PURCHASE_VIEW.toId(),
+    viewClient.createOrUpdate(PURCHASE_VIEW,
                               new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
-    streamClient.sendEvent(PURCHASE_STREAM.toId(), "John bought 10 Apples for $1000");
+    streamClient.sendEvent(PURCHASE_STREAM, "John bought 10 Apples for $1000");
     long startTime = 0;
     RunId runId = waitForStart(PURCHASE_HISTORY_BUILDER);
     waitForStop(PURCHASE_HISTORY_BUILDER, true);
     long stopTime = TimeMathParser.nowInSeconds();
 
-    LineageRecord lineage = lineageClient.getLineage(PURCHASES.toId(), startTime, stopTime, 10);
+    LineageRecord lineage = lineageClient.getLineage(PURCHASES, startTime, stopTime, 10);
     LineageRecord expected = getExpectedLineageRecord(stopTime, runId);
 
     Assert.assertEquals(expected, lineage);
@@ -112,7 +111,7 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     long startTime = 0;
     long stopTime = TimeMathParser.nowInSeconds();
 
-    LineageRecord lineage = lineageClient.getLineage(PURCHASES.toId(), startTime, stopTime, 10);
+    LineageRecord lineage = lineageClient.getLineage(PURCHASES, startTime, stopTime, 10);
     Set<RelationRecord> relations = lineage.getRelations();
 
     // Only concerned about the program access, not the run id, so get it from the query
@@ -137,22 +136,22 @@ public class LineageUpgradeTest extends UpgradeTestBase {
   }
 
   private RunId waitForStart(final ProgramId program) throws Exception {
-    programClient.start(program.toId());
+    programClient.start(program);
     waitState(program, ProgramStatus.RUNNING);
     return getRunningProgramRunId(program);
   }
 
   private RunId getRunningProgramRunId(final ProgramId program) throws Exception {
     waitState(program, ProgramStatus.RUNNING);
-    List<RunRecord> programRuns = programClient.getProgramRuns(program.toId(), ProgramStatus.RUNNING.name(), 0,
+    List<RunRecord> programRuns = programClient.getProgramRuns(program, ProgramStatus.RUNNING.name(), 0,
                                                                Long.MAX_VALUE, Integer.MAX_VALUE);
     return RunIds.fromString(programRuns.get(0).toString());
   }
 
   private void waitForStop(ProgramId program, boolean needsStop) throws Exception {
-    if (needsStop && programClient.getStatus(program.toId()).equals(ProgramRunStatus.RUNNING.toString())) {
+    if (needsStop && programClient.getStatus(program).equals(ProgramRunStatus.RUNNING.toString())) {
       LOG.info("Stopping program {}", program);
-      programClient.stop(program.toId());
+      programClient.stop(program);
     }
     waitState(program, ProgramStatus.STOPPED);
     LOG.info("Program {} has stopped", program);
@@ -162,7 +161,7 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     Tasks.waitFor(state.toString(), new Callable<String>() {
       @Override
       public String call() throws Exception {
-        return programClient.getStatus(program.toId());
+        return programClient.getStatus(program);
       }
     }, 60000, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
   }

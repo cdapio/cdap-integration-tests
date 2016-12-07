@@ -83,7 +83,7 @@ public class NGramTransformTest extends ETLTestBase {
         String text = "textToNGramTwo";
         ApplicationManager appManager = deployApplication(text, OUTPUT_SCHEMA, "/", "2");
         StreamManager streamManager =
-                getTestManager().getStreamManager(TEST_NAMESPACE_ENTITY.stream(text).toId());
+                getTestManager().getStreamManager(TEST_NAMESPACE.stream(text));
         streamManager.send("hi/hello/hie");
         streamManager.send("how/are/you");
         WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -97,7 +97,7 @@ public class NGramTransformTest extends ETLTestBase {
         String text = "textToNGramThree";
         ApplicationManager appManager = deployApplication(text, OUTPUT_SCHEMA, ",", "3");
         StreamManager streamManager =
-                getTestManager().getStreamManager(TEST_NAMESPACE_ENTITY.stream(text).toId());
+                getTestManager().getStreamManager(TEST_NAMESPACE.stream(text));
         streamManager.send("hi,hello,hie,hi");
         WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
         workflowManager.start();
@@ -145,7 +145,7 @@ public class NGramTransformTest extends ETLTestBase {
                 .addConnection("tokenizerSpark", "ngramSpark")
                 .addConnection("ngramSpark", "sink")
                 .build();
-        return deployApplication(TEST_NAMESPACE_ENTITY.app("NGramTransform"),
+        return deployApplication(TEST_NAMESPACE.app("NGramTransform"),
                 getBatchAppRequestV2(etlConfig));
     }
 
@@ -165,7 +165,7 @@ public class NGramTransformTest extends ETLTestBase {
     private Set<String> getNgramTerms() throws ExecutionException, InterruptedException {
         QueryClient queryClient = new QueryClient(getClientConfig());
         ExploreExecutionResult exploreExecutionResult =
-                queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_ngramTable").get();
+                queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_ngramTable").get();
 
         Set<String> classifiedMessages = new HashSet<>();
         while (exploreExecutionResult.hasNext()) {

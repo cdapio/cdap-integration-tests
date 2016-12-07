@@ -19,7 +19,6 @@ package co.cask.cdap.apps;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.NamespaceNotFoundException;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.AudiTestBase;
@@ -81,14 +80,14 @@ public class NamespaceTest extends AudiTestBase {
       namespaceClient.create(NamespaceMeta.DEFAULT);
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     Id.Namespace.DEFAULT.getId())));
+                                                                     NamespaceId.DEFAULT.getNamespace())));
     }
 
     try {
-      namespaceClient.create(new NamespaceMeta.Builder().setName(Id.Namespace.SYSTEM).build());
+      namespaceClient.create(new NamespaceMeta.Builder().setName(NamespaceId.SYSTEM).build());
     } catch (BadRequestException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     Id.Namespace.SYSTEM.getId())));
+                                                                     NamespaceId.SYSTEM.getNamespace())));
     }
 
     // list should contain the default namespace as well as the two explicitly created

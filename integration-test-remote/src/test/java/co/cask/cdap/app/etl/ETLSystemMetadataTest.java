@@ -60,11 +60,11 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     // Searching in some user namespace should also surface entities from the system namespace
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
       NamespaceId.SYSTEM.artifact("cdap-etl-batch", getMetaClient().getVersion().getVersion())));
-    result = searchMetadata(metadataClient, TEST_NAMESPACE_ENTITY, "batch", null);
+    result = searchMetadata(metadataClient, TEST_NAMESPACE, "batch", null);
     Assert.assertEquals(expected, result);
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
       NamespaceId.SYSTEM.artifact("cdap-etl-realtime", getMetaClient().getVersion().getVersion())));
-    result = searchMetadata(metadataClient, TEST_NAMESPACE_ENTITY, "realtime", null);
+    result = searchMetadata(metadataClient, TEST_NAMESPACE, "realtime", null);
     Assert.assertEquals(expected, result);
   }
   

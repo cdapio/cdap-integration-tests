@@ -112,7 +112,7 @@ public class LogisticRegressionTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("LogisticRegressionSpamTrainer");
+    ApplicationId appId = TEST_NAMESPACE.app("LogisticRegressionSpamTrainer");
     ApplicationManager appManager = deployApplication(appId, request);
 
     // set up five spam messages and five non-spam messages to be used for classification
@@ -127,10 +127,10 @@ public class LogisticRegressionTest extends ETLTestBase {
                                                      "24,0,0.0",
                                                      "25,0,0.0");
 
-    StreamId stream = TEST_NAMESPACE_ENTITY.stream("logisticRegressionTrainingStream");
+    StreamId stream = TEST_NAMESPACE.stream("logisticRegressionTrainingStream");
 
     // write records to source
-    StreamManager streamManager = getTestManager().getStreamManager(stream.toId());
+    StreamManager streamManager = getTestManager().getStreamManager(stream);
     for (String spamMessage : trainingMessages) {
       streamManager.send(spamMessage);
     }
@@ -181,17 +181,17 @@ public class LogisticRegressionTest extends ETLTestBase {
       .addConnection("sparkCompute", "sink")
       .build();
 
-    ApplicationId app = TEST_NAMESPACE_ENTITY.app("SpamClassifier");
+    ApplicationId app = TEST_NAMESPACE.app("SpamClassifier");
     ApplicationManager appManager = deployApplication(app, getBatchAppRequestV2(etlConfig));
 
     List<String> trainingMessages = ImmutableList.of("21,0",
                                                      "13,1",
                                                      "23,0");
 
-    StreamId stream = TEST_NAMESPACE_ENTITY.stream(textsToClassify);
+    StreamId stream = TEST_NAMESPACE.stream(textsToClassify);
 
     // write records to source
-    StreamManager streamManager = getTestManager().getStreamManager(stream.toId());
+    StreamManager streamManager = getTestManager().getStreamManager(stream);
     for (String spamMessage : trainingMessages) {
       streamManager.send(spamMessage);
     }
@@ -212,7 +212,7 @@ public class LogisticRegressionTest extends ETLTestBase {
   private Set<LogisticRegressionSpamMessage> getClassifiedMessages() throws ExecutionException, InterruptedException {
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult exploreExecutionResult =
-      queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_classifiedTexts").get();
+      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_classifiedTexts").get();
 
     Set<LogisticRegressionSpamMessage> classifiedMessages = new HashSet<>();
     while (exploreExecutionResult.hasNext()) {

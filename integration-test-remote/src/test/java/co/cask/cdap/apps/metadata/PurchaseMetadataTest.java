@@ -40,6 +40,7 @@ import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.id.StreamViewId;
@@ -76,18 +77,18 @@ import java.util.concurrent.TimeUnit;
  * Tests the metadata and lineage functionality using PurchaseApp
  */
 public class PurchaseMetadataTest extends AudiTestBase {
-  private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE_ENTITY.app(PurchaseApp.APP_NAME);
+  private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE.app(PurchaseApp.APP_NAME);
   private static final ProgramId PURCHASE_FLOW = PURCHASE_APP.flow("PurchaseFlow");
   private static final ProgramId PURCHASE_HISTORY_SERVICE = PURCHASE_APP.service("PurchaseHistoryService");
   private static final ProgramId CATALOG_LOOKUP_SERVICE = PURCHASE_APP.service("CatalogLookup");
   private static final ProgramId USER_PROFILE_SERVICE = PURCHASE_APP.service("UserProfileService");
   private static final ProgramId PURCHASE_HISTORY_WORKFLOW = PURCHASE_APP.workflow("PurchaseHistoryWorkflow");
   private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr("PurchaseHistoryBuilder");
-  private static final StreamId PURCHASE_STREAM = TEST_NAMESPACE_ENTITY.stream("purchaseStream");
-  private static final DatasetId HISTORY_DS = TEST_NAMESPACE_ENTITY.dataset("history");
-  private static final DatasetId PURCHASES_DS = TEST_NAMESPACE_ENTITY.dataset("purchases");
-  private static final DatasetId FREQUENT_CUSTOMERS_DS = TEST_NAMESPACE_ENTITY.dataset("frequentCustomers");
-  private static final DatasetId USER_PROFILES_DS = TEST_NAMESPACE_ENTITY.dataset("userProfiles");
+  private static final StreamId PURCHASE_STREAM = TEST_NAMESPACE.stream("purchaseStream");
+  private static final DatasetId HISTORY_DS = TEST_NAMESPACE.dataset("history");
+  private static final DatasetId PURCHASES_DS = TEST_NAMESPACE.dataset("purchases");
+  private static final DatasetId FREQUENT_CUSTOMERS_DS = TEST_NAMESPACE.dataset("frequentCustomers");
+  private static final DatasetId USER_PROFILES_DS = TEST_NAMESPACE.dataset("userProfiles");
 
   private MetadataClient metadataClient;
   private LineageClient lineageClient;
@@ -109,19 +110,19 @@ public class PurchaseMetadataTest extends AudiTestBase {
     // assert no lineage for purchase stream.
     Assert.assertEquals(LineageSerializer.toLineageRecord(startTime, endTime, new Lineage(ImmutableSet.<Relation>of()),
                                                           ImmutableSet.<CollapseType>of()),
-                        lineageClient.getLineage(PURCHASE_STREAM.toId(), startTime, endTime, null));
+                        lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getEntityName()).start();
     purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    StreamManager purchaseStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "purchaseStream"));
+    StreamManager purchaseStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
 
     RuntimeMetrics flowletMetrics = purchaseFlow.getFlowletMetrics("collector");
     flowletMetrics.waitForProcessed(1, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    List<RunRecord> ranRecords = getRunRecords(1, programClient, PURCHASE_FLOW.toId(),
+    List<RunRecord> ranRecords = getRunRecords(1, programClient, PURCHASE_FLOW,
                                                ProgramRunStatus.RUNNING.name(), 0, endTime);
 
     // check stream lineage
@@ -136,7 +137,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(PURCHASE_FLOW.flowlet("reader")))
         )), ImmutableSet.<CollapseType>of());
-    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM.toId(), startTime, endTime, null));
+    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getEntityName());
     MapReduceManager purchaseHistoryBuilderManager =
@@ -180,10 +181,10 @@ public class PurchaseMetadataTest extends AudiTestBase {
       applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getEntityName());
     String firstServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
-    List<RunRecord> mrRanRecords = getRunRecords(1, programClient, PURCHASE_HISTORY_BUILDER.toId(),
+    List<RunRecord> mrRanRecords = getRunRecords(1, programClient, PURCHASE_HISTORY_BUILDER,
                                                  ProgramRunStatus.COMPLETED.name(), 0, endTime);
 
-    List<RunRecord> serviceRuns = getRunRecords(1, programClient, PURCHASE_HISTORY_SERVICE.toId(),
+    List<RunRecord> serviceRuns = getRunRecords(1, programClient, PURCHASE_HISTORY_SERVICE,
                                                 ProgramRunStatus.KILLED.name(), 0, endTime);
 
     // lineage will have mapreduce and service relations now.
@@ -210,7 +211,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(serviceRuns.get(0).getPid()))
         )), ImmutableSet.<CollapseType>of());
 
-    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM.toId(), startTime, endTime, null));
+    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // add more tags
     metadataClient.addTags(HISTORY_DS.toId(), ImmutableSet.of("dsTag2"));
@@ -222,7 +223,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     String secondServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
-    serviceRuns = getRunRecords(2, programClient, PURCHASE_HISTORY_SERVICE.toId(),
+    serviceRuns = getRunRecords(2, programClient, PURCHASE_HISTORY_SERVICE,
                                 ProgramRunStatus.KILLED.name(), 0, endTime);
 
     expected =
@@ -249,7 +250,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(serviceRuns.get(1).getPid()))
         )), ImmutableSet.<CollapseType>of());
 
-    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM.toId(), startTime, endTime, null));
+    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // verify tags and metadata properties for the 2 service runs
     Set<MetadataRecord> expectedTagsFirst =
@@ -280,7 +281,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                         metadataClient.getMetadata(new Id.Run(PURCHASE_HISTORY_SERVICE.toId(), secondServiceRunId)));
 
     // check dataset lineage
-    Assert.assertEquals(expected, lineageClient.getLineage(HISTORY_DS.toId(), startTime, endTime, null));
+    Assert.assertEquals(expected, lineageClient.getLineage(HISTORY_DS, startTime, endTime, null));
 
     // verify search tags
     Set<MetadataSearchResultRecord> expectedSearchResults =
@@ -332,9 +333,9 @@ public class PurchaseMetadataTest extends AudiTestBase {
   private void assertArtifactSearch() throws Exception {
     String artifactName = "system-metadata-artifact";
     String pluginArtifactName = "system-metadata-plugins";
-    ArtifactId systemMetadataArtifact = TEST_NAMESPACE_ENTITY.artifact(artifactName, "1.0.0");
+    ArtifactId systemMetadataArtifact = TEST_NAMESPACE.artifact(artifactName, "1.0.0");
     getTestManager().addAppArtifact(systemMetadataArtifact, ArtifactSystemMetadataApp.class);
-    ArtifactId pluginArtifact = TEST_NAMESPACE_ENTITY.artifact(pluginArtifactName, "1.0.0");
+    ArtifactId pluginArtifact = TEST_NAMESPACE.artifact(pluginArtifactName, "1.0.0");
     getTestManager().addPluginArtifact(pluginArtifact, systemMetadataArtifact,
                                        ArtifactSystemMetadataApp.EchoPlugin1.class,
                                        ArtifactSystemMetadataApp.EchoPlugin2.class);
@@ -507,7 +508,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Schema viewSchema = Schema.recordOf("record",
                                         Schema.Field.of("viewBody", Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(view.toId(), new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
+    viewClient.createOrUpdate(view, new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     // search all entities that have a defined schema
     // add a user property with "schema" as key
@@ -590,7 +591,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                                                     getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
-    List<RunRecord> runRecords = getRunRecords(1, getProgramClient(), PURCHASE_HISTORY_SERVICE.toId(),
+    List<RunRecord> runRecords = getRunRecords(1, getProgramClient(), PURCHASE_HISTORY_SERVICE,
                                                ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
 
     Assert.assertEquals(1, runRecords.size());
@@ -599,9 +600,10 @@ public class PurchaseMetadataTest extends AudiTestBase {
     return runRecords.get(0).getPid();
   }
 
-  private Set<MetadataSearchResultRecord> searchMetadata(Id.Namespace namespace, String query,
+  private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
                                                          MetadataSearchTargetType targetType) throws Exception {
-    Set<MetadataSearchResultRecord> results = metadataClient.searchMetadata(namespace, query, targetType).getResults();
+    Set<MetadataSearchResultRecord> results =
+      metadataClient.searchMetadata(namespace.toId(), query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));

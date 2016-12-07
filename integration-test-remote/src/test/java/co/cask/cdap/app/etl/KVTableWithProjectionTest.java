@@ -19,6 +19,7 @@ package co.cask.cdap.app.etl;
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.Transform;
+import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
@@ -48,14 +49,19 @@ public class KVTableWithProjectionTest extends ETLTestBase {
   public void testKVTableWithProjection() throws Exception {
     //1. create a source stream and send an event
     StreamId sourceStreamId = createSourceStream(SOURCE_STREAM);
-    streamClient.sendEvent(sourceStreamId.toId(), DUMMY_STREAM_EVENT);
+    streamClient.sendEvent(sourceStreamId, DUMMY_STREAM_EVENT);
 
     // 2. Run Stream To KVTable with Projection Transform plugin
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("StreamToKVTableWithProjection");
+    ApplicationId appId = TEST_NAMESPACE.app("StreamToKVTableWithProjection");
 
     ETLStage source = etlStageProvider.getStreamBatchSource(SOURCE_STREAM, "10m", "0d", Formats.CSV,
                                                             DUMMY_STREAM_EVENT_SCHEMA, "|");
-    ETLStage sink = etlStageProvider.getTableSource(KVTABLE_NAME, "ticker", "price");
+    ETLStage sink = new ETLStage("sink",
+                                 new ETLPlugin("KVTable", BatchSink.PLUGIN_TYPE,
+                                               ImmutableMap.of("name", KVTABLE_NAME,
+                                                               "key.field", "ticker",
+                                                               "value.field", "price"),
+                                               null));
     ETLStage transform = new ETLStage("ProjectionTransform1",
                                       new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
                                                     ImmutableMap.of("convert", "ticker:bytes,price:bytes"),

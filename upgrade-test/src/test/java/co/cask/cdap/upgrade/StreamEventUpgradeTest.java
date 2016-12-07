@@ -19,8 +19,8 @@ package co.cask.cdap.upgrade;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.StreamClient;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamDetail;
+import co.cask.cdap.proto.id.StreamId;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 
@@ -30,7 +30,7 @@ import java.util.List;
  * Tests that stream events ingested before an upgrade can be retrieved after an upgrade.
  */
 public class StreamEventUpgradeTest extends UpgradeTestBase {
-  private static final Id.Stream FOO_STREAM = Id.Stream.from(TEST_NAMESPACE, "fooStream");
+  private static final StreamId FOO_STREAM = TEST_NAMESPACE.stream("fooStream");
   private static final int MSG_COUNT = 50;
 
   @Override
@@ -39,7 +39,7 @@ public class StreamEventUpgradeTest extends UpgradeTestBase {
     List<String> initialStreams = toStringList(streamClient.list(TEST_NAMESPACE));
     Assert.assertFalse(String.format("Stream %s was expected not to exist. Stream list: %s",
                                      FOO_STREAM, initialStreams),
-                       initialStreams.contains(FOO_STREAM.getId()));
+                       initialStreams.contains(FOO_STREAM.getStream()));
     streamClient.create(FOO_STREAM);
 
     // Ingest MSG_COUNT events to the stream
@@ -54,7 +54,7 @@ public class StreamEventUpgradeTest extends UpgradeTestBase {
     List<String> streams = toStringList(streamClient.list(TEST_NAMESPACE));
     Assert.assertTrue(String.format("Stream %s was expected to exist. Stream list: %s",
                                     FOO_STREAM, streams),
-                      streams.contains(FOO_STREAM.getId()));
+                      streams.contains(FOO_STREAM.getStream()));
 
     // Verify that events fetched from the stream are the same as the ones sent in
     List<StreamEvent> events =

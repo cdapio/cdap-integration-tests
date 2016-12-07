@@ -26,8 +26,6 @@ import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -37,7 +35,6 @@ import java.util.concurrent.TimeUnit;
  * Test worker that writes to dataset and service that reads from it.
  */
 public class ServiceWorkerTest extends AudiTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(ServiceWorkerTest.class);
 
   @Test
   public void test() throws Exception {

@@ -101,7 +101,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
-    return getApplicationManager(getLongRunningNamespace().toEntityId().app(DATACLEANSING_NAME));
+    return getApplicationManager(getLongRunningNamespace().app(DATACLEANSING_NAME));
   }
 
   @Override
@@ -151,8 +151,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
 
   // pass true to get the number of invalid records; pass false to get the number of valid records processed.
   private long getTotalRecords(boolean invalid) throws Exception {
-    DatasetId totalRecordsTableId = new DatasetId(getLongRunningNamespace().getId(),
-                                                  DataCleansingApp.TOTAL_RECORDS_TABLE);
+    DatasetId totalRecordsTableId = getLongRunningNamespace().dataset(DataCleansingApp.TOTAL_RECORDS_TABLE);
     KeyValueTable totalRecordsTable = getKVTableDataset(totalRecordsTableId).get();
     byte[] recordKey = invalid ? DataCleansingApp.INVALID_RECORD_KEY : DataCleansingApp.CLEAN_RECORD_KEY;
     return readLong(totalRecordsTable.read(recordKey));
@@ -168,9 +167,9 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
 
     // Reduce wait time by submitting both the queries
     ListenableFuture<ExploreExecutionResult> cleanRecordsExecute =
-      queryClient.execute(getLongRunningNamespace().toEntityId(), cleanRecordsQuery);
+      queryClient.execute(getLongRunningNamespace(), cleanRecordsQuery);
     ListenableFuture<ExploreExecutionResult> invalidRecordsExecute =
-      queryClient.execute(getLongRunningNamespace().toEntityId(), invalidRecordsQuery);
+      queryClient.execute(getLongRunningNamespace(), invalidRecordsQuery);
     ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
     ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();
 

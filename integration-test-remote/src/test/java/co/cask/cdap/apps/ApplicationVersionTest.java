@@ -24,7 +24,6 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
-import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ServiceId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
@@ -46,7 +45,7 @@ import java.util.Map;
  * Tests creating Application with version
  */
 public class ApplicationVersionTest extends AudiTestBase {
-  private static final ArtifactId artifactId = TEST_NAMESPACE_ENTITY.artifact("cfg-app", "1.0.0");
+  private static final ArtifactId artifactId = TEST_NAMESPACE.artifact("cfg-app", "1.0.0");
   private static final int MAX_NUM_CALLS = 50;
 
   private ServiceClient serviceClient;
@@ -61,7 +60,7 @@ public class ApplicationVersionTest extends AudiTestBase {
   @Test
   public void testAppVersionsCreationUpdateDeletion() throws Exception {
     // Deploy ConfigTestApp v1
-    ApplicationId appId1 = TEST_NAMESPACE_ENTITY.app("ConfigTestApp", "v1-SNAPSHOT");
+    ApplicationId appId1 = TEST_NAMESPACE.app("ConfigTestApp", "v1-SNAPSHOT");
     AppRequest<ConfigTestApp.ConfigClass> createRequestV1 = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
       new ConfigTestApp.ConfigClass("tS1", "tD1", "tV1"));
@@ -105,7 +104,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     Assert.assertEquals("tV1_update", response.getResponseBodyAsString());
 
     // Deploy ConfigTestApp v2
-    ApplicationId appId2 = TEST_NAMESPACE_ENTITY.app("ConfigTestApp", "v2-SNAPSHOT");
+    ApplicationId appId2 = TEST_NAMESPACE.app("ConfigTestApp", "v2-SNAPSHOT");
     AppRequest<ConfigTestApp.ConfigClass> createRequestV2 = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
       new ConfigTestApp.ConfigClass("tS2", "tD2", "tV2"));
@@ -146,7 +145,7 @@ public class ApplicationVersionTest extends AudiTestBase {
   public void testRouteConfig() throws Exception {
     // Deploy ConfigTestApp v1
     final String version1 = "v1";
-    ApplicationId appId1 = TEST_NAMESPACE_ENTITY.app(ConfigTestApp.NAME, version1);
+    ApplicationId appId1 = TEST_NAMESPACE.app(ConfigTestApp.NAME, version1);
     AppRequest<ConfigTestApp.ConfigClass> createRequestV1 = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
       new ConfigTestApp.ConfigClass("tS1", "tD1", "tV1"));
@@ -159,7 +158,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Verify that calling non-versioned service endpoint of ping method is routed to ConfigTestApp v1
     String pingMethod = "ping";
-    ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+    ServiceId serviceId = new ServiceId(TEST_NAMESPACE.getNamespace(), ConfigTestApp.NAME,
                                         ConfigTestApp.SERVICE_NAME);
     HttpResponse response = serviceClient.callServiceMethod(serviceId, pingMethod);
 
@@ -178,7 +177,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Deploy ConfigTestApp v2
     final String version2 = "v2";
-    ApplicationId appId2 = TEST_NAMESPACE_ENTITY.app(ConfigTestApp.NAME, version2);
+    ApplicationId appId2 = TEST_NAMESPACE.app(ConfigTestApp.NAME, version2);
     AppRequest<ConfigTestApp.ConfigClass> createRequestV2 = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
       new ConfigTestApp.ConfigClass("tS2", "tD2", "tV2"));
@@ -232,7 +231,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Cannot delete the namespace because service v1 and v2 are running
     NamespaceClient namespaceClient = getNamespaceClient();
     try {
-      namespaceClient.delete(TEST_NAMESPACE_ENTITY);
+      namespaceClient.delete(TEST_NAMESPACE);
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains("Some programs are currently running"));
@@ -244,7 +243,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Cannot delete the namespace because service v2 is running
     try {
-      namespaceClient.delete(TEST_NAMESPACE_ENTITY);
+      namespaceClient.delete(TEST_NAMESPACE);
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains("Some programs are currently running"));
@@ -257,7 +256,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
   private void storeInvalidRouteConfig(Map<String, Integer> routeConfig, String expectedMsg) throws Exception {
     try {
-      ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+      ServiceId serviceId = new ServiceId(TEST_NAMESPACE.getNamespace(), ConfigTestApp.NAME,
                                           ConfigTestApp.SERVICE_NAME);
       serviceClient.storeRouteConfig(serviceId, routeConfig);
       Assert.fail();
@@ -267,7 +266,7 @@ public class ApplicationVersionTest extends AudiTestBase {
   }
 
   private void storeAndGetValidRouteConfig(Map<String, Integer> routeConfig) throws Exception {
-    ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+    ServiceId serviceId = new ServiceId(TEST_NAMESPACE.getNamespace(), ConfigTestApp.NAME,
                                         ConfigTestApp.SERVICE_NAME);
     serviceClient.storeRouteConfig(serviceId, routeConfig);
     Assert.assertEquals(routeConfig, serviceClient.getRouteConfig(serviceId));
@@ -279,7 +278,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     boolean v2Chosen = false;
     int i = 0;
     while (i < MAX_NUM_CALLS) {
-      ServiceId serviceId = new ServiceId(TEST_NAMESPACE_ENTITY.getNamespace(), ConfigTestApp.NAME,
+      ServiceId serviceId = new ServiceId(TEST_NAMESPACE.getNamespace(), ConfigTestApp.NAME,
                                           ConfigTestApp.SERVICE_NAME);
       HttpResponse response = serviceClient.callServiceMethod(serviceId, pingMethod);
       String responseString = response.getResponseBodyAsString();

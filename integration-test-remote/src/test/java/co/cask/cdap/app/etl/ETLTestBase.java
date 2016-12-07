@@ -29,8 +29,7 @@ import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
-import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
-import co.cask.cdap.proto.Id;
+import co.cask.cdap.etl.proto.v2.ETLRealtimeConfig;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.artifact.PluginSummary;
@@ -76,9 +75,9 @@ public abstract class ETLTestBase extends AudiTestBase {
     artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
 
     version = getVersion();
-    final Id.Artifact realtimeId = Id.Artifact.from(TEST_NAMESPACE, "cdap-etl-realtime", version);
-    final ArtifactId datapipelineId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-pipeline", version);
-    final ArtifactId datastreamsId = TEST_NAMESPACE.toEntityId().artifact("cdap-data-streams", version);
+    final ArtifactId realtimeId = TEST_NAMESPACE.artifact("cdap-etl-realtime", version);
+    final ArtifactId datapipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
+    final ArtifactId datastreamsId = TEST_NAMESPACE.artifact("cdap-data-streams", version);
 
     // wait until we see extensions for cdap-etl-batch and cdap-etl-realtime and cdap-data-pipeline
     Tasks.waitFor(true, new Callable<Boolean>() {
@@ -95,7 +94,7 @@ public abstract class ETLTestBase extends AudiTestBase {
             }
           }
           boolean datapipelineReady = false;
-          plugins = artifactClient.getPluginSummaries(datapipelineId.toId(), "batchaggregator", ArtifactScope.SYSTEM);
+          plugins = artifactClient.getPluginSummaries(datapipelineId, "batchaggregator", ArtifactScope.SYSTEM);
           for (PluginSummary plugin : plugins) {
             if ("GroupByAggregate".equals(plugin.getName())) {
               datapipelineReady = true;
@@ -103,7 +102,7 @@ public abstract class ETLTestBase extends AudiTestBase {
             }
           }
           boolean datastreamsReady = false;
-          plugins = artifactClient.getPluginSummaries(datastreamsId.toId(), "batchaggregator", ArtifactScope.SYSTEM);
+          plugins = artifactClient.getPluginSummaries(datastreamsId, "batchaggregator", ArtifactScope.SYSTEM);
           for (PluginSummary plugin : plugins) {
             if ("GroupByAggregate".equals(plugin.getName())) {
               datastreamsReady = true;
@@ -153,8 +152,8 @@ public abstract class ETLTestBase extends AudiTestBase {
    */
   protected StreamId createSourceStream(String streamName)
     throws UnauthenticatedException, BadRequestException, IOException, UnauthorizedException {
-    StreamId sourceStreamId = TEST_NAMESPACE_ENTITY.stream(streamName);
-    streamClient.create(sourceStreamId.toId());
+    StreamId sourceStreamId = TEST_NAMESPACE.stream(streamName);
+    streamClient.create(sourceStreamId);
     return sourceStreamId;
   }
 }

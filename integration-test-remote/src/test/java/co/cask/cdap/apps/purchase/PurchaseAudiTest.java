@@ -21,15 +21,17 @@ import co.cask.cdap.api.schedule.ScheduleSpecification;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.ScheduledRuntime;
-import co.cask.cdap.security.spi.authorization.UnauthorizedException;
+import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.FlowId;
+import co.cask.cdap.proto.id.ProgramId;
+import co.cask.cdap.proto.id.ScheduleId;
+import co.cask.cdap.proto.id.ServiceId;
+import co.cask.cdap.proto.id.WorkflowId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -38,18 +40,13 @@ import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
-import co.cask.common.http.ObjectResponse;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -60,15 +57,13 @@ import java.util.concurrent.TimeUnit;
  */
 public class PurchaseAudiTest extends AudiTestBase {
   private static final Gson GSON = new Gson();
-  private static final Id.Application PURCHASE_APP = Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME);
-  private static final Id.Flow PURCHASE_FLOW = Id.Flow.from(PURCHASE_APP, "PurchaseFlow");
-  private static final Id.Service PURCHASE_HISTORY_SERVICE = Id.Service.from(PURCHASE_APP, "PurchaseHistoryService");
-  private static final Id.Service PURCHASE_USER_PROFILE_SERVICE = Id.Service.from(PURCHASE_APP, "UserProfileService");
-  private static final Id.Workflow PURCHASE_HISTORY_WORKFLOW = Id.Workflow.from(PURCHASE_APP,
-                                                                                "PurchaseHistoryWorkflow");
-  private static final Id.Program PURCHASE_HISTORY_BUILDER = Id.Program.from(PURCHASE_APP, ProgramType.MAPREDUCE,
-                                                                             "PurchaseHistoryBuilder");
-  private static final Id.Schedule SCHEDULE = Id.Schedule.from(PURCHASE_APP, "DailySchedule");
+  private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE.app(PurchaseApp.APP_NAME);
+  private static final FlowId PURCHASE_FLOW = PURCHASE_APP.flow("PurchaseFlow");
+  private static final ServiceId PURCHASE_HISTORY_SERVICE = PURCHASE_APP.service("PurchaseHistoryService");
+  private static final ServiceId PURCHASE_USER_PROFILE_SERVICE = PURCHASE_APP.service("UserProfileService");
+  private static final WorkflowId PURCHASE_HISTORY_WORKFLOW = PURCHASE_APP.workflow("PurchaseHistoryWorkflow");
+  private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr("PurchaseHistoryBuilder");
+  private static final ScheduleId SCHEDULE = PURCHASE_APP.schedule("DailySchedule");
   private enum ProgramAction {
     START,
     STOP
@@ -92,19 +87,19 @@ public class PurchaseAudiTest extends AudiTestBase {
     checkScheduleState(scheduleClient, Scheduler.ScheduleState.SUSPENDED, workflowSchedules);
 
     // start PurchaseFlow and ingest an event
-    FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getId()).start();
+    FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getProgram()).start();
     purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    StreamManager purchaseStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "purchaseStream"));
+    StreamManager purchaseStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
 
     RuntimeMetrics flowletMetrics = purchaseFlow.getFlowletMetrics("collector");
     flowletMetrics.waitForProcessed(1, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     ServiceManager purchaseHistoryService =
-      applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getId()).start();
+      applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getProgram()).start();
     ServiceManager userProfileService =
-      applicationManager.getServiceManager(PURCHASE_USER_PROFILE_SERVICE.getId()).start();
+      applicationManager.getServiceManager(PURCHASE_USER_PROFILE_SERVICE.getProgram()).start();
 
     userProfileService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
@@ -123,9 +118,9 @@ public class PurchaseAudiTest extends AudiTestBase {
     Assert.assertEquals(new JsonParser().parse(body), new JsonParser().parse(response.getResponseBodyAsString()));
 
     WorkflowManager purchaseHistoryWorkflowManager =
-      applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getId());
+      applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getProgram());
     MapReduceManager purchaseHistoryBuilderManager =
-      applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getId());
+      applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getProgram());
 
     // need to stop the services and flow, so we have enough resources for running workflow
     startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
@@ -163,20 +158,20 @@ public class PurchaseAudiTest extends AudiTestBase {
     List<ScheduledRuntime> scheduledRuntimes = scheduleClient.nextRuntimes(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertTrue(scheduledRuntimes.isEmpty());
 
-    Assert.assertEquals("SUSPENDED", purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).status(200));
-    purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).resume();
+    Assert.assertEquals("SUSPENDED", purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getSchedule()).status(200));
+    purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getSchedule()).resume();
 
     scheduledRuntimes = scheduleClient.nextRuntimes(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(1, scheduledRuntimes.size());
 
-    purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getId()).suspend();
+    purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getSchedule()).suspend();
   }
 
   private void checkScheduleState(ScheduleClient scheduleClient, Scheduler.ScheduleState state,
                                   List<ScheduleSpecification> schedules) throws Exception {
     for (ScheduleSpecification schedule : schedules) {
       Assert.assertEquals(state.name(),
-                          scheduleClient.getStatus(Id.Schedule.from(PURCHASE_APP, schedule.getSchedule().getName())));
+                          scheduleClient.getStatus(PURCHASE_APP.schedule(schedule.getSchedule().getName())));
     }
   }
 

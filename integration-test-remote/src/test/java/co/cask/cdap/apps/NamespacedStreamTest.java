@@ -20,9 +20,10 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
+import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
@@ -34,13 +35,13 @@ import java.util.List;
  * Tests isolation of streams across namespaces.
  */
 public class NamespacedStreamTest extends AudiTestBase {
-  private static final Id.Namespace NS1 = Id.Namespace.from("ns1");
-  private static final Id.Namespace NS2 = Id.Namespace.from("ns2");
+  private static final NamespaceId NS1 = new NamespaceId("ns1");
+  private static final NamespaceId NS2 = new NamespaceId("ns2");
 
   @Test
   public void testNamespacedStreams() throws Exception {
     NamespaceClient namespaceClient = getNamespaceClient();
-    registerForDeletion(NS1.toEntityId(), NS2.toEntityId());
+    registerForDeletion(NS1, NS2);
     namespaceClient.create(new NamespaceMeta.Builder().setName(NS1).build());
     namespaceClient.create(new NamespaceMeta.Builder().setName(NS2).build());
 
@@ -51,8 +52,8 @@ public class NamespacedStreamTest extends AudiTestBase {
     Assert.assertTrue(streamClient.list(NS2).isEmpty());
 
     String streamName = "namespacedStream";
-    Id.Stream streamId1 = Id.Stream.from(NS1, streamName);
-    Id.Stream streamId2 = Id.Stream.from(NS2, streamName);
+    StreamId streamId1 = NS1.stream(streamName);
+    StreamId streamId2 = NS2.stream(streamName);
     streamClient.create(streamId1);
 
     // namespace2 still has 0 streams after creating namespace in first namespace

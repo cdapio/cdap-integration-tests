@@ -51,6 +51,7 @@ public class RemoteCubeTest extends AudiTestBase {
       .add("dataset.cube.resolutions", "1,60")
       .add("dataset.cube.aggregation.agg1.dimensions", "user,action")
       .add("dataset.cube.aggregation.agg1.requiredDimensions", "user,action").build();
+
     addDatasetInstance(TEST_NAMESPACE, Cube.class.getName(), "myCube", props);
 
     DataSetManager<Cube> cubeManager = getCubeDataset("myCube");

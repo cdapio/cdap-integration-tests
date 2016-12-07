@@ -86,7 +86,7 @@ public class BatchCubeSinkTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(batchConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("testCubeAdapter");
+    ApplicationId appId = TEST_NAMESPACE.app("testCubeAdapter");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table

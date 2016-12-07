@@ -118,8 +118,8 @@ public class NormalizeTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app(applicationName);
-    return deployApplication(appId.toId(), appRequest);
+    ApplicationId appId = TEST_NAMESPACE.app(applicationName);
+    return deployApplication(appId, appRequest);
   }
 
   private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException {

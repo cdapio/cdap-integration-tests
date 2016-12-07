@@ -111,7 +111,7 @@ public class ValueMapperTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE_ENTITY.app("ValueMapperTest");
+    ApplicationId appId = TEST_NAMESPACE.app("ValueMapperTest");
     ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<KeyValueTable> dataSetManager = getKVTableDataset("designationLookupTable");

@@ -21,7 +21,6 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.audit.AuditMessage;
 import co.cask.cdap.proto.audit.AuditPayload;
 import co.cask.cdap.proto.audit.AuditType;
@@ -96,15 +95,15 @@ public class TrackerTestBase extends AudiTestBase {
   protected void enableTracker()
     throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException {
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
-    ApplicationManager applicationManager = deployApplication(Id.Namespace.DEFAULT, TestTrackerApp.class,
-                                                              new TrackerAppConfig(new AuditLogKafkaConfig(
-                                                              zookeeperQuorum,
-                                                              null, null, 0, "offsetDataset")));
+    TrackerAppConfig appConfig =
+      new TrackerAppConfig(new AuditLogKafkaConfig(zookeeperQuorum, null, null, 0, "offsetDataset"));
+    ApplicationManager applicationManager = getTestManager().deployApplication(
+      NamespaceId.DEFAULT, TestTrackerApp.class, appConfig);
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
     trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    trackerStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
+    trackerStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("testStream"));
     serviceURL = trackerService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
