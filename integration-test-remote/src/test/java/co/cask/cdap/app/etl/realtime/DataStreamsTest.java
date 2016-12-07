@@ -45,6 +45,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,15 +63,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class DataStreamsTest extends ETLTestBase {
 
-  private KafkaProducer<String, String> getKafkaProducer() {
-    String hostname = getClientConfig().getConnectionConfig().getHostname();
-    Properties props = new Properties();
-    props.put("bootstrap.servers", hostname + ":9092");
-    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-    props.put("request.required.acks", "1");
-    return new KafkaProducer<>(props);
-  }
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamsTest.class);
 
   // DataStreams are based on Spark runtime, so marking incompatible for all Hadoop versions that don't support Spark
   @Category({
@@ -136,13 +130,15 @@ public class DataStreamsTest extends ETLTestBase {
     AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
-    KafkaProducer<String, String> kafkaProducer = getKafkaProducer();
-    List<Future<RecordMetadata>> futures = new ArrayList<>();
-    futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,wallet,1")));
-    futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,shirt,2")));
-    futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,egg,4")));
-    for (Future<RecordMetadata> future : futures) {
-      future.get(1, TimeUnit.MINUTES);
+    try (KafkaProducer<String, String> kafkaProducer = getKafkaProducer()) {
+      List<Future<RecordMetadata>> futures = new ArrayList<>();
+      futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,wallet,1")));
+      futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,shirt,2")));
+      futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,egg,4")));
+      for (Future<RecordMetadata> future : futures) {
+        future.get(1, TimeUnit.MINUTES);
+      }
+      LOG.info("Done sending events to kafka.");
     }
 
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
@@ -163,5 +159,15 @@ public class DataStreamsTest extends ETLTestBase {
     sparkManager.stop();
     // Change wait time to PROGRAM_START_STOP_TIMEOUT_SECONDS once CDAP-7724 is fixed
     sparkManager.waitForStatus(false, 5 * 60, 1);
+  }
+
+  private KafkaProducer<String, String> getKafkaProducer() {
+    String hostname = getClientConfig().getConnectionConfig().getHostname();
+    Properties props = new Properties();
+    props.put("bootstrap.servers", hostname + ":9092");
+    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    props.put("request.required.acks", "1");
+    return new KafkaProducer<>(props);
   }
 }
