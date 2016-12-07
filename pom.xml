@@ -271,6 +271,7 @@
                 <exclude>**/*.state</exclude>
                 <exclude>**/*.json</exclude>
                 <exclude>**/*.csv</exclude>
+                <exclude>**/*.config</exclude>
               </excludes>
             </configuration>
           </execution>
