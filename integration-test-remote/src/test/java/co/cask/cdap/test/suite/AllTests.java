@@ -21,7 +21,6 @@ import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.BatchJoinerTest;
-import co.cask.cdap.app.etl.batch.CopybookReaderTest;
 import co.cask.cdap.app.etl.batch.DecisionTreeRegressionTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
@@ -71,8 +70,11 @@ import org.junit.runners.Suite;
   ApplicationVersionTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
+<<<<<<< HEAD
   BatchJoinerTest.class,
   CopybookReaderTest.class,
+=======
+>>>>>>> release/3.6
   DatasetTest.class,
   DataStreamsTest.class,
   DecisionTreeRegressionTest.class,
