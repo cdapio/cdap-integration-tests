@@ -52,6 +52,7 @@ import co.cask.cdap.apps.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
 import co.cask.cdap.apps.workflow.WorkflowTest;
+import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
 import co.cask.cdap.remote.dataset.test.RemoteTableTest;
@@ -85,6 +86,7 @@ import org.junit.runners.Suite;
   NamespaceTest.class,
   NGramTransformTest.class,
   NormalizeTest.class,
+  OperationalStatsTest.class,
   PartitionCorrectorTest.class,
   PartitionedFileSetUpdateTest.class,
   PurchaseAudiTest.class,
