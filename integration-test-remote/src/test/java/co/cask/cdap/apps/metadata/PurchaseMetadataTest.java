@@ -566,7 +566,15 @@ public class PurchaseMetadataTest extends AudiTestBase {
     result = searchMetadata(TEST_NAMESPACE, "view", MetadataSearchTargetType.VIEW);
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(view)), result);
     result = searchMetadata(TEST_NAMESPACE, HISTORY_DS.getEntityName(), null);
-    Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(HISTORY_DS)), result);
+    Assert.assertEquals(
+      ImmutableSet.of(
+        new MetadataSearchResultRecord(HISTORY_DS),
+        new MetadataSearchResultRecord(PURCHASE_APP),
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_BUILDER),
+        new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE)
+      ),
+      result
+    );
     // here history dataset also gets matched because it has a field called 'purchases'
     result = searchMetadata(TEST_NAMESPACE, PURCHASES_DS.getEntityName(), null);
     Assert.assertEquals(
