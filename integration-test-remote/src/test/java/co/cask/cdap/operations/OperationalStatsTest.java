@@ -132,7 +132,9 @@ public class OperationalStatsTest extends AudiTestBase {
     Assert.assertTrue(regionServers >= 1);
     Assert.assertTrue(toInt(nodes.get("DeadRegionServers")) >= 0);
     Map<String, Object> load = hbaseStats.get("load");
-    int totalRegions = toInt(load.get("TotalRegions"));
+    // even though total regions is an int, read it is a double so the precision of division required for the assertion
+    // two lines below is retained
+    double totalRegions = toDouble(load.get("TotalRegions"));
     Assert.assertTrue(totalRegions > 0);
     Assert.assertEquals(totalRegions / regionServers, toDouble(load.get("AverageRegionsPerServer")), 0.1);
     Assert.assertTrue(toInt(load.get("RegionsInTransition")) >= 0);
