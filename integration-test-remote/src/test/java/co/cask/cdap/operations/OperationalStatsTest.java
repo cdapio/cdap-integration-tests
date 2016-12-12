@@ -69,7 +69,7 @@ public class OperationalStatsTest extends AudiTestBase {
   }
 
   @Test
-  public void testYARNStats() throws Exception {
+  public void testYarnStats() throws Exception {
     Map<String, String> yarnInfo = getInfoStats("yarn");
     Assert.assertTrue(yarnInfo.containsKey("Version") && !yarnInfo.get("Version").isEmpty());
     Assert.assertTrue(yarnInfo.containsKey("WebURL") && !yarnInfo.get("WebURL").isEmpty());
@@ -113,6 +113,30 @@ public class OperationalStatsTest extends AudiTestBase {
     int stoppedQueues = toInt(queues.get("Stopped"));
     Assert.assertEquals(totalQueues, runningQueues + stoppedQueues);
   }
+
+  @Test
+  public void testHBaseStats() throws Exception {
+    Map<String, String> hbaseInfo = getInfoStats("hbase");
+    Assert.assertTrue(hbaseInfo.containsKey("Version") && !hbaseInfo.get("Version").isEmpty());
+    Assert.assertTrue(hbaseInfo.containsKey("WebURL") && !hbaseInfo.get("WebURL").isEmpty());
+    Assert.assertTrue(hbaseInfo.containsKey("LogsURL") && !hbaseInfo.get("LogsURL").isEmpty());
+    Map<String, Map<String, Object>> hbaseStats = getOtherServiceStats("hbase");
+    Map<String, Object> entities = hbaseStats.get("entities");
+    // HBase has default and system namespaces at the bare minimum.
+    Assert.assertTrue(toInt(entities.get("Namespaces")) >= 2);
+    Assert.assertTrue(toInt(entities.get("Tables")) > 0);
+    Assert.assertTrue(toInt(entities.get("Snapshots")) >= 0);
+    Map<String, Object> nodes = hbaseStats.get("nodes");
+    Assert.assertTrue(toInt(nodes.get("Masters")) >= 1);
+    int regionServers = toInt(nodes.get("RegionServers"));
+    Assert.assertTrue(regionServers >= 1);
+    Assert.assertTrue(toInt(nodes.get("DeadRegionServers")) >= 0);
+    Map<String, Object> load = hbaseStats.get("load");
+    int totalRegions = toInt(load.get("TotalRegions"));
+    Assert.assertTrue(totalRegions > 0);
+    Assert.assertEquals(totalRegions / regionServers, toDouble(load.get("AverageRegionsPerServer")), 0.1);
+    Assert.assertTrue(toInt(load.get("RegionsInTransition")) >= 0);
+  }
   
   private int toInt(Object object) {
     return ((Number) object).intValue();
@@ -120,6 +144,10 @@ public class OperationalStatsTest extends AudiTestBase {
   
   private long toLong(Object object) {
     return ((Number) object).longValue();
+  }
+
+  private double toDouble(Object object) {
+    return ((Number) object).doubleValue();
   }
 
   private Map<String, String> getInfoStats(String serviceName) throws Exception {
