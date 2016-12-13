@@ -1,7 +1,7 @@
 {
   "config": {
     "cdap": {
-      "version": "4.0.0-1"
+      "version": "4.1.0-1"
     }
   },
   "initial-lease-duration": 82800000
