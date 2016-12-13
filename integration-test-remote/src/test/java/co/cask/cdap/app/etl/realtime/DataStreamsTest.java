@@ -40,6 +40,7 @@ import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -142,7 +143,8 @@ public class DataStreamsTest extends ETLTestBase {
     }
 
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
-    sparkManager.start();
+    // spark client occasionally is restarted by YARN for going OOM (with 512mb memory)
+    sparkManager.start(ImmutableMap.of("task.client.system.resources.memory", "768"));
     sparkManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     final DataSetManager<Table> tableManager = getTableDataset(outputTableName);
