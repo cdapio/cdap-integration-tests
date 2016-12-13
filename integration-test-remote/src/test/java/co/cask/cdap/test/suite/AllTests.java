@@ -45,6 +45,7 @@ import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
+import co.cask.cdap.apps.mapreduce.readless.ReadlessIncrementTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
@@ -91,6 +92,7 @@ import org.junit.runners.Suite;
   PartitionedFileSetUpdateTest.class,
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
+  ReadlessIncrementTest.class,
   RealtimeCubeSinkTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
