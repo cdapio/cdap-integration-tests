@@ -16,7 +16,6 @@
 
 package co.cask.cdap.apps.workflow;
 
-import co.cask.cdap.api.artifact.ArtifactVersion;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.common.NotFoundException;
@@ -26,11 +25,13 @@ import co.cask.cdap.examples.wikipedia.TopNMapReduce;
 import co.cask.cdap.examples.wikipedia.WikiContentValidatorAndNormalizer;
 import co.cask.cdap.examples.wikipedia.WikipediaPipelineApp;
 import co.cask.cdap.examples.wikipedia.WikipediaPipelineWorkflow;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.WorkflowTokenNodeDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
+import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.ArtifactId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.StreamManager;
@@ -70,10 +71,8 @@ import javax.annotation.Nullable;
 })
 public class WorkflowTest extends AudiTestBase {
 
-  private static final Id.Artifact ARTIFACT_ID =
-    Id.Artifact.from(TEST_NAMESPACE, "WikipediaPipelineArtifact", new ArtifactVersion("1.0"));
-  private static final Id.Application APP_ID =
-    Id.Application.from(TEST_NAMESPACE, WikipediaPipelineApp.class.getSimpleName());
+  private static final ArtifactId ARTIFACT_ID = TEST_NAMESPACE.artifact("WikipediaPipelineArtifact", "1.0");
+  private static final ApplicationId APP_ID = TEST_NAMESPACE.app(WikipediaPipelineApp.class.getSimpleName());
   private static final ArtifactSummary ARTIFACT_SUMMARY = new ArtifactSummary("WikipediaPipelineArtifact", "1.0");
 
   @Before
@@ -111,13 +110,13 @@ public class WorkflowTest extends AudiTestBase {
   }
 
   private void createTestData() throws Exception {
-    Id.Stream likesStream = Id.Stream.from(TEST_NAMESPACE, "pageTitleStream");
+    StreamId likesStream = TEST_NAMESPACE.stream("pageTitleStream");
     StreamManager likesStreamManager = getTestManager().getStreamManager(likesStream);
     String like1 = "{\"name\":\"Metallica\",\"id\":\"107926539230502\",\"created_time\":\"2015-06-25T17:14:47+0000\"}";
     String like2 = "{\"name\":\"grunge\",\"id\":\"911679552186992\",\"created_time\":\"2015-07-20T17:37:04+0000\"}";
     likesStreamManager.send(like1);
     likesStreamManager.send(like2);
-    Id.Stream rawWikiDataStream = Id.Stream.from(TEST_NAMESPACE, "wikiStream");
+    StreamId rawWikiDataStream = TEST_NAMESPACE.stream("wikiStream");
     StreamManager rawWikipediaStreamManager = getTestManager().getStreamManager(rawWikiDataStream);
     String data1 = "{\"batchcomplete\":\"\",\"query\":{\"normalized\":[{\"from\":\"metallica\",\"to\":\"Metallica\"}]" +
       ",\"pages\":{\"18787\":{\"pageid\":18787,\"ns\":0,\"title\":\"Metallica\",\"revisions\":[{\"contentformat\":" +

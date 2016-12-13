@@ -22,7 +22,6 @@ import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.explore.service.ExploreException;
 import co.cask.cdap.proto.ColumnDesc;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -44,7 +43,6 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -85,25 +83,25 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     validate(client, "a", "b", 3, 3);
 
     // update description and validate everything is still there
-    datasetClient.updateExisting(Id.DatasetInstance.from(TEST_NAMESPACE, "pfs"),
+    datasetClient.updateExisting(TEST_NAMESPACE.dataset("pfs"),
                                  PartitionedFileSetProperties.builder()
                                    .setDescription("updated description").build().getProperties());
     validate(client, "a", "b", 3, 3);
 
     // update input format and validate everything is still there (input format has not influence on explore)
-    datasetClient.updateExisting(Id.DatasetInstance.from(TEST_NAMESPACE, "pfs"),
+    datasetClient.updateExisting(TEST_NAMESPACE.dataset("pfs"),
                                  PartitionedFileSetProperties.builder()
                                    .setInputFormat(FileInputFormat.class).build().getProperties());
     validate(client, "a", "b", 3, 3);
 
     // update the schema and validate the new explore schema, and everything is still there
-    datasetClient.updateExisting(Id.DatasetInstance.from(TEST_NAMESPACE, "pfs"),
+    datasetClient.updateExisting(TEST_NAMESPACE.dataset("pfs"),
                                  PartitionedFileSetProperties.builder()
                                    .setExploreSchema("i string, j string").build().getProperties());
     validate(client, "i", "j", 3, 3);
 
     // update delimiter and validate everything is still there. Note: the change does not affect existing partitions
-    datasetClient.updateExisting(Id.DatasetInstance.from(TEST_NAMESPACE, "pfs"),
+    datasetClient.updateExisting(TEST_NAMESPACE.dataset("pfs"),
                                  PartitionedFileSetProperties.builder().setExploreFormat("text")
                                    .setExploreFormatProperty("delimiter", ":").build().getProperties());
 
@@ -145,13 +143,13 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
       ));
     }
 
-    ExploreExecutionResult results = client.execute(TEST_NAMESPACE_ENTITY, "show partitions dataset_pfs").get();
+    ExploreExecutionResult results = client.execute(TEST_NAMESPACE, "show partitions dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     List<List<Object>> rows = executionResult2Rows(results);
     LOG.info("rows: {}", new Gson().toJson(rows));
     Assert.assertEquals(expectedResults.size(), rows.size());
 
-    results = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_pfs").get();
+    results = client.execute(TEST_NAMESPACE, "select * from dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     rows = executionResult2Rows(results);
     LOG.info("rows: {}", new Gson().toJson(rows));

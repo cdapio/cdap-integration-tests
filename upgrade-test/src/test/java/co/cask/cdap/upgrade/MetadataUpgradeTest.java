@@ -23,11 +23,11 @@ import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.NamespacedEntityId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
@@ -51,16 +51,16 @@ import java.util.Set;
  */
 public class MetadataUpgradeTest extends UpgradeTestBase {
 
-  private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE_ENTITY.app(PurchaseApp.APP_NAME);
+  private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE.app(PurchaseApp.APP_NAME);
   private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr(
     PurchaseHistoryBuilder.class.getSimpleName());
-  private static final StreamId PURCHASE_STREAM = TEST_NAMESPACE_ENTITY.stream("purchaseStream");
+  private static final StreamId PURCHASE_STREAM = TEST_NAMESPACE.stream("purchaseStream");
   private static final StreamViewId PURCHASE_VIEW = PURCHASE_STREAM.view(
     PURCHASE_STREAM.getEntityName() + "View");
-  private static final DatasetId HISTORY = TEST_NAMESPACE_ENTITY.dataset("history");
-  private static final DatasetId FREQUENT_CUSTOMERS = TEST_NAMESPACE_ENTITY.dataset("frequentCustomers");
-  private static final DatasetId USER_PROFILES = TEST_NAMESPACE_ENTITY.dataset("userProfiles");
-  private static final DatasetId PURCHASES = TEST_NAMESPACE_ENTITY.dataset("purchases");
+  private static final DatasetId HISTORY = TEST_NAMESPACE.dataset("history");
+  private static final DatasetId FREQUENT_CUSTOMERS = TEST_NAMESPACE.dataset("frequentCustomers");
+  private static final DatasetId USER_PROFILES = TEST_NAMESPACE.dataset("userProfiles");
+  private static final DatasetId PURCHASES = TEST_NAMESPACE.dataset("purchases");
   private static final Map<String, String> EMPTY_PROPERTIES = ImmutableMap.of();
   private static final Map<String, String> APP_PROPERTIES = ImmutableMap.of("env", "prod");
   private static final Set<MetadataRecord> EXPECTED_APP_METADATA = ImmutableSet.of(
@@ -96,7 +96,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
                                                                   Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
     StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(PURCHASE_VIEW.toId(),
+    viewClient.createOrUpdate(PURCHASE_VIEW,
                               new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     // Add some user metadata
@@ -115,11 +115,11 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY.toId(), MetadataScope.USER));
 
     // there should be system metadata records for these entities
-    verifySystemMetadata(PURCHASE_APP.toId(), true, true);
-    verifySystemMetadata(HISTORY.toId(), true, true);
+    verifySystemMetadata(PURCHASE_APP, true, true);
+    verifySystemMetadata(HISTORY, true, true);
     // currently we don't have any properties for programs
-    verifySystemMetadata(PURCHASE_HISTORY_BUILDER.toId(), false, true);
-    verifySystemMetadata(PURCHASE_STREAM.toId(), true, true);
+    verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
+    verifySystemMetadata(PURCHASE_STREAM, true, true);
   }
 
   @Override
@@ -158,11 +158,11 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     );
 
     // there should be system metadata records for these entities
-    verifySystemMetadata(PURCHASE_APP.toId(), true, true);
-    verifySystemMetadata(HISTORY.toId(), true, true);
+    verifySystemMetadata(PURCHASE_APP, true, true);
+    verifySystemMetadata(HISTORY, true, true);
     // currently we don't have any properties for programs
-    verifySystemMetadata(PURCHASE_HISTORY_BUILDER.toId(), false, true);
-    verifySystemMetadata(PURCHASE_STREAM.toId(), true, true);
+    verifySystemMetadata(PURCHASE_HISTORY_BUILDER, false, true);
+    verifySystemMetadata(PURCHASE_STREAM, true, true);
 
     // makes some searches: this should get system entities such as dataset, artifacts, flow, services, programs
     Set<MetadataSearchResultRecord> searchResults = filterNonPurchaseEntities(
@@ -210,8 +210,9 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(1, searchResults.size());
   }
 
-  private void verifySystemMetadata(Id.NamespacedId id, boolean checkProperties, boolean checkTags) throws Exception {
-    Set<MetadataRecord> metadataRecords = metadataClient.getMetadata(id, MetadataScope.SYSTEM);
+  private void verifySystemMetadata(NamespacedEntityId id, boolean checkProperties,
+                                    boolean checkTags) throws Exception {
+    Set<MetadataRecord> metadataRecords = metadataClient.getMetadata(id.toId(), MetadataScope.SYSTEM);
     Assert.assertEquals(1, metadataRecords.size());
     MetadataRecord metadata = metadataRecords.iterator().next();
     Assert.assertEquals(MetadataScope.SYSTEM, metadata.getScope());
@@ -250,7 +251,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
             } catch (Exception e) {
               Assert.fail("Unable to retrieve CDAP version. Exception: " + e.getMessage());
             }
-            return TEST_NAMESPACE_ENTITY.artifact(PurchaseApp.class.getSimpleName(), version).equals(entityId);
+            return TEST_NAMESPACE.artifact(PurchaseApp.class.getSimpleName(), version).equals(entityId);
           }
           return false;
         }
@@ -259,9 +260,10 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     return purchaseAppPredicate;
   }
 
-  private Set<MetadataSearchResultRecord> searchMetadata(Id.Namespace namespace, String query,
+  private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
                                                          MetadataSearchTargetType targetType) throws Exception {
-    Set<MetadataSearchResultRecord> results = metadataClient.searchMetadata(namespace, query, targetType).getResults();
+    Set<MetadataSearchResultRecord> results =
+      metadataClient.searchMetadata(namespace.toId(), query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));
