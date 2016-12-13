@@ -2,7 +2,7 @@
   "config": {
     "hadoop": {
       "distribution": "cdh",
-      "distribution_version": "5.7.3"
+      "distribution_version": "5.7.5"
     }
   },
   "services": "spark-historyserver"
