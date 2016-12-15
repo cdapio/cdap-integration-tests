@@ -124,7 +124,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
   @Override
   protected void postStage() throws Exception {
-    Assert.assertTrue("PurchaseApp must exist after upgrade.", getApplicationClient().exists(PURCHASE_APP.toId()));
+    Assert.assertTrue("PurchaseApp must exist after upgrade.", getApplicationClient().exists(PURCHASE_APP));
     // verify user metadata added prior to upgrade
     Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP.toId(), MetadataScope.USER));
     Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM.toId(), 
