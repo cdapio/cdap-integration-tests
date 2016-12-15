@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -68,8 +68,8 @@ public class PartitionCorrectorTest extends AudiTestBase {
     QueryClient queryClient = new QueryClient(getClientConfig());
     validate(queryClient, 100);
 
-    dropPartitionsAndCorrect(applicationManager, Collections.<String, String>emptyMap());
-    dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("disable.explore", "false", "batch.size", "10"));
+    dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("batch.size", "20"));
+    dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("disable.explore", "false", "batch.size", "20"));
   }
 
   private void dropPartitionsAndCorrect(ApplicationManager applicationManager, Map<String, String> args)
