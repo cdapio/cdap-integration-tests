@@ -36,6 +36,7 @@ import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.CDH54Incompatible;
+import co.cask.cdap.test.suite.category.EMRIncompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
@@ -68,6 +69,8 @@ public class DataStreamsTest extends ETLTestBase {
 
   // DataStreams are based on Spark runtime, so marking incompatible for all Hadoop versions that don't support Spark
   @Category({
+    // the kafka server is not reachable from outside of the cluster on EMR clusters
+    EMRIncompatible.class,
     // We don't support spark on these distros
     HDP20Incompatible.class,
     HDP21Incompatible.class,
