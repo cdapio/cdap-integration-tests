@@ -42,6 +42,14 @@ For instance, to set the timeout to 120 seconds::
 
   mvn clean test -DinstanceUri=<HostAndPort> -DprogramTimeout=120
 
+To configure the namespace used for the tests, use::
+
+  -Dtest.namespace=<TestNamespace>
+
+To run against a secure cluster with basic authentication, use::
+
+  -Dcdap.username=<username> -Dcdap.password=<password>
+
 
 CDAP Upgrade Tests
 ------------------

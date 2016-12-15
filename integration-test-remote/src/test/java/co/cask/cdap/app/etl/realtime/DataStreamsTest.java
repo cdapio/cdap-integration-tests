@@ -85,7 +85,7 @@ public class DataStreamsTest extends ETLTestBase {
   })
   @Test
   public void testKafkaAggregatorTable() throws Exception {
-    String hostname = getClientConfig().getConnectionConfig().getHostname();
+    String brokers = getMetaClient().getCDAPConfig().get("kafka.seed.brokers").getValue();
     String topic = UUID.randomUUID().toString();
 
     Schema purchaseSchema = Schema.recordOf(
@@ -96,7 +96,7 @@ public class DataStreamsTest extends ETLTestBase {
 
     Map<String, String> sourceProperties = new HashMap<>();
     sourceProperties.put("referenceName", topic);
-    sourceProperties.put("brokers", hostname + ":9092");
+    sourceProperties.put("brokers", brokers);
     sourceProperties.put("topic", topic);
     sourceProperties.put("defaultInitialOffset", "-2");
     sourceProperties.put("schema", purchaseSchema.toString());
