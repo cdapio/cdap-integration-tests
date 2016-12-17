@@ -51,6 +51,7 @@ import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
 import co.cask.cdap.apps.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
+import co.cask.cdap.apps.tracker.TrackerTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
 import co.cask.cdap.apps.workflow.WorkflowTest;
 import co.cask.cdap.operations.OperationalStatsTest;
@@ -105,6 +106,7 @@ import org.junit.runners.Suite;
   SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
   TokenizerTest.class,
+  TrackerTest.class,
   ValueMapperTest.class,
   WordCountTest.class,
   WorkflowTest.class,
