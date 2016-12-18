@@ -25,17 +25,17 @@ import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.StreamProperties;
-import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.cdap.test.MapReduceManager;
-import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Tests the functionality of workflows triggered by stream data.
  */
 public class StreamSchedulerTest extends AudiTestBase {
+
   private static final Id.Workflow PURCHASE_HISTORY_WORKFLOW =
     Id.Workflow.from(TEST_NAMESPACE, PurchaseApp.APP_NAME, "PurchaseHistoryWorkflow");
   private static final Id.Program PURCHASE_HISTORY_BUILDER =
@@ -50,7 +50,7 @@ public class StreamSchedulerTest extends AudiTestBase {
      * Suspend the DataSchedule and publish another 1MB of data
      * Ensure that the workflow is triggered after the suspended schedule is resumed
      */
-    ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
+    deployApplication(PurchaseApp.class);
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
     Id.Stream purchaseStream = Id.Stream.from(TEST_NAMESPACE, "purchaseStream");
     StreamProperties purchaseStreamProperties = streamClient.getConfig(purchaseStream);
@@ -71,18 +71,13 @@ public class StreamSchedulerTest extends AudiTestBase {
     String bigData = new String(new char[100000]);
     multipleStreamSend(streamClient, purchaseStream, bigData, 12);
 
-    WorkflowManager purchaseHistoryWorkflow = applicationManager.getWorkflowManager("PurchaseHistoryWorkflow");
-    MapReduceManager purchaseHistoryBuilder = applicationManager.getMapReduceManager("PurchaseHistoryBuilder");
-
-    purchaseHistoryWorkflow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryBuilder.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     // wait 5 minutes for the map reduce to execute
-    purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
-    purchaseHistoryWorkflow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-
     // both the mapreduce and workflow should have 1 run
     ProgramClient programClient = getProgramClient();
-    assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
+    assertRuns(1, TimeUnit.MINUTES.toSeconds(5), TimeUnit.SECONDS, programClient, ProgramRunStatus.COMPLETED,
+               PURCHASE_HISTORY_BUILDER);
+    assertRuns(1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS, programClient, ProgramRunStatus.COMPLETED,
+               PURCHASE_HISTORY_WORKFLOW);
 
     // schedule actions suspend, send more data and resume the schedule
     scheduleClient.suspend(dataSchedule);
@@ -93,13 +88,10 @@ public class StreamSchedulerTest extends AudiTestBase {
     scheduleClient.resume(dataSchedule);
     Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
-    purchaseHistoryWorkflow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryBuilder.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    // wait 5 minutes for the mapreduce to execute
-    purchaseHistoryBuilder.waitForStatus(false, 5 * 60, 1);
-    purchaseHistoryWorkflow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-
-    assertRuns(2, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
+    assertRuns(2, TimeUnit.MINUTES.toSeconds(5), TimeUnit.SECONDS, programClient, ProgramRunStatus.COMPLETED,
+               PURCHASE_HISTORY_BUILDER);
+    assertRuns(2, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS, programClient, ProgramRunStatus.COMPLETED,
+               PURCHASE_HISTORY_WORKFLOW);
   }
 
   private void multipleStreamSend(StreamClient streamClient, Id.Stream streamId, String event,
