@@ -96,7 +96,7 @@ public class TrackerTestBase extends AudiTestBase {
     throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException {
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
     TrackerAppConfig appConfig =
-      new TrackerAppConfig(new AuditLogConfig(zookeeperQuorum, null, null, null, 120));
+      new TrackerAppConfig(new AuditLogConfig(zookeeperQuorum, null, null, null, null));
     ApplicationManager applicationManager = getTestManager().deployApplication(
       NamespaceId.DEFAULT, TestTrackerApp.class, appConfig);
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
