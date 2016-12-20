@@ -18,7 +18,6 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.appwithsleepingflowlet.AppWithSleepingFlowlet;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.StreamManager;
@@ -41,7 +40,7 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
     RuntimeMetrics streamFlowlet = flowManager.getFlowletMetrics("streamFlowlet");
     RuntimeMetrics sleepingFlowlet = flowManager.getFlowletMetrics("sleepingFlowlet");
 
-    StreamManager streamManager = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "ingestStream"));
+    StreamManager streamManager = getTestManager().getStreamManager(TEST_NAMESPACE.stream("ingestStream"));
 
     // wait for all the flowlet containers to get processing
     streamManager.send("event0");
@@ -87,7 +86,7 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
     sleepingFlowlet.waitForProcessed(EVENT_COUNT, 60, TimeUnit.SECONDS);
 
     // it should also be able to process new events
-    StreamManager streamManager = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "ingestStream"));
+    StreamManager streamManager = getTestManager().getStreamManager(TEST_NAMESPACE.stream("ingestStream"));
     streamManager.send("event0");
     streamFlowlet.waitForProcessed(EVENT_COUNT + 1, 60, TimeUnit.SECONDS);
     sleepingFlowlet.waitForProcessed(EVENT_COUNT + 1, 60, TimeUnit.SECONDS);

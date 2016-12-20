@@ -22,8 +22,8 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
+import co.cask.cdap.gateway.handlers.UsageHandler;
 import co.cask.cdap.proto.DatasetMeta;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
@@ -70,7 +70,7 @@ public class DatasetTest extends AudiTestBase {
     int appDatasetsCount = datasetClient.list(TEST_NAMESPACE).size();
 
     // test creating dataset
-    Id.DatasetInstance testDatasetinstance = Id.DatasetInstance.from(TEST_NAMESPACE, "testDataset");
+    DatasetId testDatasetinstance = TEST_NAMESPACE.dataset("testDataset");
     datasetClient.create(testDatasetinstance, "table");
 
     // one more dataset should have been added
@@ -95,7 +95,6 @@ public class DatasetTest extends AudiTestBase {
 
     // test deleting a datatset
     datasetClient.delete(testDatasetinstance);
-    datasetClient.waitForDeleted(testDatasetinstance, 10, TimeUnit.SECONDS);
     Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
 
     FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
@@ -103,7 +102,7 @@ public class DatasetTest extends AudiTestBase {
     ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
     wordCountService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
-    StreamManager wordStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
+    StreamManager wordStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("wordStream"));
     wordStream.send("hello world");
 
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
@@ -113,7 +112,7 @@ public class DatasetTest extends AudiTestBase {
     Map<String, Object> responseMap = getWordCountStats(wordCountService);
     Assert.assertEquals(2.0, ((double) responseMap.get("totalWords")), 0);
     // test truncating a dataset with existing dataset
-    datasetClient.truncate(Id.DatasetInstance.from(TEST_NAMESPACE, "wordStats"));
+    datasetClient.truncate(TEST_NAMESPACE.dataset("wordStats"));
     // after truncating there should be 0 word
     responseMap = getWordCountStats(wordCountService);
     Assert.assertEquals(0, ((double) responseMap.get("totalWords")), 0);
@@ -156,13 +155,21 @@ public class DatasetTest extends AudiTestBase {
   private Set<ProgramId> getPrograms(String endPoint)
     throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<ProgramId>>() { }.getType());
+    // CDAP-7316 The handler for this request (UsageHandler) returns results in Id.Program serialized form
+    // for backward compatibility with the help of UsageHandler.BackwardCompatibility.IdProgram class
+    // so verify with that rather than ProgramId class
+    return GSON.fromJson(response.getResponseBodyAsString(),
+                         new TypeToken<Set<UsageHandler.BackwardCompatibility.IdProgram>>() { }.getType());
   }
 
   private Set<DatasetId> getDatasetInstances(String endPoint)
     throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    return GSON.fromJson(response.getResponseBodyAsString(), new TypeToken<Set<DatasetId>>() { }.getType());
+    // CDAP-7316 The handler for this request (UsageHandler) returns results in Id.DatasetInstance serialized form
+    // for backward compatibility with the help of UsageHandler.BackwardCompatibility.IdDatasetInstance class
+    // so verify with that rather than DatasetId class
+    return GSON.fromJson(response.getResponseBodyAsString(),
+                         new TypeToken<Set<UsageHandler.BackwardCompatibility.IdDatasetInstance>>() { }.getType());
   }
 
   private HttpResponse makeRequest(String endPoint)

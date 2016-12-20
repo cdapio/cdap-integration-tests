@@ -18,7 +18,6 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.helloworld.HelloWorld;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.StreamManager;
@@ -34,7 +33,7 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
   @Override
   protected void preStage() throws Exception {
     ApplicationManager applicationManager = deployApplication(HelloWorld.class);
-    StreamManager whoStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "who"));
+    StreamManager whoStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("who"));
     whoStream.send("test1");
 
     FlowManager flowManager = applicationManager.getFlowManager("WhoFlow").start();
@@ -48,6 +47,7 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
       flowletMetrics.waitForProcessed(2, 30, TimeUnit.SECONDS);
       Assert.fail("Expected not to receive more than one stream event in the flowlet");
     } catch (TimeoutException expected) {
+      // expected
     }
 
     flowManager.stop();
@@ -76,9 +76,10 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
       flowletMetrics.waitForProcessed(3, 30, TimeUnit.SECONDS);
       Assert.fail("Expected not to receive more two stream events in the flowlet");
     } catch (TimeoutException expected) {
+      // expected
     }
 
-    StreamManager whoStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "who"));
+    StreamManager whoStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("who"));
     whoStream.send("test3");
 
     // it should process the third (new) stream event

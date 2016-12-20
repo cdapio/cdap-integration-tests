@@ -139,6 +139,38 @@ public class OperationalStatsTest extends AudiTestBase {
     Assert.assertEquals(totalRegions / regionServers, toDouble(load.get("AverageRegionsPerServer")), 0.1);
     Assert.assertTrue(toInt(load.get("RegionsInTransition")) >= 0);
   }
+
+  @Test
+  public void testCDAPStats() throws Exception {
+    Map<String, String> cdapInfo = getInfoStats("cdap");
+    Assert.assertTrue(Long.parseLong(cdapInfo.get("Uptime")) > 0);
+    Map<String, Map<String, Object>> cdapStats = getOtherServiceStats("cdap");
+    Map<String, Object> entities = cdapStats.get("entities");
+    // Should at least have 1 namespace
+    Assert.assertTrue(toInt(entities.get("Namespaces")) >= 1);
+    Assert.assertTrue(toInt(entities.get("Artifacts")) >= 0);
+    Assert.assertTrue(toInt(entities.get("Applications")) >= 0);
+    Assert.assertTrue(toInt(entities.get("Programs")) >= 0);
+    Assert.assertTrue(toInt(entities.get("Datasets")) >= 0);
+    Assert.assertTrue(toInt(entities.get("Streams")) >= 0);
+    Assert.assertTrue(toInt(entities.get("StreamViews")) >= 0);
+    Map<String, Object> connections = cdapStats.get("connections");
+    Assert.assertTrue(toLong(connections.get("TotalRequests")) >= 0);
+    Assert.assertTrue(toLong(connections.get("Successful")) >= 0);
+    Assert.assertTrue(toLong(connections.get("ServerErrors")) >= 0);
+    Assert.assertTrue(toLong(connections.get("ClientErrors")) >= 0);
+    Assert.assertTrue(toLong(connections.get("WarnLogs")) >= 0);
+    Assert.assertTrue(toLong(connections.get("ErrorLogs")) >= 0);
+    Map<String, Object> transactions = cdapStats.get("transactions");
+    Assert.assertTrue(toLong(transactions.get("NumCommittedChangeSets")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("NumCommittingChangeSets")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("NumInProgressTransactions")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("NumInvalidTransactions")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("ReadPointer")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("WritePointer")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("VisibilityUpperBound")) >= 0);
+    Assert.assertTrue(toLong(transactions.get("SnapshotTime")) >= 0);
+  }
   
   private int toInt(Object object) {
     return ((Number) object).intValue();

@@ -27,8 +27,8 @@ import co.cask.cdap.etl.api.streaming.StreamingSource;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.SparkManager;
@@ -36,10 +36,12 @@ import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.CDH54Incompatible;
+import co.cask.cdap.test.suite.category.EMRIncompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import com.google.common.collect.ImmutableMap;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -67,6 +69,8 @@ public class DataStreamsTest extends ETLTestBase {
 
   // DataStreams are based on Spark runtime, so marking incompatible for all Hadoop versions that don't support Spark
   @Category({
+    // the kafka server is not reachable from outside of the cluster on EMR clusters
+    EMRIncompatible.class,
     // We don't support spark on these distros
     HDP20Incompatible.class,
     HDP21Incompatible.class,
@@ -84,7 +88,7 @@ public class DataStreamsTest extends ETLTestBase {
   })
   @Test
   public void testKafkaAggregatorTable() throws Exception {
-    String hostname = getClientConfig().getConnectionConfig().getHostname();
+    String brokers = getMetaClient().getCDAPConfig().get("kafka.seed.brokers").getValue();
     String topic = UUID.randomUUID().toString();
 
     Schema purchaseSchema = Schema.recordOf(
@@ -95,7 +99,7 @@ public class DataStreamsTest extends ETLTestBase {
 
     Map<String, String> sourceProperties = new HashMap<>();
     sourceProperties.put("referenceName", topic);
-    sourceProperties.put("brokers", hostname + ":9092");
+    sourceProperties.put("brokers", brokers);
     sourceProperties.put("topic", topic);
     sourceProperties.put("defaultInitialOffset", "-2");
     sourceProperties.put("schema", purchaseSchema.toString());
@@ -126,7 +130,7 @@ public class DataStreamsTest extends ETLTestBase {
       .setBatchInterval("60s")
       .build();
 
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "kafkaStreaming");
+    ApplicationId appId = TEST_NAMESPACE.app("kafkaStreaming");
     AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
@@ -142,7 +146,8 @@ public class DataStreamsTest extends ETLTestBase {
     }
 
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
-    sparkManager.start();
+    // spark client occasionally is restarted by YARN for going OOM (with 512mb memory)
+    sparkManager.start(ImmutableMap.of("task.client.system.resources.memory", "768"));
     sparkManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
 
     final DataSetManager<Table> tableManager = getTableDataset(outputTableName);

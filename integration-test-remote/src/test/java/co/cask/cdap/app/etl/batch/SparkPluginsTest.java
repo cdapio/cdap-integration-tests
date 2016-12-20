@@ -30,7 +30,6 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -112,7 +111,7 @@ public class SparkPluginsTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "SpamTrainer"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE.app("SpamTrainer"),
                                                       getBatchAppRequestV2(etlConfig));
 
 
@@ -129,8 +128,7 @@ public class SparkPluginsTest extends ETLTestBase {
                        "ham this is an even more genuine message",
                        "ham could you send me the report");
     // write records to source
-    StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "trainingStream"));
+    StreamManager streamManager = getTestManager().getStreamManager(TEST_NAMESPACE.stream("trainingStream"));
     for (String spamMessage : trainingMessages) {
       streamManager.send(spamMessage);
     }
@@ -184,13 +182,12 @@ public class SparkPluginsTest extends ETLTestBase {
       .build();
 
 
-    ApplicationManager appManager = deployApplication(Id.Application.from(TEST_NAMESPACE, "SpamClassifier"),
+    ApplicationManager appManager = deployApplication(TEST_NAMESPACE.app("SpamClassifier"),
                                                       getBatchAppRequestV2(etlConfig));
 
 
     // write some some messages to be classified
-    StreamManager streamManager =
-      getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, textsToClassify));
+    StreamManager streamManager = getTestManager().getStreamManager(TEST_NAMESPACE.stream(textsToClassify));
     streamManager.send("how are you doing today");
     streamManager.send("free money money");
     streamManager.send("what are you doing today");
@@ -215,7 +212,7 @@ public class SparkPluginsTest extends ETLTestBase {
   private Set<SpamMessage> getClassifiedMessages() throws ExecutionException, InterruptedException {
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult exploreExecutionResult =
-      queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_classifiedTexts").get();
+      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_classifiedTexts").get();
 
     Set<SpamMessage> classifiedMessages = new HashSet<>();
     while (exploreExecutionResult.hasNext()) {
