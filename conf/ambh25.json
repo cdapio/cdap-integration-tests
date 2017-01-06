@@ -5,17 +5,6 @@
       "rhel_6_repo": "http://public-repo-1.hortonworks.com/ambari/centos6/2.x/updates/2.4.2.0/ambari.repo",
       "ubuntu_12_repo": "http://public-repo-1.hortonworks.com/ambari/ubuntu12/2.x/updates/2.4.2.0"
     },
-    "cdap": {
-      "repo": {
-        "apt_repo_url": "",
-        "yum_repo_url": "file:///tmp/cdap-yum-repo/4.0",
-        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.0/pubkey.gpg"
-      },
-      "version": "4.0.0-1",
-      "ambari": {
-        "version": "4.0.0-1"
-      }
-    },
     "hadoop": {
       "distribution": "hdp",
       "distribution_version": "2.5.0.0"

@@ -3,5 +3,18 @@
     "google_data_disk_size_gb": "",
     "google_root_disk_size_gb": "200"
   },
+  "config": {
+    "cdap": {
+      "repo": {
+        "apt_repo_url": "",
+        "yum_repo_url": "file:///tmp/cdap-yum-repo/4.0",
+        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.0/pubkey.gpg"
+      },
+      "version": "4.0.0-1",
+      "ambari": {
+        "version": "4.0.0-1"
+      }
+    }
+  },
   "initial-lease-duration": 82800000
 }
