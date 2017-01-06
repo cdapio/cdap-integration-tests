@@ -19,7 +19,6 @@ package co.cask.cdap.apps;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -42,7 +41,7 @@ public class ApplicationTest extends AudiTestBase {
     // should not delete application when programs are running
     ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
     try {
-      appClient.delete(Id.Application.from(TEST_NAMESPACE, PurchaseApp.APP_NAME));
+      appClient.delete(TEST_NAMESPACE.app(PurchaseApp.APP_NAME));
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().startsWith("409"));
@@ -51,9 +50,10 @@ public class ApplicationTest extends AudiTestBase {
 
     // should not delete non-existing application
     try {
-      appClient.delete(Id.Application.from(TEST_NAMESPACE, "NoSuchApp"));
+      appClient.delete(TEST_NAMESPACE.app("NoSuchApp"));
       Assert.fail();
     } catch (ApplicationNotFoundException expected) {
+      // expected
     }
   }
 }

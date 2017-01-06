@@ -24,8 +24,8 @@ import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.StreamProperties;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.common.http.HttpMethod;
@@ -45,8 +45,8 @@ import java.util.Map;
  * Tests various methods of a stream such as create, ingest events, fetch events, properties.
  */
 public class StreamTest extends AudiTestBase {
-  private static final Id.Stream NONEXISTENT_STREAM = Id.Stream.from(TEST_NAMESPACE, "nonexistentStream");
-  private static final Id.Stream STREAM_NAME = Id.Stream.from(TEST_NAMESPACE, "streamTest");
+  private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
+  private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
 
   @Test
   public void testStreams() throws Exception {
@@ -69,8 +69,8 @@ public class StreamTest extends AudiTestBase {
 
 
     Map<String, String> streamTags =
-      ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, STREAM_NAME.getNamespaceId(),
-                      Constants.Metrics.Tag.STREAM, STREAM_NAME.getId());
+      ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, STREAM_NAME.getNamespace(),
+                      Constants.Metrics.Tag.STREAM, STREAM_NAME.getStream());
     checkMetric(streamTags, "system.collect.events", 2, 10);
     checkMetric(streamTags, "system.collect.bytes", 5, 10);
 
@@ -113,13 +113,13 @@ public class StreamTest extends AudiTestBase {
 
     // creation with invalid characters should fail
     try {
-      createStream(STREAM_NAME.getId() + "&");
+      createStream(STREAM_NAME.getStream() + "&");
       Assert.fail();
     } catch (BadRequestException expected) {
       // expected
     }
     try {
-      createStream(STREAM_NAME.getId() + ".");
+      createStream(STREAM_NAME.getStream() + ".");
       Assert.fail();
     } catch (BadRequestException expected) {
       // expected

@@ -23,32 +23,24 @@ import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.datapipeline.SmartWorkflow;
-import co.cask.cdap.etl.api.Transform;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
-import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
-import co.cask.cdap.etl.common.Plugin;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.security.authentication.client.AccessToken;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
-import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import co.cask.hydrator.common.Constants;
-import co.cask.hydrator.plugin.batch.source.ExcelInputReader;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -129,8 +121,6 @@ public class ExcelInputReaderTest extends ETLTestBase {
       new ETLStage("Excel", new ETLPlugin(EXCEL_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties, null));
 
     String outputDatasetName = "output-batchsourcetest-excelreader";
-    ETLStage transform = new ETLStage("transform", new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
-                                              ImmutableMap.of("schema", schema.toString()), null));
 
     ETLStage sink = new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE, ImmutableMap.of(
       Properties.BatchReadableWritable.NAME, outputDatasetName,
@@ -139,15 +129,13 @@ public class ExcelInputReaderTest extends ETLTestBase {
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
-      .addStage(transform)
       .addStage(sink)
-      .addConnection(source.getName(), transform.getName())
-      .addConnection(transform.getName(), sink.getName())
+      .addConnection(source.getName(), sink.getName())
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderTest");
-    ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
+    ApplicationId appId = TEST_NAMESPACE.app("ExcelReaderTest");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -160,117 +148,6 @@ public class ExcelInputReaderTest extends ETLTestBase {
     Row row = outputTable.get(Bytes.toBytes("3.0"));
     Assert.assertEquals("john", row.getString("B"));
     Assert.assertNull(row.getString("D"));
-  }
-
-  @Test
-  public void testTerminateOnEmptyRow() throws Exception {
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put(Constants.Reference.REFERENCE_NAME, "TestCase-TerminateOnEmptyRow")
-      .put("filePath", sourcePath)
-      .put("filePattern", ".*")
-      .put("sheet", "Sheet Name")
-      .put("sheetValue", "Sheet1")
-      .put("memoryTableName", "trackmemorytablewithterminateonemptyrow")
-      .put("tableExpiryPeriod", "30")
-      .put("reprocess", "false")
-      .put("columnList", "")
-      .put("columnMapping", "")
-      .put("skipFirstRow", "false")
-      .put("terminateIfEmptyRow", "true")
-      .put("rowsLimit", "10")
-      .put("outputSchema", "A:string,B:string")
-      .put("ifErrorRecord", "Ignore error and continue")
-      .put("errorDatasetName", "")
-      .put(Properties.BatchReadableWritable.NAME, "input")
-      .build();
-
-    Schema schema = Schema.recordOf("record", Schema.Field.of("A", Schema.of(Schema.Type.STRING)),
-                                    Schema.Field.of("B", Schema.of(Schema.Type.STRING)),
-                                    Schema.Field.of("file", Schema.of(Schema.Type.STRING)),
-                                    Schema.Field.of("sheet", Schema.of(Schema.Type.STRING)));
-
-    co.cask.cdap.etl.common.ETLStage source =
-      new co.cask.cdap.etl.common.ETLStage("Excel", new Plugin(EXCEL_PLUGIN_NAME, sourceProperties, null));
-
-    String outputDatasetName = "output-batchsourcetest-terminateonemptyrow";
-
-    Map<String, String> transformProperties = ImmutableMap.of(Properties.Table.PROPERTY_SCHEMA, schema.toString());
-    co.cask.cdap.etl.common.ETLStage transform =
-      new co.cask.cdap.etl.common.ETLStage("transform", new Plugin("Projection", transformProperties, null));
-
-    Map<String, String> sinkProperties = ImmutableMap.of(Properties.BatchReadableWritable.NAME, outputDatasetName,
-                                                         Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "A",
-                                                         Properties.Table.PROPERTY_SCHEMA, schema.toString());
-    co.cask.cdap.etl.common.ETLStage sink =
-      new co.cask.cdap.etl.common.ETLStage("TableSink", new Plugin("Table", sinkProperties, null));
-
-    co.cask.cdap.etl.batch.config.ETLBatchConfig etlBatchConfig =
-      new co.cask.cdap.etl.batch.config.ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
-
-    AppRequest<co.cask.cdap.etl.batch.config.ETLBatchConfig> request = getBatchAppRequest(etlBatchConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderTest-terminateonemptyrow");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
-
-    MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
-    Assert.assertEquals(ProgramRunStatus.FAILED, mrManager.getHistory().get(0).getStatus());
-  }
-
-  @Test
-  public void testTerminateOnErrorRecord() throws Exception {
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put(Constants.Reference.REFERENCE_NAME, "TestCase")
-      .put("filePath", sourcePath)
-      .put("filePattern", ".*")
-      .put("sheet", "Sheet Name")
-      .put("sheetValue", "Sheet1")
-      .put("memoryTableName", "tracktemorytablewithterminateonerrorrecord")
-      .put("tableExpiryPeriod", "30")
-      .put("reprocess", "false")
-      .put("columnList", "")
-      .put("columnMapping", "")
-      .put("skipFirstRow", "false")
-      .put("terminateIfEmptyRow", "true")
-      .put("rowsLimit", "10")
-      .put("outputSchema", "A:string,B:long")
-      .put("ifErrorRecord", "Ignore error and continue")
-      .put("errorDatasetName", "")
-      .put(Properties.BatchReadableWritable.NAME, "input")
-      .build();
-
-    Schema schema = Schema.recordOf("record", Schema.Field.of("A", Schema.of(Schema.Type.STRING)),
-                                    Schema.Field.of("B", Schema.of(Schema.Type.LONG)),
-                                    Schema.Field.of("file", Schema.of(Schema.Type.STRING)),
-                                    Schema.Field.of("sheet", Schema.of(Schema.Type.STRING)));
-
-    co.cask.cdap.etl.common.ETLStage source = new
-      co.cask.cdap.etl.common.ETLStage("Excel", new Plugin(EXCEL_PLUGIN_NAME, sourceProperties, null));
-
-    String outputDatasetName = "output-batchsourcetest-terminateonerrorrecord";
-
-    Map<String, String> transformProperties = ImmutableMap.of(Properties.Table.PROPERTY_SCHEMA, schema.toString());
-    co.cask.cdap.etl.common.ETLStage transform =
-      new co.cask.cdap.etl.common.ETLStage("transform", new Plugin("Projection", transformProperties, null));
-
-    Map<String, String> sinkProperties = ImmutableMap.of(Properties.BatchReadableWritable.NAME, outputDatasetName,
-                                                         Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "A",
-                                                         Properties.Table.PROPERTY_SCHEMA, schema.toString());
-
-    co.cask.cdap.etl.common.ETLStage sink =
-      new co.cask.cdap.etl.common.ETLStage("TableSink", new Plugin("Table", sinkProperties, null));
-
-    co.cask.cdap.etl.batch.config.ETLBatchConfig etlBatchConfig =
-      new co.cask.cdap.etl.batch.config.ETLBatchConfig("* * * * *", source, sink, Lists.newArrayList(transform));
-
-    AppRequest<co.cask.cdap.etl.batch.config.ETLBatchConfig> request = getBatchAppRequest(etlBatchConfig);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderTest-terminateonerrorrecord");
-    ApplicationManager appManager = deployApplication(appId.toId(), request);
-
-    MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
-    Assert.assertEquals(ProgramRunStatus.FAILED, mrManager.getHistory().get(0).getStatus());
   }
 
   @Test
@@ -307,10 +184,6 @@ public class ExcelInputReaderTest extends ETLTestBase {
 
     String outputDatasetName = "output-batchsourcetest-testexcelreaderreprocessfalse";
 
-    ETLStage transform =
-      new ETLStage("ProjectionTransform2", new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
-                                                         ImmutableMap.of("schema", schema.toString()), null));
-
     ETLStage sink = new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE, ImmutableMap.of(
                                                 Properties.BatchReadableWritable.NAME, outputDatasetName,
                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "A",
@@ -318,15 +191,13 @@ public class ExcelInputReaderTest extends ETLTestBase {
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
-      .addStage(transform)
       .addStage(sink)
-      .addConnection(source.getName(), transform.getName())
-      .addConnection(transform.getName(), sink.getName())
+      .addConnection(source.getName(), sink.getName())
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.toEntityId().app("ExcelReaderreprocessfalse");
-    ApplicationManager appManager = deployApplication(appId.toId(), appRequest);
+    ApplicationId appId = TEST_NAMESPACE.app("ExcelReaderreprocessfalse");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // Set preprocessed file data
     DataSetManager<KeyValueTable> dataSetManager = getKVTableDataset("trackmemorytablereprocessfalse");

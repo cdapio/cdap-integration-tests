@@ -16,7 +16,7 @@
 
 package co.cask.cdap.test;
 
-import co.cask.cdap.proto.Id;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.id.NamespaceId;
 import com.google.gson.Gson;
 import org.junit.After;
@@ -44,26 +44,27 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   private static final String PRE = "PRE";
   private static final String POST = "POST";
 
-  private Id.Namespace longRunningNamespace;
+  private NamespaceId longRunningNamespace;
   private T state;
 
   public static void initializeInMemoryMap(Map<String, String> inMemoryMap) {
     inMemoryStatePerTest = inMemoryMap;
   }
 
-  private Id.Namespace configureLongRunningNamespace(String namespace) throws Exception {
+  private NamespaceId configureLongRunningNamespace(String namespace) throws Exception {
     NamespaceId namespaceId = new NamespaceId(namespace);
     if (!getNamespaceClient().exists(namespaceId)) {
-      createNamespace(namespace);
+      NamespaceMeta namespaceMeta = new NamespaceMeta.Builder().setName(namespaceId).build();
+      getNamespaceClient().create(namespaceMeta);
     }
-    return namespaceId.toId();
+    return namespaceId;
   }
 
   public static Map<String, String> getInMemoryMap() {
     return inMemoryStatePerTest;
   }
 
-  public Id.Namespace getLongRunningNamespace() {
+  public NamespaceId getLongRunningNamespace() {
     return longRunningNamespace;
   }
 
@@ -72,7 +73,7 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
   public void setUp() throws Exception {
     checkSystemServices();
     longRunningNamespace =
-      configureLongRunningNamespace(System.getProperty("long.running.namespace", TEST_NAMESPACE.getId()));
+      configureLongRunningNamespace(System.getProperty("long.running.namespace", TEST_NAMESPACE.getNamespace()));
 
     boolean firstRun = false;
     Type stateType = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];

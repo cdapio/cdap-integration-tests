@@ -21,7 +21,6 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
@@ -59,7 +58,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
-    return getApplicationManager(getLongRunningNamespace().toEntityId().app(IncrementApp.NAME));
+    return getApplicationManager(getLongRunningNamespace().app(IncrementApp.NAME));
   }
 
   @Override
@@ -73,7 +72,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
     Tasks.waitFor(state.getNumEvents(), new Callable<Long>() {
       @Override
       public Long call() throws Exception {
-        DatasetId regularTableId = new DatasetId(getLongRunningNamespace().getId(), IncrementApp.REGULAR_TABLE);
+        DatasetId regularTableId = getLongRunningNamespace().dataset(IncrementApp.REGULAR_TABLE);
         KeyValueTable regularTable = getKVTableDataset(regularTableId).get();
         return readLong(regularTable.read(IncrementApp.NUM_KEY));
       }
@@ -82,14 +81,14 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
 
   @Override
   public void verifyRuns(IncrementTestState state) throws Exception {
-    DatasetId readlessTableId = new DatasetId(getLongRunningNamespace().getId(), IncrementApp.READLESS_TABLE);
+    DatasetId readlessTableId = getLongRunningNamespace().dataset(IncrementApp.READLESS_TABLE);
     KeyValueTable readlessTable = getKVTableDataset(readlessTableId).get();
     long readlessSum = readLong(readlessTable.read(IncrementApp.SUM_KEY));
     long readlessNum = readLong(readlessTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), readlessSum);
     Assert.assertEquals(state.getNumEvents(), readlessNum);
 
-    DatasetId regularTableId = new DatasetId(getLongRunningNamespace().getId(), IncrementApp.REGULAR_TABLE);
+    DatasetId regularTableId = getLongRunningNamespace().dataset(IncrementApp.REGULAR_TABLE);
     KeyValueTable regularTable = getKVTableDataset(regularTableId).get();
     long regularSum = readLong(regularTable.read(IncrementApp.SUM_KEY));
     long regularNum = readLong(regularTable.read(IncrementApp.NUM_KEY));
@@ -106,7 +105,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
       writer.write(String.format("%010d", i));
       writer.write("\n");
     }
-    streamClient.sendBatch(Id.Stream.from(getLongRunningNamespace(), IncrementApp.INT_STREAM), "text/plain",
+    streamClient.sendBatch(getLongRunningNamespace().stream(IncrementApp.INT_STREAM), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
     long newSum = state.getSumEvents() + SUM_BATCH;
     return new IncrementTestState(newSum, state.getNumEvents() + BATCH_SIZE);

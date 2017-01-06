@@ -1,5 +1,10 @@
 {
   "config": {
+    "cdap": {
+      "cdap_site": {
+        "security.enabled": "false"
+      }
+    },
     "hadoop": {
       "distribution": "cdh",
       "distribution_version": "5.4.9"

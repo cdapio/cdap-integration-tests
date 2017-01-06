@@ -16,7 +16,6 @@
 
 package co.cask.cdap.app.etl.batch;
 
-import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
@@ -31,13 +30,12 @@ import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.common.Properties;
-import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -113,7 +111,7 @@ public class ValueMapperTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "ValueMapperTest");
+    ApplicationId appId = TEST_NAMESPACE.app("ValueMapperTest");
     ApplicationManager appManager = deployApplication(appId, request);
 
     DataSetManager<KeyValueTable> dataSetManager = getKVTableDataset("designationLookupTable");
@@ -138,7 +136,7 @@ public class ValueMapperTest extends ETLTestBase {
     mrManager.start();
     mrManager.waitForFinish(10, TimeUnit.MINUTES);
 
-    Map<String, String> nameDesignationMap = new HashMap<String, String>();
+    Map<String, String> nameDesignationMap = new HashMap<>();
     nameDesignationMap.put("John", "DEFAULTID");
     nameDesignationMap.put("Kerry", "SSE");
     nameDesignationMap.put("Mathew", "DEFAULTID");

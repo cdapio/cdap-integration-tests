@@ -23,16 +23,14 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
-import co.cask.cdap.proto.ApplicationRecord;
 import co.cask.cdap.proto.ConfigEntry;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.NamespaceMeta;
+import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
-import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Preconditions;
 import org.junit.Assert;
@@ -44,7 +42,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
@@ -86,7 +83,7 @@ public class BasicSecurityTest extends AudiTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
     ApplicationClient applicationClient = new ApplicationClient(adminConfig, adminClient);
-    List<ApplicationRecord> applications = applicationClient.list(Id.Namespace.DEFAULT);
+    applicationClient.list(NamespaceId.DEFAULT);
   }
 
   @Test
@@ -97,7 +94,7 @@ public class BasicSecurityTest extends AudiTestBase {
 
     ApplicationClient applicationClient = new ApplicationClient(aliceConfig, aliceClient);
     try {
-      List<ApplicationRecord> applications = applicationClient.list(Id.Namespace.DEFAULT);
+      applicationClient.list(NamespaceId.DEFAULT);
       Assert.fail();
     } catch (IOException ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
@@ -119,20 +116,20 @@ public class BasicSecurityTest extends AudiTestBase {
     carolClient.addListener(createRestClientListener());
 
     ApplicationClient applicationClient = new ApplicationClient(carolConfig, carolClient);
-    Id.Namespace namespaceId = Id.Namespace.from(name);
+    NamespaceId namespaceId = new NamespaceId(name);
     try {
-      List<ApplicationRecord> applications = applicationClient.list(namespaceId);
+      applicationClient.list(namespaceId);
       Assert.fail();
     } catch (IOException ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
     // Now authorize the user to access the namespace
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(namespaceId.toEntityId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
-    List<ApplicationRecord> applications = applicationClient.list(namespaceId);
+    authorizationClient.grant(namespaceId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
+    applicationClient.list(namespaceId);
     // Now delete the namespace and make sure that it is deleted
-    getNamespaceClient().delete(namespaceId.toEntityId());
-    Assert.assertFalse(getNamespaceClient().exists(namespaceId.toEntityId()));
+    getNamespaceClient().delete(namespaceId);
+    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
   @Test
@@ -147,8 +144,7 @@ public class BasicSecurityTest extends AudiTestBase {
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
 
-    ApplicationManager applicationManager = getTestManager(bobConfig, bobClient)
-      .deployApplication(Id.Namespace.DEFAULT, PurchaseApp.class);
+    getTestManager(bobConfig, bobClient).deployApplication(NamespaceId.DEFAULT, PurchaseApp.class);
   }
 
   @Test
@@ -166,15 +162,14 @@ public class BasicSecurityTest extends AudiTestBase {
     aliceClient.addListener(createRestClientListener());
 
     try {
-      ApplicationManager applicationManager = getTestManager(aliceConfig, aliceClient)
-        .deployApplication(Id.Namespace.from(name), PurchaseApp.class);
+      getTestManager(aliceConfig, aliceClient).deployApplication(new NamespaceId(name), PurchaseApp.class);
       Assert.fail();
     } catch (Exception ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     } finally {
       // Now delete the namespace and make sure that it is deleted
-      getNamespaceClient().delete(Id.Namespace.from(name).toEntityId());
-      Assert.assertFalse(getNamespaceClient().exists(Id.Namespace.from(name).toEntityId()));
+      getNamespaceClient().delete(new NamespaceId(name));
+      Assert.assertFalse(getNamespaceClient().exists(new NamespaceId(name)));
     }
   }
 
@@ -202,8 +197,8 @@ public class BasicSecurityTest extends AudiTestBase {
     Assert.assertEquals(4, count);
 
     // Now delete the namespace and make sure that it is deleted
-    getNamespaceClient().delete(Id.Namespace.from(name).toEntityId());
-    Assert.assertFalse(getNamespaceClient().exists(Id.Namespace.from(name).toEntityId()));
+    getNamespaceClient().delete(new NamespaceId(name));
+    Assert.assertFalse(getNamespaceClient().exists(new NamespaceId(name)));
 
     // Check if the privileges are deleted
     listPrivileges = authorizationClient.listPrivileges(adminPrincipal);
@@ -224,10 +219,10 @@ public class BasicSecurityTest extends AudiTestBase {
     adminClient.addListener(createRestClientListener());
 
     DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
-    Id.DatasetInstance testDatasetinstance = Id.DatasetInstance.from(Id.Namespace.DEFAULT, "testWriteDataset");
+    DatasetId testDatasetinstance = NamespaceId.DEFAULT.dataset("testWriteDataset");
     datasetAdminClient.create(testDatasetinstance, "table");
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(Id.Namespace.DEFAULT.toEntityId(), new Principal(EVE, USER),
+    authorizationClient.grant(NamespaceId.DEFAULT, new Principal(EVE, USER),
                               Collections.singleton(Action.READ));
     ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);

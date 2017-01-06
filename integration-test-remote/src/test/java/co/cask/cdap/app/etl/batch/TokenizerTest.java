@@ -27,7 +27,6 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -71,93 +70,92 @@ import java.util.concurrent.TimeUnit;
   MapR5Incompatible.class // MapR5x category is used for all MapR version
 })
 public class TokenizerTest extends ETLTestBase {
-    private static final Schema OUTPUT_SCHEMA = Schema.recordOf("outputSchema",
-            Schema.Field.of("words", Schema.arrayOf(Schema.of(Schema.Type.STRING))));
+    private static final Schema OUTPUT_SCHEMA =
+      Schema.recordOf("outputSchema", Schema.Field.of("words", Schema.arrayOf(Schema.of(Schema.Type.STRING))));
 
-    @Test
-    @Ignore
-    public void testTokenizer() throws Exception {
-        String textsToTokenize = "textToTokenize";
-        ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, "/");
-        StreamManager streamManager =
-                getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, textsToTokenize));
-        streamManager.send("cask data/application platform");
-        streamManager.send("spark is/an engine");
-        streamManager.send("cdap belongs/to apache");
-        // manually trigger the pipeline
-        WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-        workflowManager.start();
-        workflowManager.waitForFinish(10, TimeUnit.MINUTES);
-        Assert.assertEquals(getExpected(), getTokenizedMessages());
+  @Test
+  @Ignore
+  public void testTokenizer() throws Exception {
+    String textsToTokenize = "textToTokenize";
+    ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, "/");
+    StreamManager streamManager =
+      getTestManager().getStreamManager(TEST_NAMESPACE.stream(textsToTokenize));
+    streamManager.send("cask data/application platform");
+    streamManager.send("spark is/an engine");
+    streamManager.send("cdap belongs/to apache");
+    // manually trigger the pipeline
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    Assert.assertEquals(getExpected(), getTokenizedMessages());
+  }
+
+  @Test
+  @Ignore
+  public void testTokenizerCommaPattern() throws Exception {
+    String textsToTokenize = "commaToTokenize";
+    ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, ",");
+    StreamManager streamManager = getTestManager().getStreamManager(TEST_NAMESPACE.stream(textsToTokenize));
+    streamManager.send("cask data,application platform");
+    streamManager.send("spark is,an engine");
+    streamManager.send("cdap belongs,to apache");
+    // manually trigger the pipeline
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    Assert.assertEquals(getExpected(), getTokenizedMessages());
+  }
+
+  @Test(expected = NullPointerException.class)
+  @Ignore
+  public void testNullPattern() throws Exception {
+    //pattern is mandatory and if its null then NullPointerException is expected.
+    deployApplication("NegativeTestForPattern", OUTPUT_SCHEMA, null);
+  }
+
+  private ApplicationManager deployApplication(String textsToTokenize, Schema outputSchema, String pattern)
+    throws Exception {
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(new ETLStage("source", new ETLPlugin("Stream", BatchSource.PLUGIN_TYPE,
+                                                     ImmutableMap.of("name", textsToTokenize,
+                                                                     "duration", "1d",
+                                                                     "format", "text"),
+                                                     null)))
+      .addStage(new ETLStage("sparkCompute",
+                             new ETLPlugin("Tokenizer", SparkCompute.PLUGIN_TYPE,
+                                           ImmutableMap.of("outputColumn", "words",
+                                                           "columnToBeTokenized", "body",
+                                                           "pattern", pattern),
+                                           null)))
+      .addStage(new ETLStage("sink", new ETLPlugin("TPFSAvro", BatchSink.PLUGIN_TYPE,
+                                                   ImmutableMap.of("name", "tokenTable",
+                                                                   "schema", outputSchema.toString()),
+                                                   null)))
+      .addConnection("source", "sparkCompute")
+      .addConnection("sparkCompute", "sink")
+      .build();
+    return deployApplication(TEST_NAMESPACE.app("Tokenizer"),
+                             getBatchAppRequestV2(etlConfig));
+  }
+
+  private Set<String> getExpected() {
+    Set<String> expectedSet = new HashSet<>();
+    expectedSet.add("[\"cask data\",\"application platform\"]");
+    expectedSet.add("[\"spark is\",\"an engine\"]");
+    expectedSet.add("[\"cdap belongs\",\"to apache\"]");
+    return expectedSet;
+  }
+
+  private Set<String> getTokenizedMessages() throws ExecutionException, InterruptedException {
+    QueryClient queryClient = new QueryClient(getClientConfig());
+    ExploreExecutionResult exploreExecutionResult =
+      queryClient.execute(TEST_NAMESPACE, "SELECT * FROM dataset_tokenTable").get();
+
+    Set<String> classifiedMessages = new HashSet<>();
+    while (exploreExecutionResult.hasNext()) {
+      List<Object> columns = exploreExecutionResult.next().getColumns();
+      classifiedMessages.add((String) columns.get(0));
     }
-
-    @Test
-    @Ignore
-    public void testTokenizerCommaPattern() throws Exception {
-        String textsToTokenize = "commaToTokenize";
-        ApplicationManager appManager = deployApplication(textsToTokenize, OUTPUT_SCHEMA, ",");
-        StreamManager streamManager =
-                getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, textsToTokenize));
-        streamManager.send("cask data,application platform");
-        streamManager.send("spark is,an engine");
-        streamManager.send("cdap belongs,to apache");
-        // manually trigger the pipeline
-        WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-        workflowManager.start();
-        workflowManager.waitForFinish(10, TimeUnit.MINUTES);
-        Assert.assertEquals(getExpected(), getTokenizedMessages());
-    }
-
-    @Test(expected = NullPointerException.class)
-    @Ignore
-    public void testNullPattern() throws Exception {
-        //pattern is mandatory and if its null then NullPointerException is expected.
-        deployApplication("NegativeTestForPattern", OUTPUT_SCHEMA, null);
-    }
-
-    private ApplicationManager deployApplication(String textsToTokenize, Schema outputSchema, String pattern)
-            throws Exception {
-        ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
-                .addStage(new ETLStage("source", new ETLPlugin("Stream", BatchSource.PLUGIN_TYPE,
-                        ImmutableMap.of("name", textsToTokenize,
-                                "duration", "1d",
-                                "format", "text"),
-                        null)))
-                .addStage(new ETLStage("sparkCompute",
-                        new ETLPlugin("Tokenizer", SparkCompute.PLUGIN_TYPE,
-                                ImmutableMap.of("outputColumn", "words",
-                                        "columnToBeTokenized", "body",
-                                        "pattern", pattern),
-                                null)))
-                .addStage(new ETLStage("sink", new ETLPlugin("TPFSAvro", BatchSink.PLUGIN_TYPE,
-                        ImmutableMap.of("name", "tokenTable",
-                                "schema", outputSchema.toString()),
-                        null)))
-                .addConnection("source", "sparkCompute")
-                .addConnection("sparkCompute", "sink")
-                .build();
-        return deployApplication(Id.Application.from(TEST_NAMESPACE, "Tokenizer"),
-                getBatchAppRequestV2(etlConfig));
-    }
-
-    private Set<String> getExpected() {
-        Set<String> expectedSet = new HashSet<>();
-        expectedSet.add("[\"cask data\",\"application platform\"]");
-        expectedSet.add("[\"spark is\",\"an engine\"]");
-        expectedSet.add("[\"cdap belongs\",\"to apache\"]");
-        return expectedSet;
-    }
-
-    private Set<String> getTokenizedMessages() throws ExecutionException, InterruptedException {
-        QueryClient queryClient = new QueryClient(getClientConfig());
-        ExploreExecutionResult exploreExecutionResult =
-                queryClient.execute(TEST_NAMESPACE_ENTITY, "SELECT * FROM dataset_tokenTable").get();
-
-        Set<String> classifiedMessages = new HashSet<>();
-        while (exploreExecutionResult.hasNext()) {
-            List<Object> columns = exploreExecutionResult.next().getColumns();
-            classifiedMessages.add((String) columns.get(0));
-        }
-        return classifiedMessages;
-    }
+    return classifiedMessages;
+  }
 }

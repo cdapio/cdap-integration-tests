@@ -21,10 +21,9 @@ import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.proto.ApplicationRecord;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
+import co.cask.cdap.proto.id.FlowId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -63,7 +62,7 @@ public class WordCountTest extends AudiTestBase {
     ApplicationClient appClient = getApplicationClient();
     ProgramClient programClient = getProgramClient();
 
-    Id.Program flowId = Id.Program.from(TEST_NAMESPACE, "WordCount", ProgramType.FLOW, "WordCounter");
+    FlowId flowId = TEST_NAMESPACE.app("WordCount").flow("WordCounter");
     Map<String, String> flowTags = getFlowTags(flowId);
     String longestWordLengthMetric = "user.longest.word.length";
 
@@ -82,8 +81,7 @@ public class WordCountTest extends AudiTestBase {
       Assert.assertEquals(ProgramRunStatus.RUNNING, runRecord.getStatus());
       String runId = runRecord.getPid();
 
-      StreamManager wordStream =
-        getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "wordStream"));
+      StreamManager wordStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("wordStream"));
       wordStream.send(wordEvent);
       // make sure we processed the sent event, before starting the workflow
       numWordsProcessed += wordEvent.split(" ").length;
@@ -105,8 +103,8 @@ public class WordCountTest extends AudiTestBase {
     checkMetric(flowTags, longestWordLengthMetric, longestWordLengthAcrossRuns, 30);
   }
 
-  private Map<String, String> getFlowTags(Id.Program flowId) {
-    return ImmutableMap.of("ns", flowId.getNamespaceId(), "app", flowId.getApplicationId(), "fl", flowId.getId());
+  private Map<String, String> getFlowTags(FlowId flowId) {
+    return ImmutableMap.of("ns", flowId.getNamespace(), "app", flowId.getApplication(), "fl", flowId.getProgram());
   }
 
   private Map<String, String> addToTags(Map<String, String> tags, Map<String, String> toAdd) {

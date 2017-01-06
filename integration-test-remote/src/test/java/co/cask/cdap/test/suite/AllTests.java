@@ -45,11 +45,13 @@ import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
+import co.cask.cdap.apps.mapreduce.readless.ReadlessIncrementTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
 import co.cask.cdap.apps.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
+import co.cask.cdap.apps.tracker.TrackerTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
 import co.cask.cdap.apps.workflow.WorkflowTest;
 import co.cask.cdap.operations.OperationalStatsTest;
@@ -91,6 +93,7 @@ import org.junit.runners.Suite;
   PartitionedFileSetUpdateTest.class,
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
+  ReadlessIncrementTest.class,
   RealtimeCubeSinkTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
@@ -103,6 +106,7 @@ import org.junit.runners.Suite;
   SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
   TokenizerTest.class,
+  TrackerTest.class,
   ValueMapperTest.class,
   WordCountTest.class,
   WorkflowTest.class,
