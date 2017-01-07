@@ -33,8 +33,8 @@ import co.cask.cdap.etl.proto.Engine;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
@@ -209,7 +209,7 @@ public class BatchJoinerTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request =  getBatchAppRequestV2(config);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "joiner-test");
+    ApplicationId appId = TEST_NAMESPACE.app("joiner-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
     // ingest data

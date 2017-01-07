@@ -22,12 +22,14 @@ import co.cask.cdap.api.dataset.lib.cube.CubeQuery;
 import co.cask.cdap.api.dataset.lib.cube.TimeSeries;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.etl.common.ETLStage;
-import co.cask.cdap.etl.common.Plugin;
+import co.cask.cdap.etl.api.realtime.RealtimeSink;
+import co.cask.cdap.etl.api.realtime.RealtimeSource;
+import co.cask.cdap.etl.proto.v2.ETLPlugin;
+import co.cask.cdap.etl.proto.v2.ETLRealtimeConfig;
+import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.etl.realtime.ETLWorker;
-import co.cask.cdap.etl.realtime.config.ETLRealtimeConfig;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.WorkerManager;
@@ -35,7 +37,6 @@ import co.cask.hydrator.common.Constants;
 import co.cask.hydrator.plugin.common.Properties;
 import co.cask.hydrator.plugin.realtime.source.DataGeneratorSource;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -51,23 +52,32 @@ public class RealtimeCubeSinkTest extends ETLTestBase {
 
   @Test
   public void test() throws Exception {
-    Plugin sourceConfig = new Plugin("DataGenerator",
-                                     ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.TABLE_TYPE,
-                                                     Constants.Reference.REFERENCE_NAME, "DataGenerator"));
+    ETLStage source =
+      new ETLStage("DataGenSource",
+                   new ETLPlugin("DataGenerator",
+                                 RealtimeSource.PLUGIN_TYPE,
+                                 ImmutableMap.of(DataGeneratorSource.PROPERTY_TYPE, DataGeneratorSource.TABLE_TYPE,
+                                                 Constants.Reference.REFERENCE_NAME, "DataGenerator"),
+                                 null));
     // single aggregation
     String aggregationGroup = "byName:name";
     String measurement = "score:GAUGE";
 
-    Plugin sinkConfig = new Plugin("Cube",
-                                   ImmutableMap.of(Properties.Cube.DATASET_NAME, "cube1",
-                                                   Properties.Cube.AGGREGATIONS, aggregationGroup,
-                                                   Properties.Cube.MEASUREMENTS, measurement));
-    ETLStage source = new ETLStage("DataGenSource", sourceConfig);
+    ETLPlugin sinkConfig = new ETLPlugin("Cube",
+                                         RealtimeSink.PLUGIN_TYPE,
+                                         ImmutableMap.of(Properties.Cube.DATASET_NAME, "cube1",
+                                                         Properties.Cube.AGGREGATIONS, aggregationGroup,
+                                                         Properties.Cube.MEASUREMENTS, measurement),
+                                         null);
     ETLStage sink = new ETLStage("CubeSink", sinkConfig);
 
-    ETLRealtimeConfig etlConfig = new ETLRealtimeConfig(source, sink, Lists.<ETLStage>newArrayList());
+    ETLRealtimeConfig etlConfig = ETLRealtimeConfig.builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .build();
 
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testCubeSink");
+    ApplicationId appId = TEST_NAMESPACE.app("testCubeSink");
     AppRequest<ETLRealtimeConfig> appRequest = getRealtimeAppRequest(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 

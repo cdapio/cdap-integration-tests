@@ -16,7 +16,6 @@
 
 package co.cask.cdap.test;
 
-import co.cask.cdap.api.Config;
 import co.cask.cdap.api.app.Application;
 import co.cask.cdap.api.dataset.Dataset;
 import co.cask.cdap.api.dataset.DatasetAdmin;
@@ -24,21 +23,17 @@ import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.lib.cube.Cube;
 import co.cask.cdap.api.dataset.table.Table;
-import co.cask.cdap.cli.util.InstanceURIParser;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.client.config.ClientConfig;
-import co.cask.cdap.client.config.ConnectionConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.DatasetInstanceConfiguration;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.MetricQueryResult;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.cube.CubeDatasetApp;
 import co.cask.cdap.remote.dataset.cube.RemoteCube;
@@ -46,8 +41,6 @@ import co.cask.cdap.remote.dataset.kvtable.KVTableDatasetApp;
 import co.cask.cdap.remote.dataset.kvtable.RemoteKeyValueTable;
 import co.cask.cdap.remote.dataset.table.RemoteTable;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
-import co.cask.cdap.security.authentication.client.AccessToken;
-import co.cask.cdap.security.authentication.client.basic.BasicAuthenticationClient;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
@@ -60,17 +53,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import javax.annotation.Nullable;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -85,8 +73,7 @@ public class AudiTestBase extends IntegrationTestBase {
   // For now, make it same as PROGRAM_START_STOP_TIMEOUT_SECONDS.
   protected static final int PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
 
-  protected static final Id.Namespace TEST_NAMESPACE = getConfiguredNamespace().toId();
-  protected static final NamespaceId TEST_NAMESPACE_ENTITY = getConfiguredNamespace();
+  protected static final NamespaceId TEST_NAMESPACE = getConfiguredNamespace();
 
   // avoid logging of HttpRequest's body by default, to avoid verbose logging
   private static final int logBodyLimit = Integer.valueOf(System.getProperty("logRequestBodyLimit", "0"));
@@ -159,7 +146,7 @@ public class AudiTestBase extends IntegrationTestBase {
     return timeValues[0].getValue();
   }
 
-  protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final Id.Program program,
+  protected List<RunRecord> getRunRecords(int expectedSize, final ProgramClient programClient, final ProgramId program,
                                           final String status, final long startTime, final long endTime)
     throws Exception {
     final List<RunRecord> runRecords = new ArrayList<>();
@@ -177,8 +164,8 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   protected void assertRuns(int count, ProgramClient programClient,
-                            ProgramRunStatus expectedStatus,  Id.Program... programIds) throws Exception {
-    for (Id.Program programId : programIds) {
+                            ProgramRunStatus expectedStatus, ProgramId... programIds) throws Exception {
+    for (ProgramId programId : programIds) {
       List<RunRecord> runRecords =
         getRunRecords(count, programClient, programId, expectedStatus.name(), 0, Long.MAX_VALUE);
       Assert.assertEquals(count, runRecords.size());
@@ -188,25 +175,11 @@ public class AudiTestBase extends IntegrationTestBase {
     }
   }
 
-  // TODO: move the following four methods into IntegrationTestBase
-  protected <T> DataSetManager<T> getDataset(String datasetName) throws Exception {
-    return getTestManager().getDataset(TEST_NAMESPACE, datasetName);
-  }
-
-  protected ApplicationManager deployApplication(Id.Application appId, AppRequest appRequest) throws Exception {
-    return getTestManager().deployApplication(appId, appRequest);
-  }
-
-  protected ApplicationManager deployApplication(Id.Namespace namespace, Class<? extends Application> applicationClz,
-                                                 Config configObject) {
-    return getTestManager().deployApplication(namespace, applicationClz, configObject);
-  }
-
   @SuppressWarnings("unchecked")
-  protected final <T extends DatasetAdmin> T addDatasetInstance(Id.Namespace namespace,
+  protected final <T extends DatasetAdmin> T addDatasetInstance(NamespaceId namespace,
                                                                 String datasetTypeName, String datasetInstanceName,
                                                                 DatasetProperties props) throws Exception {
-    Id.DatasetInstance datasetInstance = Id.DatasetInstance.from(namespace, datasetInstanceName);
+    DatasetId datasetInstance = namespace.dataset(datasetInstanceName);
     DatasetInstanceConfiguration dsConf = new DatasetInstanceConfiguration(datasetTypeName, props.getProperties());
 
     DatasetClient datasetClient = getDatasetClient();
@@ -222,12 +195,13 @@ public class AudiTestBase extends IntegrationTestBase {
   }
 
   protected DataSetManager<KeyValueTable> getKVTableDataset(String datasetName) throws Exception {
-    return wrap(new RemoteKeyValueTable(deployServiceForDataset(TEST_NAMESPACE, KVTableDatasetApp.class, datasetName),
-                                        getRestClient(), getClientConfig()));
+    return wrap(new RemoteKeyValueTable(
+      deployServiceForDataset(TEST_NAMESPACE, KVTableDatasetApp.class, datasetName),
+      getRestClient(), getClientConfig()));
   }
 
   protected DataSetManager<KeyValueTable> getKVTableDataset(DatasetId datasetId) throws Exception {
-    return wrap(new RemoteKeyValueTable(deployServiceForDataset(Id.Namespace.from(datasetId.getNamespace()),
+    return wrap(new RemoteKeyValueTable(deployServiceForDataset(datasetId.getParent(),
                                                                 KVTableDatasetApp.class, datasetId.getDataset()),
                                         getRestClient(), getClientConfig()));
   }
@@ -239,10 +213,10 @@ public class AudiTestBase extends IntegrationTestBase {
 
   // ensures that the Service for the dataset is deployed and running
   // returns its baseURL
-  private URL deployServiceForDataset(Id.Namespace namespace, Class<? extends Application> applicationClz,
+  private URL deployServiceForDataset(NamespaceId namespace, Class<? extends Application> applicationClz,
                                       String datasetName) throws Exception {
-    ApplicationManager appManager =
-      deployApplication(namespace, applicationClz, new AbstractDatasetApp.DatasetConfig(datasetName));
+    ApplicationManager appManager = getTestManager()
+      .deployApplication(namespace, applicationClz, new AbstractDatasetApp.DatasetConfig(datasetName));
     ServiceManager serviceManager =
       appManager.getServiceManager(AbstractDatasetApp.DatasetService.class.getSimpleName());
 

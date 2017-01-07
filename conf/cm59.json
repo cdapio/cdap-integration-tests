@@ -1,0 +1,10 @@
+{
+  "config": {
+    "coopr_base_to_cm": {
+      "--sentry": ""
+    },
+    "cloudera_manager": {
+      "distribution_version": "5.9"
+    }
+  }
+}

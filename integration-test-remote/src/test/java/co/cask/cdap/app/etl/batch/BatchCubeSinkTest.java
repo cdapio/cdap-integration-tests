@@ -25,19 +25,20 @@ import co.cask.cdap.api.dataset.lib.cube.TimeSeries;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
-import co.cask.cdap.etl.batch.config.ETLBatchConfig;
-import co.cask.cdap.etl.batch.mapreduce.ETLMapReduce;
-import co.cask.cdap.etl.common.ETLStage;
-import co.cask.cdap.etl.common.Plugin;
-import co.cask.cdap.proto.Id;
+import co.cask.cdap.datapipeline.SmartWorkflow;
+import co.cask.cdap.etl.api.batch.BatchSink;
+import co.cask.cdap.etl.api.batch.BatchSource;
+import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
+import co.cask.cdap.etl.proto.v2.ETLPlugin;
+import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
-import co.cask.cdap.test.MapReduceManager;
+import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.batch.sink.BatchCubeSink;
 import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -59,24 +60,33 @@ public class BatchCubeSinkTest extends ETLTestBase {
       Schema.Field.of("count", Schema.of(Schema.Type.INT))
     );
 
-    ETLStage source = new ETLStage("tableSource", new Plugin("Table",
-                                                             ImmutableMap.of(
-                                                               Properties.BatchReadableWritable.NAME, "inputTable",
-                                                               Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
-                                                               Properties.Table.PROPERTY_SCHEMA, schema.toString())));
+    ETLStage source = new ETLStage("tableSource",
+                                   new ETLPlugin("Table",
+                                                 BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(
+                                                   Properties.BatchReadableWritable.NAME, "inputTable",
+                                                   Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
+                                                   Properties.Table.PROPERTY_SCHEMA, schema.toString()),
+                                                 null));
 
     String aggregationGroup = "byUser:user";
     String measurement = "count:COUNTER";
     ETLStage sink =
-      new ETLStage("CubeSink", new Plugin("Cube",
-                                          ImmutableMap.of(Properties.Cube.DATASET_NAME, "batch_cube",
-                                                          Properties.Cube.AGGREGATIONS, aggregationGroup,
-                                                          Properties.Cube.MEASUREMENTS, measurement)));
+      new ETLStage("CubeSink", new ETLPlugin("Cube",
+                                             BatchSink.PLUGIN_TYPE,
+                                             ImmutableMap.of(Properties.Cube.DATASET_NAME, "batch_cube",
+                                                             Properties.Cube.AGGREGATIONS, aggregationGroup,
+                                                             Properties.Cube.MEASUREMENTS, measurement),
+                                             null));
 
-    ETLBatchConfig etlConfig = new ETLBatchConfig("* * * * *", source, sink, Lists.<ETLStage>newArrayList());
+    ETLBatchConfig batchConfig = ETLBatchConfig.builder("* * * * *")
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .build();
 
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequest(etlConfig);
-    Id.Application appId = Id.Application.from(TEST_NAMESPACE, "testCubeAdapter");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(batchConfig);
+    ApplicationId appId = TEST_NAMESPACE.app("testCubeAdapter");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // add some data to the input table
@@ -92,9 +102,9 @@ public class BatchCubeSinkTest extends ETLTestBase {
 
     long startTs = System.currentTimeMillis() / 1000;
 
-    MapReduceManager mrManager = appManager.getMapReduceManager(ETLMapReduce.NAME);
-    mrManager.start();
-    mrManager.waitForFinish(5, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start();
+    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
 
     long endTs = System.currentTimeMillis() / 1000;
 

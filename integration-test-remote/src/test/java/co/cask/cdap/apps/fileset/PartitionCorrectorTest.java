@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -34,7 +34,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
@@ -69,8 +68,8 @@ public class PartitionCorrectorTest extends AudiTestBase {
     QueryClient queryClient = new QueryClient(getClientConfig());
     validate(queryClient, 100);
 
-    dropPartitionsAndCorrect(applicationManager, Collections.<String, String>emptyMap());
-    dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("disable.explore", "false", "batch.size", "10"));
+    dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("batch.size", "20"));
+    dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("disable.explore", "false", "batch.size", "20"));
   }
 
   private void dropPartitionsAndCorrect(ApplicationManager applicationManager, Map<String, String> args)
@@ -79,7 +78,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
     // delete about half of the partitions directly in hive
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult results = queryClient
-      .execute(TEST_NAMESPACE_ENTITY, "alter table dataset_pfs drop partition (key>'49')").get();
+      .execute(TEST_NAMESPACE, "alter table dataset_pfs drop partition (key>'49')").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     validate(queryClient, 45); // (5-9, 50-99 were dropped)
 
@@ -93,11 +92,11 @@ public class PartitionCorrectorTest extends AudiTestBase {
   private void validate(QueryClient client, int expected)
     throws ExecutionException, InterruptedException, ExploreException {
 
-    ExploreExecutionResult results = client.execute(TEST_NAMESPACE_ENTITY, "show partitions dataset_pfs").get();
+    ExploreExecutionResult results = client.execute(TEST_NAMESPACE, "show partitions dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     Assert.assertEquals(expected, Iterators.size(results));
 
-    results = client.execute(TEST_NAMESPACE_ENTITY, "select * from dataset_pfs").get();
+    results = client.execute(TEST_NAMESPACE, "select * from dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     Assert.assertEquals(expected, Iterators.size(results));
   }

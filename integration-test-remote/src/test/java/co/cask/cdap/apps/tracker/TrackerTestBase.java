@@ -21,7 +21,6 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.audit.AuditMessage;
 import co.cask.cdap.proto.audit.AuditPayload;
 import co.cask.cdap.proto.audit.AuditType;
@@ -43,7 +42,7 @@ import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import co.cask.tracker.TrackerApp;
 import co.cask.tracker.TrackerService;
-import co.cask.tracker.config.AuditLogKafkaConfig;
+import co.cask.tracker.config.AuditLogConfig;
 import co.cask.tracker.config.TrackerAppConfig;
 import co.cask.tracker.entity.AuditHistogramResult;
 import co.cask.tracker.entity.AuditLogResponse;
@@ -96,15 +95,15 @@ public class TrackerTestBase extends AudiTestBase {
   protected void enableTracker()
     throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException {
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
-    ApplicationManager applicationManager = deployApplication(Id.Namespace.DEFAULT, TestTrackerApp.class,
-                                                              new TrackerAppConfig(new AuditLogKafkaConfig(
-                                                              zookeeperQuorum,
-                                                              null, null, 0, "offsetDataset")));
+    TrackerAppConfig appConfig =
+      new TrackerAppConfig(new AuditLogConfig(zookeeperQuorum, null, null, null, null));
+    ApplicationManager applicationManager = getTestManager().deployApplication(
+      NamespaceId.DEFAULT, TestTrackerApp.class, appConfig);
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
     trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    trackerStream = getTestManager().getStreamManager(Id.Stream.from(TEST_NAMESPACE, "testStream"));
+    trackerStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("testStream"));
     serviceURL = trackerService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
@@ -246,7 +245,7 @@ public class TrackerTestBase extends AudiTestBase {
 
   protected AuditHistogramResult getKafkaFilter() throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlKafkaFilter = new URL(serviceURL, "v1/auditmetrics/audit-histogram?entityType=dataset&entityName="
-                                             + AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET);
+                                             + AuditLogConfig.DEFAULT_OFFSET_DATASET);
     HttpResponse response = restClient.execute(HttpRequest.get(urlKafkaFilter).build(),
                                                getClientConfig().getAccessToken());
     return GSON.fromJson(response.getResponseBodyAsString(), AuditHistogramResult.class);
@@ -447,7 +446,7 @@ public class TrackerTestBase extends AudiTestBase {
                  )
     );
     testData.add(new AuditMessage(1456956659513L,
-                                  NamespaceId.DEFAULT.dataset(AuditLogKafkaConfig.DEFAULT_OFFSET_DATASET),
+                                  NamespaceId.DEFAULT.dataset(AuditLogConfig.DEFAULT_OFFSET_DATASET),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
