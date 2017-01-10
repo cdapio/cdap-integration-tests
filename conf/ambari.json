@@ -7,12 +7,12 @@
     "cdap": {
       "repo": {
         "apt_repo_url": "",
-        "yum_repo_url": "file:///tmp/cdap-yum-repo/4.0",
-        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.0/pubkey.gpg"
+        "yum_repo_url": "file:///tmp/cdap-yum-repo/4.1",
+        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.1/pubkey.gpg"
       },
-      "version": "4.0.0-1",
+      "version": "4.1.0-1",
       "ambari": {
-        "version": "4.0.0-1"
+        "version": "4.1.0-1"
       }
     }
   },
