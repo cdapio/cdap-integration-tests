@@ -6,7 +6,6 @@
   "config": {
     "cdap": {
       "repo": {
-        "apt_repo_url": "",
         "yum_repo_url": "file:///tmp/cdap-yum-repo/4.1",
         "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.1/pubkey.gpg"
       },
