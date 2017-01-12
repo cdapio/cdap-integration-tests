@@ -128,6 +128,8 @@ public class DataStreamsTest extends ETLTestBase {
       .addConnection("source", "agg")
       .addConnection("agg", "sink")
       .setBatchInterval("60s")
+      // stop gracefully to false so it shuts down on time
+      .setStopGracefully(false)
       .build();
 
     ApplicationId appId = TEST_NAMESPACE.app("kafkaStreaming");
@@ -162,8 +164,7 @@ public class DataStreamsTest extends ETLTestBase {
     }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
 
     sparkManager.stop();
-    // Change wait time to PROGRAM_START_STOP_TIMEOUT_SECONDS once CDAP-7724 is fixed
-    sparkManager.waitForStatus(false, 5 * 60, 1);
+    sparkManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
   }
 
   private KafkaProducer<String, String> getKafkaProducer() {
