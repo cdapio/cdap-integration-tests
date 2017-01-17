@@ -4,7 +4,7 @@
       "services": {
         "cdap": {
           "serviceConfigs": {
-            "security_authorization_extension_jar_path":"/data/cloudera/parcels/CDAP/master/ext/security/cdap-sentry-binding-0.3.0-SNAPSHOT.jar"
+            "security_authorization_extension_jar_path":"/data/cloudera/parcels/CDAP/master/ext/security/cdap-sentry-binding-0.4.0-SNAPSHOT.jar"
           }
         }
       }
