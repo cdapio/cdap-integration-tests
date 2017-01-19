@@ -2,11 +2,37 @@
   "config": {
     "hadoop": {
       "distribution": "hdp",
-      "distribution_version": "2.0.13.0"
+      "distribution_version": "2.0.13.0",
+      "core_site": {
+        "hadoop.security.authentication": "simple",
+        "hadoop.security.authorization": "false"
+      },
+      "hdfs_site": {
+        "dfs.webhdfs.enabled": "false"
+      }
+    },
+    "hbase": {
+      "hbase_site": {
+        "hbase.security.authentication": "simple",
+        "hbase.security.authorization": "false"
+      }
     },
     "hive": {
       "hive_site": {
-        "hive.metastore.ds.retry.attempts": "0"
+        "hive.metastore.ds.retry.attempts": "0",
+        "hive.metastore.sasl.enabled": "false",
+        "hive.server2.authentication": "NONE"
+      }
+    },
+    "cdap": {
+      "cdap_site": {
+        "hdfs.user": "yarn",
+        "kerberos.auth.enabled": "false"
+      }
+    },
+    "zookeeper": {
+      "zoocfg": {
+        "authProvider.1": ""
       }
     }
   }
