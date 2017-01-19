@@ -2,12 +2,38 @@
   "config": {
     "hadoop": {
       "distribution": "cdh",
-      "distribution_version": "5.2.6"
+      "distribution_version": "5.2.6",
+      "core_site": {
+        "hadoop.security.authentication": "simple",
+        "hadoop.security.authorization": "false"
+      },
+      "hdfs_site": {
+        "dfs.webhdfs.enabled": "false"
+      }
+    },
+    "hbase": {
+      "hbase_site": {
+        "hbase.security.authentication": "simple",
+        "hbase.security.authorization": "false"
+      }
     },
     "hive": {
       "hive_site": {
         "javax.jdo.option.ConnectionDriverName": "org.apache.derby.jdbc.EmbeddedDriver",
-        "javax.jdo.option.ConnectionURL": "jdbc:derby:;databaseName=/var/lib/hive/metastore/metastore_db;create=true"
+        "javax.jdo.option.ConnectionURL": "jdbc:derby:;databaseName=/var/lib/hive/metastore/metastore_db;create=true",
+        "hive.metastore.sasl.enabled": "false",
+        "hive.server2.authentication": "NONE"
+      }
+    },
+    "cdap": {
+      "cdap_site": {
+        "hdfs.user": "yarn",
+        "kerberos.auth.enabled": "false"
+      }
+    },
+    "zookeeper": {
+      "zoocfg": {
+        "authProvider.1": ""
       }
     }
   }
