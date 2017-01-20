@@ -7,6 +7,11 @@
         "stream.container.memory.mb": "512",
         "messaging.container.memory.mb": "257"
       }
+    },
+    "hadoop": {
+      "yarn_site": {
+        "yarn.nodemanager.resource.cpu-vcores": "128"
+      }
     }
   }
 }
