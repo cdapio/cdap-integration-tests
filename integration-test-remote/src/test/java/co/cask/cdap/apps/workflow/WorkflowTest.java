@@ -45,13 +45,14 @@ import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
-import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
@@ -166,11 +167,12 @@ public class WorkflowTest extends AudiTestBase {
 
   private void testWorkflow(WorkflowManager workflowManager, WikipediaPipelineApp.WikipediaAppConfig config,
                             @Nullable Integer threshold) throws Exception {
-    if (threshold == null) {
-      workflowManager.start();
-    } else {
-      workflowManager.start(ImmutableMap.of("min.pages.threshold", String.valueOf(threshold)));
+    Map<String, String> args = new HashMap<>();
+    args.put("system.resources.memory", "1024");
+    if (threshold != null) {
+      args.put("min.pages.threshold", String.valueOf(threshold));
     }
+    workflowManager.start(args);
     workflowManager.waitForFinish(15, TimeUnit.MINUTES);
     String pid = getLatestPid(workflowManager.getHistory());
     WorkflowTokenNodeDetail tokenAtCondition =
