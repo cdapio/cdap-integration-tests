@@ -4,7 +4,7 @@
       "cdap_site": {
         "explore.enabled": "true"
       },
-      "version": "4.1.0-1"
+      "version": "4.2.0-1"
     },
     "hadoop": {
       "hdfs_site": {
