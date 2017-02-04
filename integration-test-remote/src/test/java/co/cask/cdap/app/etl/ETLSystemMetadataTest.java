@@ -20,10 +20,10 @@ import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
+import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
-import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,7 +46,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     Set<MetadataSearchResultRecord> result =
       searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-etl-batch", null);
     Assert.assertEquals(expected, result);
-    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-etl-b*", MetadataSearchTargetType.ARTIFACT);
+    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-etl-b*", EntityTypeSimpleName.ARTIFACT);
     Assert.assertEquals(expected, result);
     ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
     List<ArtifactSummary> allCorePlugins = artifactClient.listVersions(TEST_NAMESPACE, "core-plugins",
@@ -55,7 +55,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     String corePluginsVersion = allCorePlugins.get(0).getVersion();
     ArtifactId corePlugins = NamespaceId.SYSTEM.artifact("core-plugins", corePluginsVersion);
     expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
-    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "table", MetadataSearchTargetType.ARTIFACT);
+    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "table", EntityTypeSimpleName.ARTIFACT);
     Assert.assertEquals(expected, result);
     // Searching in some user namespace should also surface entities from the system namespace
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
@@ -70,7 +70,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
   
   private Set<MetadataSearchResultRecord> searchMetadata(MetadataClient metadataClient,
                                                          NamespaceId namespace, String query,
-                                                         MetadataSearchTargetType targetType) throws Exception {
+                                                         EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
       metadataClient.searchMetadata(namespace.toId(), query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
