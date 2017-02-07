@@ -1,0 +1,26 @@
+{
+  "config": {
+    "cdap": {
+      "cdap_site": {
+        "metrics.processor.memory.mb": "257",
+        "log.saver.container.memory.mb": "513",
+        "metrics.memory.mb": "259",
+        "data.tx.memory.mb": "260",
+        "stream.container.memory.mb": "258"
+      }
+    },
+    "hadoop_mapr": {
+      "distribution_version": "5.1.0",
+      "yarn_site": {
+        "yarn.scheduler.minimum-allocation-mb": "768"
+      }
+    },
+    "java": {
+      "install_flavor": "openjdk",
+      "jdk_version": "8"
+    }
+  },
+  "provider-fields": {
+    "google_data_disk_size_gb": "200,200"
+  }
+}
