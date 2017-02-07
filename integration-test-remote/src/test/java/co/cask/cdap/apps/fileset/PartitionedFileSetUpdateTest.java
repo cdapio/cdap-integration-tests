@@ -22,6 +22,7 @@ import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.explore.service.ExploreException;
 import co.cask.cdap.proto.ColumnDesc;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -67,7 +68,7 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(PFSApp.class);
 
     ServiceManager pfsService = applicationManager.getServiceManager("PFSService").start();
-    pfsService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    pfsService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, "1")).build(),

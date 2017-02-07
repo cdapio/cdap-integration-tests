@@ -28,6 +28,7 @@ import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.security.authentication.client.AccessToken;
@@ -65,7 +66,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     String fileSetName = UploadFile.FileSetService.class.getSimpleName();
     ServiceManager serviceManager = applicationManager.getServiceManager(fileSetName);
     serviceManager.start();
-    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL url = new URL(serviceURL, "excelreader/create");

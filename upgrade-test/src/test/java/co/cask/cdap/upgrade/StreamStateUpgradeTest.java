@@ -18,6 +18,7 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.helloworld.HelloWorld;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.StreamManager;
@@ -37,7 +38,7 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
     whoStream.send("test1");
 
     FlowManager flowManager = applicationManager.getFlowManager("WhoFlow").start();
-    flowManager.waitForStatus(true, 60, 1);
+    flowManager.waitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     // it should process the stream event
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("saver");
@@ -67,7 +68,7 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
     Assert.assertEquals(1, flowletMetrics.getProcessed());
 
     flowManager.start();
-    flowManager.waitForStatus(true, 60, 1);
+    flowManager.waitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     // it should process the second stream event
     flowletMetrics.waitForProcessed(2, 60, TimeUnit.SECONDS);

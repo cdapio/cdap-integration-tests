@@ -18,6 +18,7 @@ package co.cask.cdap.apps.mapreduce.readless;
 
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -35,6 +36,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -52,7 +54,8 @@ public class ReadlessIncrementTest extends AudiTestBase {
 
   @Test
   public void testReadlessIncrementsInMapReduce()
-    throws IOException, InterruptedException, TimeoutException, UnauthenticatedException, UnauthorizedException {
+    throws IOException, InterruptedException, TimeoutException, UnauthenticatedException,
+    UnauthorizedException, ExecutionException {
 
     ApplicationManager appManager = deployApplication(ReadlessApp.class);
 
@@ -64,7 +67,7 @@ public class ReadlessIncrementTest extends AudiTestBase {
       mapReduceManager.start();
       mapReduceManager.waitForFinish(5, TimeUnit.MINUTES);
 
-      serviceManager.waitForStatus(true);
+      serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.SECONDS);
       URL url = new URL(serviceManager.getServiceURL(), "get");
       HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken(),
                                                       HttpURLConnection.HTTP_OK);

@@ -27,6 +27,7 @@ import co.cask.cdap.etl.api.streaming.StreamingSource;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
@@ -148,7 +149,7 @@ public class DataStreamsTest extends ETLTestBase {
 
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
     sparkManager.start();
-    sparkManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    sparkManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     final DataSetManager<Table> tableManager = getTableDataset(outputTableName);
     Tasks.waitFor(true, new Callable<Boolean>() {
@@ -162,7 +163,7 @@ public class DataStreamsTest extends ETLTestBase {
     }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
 
     sparkManager.stop();
-    sparkManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    sparkManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   private KafkaProducer<String, String> getKafkaProducer() {

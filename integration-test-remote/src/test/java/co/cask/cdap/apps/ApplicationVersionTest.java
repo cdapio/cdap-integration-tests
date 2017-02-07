@@ -20,6 +20,7 @@ import co.cask.cdap.ConfigTestApp;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.ServiceClient;
 import co.cask.cdap.common.UnauthenticatedException;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Tests creating Application with version
@@ -69,7 +71,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Start the service in ConfigTestApp v1
     ServiceManager serviceManagerV1 = appManagerV1.getServiceManager(ConfigTestApp.SERVICE_NAME);
     serviceManagerV1.start();
-    serviceManagerV1.waitForStatus(true, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Verify the service in ConfigTestApp v1 returns correct responses
     URL urlV1 = new URL(serviceManagerV1.getServiceURL(), "ping");
@@ -95,9 +97,9 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Start the service after stopping the original service and verify that updated response is returned
     serviceManagerV1.stop();
-    serviceManagerV1.waitForStatus(false, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     serviceManagerV1.start();
-    serviceManagerV1.waitForStatus(true, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     response = getRestClient().execute(HttpRequest.get(urlV1).build(), getClientConfig().getAccessToken(),
                                        HttpURLConnection.HTTP_OK);
     Assert.assertEquals(200, response.getResponseCode());
@@ -113,7 +115,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Start the service in ConfigTestApp v2
     ServiceManager serviceManagerV2 = appManagerV2.getServiceManager(ConfigTestApp.SERVICE_NAME);
     serviceManagerV2.start();
-    serviceManagerV2.waitForStatus(true, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV2.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Verify that the services in ConfigTestApp v1 and v2 are running concurrently and returning correct response
     response = getRestClient().execute(HttpRequest.get(urlV1).build(), getClientConfig().getAccessToken(),
@@ -136,9 +138,9 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // stop both services
     serviceManagerV1.stop();
-    serviceManagerV1.waitForStatus(false, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     serviceManagerV2.stop();
-    serviceManagerV2.waitForStatus(false, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV2.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   @Test
@@ -154,7 +156,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Start the service in ConfigTestApp v1
     ServiceManager serviceManagerV1 = appManagerV1.getServiceManager(ConfigTestApp.SERVICE_NAME);
     serviceManagerV1.start();
-    serviceManagerV1.waitForStatus(true, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Verify that calling non-versioned service endpoint of ping method is routed to ConfigTestApp v1
     String pingMethod = "ping";
@@ -186,7 +188,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Start the service in ConfigTestApp v2
     ServiceManager serviceManagerV2 = appManagerV2.getServiceManager(ConfigTestApp.SERVICE_NAME);
     serviceManagerV2.start();
-    serviceManagerV2.waitForStatus(true, 80, 1);
+    serviceManagerV2.waitForRun(ProgramRunStatus.RUNNING, 80, TimeUnit.SECONDS);
 
     URL urlV2 = new URL(serviceManagerV2.getServiceURL(), "ping");
     response = getRestClient().execute(HttpRequest.get(urlV2).build(), getClientConfig().getAccessToken(),
@@ -239,7 +241,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Stop service v1
     serviceManagerV1.stop();
-    serviceManagerV1.waitForStatus(false, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Cannot delete the namespace because service v2 is running
     try {
@@ -251,7 +253,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Stop service v2 and delete the namespace successfully
     serviceManagerV2.stop();
-    serviceManagerV2.waitForStatus(false, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS);
+    serviceManagerV2.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   private void storeInvalidRouteConfig(Map<String, Integer> routeConfig, String expectedMsg) throws Exception {

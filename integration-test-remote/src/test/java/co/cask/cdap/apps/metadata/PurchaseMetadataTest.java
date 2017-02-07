@@ -114,7 +114,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getEntityName()).start();
-    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseFlow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     StreamManager purchaseStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
@@ -144,11 +144,13 @@ public class PurchaseMetadataTest extends AudiTestBase {
       applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getEntityName());
 
     purchaseFlow.stop();
-    purchaseFlow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseFlow.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryBuilderManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.RUNNING,
+                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.RUNNING,
+                                             PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 10 minutes for the mapreduce to finish
     purchaseHistoryBuilderManager.waitForFinish(10, TimeUnit.MINUTES);
     purchaseHistoryWorkflowManager.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -590,7 +592,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
   // starts service, makes a handler call, stops it and finally returns the runId of the completed run
   private String makePurchaseHistoryServiceCallAndReturnRunId(ServiceManager purchaseHistoryService) throws Exception {
     purchaseHistoryService.start();
-    purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL serviceURL = purchaseHistoryService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL historyURL = new URL(serviceURL, "history/Milo");

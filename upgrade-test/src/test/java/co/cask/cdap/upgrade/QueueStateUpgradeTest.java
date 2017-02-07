@@ -18,6 +18,7 @@ package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.examples.appwithsleepingflowlet.AppWithSleepingFlowlet;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.StreamManager;
@@ -35,7 +36,7 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
   protected void preStage() throws Exception {
     ApplicationManager appManager = deployApplication(AppWithSleepingFlowlet.class);
     FlowManager flowManager = appManager.getFlowManager("FlowWithSleepingFlowlet").start();
-    flowManager.waitForStatus(true, 60, 1);
+    flowManager.waitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     RuntimeMetrics streamFlowlet = flowManager.getFlowletMetrics("streamFlowlet");
     RuntimeMetrics sleepingFlowlet = flowManager.getFlowletMetrics("sleepingFlowlet");
@@ -80,7 +81,7 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
     Assert.assertNotEquals(EVENT_COUNT, sleepingFlowlet.getProcessed());
 
     flowManager.start();
-    flowManager.waitForStatus(true, 60, 1);
+    flowManager.waitForRun(ProgramRunStatus.RUNNING, 60, TimeUnit.SECONDS);
 
     // after starting the flow, it should process the events that were on the inter-flowlet queue
     sleepingFlowlet.waitForProcessed(EVENT_COUNT, 60, TimeUnit.SECONDS);

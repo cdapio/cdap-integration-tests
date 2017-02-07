@@ -24,6 +24,7 @@ import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
 import co.cask.cdap.gateway.handlers.UsageHandler;
 import co.cask.cdap.proto.DatasetMeta;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
@@ -98,9 +99,9 @@ public class DatasetTest extends AudiTestBase {
     Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
 
     FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-    flowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    flowManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
-    wordCountService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    wordCountService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     StreamManager wordStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("wordStream"));
     wordStream.send("hello world");

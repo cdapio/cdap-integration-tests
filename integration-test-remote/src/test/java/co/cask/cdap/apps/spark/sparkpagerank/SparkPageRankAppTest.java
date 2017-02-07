@@ -118,7 +118,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
 
     // Start service
     ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getEntityName()).start();
-    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     Assert.assertTrue(serviceManager.isRunning());
 
     // Start Spark Page Rank and await completion
@@ -140,7 +140,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
         return (status == ProgramRunStatus.RUNNING || status == ProgramRunStatus.COMPLETED);
       }
     }, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-    pageRankManager.waitForStatus(false, 10 * 60, 1);
+    pageRankManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     List<RunRecord> sparkRanRecords =
       getRunRecords(1, programClient, PAGE_RANK_PROGRAM,
@@ -150,9 +150,9 @@ public class SparkPageRankAppTest extends AudiTestBase {
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(
       RANKS_COUNTER_PROGRAM.getEntityName());
     ranksCounterManager.start();
-    ranksCounterManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    ranksCounterManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 10 minutes for the mapreduce to execute
-    ranksCounterManager.waitForStatus(false, 10 * 60, 1);
+    ranksCounterManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     List<RunRecord> mrRanRecords =
       getRunRecords(1, programClient, RANKS_COUNTER_PROGRAM,
@@ -176,7 +176,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
 
     serviceManager.stop();
-    serviceManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    serviceManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     List<RunRecord> serviceRanRecords =
       getRunRecords(1, programClient, PAGE_RANK_SERVICE,

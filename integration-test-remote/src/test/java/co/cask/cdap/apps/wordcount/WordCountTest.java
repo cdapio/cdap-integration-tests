@@ -72,7 +72,7 @@ public class WordCountTest extends AudiTestBase {
 
     for (String wordEvent : wordEvents) {
       FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-      flowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+      flowManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
       List<RunRecord> runningRecords =
         getRunRecords(1, programClient, flowId, ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
       //There should only be one run that is running
@@ -96,7 +96,7 @@ public class WordCountTest extends AudiTestBase {
       checkMetric(addToTags(flowTags, ImmutableMap.of("run", runId)), longestWordLengthMetric, longestWordLength, 10);
 
       flowManager.stop();
-      flowManager.waitForStatus(false, 30, 1);
+      flowManager.waitForRun(ProgramRunStatus.COMPLETED, 30, TimeUnit.SECONDS);
     }
 
     // Check user metrics sum aggregated across runs
