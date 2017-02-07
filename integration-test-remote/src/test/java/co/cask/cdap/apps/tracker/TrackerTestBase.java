@@ -21,6 +21,7 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.audit.AuditMessage;
 import co.cask.cdap.proto.audit.AuditPayload;
 import co.cask.cdap.proto.audit.AuditType;
@@ -68,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -93,16 +95,18 @@ public class TrackerTestBase extends AudiTestBase {
   private URL serviceURL;
 
   protected void enableTracker()
-    throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException {
+    throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException,
+    TimeoutException, ExecutionException {
+
     String zookeeperQuorum = getMetaClient().getCDAPConfig().get(Constants.Zookeeper.QUORUM).getValue();
     TrackerAppConfig appConfig =
       new TrackerAppConfig(new AuditLogConfig(zookeeperQuorum, null, null, null, null));
     ApplicationManager applicationManager = getTestManager().deployApplication(
       NamespaceId.DEFAULT, TestTrackerApp.class, appConfig);
     trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
-    trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    trackerService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
-    trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    trackerFlow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     trackerStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("testStream"));
     serviceURL = trackerService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }

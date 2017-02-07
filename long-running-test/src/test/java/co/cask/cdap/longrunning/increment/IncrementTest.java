@@ -21,6 +21,7 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
@@ -54,7 +55,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   public void stop() throws Exception {
     FlowManager flowManager = getApplicationManager().getFlowManager(IncrementApp.IncrementFlow.NAME);
     flowManager.stop();
-    flowManager.waitForStatus(false);
+    flowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.SECONDS);
   }
 
   private ApplicationManager getApplicationManager() throws Exception {

@@ -26,6 +26,7 @@ import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.proto.id.StreamId;
@@ -49,7 +50,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 
 /**
@@ -216,7 +219,7 @@ public class ExploreTest extends AudiTestBase {
     FlowManager extendedWordCountFlow = app.getFlowManager("ExtendedWordCountFlow").start();
     FlowManager keyValueFlow = app.getFlowManager("KeyValueFlow").start();
     ServiceManager wordCountService = app.getServiceManager("WordCountService").start();
-    waitForStatus(true, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
+    waitForRun(ProgramRunStatus.RUNNING, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
 
     StreamId listsStreamId = TEST_NAMESPACE.stream("lists");
     StreamId wordsStreamId = TEST_NAMESPACE.stream("words");
@@ -246,7 +249,7 @@ public class ExploreTest extends AudiTestBase {
     extendedWordCountFlow.stop();
     keyValueFlow.stop();
     wordCountService.stop();
-    waitForStatus(false, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
+    waitForRun(ProgramRunStatus.COMPLETED, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
   }
 
   private void testEqualityJoin() throws Exception {
@@ -679,9 +682,10 @@ public class ExploreTest extends AudiTestBase {
     Assert.assertArrayEquals(expectedEvents, streamEventsAsStrings.toArray(new String[streamEventsAsStrings.size()]));
   }
 
-  private void waitForStatus(boolean status, ProgramManager... managers) throws InterruptedException {
+  private void waitForRun(ProgramRunStatus status, ProgramManager... managers)
+    throws InterruptedException, TimeoutException, ExecutionException {
     for (ProgramManager manager : managers) {
-      manager.waitForStatus(status, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+      manager.waitForRun(status, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
   }
 
