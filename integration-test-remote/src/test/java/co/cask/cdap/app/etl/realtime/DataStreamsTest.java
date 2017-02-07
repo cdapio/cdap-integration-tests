@@ -163,7 +163,7 @@ public class DataStreamsTest extends ETLTestBase {
     }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
 
     sparkManager.stop();
-    sparkManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    sparkManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   private KafkaProducer<String, String> getKafkaProducer() {

@@ -29,7 +29,6 @@ import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.id.WorkflowId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;
 import org.junit.Test;
@@ -76,13 +75,10 @@ public class StreamSchedulerTest extends AudiTestBase {
     multipleStreamSend(streamClient, purchaseStream, bigData, 12);
 
     WorkflowManager purchaseHistoryWorkflow = applicationManager.getWorkflowManager("PurchaseHistoryWorkflow");
-    MapReduceManager purchaseHistoryBuilder = applicationManager.getMapReduceManager("PurchaseHistoryBuilder");
 
     purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    purchaseHistoryBuilder.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 5 minutes for the map reduce to execute
-    purchaseHistoryBuilder.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
-    purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     // both the mapreduce and workflow should have 1 run
     ProgramClient programClient = getProgramClient();
@@ -98,11 +94,8 @@ public class StreamSchedulerTest extends AudiTestBase {
     Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
     purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    purchaseHistoryBuilder.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 5 minutes for the mapreduce to execute
-    purchaseHistoryBuilder.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
-    purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.COMPLETED,
-                                       PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryWorkflow.waitForRuns(ProgramRunStatus.COMPLETED, 2, 5, TimeUnit.MINUTES);
 
     assertRuns(2, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
   }
