@@ -37,6 +37,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.ViewSpecification;
+import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
@@ -47,7 +48,6 @@ import co.cask.cdap.proto.id.StreamViewId;
 import co.cask.cdap.proto.metadata.MetadataRecord;
 import co.cask.cdap.proto.metadata.MetadataScope;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
-import co.cask.cdap.proto.metadata.MetadataSearchTargetType;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
@@ -114,7 +114,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getEntityName()).start();
-    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseFlow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     StreamManager purchaseStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
@@ -144,11 +144,13 @@ public class PurchaseMetadataTest extends AudiTestBase {
       applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getEntityName());
 
     purchaseFlow.stop();
-    purchaseFlow.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseFlow.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryBuilderManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.RUNNING,
+                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.RUNNING,
+                                             PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 10 minutes for the mapreduce to finish
     purchaseHistoryBuilderManager.waitForFinish(10, TimeUnit.MINUTES);
     purchaseHistoryWorkflowManager.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -293,7 +295,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     Assert.assertEquals(
       expectedSearchResults,
-      searchMetadata(TEST_NAMESPACE, "service*", MetadataSearchTargetType.PROGRAM)
+      searchMetadata(TEST_NAMESPACE, "service*", EntityTypeSimpleName.PROGRAM)
     );
 
     // search metadata properties
@@ -303,7 +305,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
       );
     Assert.assertEquals(
       expectedSearchResults,
-      searchMetadata(TEST_NAMESPACE, "spKey1:spValue1", MetadataSearchTargetType.PROGRAM)
+      searchMetadata(TEST_NAMESPACE, "spKey1:spValue1", EntityTypeSimpleName.PROGRAM)
     );
 
     expectedSearchResults =
@@ -314,7 +316,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     Assert.assertEquals(
       expectedSearchResults,
-      searchMetadata(TEST_NAMESPACE, "spKey1:sp*", MetadataSearchTargetType.ALL));
+      searchMetadata(TEST_NAMESPACE, "spKey1:sp*", EntityTypeSimpleName.ALL));
   }
 
   @Test
@@ -348,7 +350,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(pluginArtifact)),
       searchMetadata(TEST_NAMESPACE,
-                     ArtifactSystemMetadataApp.PLUGIN1_NAME, MetadataSearchTargetType.ARTIFACT)
+                     ArtifactSystemMetadataApp.PLUGIN1_NAME, EntityTypeSimpleName.ARTIFACT)
     );
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(pluginArtifact)),
@@ -363,34 +365,34 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, PURCHASE_APP.getEntityName(), null));
     // using program names
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, PURCHASE_FLOW.getEntityName(),
-                                                 MetadataSearchTargetType.APP));
+                                                 EntityTypeSimpleName.APP));
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, PURCHASE_HISTORY_BUILDER.getEntityName(),
-                                                 MetadataSearchTargetType.APP));
+                                                 EntityTypeSimpleName.APP));
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, PURCHASE_HISTORY_SERVICE.getEntityName(),
-                                                 MetadataSearchTargetType.APP));
+                                                 EntityTypeSimpleName.APP));
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, PURCHASE_HISTORY_WORKFLOW.getEntityName(),
-                                                 MetadataSearchTargetType.APP));
+                                                 EntityTypeSimpleName.APP));
     // using program types
     Assert.assertEquals(
       expected,
       searchMetadata(TEST_NAMESPACE,
                      ProgramType.FLOW.getPrettyName() + MetadataDataset.KEYVALUE_SEPARATOR + "*",
-                     MetadataSearchTargetType.APP));
+                     EntityTypeSimpleName.APP));
     Assert.assertEquals(
       expected,
       searchMetadata(TEST_NAMESPACE,
                      ProgramType.MAPREDUCE.getPrettyName() + MetadataDataset.KEYVALUE_SEPARATOR + "*",
-                     MetadataSearchTargetType.APP));
+                     EntityTypeSimpleName.APP));
     Assert.assertEquals(
       expected,
       searchMetadata(TEST_NAMESPACE,
                      ProgramType.SERVICE.getPrettyName() + MetadataDataset.KEYVALUE_SEPARATOR + "*",
-                     MetadataSearchTargetType.APP));
+                     EntityTypeSimpleName.APP));
     Assert.assertEquals(
       expected,
       searchMetadata(TEST_NAMESPACE,
                      ProgramType.WORKFLOW.getPrettyName() + MetadataDataset.KEYVALUE_SEPARATOR + "*",
-                     MetadataSearchTargetType.APP));
+                     EntityTypeSimpleName.APP));
 
     // using schedule
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, "DailySchedule", null));
@@ -404,7 +406,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
         new MetadataSearchResultRecord(PURCHASE_HISTORY_BUILDER),
         new MetadataSearchResultRecord(PURCHASE_HISTORY_WORKFLOW)
       ),
-      searchMetadata(TEST_NAMESPACE, "batch", MetadataSearchTargetType.PROGRAM));
+      searchMetadata(TEST_NAMESPACE, "batch", EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_FLOW),
@@ -412,45 +414,45 @@ public class PurchaseMetadataTest extends AudiTestBase {
         new MetadataSearchResultRecord(CATALOG_LOOKUP_SERVICE),
         new MetadataSearchResultRecord(USER_PROFILE_SERVICE)
       ),
-      searchMetadata(TEST_NAMESPACE, "realtime", MetadataSearchTargetType.PROGRAM));
+      searchMetadata(TEST_NAMESPACE, "realtime", EntityTypeSimpleName.PROGRAM));
 
     // Using program names
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_FLOW)
       ),
-      searchMetadata(TEST_NAMESPACE, PURCHASE_FLOW.getEntityName(), MetadataSearchTargetType.PROGRAM));
+      searchMetadata(TEST_NAMESPACE, PURCHASE_FLOW.getEntityName(), EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_BUILDER),
         new MetadataSearchResultRecord(PURCHASE_HISTORY_WORKFLOW)
       ),
       searchMetadata(TEST_NAMESPACE, PURCHASE_HISTORY_BUILDER.getEntityName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE)
       ),
       searchMetadata(TEST_NAMESPACE, PURCHASE_HISTORY_SERVICE.getEntityName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(CATALOG_LOOKUP_SERVICE)
       ),
       searchMetadata(TEST_NAMESPACE, CATALOG_LOOKUP_SERVICE.getEntityName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(USER_PROFILE_SERVICE)
       ),
       searchMetadata(TEST_NAMESPACE, USER_PROFILE_SERVICE.getEntityName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_WORKFLOW)
       ),
       searchMetadata(TEST_NAMESPACE, PURCHASE_HISTORY_WORKFLOW.getEntityName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
 
     // using program types
     Assert.assertEquals(
@@ -458,13 +460,13 @@ public class PurchaseMetadataTest extends AudiTestBase {
         new MetadataSearchResultRecord(PURCHASE_FLOW)
       ),
       searchMetadata(TEST_NAMESPACE, ProgramType.FLOW.getPrettyName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_BUILDER)
       ),
       searchMetadata(TEST_NAMESPACE, ProgramType.MAPREDUCE.getPrettyName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_SERVICE),
@@ -472,13 +474,13 @@ public class PurchaseMetadataTest extends AudiTestBase {
         new MetadataSearchResultRecord(USER_PROFILE_SERVICE)
       ),
       searchMetadata(TEST_NAMESPACE, ProgramType.SERVICE.getPrettyName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
     Assert.assertEquals(
       ImmutableSet.of(
         new MetadataSearchResultRecord(PURCHASE_HISTORY_WORKFLOW)
       ),
       searchMetadata(TEST_NAMESPACE, ProgramType.WORKFLOW.getPrettyName(),
-                     MetadataSearchTargetType.PROGRAM));
+                     EntityTypeSimpleName.PROGRAM));
   }
 
   private void assertDataEntitySearch() throws Exception {
@@ -536,9 +538,9 @@ public class PurchaseMetadataTest extends AudiTestBase {
       .addAll(expectedBatchReadables)
       .add(new MetadataSearchResultRecord(HISTORY_DS))
       .build();
-    result = searchMetadata(TEST_NAMESPACE, "batch", MetadataSearchTargetType.DATASET);
+    result = searchMetadata(TEST_NAMESPACE, "batch", EntityTypeSimpleName.DATASET);
     Assert.assertEquals(expectedAllDatasets, result);
-    result = searchMetadata(TEST_NAMESPACE, "explore", MetadataSearchTargetType.DATASET);
+    result = searchMetadata(TEST_NAMESPACE, "explore", EntityTypeSimpleName.DATASET);
     Assert.assertEquals(expectedAllDatasets, result);
     result = searchMetadata(TEST_NAMESPACE, KeyValueTable.class.getName(), null);
     Assert.assertEquals(expectedKvTables, result);
@@ -559,12 +561,12 @@ public class PurchaseMetadataTest extends AudiTestBase {
       result);
 
     result = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
-                            MetadataSearchTargetType.STREAM);
+                            EntityTypeSimpleName.STREAM);
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(PURCHASE_STREAM)), result);
     result = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
-                            MetadataSearchTargetType.VIEW);
+                            EntityTypeSimpleName.VIEW);
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(view)), result);
-    result = searchMetadata(TEST_NAMESPACE, "view", MetadataSearchTargetType.VIEW);
+    result = searchMetadata(TEST_NAMESPACE, "view", EntityTypeSimpleName.VIEW);
     Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(view)), result);
     result = searchMetadata(TEST_NAMESPACE, HISTORY_DS.getEntityName(), null);
     Assert.assertEquals(
@@ -590,7 +592,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
   // starts service, makes a handler call, stops it and finally returns the runId of the completed run
   private String makePurchaseHistoryServiceCallAndReturnRunId(ServiceManager purchaseHistoryService) throws Exception {
     purchaseHistoryService.start();
-    purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL serviceURL = purchaseHistoryService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL historyURL = new URL(serviceURL, "history/Milo");
@@ -609,7 +611,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
   }
 
   private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
-                                                         MetadataSearchTargetType targetType) throws Exception {
+                                                         EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
       metadataClient.searchMetadata(namespace.toId(), query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();

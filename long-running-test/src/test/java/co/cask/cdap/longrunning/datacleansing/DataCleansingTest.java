@@ -22,6 +22,7 @@ import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
@@ -68,7 +69,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   @Override
   public void start() throws Exception {
     ServiceManager serviceManager = getApplicationManager().getServiceManager(DataCleansingService.NAME).start();
-    serviceManager.waitForStatus(true);
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.SECONDS);
     // wait for it to be available
     serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
@@ -77,7 +78,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   public void stop() throws Exception {
     ServiceManager serviceManager = getApplicationManager().getServiceManager(DataCleansingService.NAME);
     serviceManager.stop();
-    serviceManager.waitForStatus(false);
+    serviceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.SECONDS);
   }
 
   @Override

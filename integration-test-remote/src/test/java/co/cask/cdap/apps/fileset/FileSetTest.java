@@ -20,6 +20,7 @@ import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.examples.fileset.FileSetExample;
 import co.cask.cdap.proto.DatasetSpecificationSummary;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.MapReduceManager;
@@ -63,7 +64,7 @@ public class FileSetTest extends AudiTestBase {
     }
     ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
 
-    fileSetService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    fileSetService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL serviceURL = fileSetService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "lines?path=myFile.txt");
@@ -93,9 +94,9 @@ public class FileSetTest extends AudiTestBase {
                              "dataset.counts.output.path", "out.txt"));
 
     // mapreduce should start and then complete
-    wordCountManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    wordCountManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 5 minutes for mapreduce to execute
-    wordCountManager.waitForStatus(false, 5 * 60, 1);
+    wordCountManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     url = new URL(serviceURL, "counts?path=out.txt/part-r-00000");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());

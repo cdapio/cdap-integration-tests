@@ -19,6 +19,7 @@ package co.cask.cdap.app.restart;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.DataSetManager;
@@ -48,7 +49,7 @@ public class HangingWorkerTest extends AudiTestBase {
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME).start();
-    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    workerManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // the worker writes current time into workerDataset every HangingWorkerApp.WORKER_SLEEP_SECS secs
     final DataSetManager<KeyValueTable> workerDataset = getKVTableDataset(HangingWorkerApp.WORKER_DATASET_NAME);

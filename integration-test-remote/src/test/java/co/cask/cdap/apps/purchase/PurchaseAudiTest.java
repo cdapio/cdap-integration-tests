@@ -50,7 +50,9 @@ import org.junit.Test;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Tests the functionality demonstrated in PurchaseApp
@@ -88,7 +90,7 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getProgram()).start();
-    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseFlow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     StreamManager purchaseStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("purchaseStream"));
     purchaseStream.send("Milo bought 10 PBR for $12");
@@ -101,8 +103,8 @@ public class PurchaseAudiTest extends AudiTestBase {
     ServiceManager userProfileService =
       applicationManager.getServiceManager(PURCHASE_USER_PROFILE_SERVICE.getProgram()).start();
 
-    userProfileService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    userProfileService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL serviceURL = userProfileService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "user");
@@ -126,11 +128,14 @@ public class PurchaseAudiTest extends AudiTestBase {
     startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    purchaseHistoryBuilderManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.RUNNING,
+                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.RUNNING,
+                                             PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 10 minutes for the mapreduce to execute
-    purchaseHistoryBuilderManager.waitForStatus(false, 10 * 60, 1);
-    purchaseHistoryWorkflowManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED,
+                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Ensure that the flow and services are still running
     startStopServices(ProgramAction.START, purchaseFlow, purchaseHistoryService, userProfileService);
@@ -175,8 +180,10 @@ public class PurchaseAudiTest extends AudiTestBase {
     }
   }
 
-  private void startStopServices(ProgramAction action, ProgramManager... programs) throws InterruptedException {
-    boolean waitCondition = action == ProgramAction.START;
+  private void startStopServices(ProgramAction action, ProgramManager... programs)
+    throws InterruptedException, TimeoutException, ExecutionException {
+    ProgramRunStatus runStatus = action == ProgramAction.START ?
+      ProgramRunStatus.RUNNING : ProgramRunStatus.COMPLETED;
     for (ProgramManager program : programs) {
       if (action.equals(ProgramAction.START)) {
         program.start();
@@ -186,7 +193,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     }
 
     for (ProgramManager program : programs) {
-      program.waitForStatus(waitCondition, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+      program.waitForRun(runStatus, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
   }
 }

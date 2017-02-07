@@ -29,6 +29,7 @@ import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLRealtimeConfig;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.etl.realtime.ETLWorker;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
@@ -134,7 +135,7 @@ public class ETLWorkerTest extends ETLTestBase {
     long startTime = System.currentTimeMillis();
     WorkerManager workerManager = appManager.getWorkerManager(ETLWorker.NAME);
     workerManager.start();
-    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    workerManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     List<StreamManager> streamManagers = Lists.newArrayList(
       getTestManager().getStreamManager(TEST_NAMESPACE.stream("streamA")),
@@ -188,7 +189,7 @@ public class ETLWorkerTest extends ETLTestBase {
 
     workerManager.start();
     DataSetManager<Table> tableManager = getTableDataset("table1");
-    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    workerManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     waitForTableToBePopulated(tableManager);
     workerManager.stop();
 

@@ -19,6 +19,7 @@ package co.cask.cdap.apps.fileset;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.explore.service.ExploreException;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -56,7 +57,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(PFSApp.class);
 
     ServiceManager pfsService = applicationManager.getServiceManager("PFSService").start();
-    pfsService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    pfsService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     for (int i = 0; i < 100; i++) {

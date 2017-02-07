@@ -18,6 +18,7 @@ package co.cask.cdap.apps.serviceworker;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
@@ -42,7 +43,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(ServiceApplication.class);
 
     ServiceManager serviceManager = applicationManager.getServiceManager(ServiceApplication.SERVICE_NAME).start();
-    serviceManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
 
     URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -54,9 +55,9 @@ public class ServiceWorkerTest extends AudiTestBase {
 
     // start the worker
     WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
-    workerManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    workerManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // worker will stop automatically
-    workerManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    workerManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // check if the worker's write to the table was successful
     response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
@@ -74,6 +75,6 @@ public class ServiceWorkerTest extends AudiTestBase {
     Assert.assertTrue(alreadyRunning);
 
     serviceManager.stop();
-    serviceManager.waitForStatus(false, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    serviceManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 }

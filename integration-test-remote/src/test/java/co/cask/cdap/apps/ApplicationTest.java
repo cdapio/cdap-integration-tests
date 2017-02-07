@@ -19,6 +19,7 @@ package co.cask.cdap.apps;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
@@ -26,6 +27,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Tests functionality of Applications
@@ -36,7 +38,7 @@ public class ApplicationTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PurchaseApp.class);
     FlowManager purchaseFlow = applicationManager.getFlowManager("PurchaseFlow").start();
-    purchaseFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    purchaseFlow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // should not delete application when programs are running
     ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
