@@ -55,7 +55,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   public void stop() throws Exception {
     FlowManager flowManager = getApplicationManager().getFlowManager(IncrementApp.IncrementFlow.NAME);
     flowManager.stop();
-    flowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.SECONDS);
+    flowManager.waitForRun(ProgramRunStatus.KILLED, 5, TimeUnit.SECONDS);
   }
 
   private ApplicationManager getApplicationManager() throws Exception {

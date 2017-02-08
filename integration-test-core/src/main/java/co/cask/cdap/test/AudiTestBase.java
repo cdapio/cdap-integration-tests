@@ -168,9 +168,11 @@ public class AudiTestBase extends IntegrationTestBase {
     for (ProgramId programId : programIds) {
       List<RunRecord> runRecords =
         getRunRecords(count, programClient, programId, expectedStatus.name(), 0, Long.MAX_VALUE);
-      Assert.assertEquals(count, runRecords.size());
+      Assert.assertEquals(String.format("Number of runs for program %s is not equal to the expected", programId),
+                          count, runRecords.size());
       for (RunRecord runRecord : runRecords) {
-        Assert.assertEquals(expectedStatus, runRecord.getStatus());
+        Assert.assertEquals(String.format("Run status of program %s is not equal to the expected", programId),
+                            expectedStatus, runRecord.getStatus());
       }
     }
   }
