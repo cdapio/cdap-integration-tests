@@ -249,7 +249,7 @@ public class ExploreTest extends AudiTestBase {
     extendedWordCountFlow.stop();
     keyValueFlow.stop();
     wordCountService.stop();
-    waitForRun(ProgramRunStatus.COMPLETED, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
+    waitForRun(ProgramRunStatus.KILLED, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
   }
 
   private void testEqualityJoin() throws Exception {

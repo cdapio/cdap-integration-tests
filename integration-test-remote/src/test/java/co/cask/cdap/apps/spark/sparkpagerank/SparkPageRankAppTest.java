@@ -150,7 +150,6 @@ public class SparkPageRankAppTest extends AudiTestBase {
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(
       RANKS_COUNTER_PROGRAM.getEntityName());
     ranksCounterManager.start();
-    ranksCounterManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 10 minutes for the mapreduce to execute
     ranksCounterManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
@@ -176,7 +175,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
 
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     List<RunRecord> serviceRanRecords =
       getRunRecords(1, programClient, PAGE_RANK_SERVICE,
