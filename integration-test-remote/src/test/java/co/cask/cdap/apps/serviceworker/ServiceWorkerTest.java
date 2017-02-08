@@ -75,6 +75,6 @@ public class ServiceWorkerTest extends AudiTestBase {
     Assert.assertTrue(alreadyRunning);
 
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 }

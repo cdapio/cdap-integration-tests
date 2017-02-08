@@ -35,7 +35,6 @@ import co.cask.cdap.proto.id.WorkflowId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
@@ -66,10 +65,6 @@ public class PurchaseAudiTest extends AudiTestBase {
   private static final WorkflowId PURCHASE_HISTORY_WORKFLOW = PURCHASE_APP.workflow("PurchaseHistoryWorkflow");
   private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr("PurchaseHistoryBuilder");
   private static final ScheduleId SCHEDULE = PURCHASE_APP.schedule("DailySchedule");
-  private enum ProgramAction {
-    START,
-    STOP
-  }
 
   @Test
   public void test() throws Exception {
@@ -121,27 +116,16 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getProgram());
-    MapReduceManager purchaseHistoryBuilderManager =
-      applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getProgram());
 
     // need to stop the services and flow, so we have enough resources for running workflow
-    startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
+    stopServices(1, purchaseFlow, purchaseHistoryService, userProfileService);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.RUNNING,
-                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.RUNNING,
-                                             PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 10 minutes for the mapreduce to execute
-    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
-    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED,
-                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
-    // Ensure that the flow and services are still running
-    startStopServices(ProgramAction.START, purchaseFlow, purchaseHistoryService, userProfileService);
-    Assert.assertTrue(purchaseFlow.isRunning());
+    startServices(purchaseHistoryService);
     Assert.assertTrue(purchaseHistoryService.isRunning());
-    Assert.assertTrue(userProfileService.isRunning());
 
     serviceURL = purchaseHistoryService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     url = new URL(serviceURL, "history/Milo");
@@ -150,11 +134,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     PurchaseHistory purchaseHistory = GSON.fromJson(response.getResponseBodyAsString(), PurchaseHistory.class);
     Assert.assertEquals("Milo", purchaseHistory.getCustomer());
 
-    startStopServices(ProgramAction.STOP, purchaseFlow, purchaseHistoryService, userProfileService);
-
-    // flow and services have 'KILLED' state because they were explicitly stopped
-    assertRuns(2, programClient, ProgramRunStatus.KILLED, PURCHASE_FLOW, PURCHASE_HISTORY_SERVICE,
-               PURCHASE_USER_PROFILE_SERVICE);
+    stopServices(2, purchaseHistoryService);
 
     // workflow and mapreduce have 'COMPLETED' state because they complete on their own
     assertRuns(1, programClient, ProgramRunStatus.COMPLETED, PURCHASE_HISTORY_WORKFLOW, PURCHASE_HISTORY_BUILDER);
@@ -180,20 +160,23 @@ public class PurchaseAudiTest extends AudiTestBase {
     }
   }
 
-  private void startStopServices(ProgramAction action, ProgramManager... programs)
+  private void startServices(ProgramManager... programs)
     throws InterruptedException, TimeoutException, ExecutionException {
-    ProgramRunStatus runStatus = action == ProgramAction.START ?
-      ProgramRunStatus.RUNNING : ProgramRunStatus.COMPLETED;
     for (ProgramManager program : programs) {
-      if (action.equals(ProgramAction.START)) {
         program.start();
-      } else {
-        program.stop();
-      }
     }
-
     for (ProgramManager program : programs) {
-      program.waitForRun(runStatus, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      program.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    }
+  }
+
+  private void stopServices(int runCount, ProgramManager... programs)
+    throws InterruptedException, TimeoutException, ExecutionException {
+    for (ProgramManager program : programs) {
+      program.stop();
+    }
+    for (ProgramManager program : programs) {
+      program.waitForRuns(ProgramRunStatus.KILLED, runCount, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
   }
 }

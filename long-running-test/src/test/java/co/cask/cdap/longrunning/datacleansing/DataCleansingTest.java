@@ -78,7 +78,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   public void stop() throws Exception {
     ServiceManager serviceManager = getApplicationManager().getServiceManager(DataCleansingService.NAME);
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.SECONDS);
+    serviceManager.waitForRun(ProgramRunStatus.KILLED, 5, TimeUnit.SECONDS);
   }
 
   @Override

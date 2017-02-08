@@ -53,7 +53,6 @@ import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -140,20 +139,13 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getEntityName());
-    MapReduceManager purchaseHistoryBuilderManager =
-      applicationManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getEntityName());
 
     purchaseFlow.stop();
-    purchaseFlow.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseFlow.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     purchaseHistoryWorkflowManager.start();
-    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.RUNNING,
-                                              PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    purchaseHistoryBuilderManager.waitForRun(ProgramRunStatus.RUNNING,
-                                             PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    // wait 10 minutes for the mapreduce to finish
-    purchaseHistoryBuilderManager.waitForFinish(10, TimeUnit.MINUTES);
-    purchaseHistoryWorkflowManager.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    // wait 10 minutes for the mapreduce to execute
+    purchaseHistoryWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     // add tag for the dataset
     Set<String> historyDatasetTags = ImmutableSet.of("dsTag1");

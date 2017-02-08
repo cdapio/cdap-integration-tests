@@ -97,7 +97,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Start the service after stopping the original service and verify that updated response is returned
     serviceManagerV1.stop();
-    serviceManagerV1.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     serviceManagerV1.start();
     serviceManagerV1.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     response = getRestClient().execute(HttpRequest.get(urlV1).build(), getClientConfig().getAccessToken(),
@@ -138,9 +138,9 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // stop both services
     serviceManagerV1.stop();
-    serviceManagerV1.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManagerV1.waitForRuns(ProgramRunStatus.KILLED, 2, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     serviceManagerV2.stop();
-    serviceManagerV2.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManagerV2.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   @Test
@@ -241,7 +241,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Stop service v1
     serviceManagerV1.stop();
-    serviceManagerV1.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManagerV1.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Cannot delete the namespace because service v2 is running
     try {
@@ -253,7 +253,7 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Stop service v2 and delete the namespace successfully
     serviceManagerV2.stop();
-    serviceManagerV2.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManagerV2.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
   private void storeInvalidRouteConfig(Map<String, Integer> routeConfig, String expectedMsg) throws Exception {

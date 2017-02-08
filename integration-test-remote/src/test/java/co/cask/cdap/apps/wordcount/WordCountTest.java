@@ -70,7 +70,8 @@ public class WordCountTest extends AudiTestBase {
     Assert.assertEquals(1, deployedApps.size());
     Assert.assertEquals("WordCount", deployedApps.get(0).getName());
 
-    for (String wordEvent : wordEvents) {
+    for (int i = 0; i < wordEvents.length; i++) {
+      String wordEvent = wordEvents[i];
       FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
       flowManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
       List<RunRecord> runningRecords =
@@ -96,7 +97,7 @@ public class WordCountTest extends AudiTestBase {
       checkMetric(addToTags(flowTags, ImmutableMap.of("run", runId)), longestWordLengthMetric, longestWordLength, 10);
 
       flowManager.stop();
-      flowManager.waitForRun(ProgramRunStatus.COMPLETED, 30, TimeUnit.SECONDS);
+      flowManager.waitForRuns(ProgramRunStatus.KILLED, i, 30, TimeUnit.SECONDS);
     }
 
     // Check user metrics sum aggregated across runs
