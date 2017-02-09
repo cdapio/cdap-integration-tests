@@ -21,5 +21,6 @@
       }
     }
   },
+  "services": "generic-users",
   "initial-lease-duration": 82800000
 }
