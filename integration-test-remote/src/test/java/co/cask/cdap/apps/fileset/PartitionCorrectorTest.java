@@ -86,7 +86,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
     // run the partition corrector. This should bring all partitions back
     WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker").start(
         ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
-    pfsWorker.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
+    pfsWorker.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
     validate(queryClient, 100);
   }
 

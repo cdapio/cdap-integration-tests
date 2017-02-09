@@ -32,6 +32,7 @@ import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryResult;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
@@ -103,7 +104,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     DataSetManager<KeyValueTable> table2 = getKVTableDataset("table2");
     KeyValueTable outputTable = table2.get();
@@ -190,7 +191,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     final WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     QueryClient client = new QueryClient(getClientConfig());
 
@@ -443,7 +444,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     final WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE,
                                                                     "select * from dataset_allRewards", 5);
@@ -602,7 +603,7 @@ public class ETLMapReduceTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset("outputTable");
     Table outputTable = outputManager.get();

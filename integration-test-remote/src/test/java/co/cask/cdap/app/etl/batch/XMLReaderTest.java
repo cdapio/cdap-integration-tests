@@ -52,6 +52,7 @@ import java.net.URL;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -142,10 +143,11 @@ public class XMLReaderTest extends ETLTestBase {
     return deployApplication(appId, appRequest);
   }
 
-  private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException {
+  private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException,
+    ExecutionException {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
   }
 
   @Test
