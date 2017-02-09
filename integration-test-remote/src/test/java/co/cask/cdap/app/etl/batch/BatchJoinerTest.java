@@ -222,7 +222,7 @@ public class BatchJoinerTest extends ETLTestBase {
     // run the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(15, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 15, TimeUnit.MINUTES);
 
     // Deploy an application with a service to get partitionedFileset data for verification
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);

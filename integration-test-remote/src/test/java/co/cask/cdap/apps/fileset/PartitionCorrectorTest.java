@@ -21,6 +21,7 @@ import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.explore.service.ExploreException;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
+import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
@@ -37,6 +38,7 @@ import org.junit.experimental.categories.Category;
 
 import java.net.URL;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -84,9 +86,11 @@ public class PartitionCorrectorTest extends AudiTestBase {
     validate(queryClient, 23); // (2-9, 30-49 were dropped)
 
     // run the partition corrector. This should bring all partitions back
-    WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker").start(
-        ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
-    pfsWorker.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
+    WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker");
+    List<RunRecord> history = pfsWorker.getHistory();
+    pfsWorker.start(ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
+    pfsWorker.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1,
+                          PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
     validate(queryClient, 50);
   }
 

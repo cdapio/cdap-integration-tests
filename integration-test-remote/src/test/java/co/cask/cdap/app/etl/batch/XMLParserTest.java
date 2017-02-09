@@ -110,7 +110,7 @@ public class XMLParserTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -189,7 +189,7 @@ public class XMLParserTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -248,7 +248,7 @@ public class XMLParserTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -306,7 +306,7 @@ public class XMLParserTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -374,7 +374,7 @@ public class XMLParserTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.KILLED, 10, TimeUnit.MINUTES);
     Assert.assertEquals(ProgramRunStatus.FAILED, workflowManager.getHistory().get(0).getStatus());
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);

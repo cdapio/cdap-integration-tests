@@ -52,7 +52,7 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
     }
 
     flowManager.stop();
-    flowManager.waitForFinish(60, TimeUnit.SECONDS);
+    flowManager.waitForRun(ProgramRunStatus.KILLED, 60, TimeUnit.SECONDS);
 
     // send an additional event, which should be processed after the upgrade
     whoStream.send("test2");
@@ -87,6 +87,6 @@ public class StreamStateUpgradeTest extends UpgradeTestBase {
     flowletMetrics.waitForProcessed(3, 60, TimeUnit.SECONDS);
 
     flowManager.stop();
-    flowManager.waitForFinish(60, TimeUnit.SECONDS);
+    flowManager.waitForRun(ProgramRunStatus.KILLED, 60, TimeUnit.SECONDS);
   }
 }

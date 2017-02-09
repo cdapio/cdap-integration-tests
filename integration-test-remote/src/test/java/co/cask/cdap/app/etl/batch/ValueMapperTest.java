@@ -30,6 +30,7 @@ import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
@@ -134,7 +135,7 @@ public class ValueMapperTest extends ETLTestBase {
 
     WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     mrManager.start();
-    mrManager.waitForFinish(10, TimeUnit.MINUTES);
+    mrManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     Map<String, String> nameDesignationMap = new HashMap<>();
     nameDesignationMap.put("John", "DEFAULTID");
