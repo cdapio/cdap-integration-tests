@@ -598,7 +598,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     Assert.assertEquals(1, runRecords.size());
     purchaseHistoryService.stop();
-    purchaseHistoryService.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    purchaseHistoryService.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     return runRecords.get(0).getPid();
   }
 

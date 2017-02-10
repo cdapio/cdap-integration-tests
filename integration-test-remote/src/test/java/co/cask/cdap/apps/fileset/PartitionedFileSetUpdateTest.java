@@ -117,7 +117,7 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     // run the partition corrector. This should bring all partitions to use delimiter :
     WorkerManager pfsWorker = applicationManager
       .getWorkerManager("PartitionWorker").start(ImmutableMap.of("dataset.name", "pfs"));
-    pfsWorker.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    pfsWorker.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     validate(client, "i", "j", 0, 4);
   }

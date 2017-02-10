@@ -24,6 +24,7 @@ import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryResult;
+import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
@@ -88,7 +89,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
 
   @Override
   public void awaitOperations(DataCleansingTestState state) throws Exception {
-    getApplicationManager().getMapReduceManager(DATACLEANSING_MAPREDUCE_NAME).waitForFinish(5, TimeUnit.MINUTES);
+    // No-op
   }
 
   @Override
@@ -117,7 +118,11 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     long now = System.currentTimeMillis();
     ImmutableMap<String, String> args = ImmutableMap.of(OUTPUT_PARTITION_KEY, Long.toString(now),
                                                         SCHEMA_KEY, SCHEMAJSON);
+    List<RunRecord> history = applicationManager.getMapReduceManager(DATACLEANSING_MAPREDUCE_NAME).getHistory();
     applicationManager.getMapReduceManager(DATACLEANSING_MAPREDUCE_NAME).start(args);
+    applicationManager.getMapReduceManager(DATACLEANSING_MAPREDUCE_NAME).waitForRuns(ProgramRunStatus.COMPLETED,
+                                                                                     history.size() + 1,
+                                                                                     5, TimeUnit.MINUTES);
 
     return new DataCleansingTestState(now, state.getEndInvalidRecordPid() + 1,
                                       state.getEndInvalidRecordPid() + CLEAN_RECORDS_PER_BATCH,

@@ -57,7 +57,7 @@ public class QueueStateUpgradeTest extends UpgradeTestBase {
     streamFlowlet.waitForProcessed(EVENT_COUNT, 60, TimeUnit.SECONDS);
 
     flowManager.stop();
-    flowManager.waitForFinish(60, TimeUnit.SECONDS);
+    flowManager.waitForRun(ProgramRunStatus.KILLED, 60, TimeUnit.SECONDS);
 
     // after stopping the flow, the second flowlet has not processed all the events yet because of the sleep in its
     // process method

@@ -159,7 +159,7 @@ public class BatchAggregatorTest extends ETLTestBase {
     // run the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SMARTWORKFLOW_NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(15, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 15, TimeUnit.MINUTES);
 
     Map<String, List<Long>> groupedUsers = readOutput(serviceManager, USER_SINK);
     Map<String, List<Long>> groupedItems = readOutput(serviceManager, ITEM_SINK);
