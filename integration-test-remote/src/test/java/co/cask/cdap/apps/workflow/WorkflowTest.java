@@ -167,12 +167,14 @@ public class WorkflowTest extends AudiTestBase {
 
   private void testWorkflow(WorkflowManager workflowManager, WikipediaPipelineApp.WikipediaAppConfig config,
                             @Nullable Integer threshold) throws Exception {
+    List<RunRecord> history = workflowManager.getHistory();
     if (threshold == null) {
       workflowManager.start();
     } else {
       workflowManager.start(ImmutableMap.of("min.pages.threshold", String.valueOf(threshold)));
     }
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 15, TimeUnit.MINUTES);
+
+    workflowManager.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1, 15, TimeUnit.MINUTES);
     String pid = getLatestPid(workflowManager.getHistory());
     WorkflowTokenNodeDetail tokenAtCondition =
       workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
