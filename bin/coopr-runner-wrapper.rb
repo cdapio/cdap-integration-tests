@@ -193,6 +193,10 @@ module Cask
             dimensions.push('cdap')
             name.shift
           end
+          unless name.empty?
+            dimensions.push('auth')
+            dimensions.push('autobuild')
+          end
           if name[0] == 'singlenode'
             dimensions.push('singlenode')
             name.shift
@@ -200,9 +204,6 @@ module Cask
             dimensions.push('distributed')
             name.shift
           end
-          # All CDAP clusters get Auth and Autobuild
-          dimensions.push('auth')
-          dimensions.push('autobuild')
           # Check for kerberos
           dimensions.push('kerberos') if name[0] == 'secure' && name[1] == 'hadoop'
         elsif name[0] == 'docker'
