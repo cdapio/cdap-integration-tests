@@ -21,6 +21,7 @@ import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.explore.service.ExploreException;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
+import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
@@ -37,6 +38,7 @@ import org.junit.experimental.categories.Category;
 
 import java.net.URL;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -60,14 +62,14 @@ public class PartitionCorrectorTest extends AudiTestBase {
     pfsService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 50; i++) {
       HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, String.valueOf(i))).build(),
                                                       getClientConfig().getAccessToken());
       Assert.assertEquals(200, response.getResponseCode());
     }
 
     QueryClient queryClient = new QueryClient(getClientConfig());
-    validate(queryClient, 100);
+    validate(queryClient, 50);
 
     dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("batch.size", "20"));
     dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("disable.explore", "false", "batch.size", "20"));
@@ -79,15 +81,17 @@ public class PartitionCorrectorTest extends AudiTestBase {
     // delete about half of the partitions directly in hive
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult results = queryClient
-      .execute(TEST_NAMESPACE, "alter table dataset_pfs drop partition (key>'49')").get();
+      .execute(TEST_NAMESPACE, "alter table dataset_pfs drop partition (key>'29')").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
-    validate(queryClient, 45); // (5-9, 50-99 were dropped)
+    validate(queryClient, 23); // (2-9, 30-49 were dropped)
 
     // run the partition corrector. This should bring all partitions back
-    WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker").start(
-        ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
-    pfsWorker.waitForFinish(PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
-    validate(queryClient, 100);
+    WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker");
+    List<RunRecord> history = pfsWorker.getHistory();
+    pfsWorker.start(ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
+    pfsWorker.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1,
+                          PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
+    validate(queryClient, 50);
   }
 
   private void validate(QueryClient client, int expected)
