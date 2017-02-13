@@ -169,7 +169,6 @@ public class WorkflowTest extends AudiTestBase {
                             @Nullable Integer threshold) throws Exception {
     // Wait for previous runs to finish
     List<RunRecord> history = workflowManager.getHistory();
-    workflowManager.waitForRuns(ProgramRunStatus.COMPLETED, history.size(), 15, TimeUnit.MINUTES);
     if (threshold == null) {
       workflowManager.start();
     } else {
@@ -178,6 +177,9 @@ public class WorkflowTest extends AudiTestBase {
 
     // Wait for the current run to finish
     workflowManager.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1, 15, TimeUnit.MINUTES);
+    // Wait for the workflow status. The timeout here is actually a sleep so, the timeout is a low value and instead
+    // we retry a large number of times.
+    workflowManager.waitForStatus(false, 60, 1);
     String pid = getLatestPid(workflowManager.getHistory());
     WorkflowTokenNodeDetail tokenAtCondition =
       workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
