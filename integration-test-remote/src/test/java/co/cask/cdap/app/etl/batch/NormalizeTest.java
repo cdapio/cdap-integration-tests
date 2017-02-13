@@ -29,6 +29,7 @@ import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
@@ -41,6 +42,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -122,10 +124,11 @@ public class NormalizeTest extends ETLTestBase {
     return deployApplication(appId, appRequest);
   }
 
-  private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException {
+  private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException,
+    ExecutionException {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
   }
 
   private void putData(int rowId, byte[] custId, byte[] itemId, byte[] itemCost, byte[] date, Table targetTable) {

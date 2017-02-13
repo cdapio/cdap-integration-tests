@@ -27,6 +27,7 @@ import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.StreamId;
@@ -73,6 +74,7 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(TPFSService.class.getSimpleName());
     serviceManager.start();
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // 3. Run Stream To TPFS with Projection Transform pipeline
     ApplicationId streamToTPFSAppId = TEST_NAMESPACE.app("StreamToTPFSWithProjection");
@@ -83,7 +85,7 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
 
     long timeInMillis = System.currentTimeMillis();
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     // 4. Run TPFS to TPFS pipeline where the source is the sink from the above pipeline
     ApplicationId tpfsToTPFSAppId = TEST_NAMESPACE.app("TPFSToTPFSWithProjection");
@@ -94,7 +96,7 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
 
     // add 5 minutes to the end time to make sure the newly added partition is included in the run.
     workflowManager.start(ImmutableMap.of("runtime", String.valueOf(timeInMillis + 300 * 1000)));
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     // both the pipelines needs to run first so that the TPFS gets created and the service can access it.
 

@@ -226,6 +226,7 @@ public class AudiTestBase extends IntegrationTestBase {
     if (!serviceManager.isRunning()) {
       serviceManager.start();
     }
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     return serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 

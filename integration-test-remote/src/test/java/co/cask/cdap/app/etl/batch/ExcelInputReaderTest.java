@@ -141,7 +141,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -211,7 +211,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForFinish(10, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
