@@ -29,6 +29,15 @@ module Cask
     # 'cdap', 'distributed', 'kerberos', '${bamboo-buildKey}'.  For each dimension, there may exist a
     # configuration json, which define additional command-line arguments.  These new arguments are then
     # inserted into the original arguments, and coopr-runner.rb is invoked accordingly
+
+    # Arbitrary dimensions can be added by setting ${COOPR_RUNNER_WRAPPER_EXTRA_DIMENSIONS} to a comma-separated list
+
+    # For any config merging, last argument wins in coopr-runner.rb, therefore precedence order (lowest to highest) is:
+    #   * all.json
+    #   * dimensions extracted from the clustertemplate name
+    #   * dimensions extracted from ${COOPR_RUNNER_WRAPPER_EXTRA_DIMENSIONS}
+    #   * dimension matching the bamboo Job name (via ${bamboo_shortJobKey})
+    #   * anything already in the cmdline arguments to this script (ie, from the bamboo plan/job configuration)
     class ConfigWrapper
       def initialize
         @conf_dir = _config_dir
@@ -39,10 +48,13 @@ module Cask
       end
 
       # Determine list of known dimensions (with corresponding configs) that apply
+      # Later dimensions take precedence in any merges
       def identify_dimensions
         dimensions = []
         dimensions.push('all')
         dimensions += _extract_dimensions_from_template_name
+        # Extracts dimensions first from COOPR_RUNNER_WRAPPER_EXTRA_DIMENSIONS,
+        # then from bamboo_shortJobKey
         dimensions += _extract_dimensions_from_env
         dimensions
       end
@@ -199,6 +211,10 @@ module Cask
             dimensions.push('cdap')
             name.shift
           end
+          unless name.empty?
+            dimensions.push('auth')
+            dimensions.push('autobuild')
+          end
           if name[0] == 'singlenode'
             dimensions.push('singlenode')
             name.shift
@@ -206,9 +222,6 @@ module Cask
             dimensions.push('distributed')
             name.shift
           end
-          # All CDAP clusters get Auth and Autobuild
-          dimensions.push('auth')
-          dimensions.push('autobuild')
           # Check for kerberos
           dimensions.push('kerberos') if name[0] == 'secure' && name[1] == 'hadoop'
         elsif name[0] == 'docker'
@@ -227,6 +240,12 @@ module Cask
       # Read any predefined dimensions from environment variables
       def _extract_dimensions_from_env
         dimensions = []
+        unless ENV['COOPR_RUNNER_WRAPPER_EXTRA_DIMENSIONS'].nil?
+          ENV['COOPR_RUNNER_WRAPPER_EXTRA_DIMENSIONS'].split(',').each do |dimension|
+            dimensions.push(dimension.downcase)
+          end
+        end
+        # highest precedence
         unless ENV['bamboo_shortJobKey'].nil?
           dimensions.push(ENV['bamboo_shortJobKey'].downcase)
         end
