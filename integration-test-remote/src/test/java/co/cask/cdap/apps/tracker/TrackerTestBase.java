@@ -81,16 +81,15 @@ public class TrackerTestBase extends AudiTestBase {
     .registerTypeAdapter(EntityId.class, new EntityIdTypeAdapter())
     .create();
   private static final int SEED = 0;
-  RESTClient restClient = getRestClient();
-  private static Type datasetList = new TypeToken<List<TopDatasetsResult>>() { }.getType();
-  private static Type programList = new TypeToken<List<TopProgramsResult>>() { }.getType();
-  private static Type applicationList = new TypeToken<List<TopApplicationsResult>>() { }.getType();
-  private static Type timesinceMap = new TypeToken<Map<String, Long>>() { }.getRawType();
-  private static ServiceManager trackerService;
-  private static FlowManager trackerFlow;
-  private static StreamManager trackerStream;
+  private static final Type DATASET_LIST_TYPE = new TypeToken<List<TopDatasetsResult>>() { }.getType();
+  private static final Type PROGRAM_LIST_TYPE = new TypeToken<List<TopProgramsResult>>() { }.getType();
+  private static final Type APPLICATION_LIST_TYPE = new TypeToken<List<TopApplicationsResult>>() { }.getType();
+  private static final Type TIME_SINCE_MAP_TYPE = new TypeToken<Map<String, Long>>() { }.getRawType();
 
+  private FlowManager trackerFlow;
+  private StreamManager trackerStream;
   private URL serviceURL;
+  private RESTClient restClient = getRestClient();
 
   protected void enableTracker()
     throws InterruptedException, IOException, UnauthenticatedException, UnauthorizedException {
@@ -98,8 +97,8 @@ public class TrackerTestBase extends AudiTestBase {
     TrackerAppConfig appConfig =
       new TrackerAppConfig(new AuditLogConfig(zookeeperQuorum, null, null, null, null));
     ApplicationManager applicationManager = getTestManager().deployApplication(
-      NamespaceId.DEFAULT, TestTrackerApp.class, appConfig);
-    trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
+      TEST_NAMESPACE, TestTrackerApp.class, appConfig);
+    ServiceManager trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
     trackerService.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
@@ -155,7 +154,7 @@ public class TrackerTestBase extends AudiTestBase {
     URL urlTopNDataset = new URL(serviceURL, "v1/auditmetrics/top-entities/datasets?limit=20");
     HttpResponse datasetResponse = restClient.execute(HttpRequest.get(urlTopNDataset).build(),
                                                       getClientConfig().getAccessToken());
-    return GSON.fromJson(datasetResponse.getResponseBodyAsString(), datasetList);
+    return GSON.fromJson(datasetResponse.getResponseBodyAsString(), DATASET_LIST_TYPE);
   }
 
   protected List<TopProgramsResult> getTopNPrograms()
@@ -163,7 +162,7 @@ public class TrackerTestBase extends AudiTestBase {
     URL urlTopNPrograms = new URL(serviceURL, "v1/auditmetrics/top-entities/programs?limit=20");
     HttpResponse programsResponse = restClient.execute(HttpRequest.get(urlTopNPrograms).build(),
                                                        getClientConfig().getAccessToken());
-    return GSON.fromJson(programsResponse.getResponseBodyAsString(), programList);
+    return GSON.fromJson(programsResponse.getResponseBodyAsString(), PROGRAM_LIST_TYPE);
   }
 
   protected List<TopApplicationsResult> getTopNApplication()
@@ -171,14 +170,14 @@ public class TrackerTestBase extends AudiTestBase {
     URL urlTopNApplication = new URL(serviceURL, "v1/auditmetrics/top-entities/applications?limit=20");
     HttpResponse applicationResponse = restClient.execute(HttpRequest.get(urlTopNApplication).build(),
                                                           getClientConfig().getAccessToken());
-    return GSON.fromJson(applicationResponse.getResponseBodyAsString(), applicationList);
+    return GSON.fromJson(applicationResponse.getResponseBodyAsString(), APPLICATION_LIST_TYPE);
   }
 
   protected Map<String, Long> getTimeSince() throws IOException, UnauthenticatedException, UnauthorizedException {
     URL urlTimeSince = new URL(serviceURL, "v1/auditmetrics/time-since?entityType=dataset&entityName=ds1");
     HttpResponse timeSinceResponse = restClient.execute(HttpRequest.get(urlTimeSince).build(),
                                                         getClientConfig().getAccessToken());
-    return GSON.fromJson(timeSinceResponse.getResponseBodyAsString(), timesinceMap);
+    return GSON.fromJson(timeSinceResponse.getResponseBodyAsString(), TIME_SINCE_MAP_TYPE);
   }
 
   protected AuditHistogramResult getGlobalAuditLogHistogram()
@@ -257,7 +256,7 @@ public class TrackerTestBase extends AudiTestBase {
                                    "v1/auditmetrics/top-entities/programs?entityName=dsx&entityType=dataset");
     HttpResponse response = restClient.execute(HttpRequest.get(urlPorgramFilter).build(),
                                                getClientConfig().getAccessToken());
-    return GSON.fromJson(response.getResponseBodyAsString(), programList);
+    return GSON.fromJson(response.getResponseBodyAsString(), PROGRAM_LIST_TYPE);
   }
 
   protected void addEntityTags(Set<String> tagSet, String entityType, String entityName)
@@ -306,7 +305,7 @@ public class TrackerTestBase extends AudiTestBase {
     return set;
   }
 
-  private String generateString (Random rng, String characters, int maxLength) {
+  private String generateString(Random rng, String characters, int maxLength) {
     int length = rng.nextInt(maxLength - 1) + 1;
     char[] text = new char[length];
     for (int i = 0; i < length; i++) {
@@ -319,14 +318,14 @@ public class TrackerTestBase extends AudiTestBase {
     List<AuditMessage> testData = new ArrayList<>();
     NamespaceId ns1 = new NamespaceId("ns1");
     testData.add(new AuditMessage(1456956659461L,
-                                  NamespaceId.DEFAULT.stream("stream1"),
+                                  TEST_NAMESPACE.stream("stream1"),
                                   "user1",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app("app2").flow("flow1").run("run1"))
                  )
     );
     testData.add(new AuditMessage(1456956659469L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
+                                  TEST_NAMESPACE.dataset("ds1"),
                                   "user1",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, new SystemServiceId("explore"))
@@ -338,115 +337,115 @@ public class TrackerTestBase extends AudiTestBase {
       "\"deletions\": { \"USER\": { \"properties\": { \"uk\": \"uv\" }, \"tags\": [ \"ut1\" ] } } }";
     MetadataPayload payload = GSON.fromJson(metadataPayload, MetadataPayload.class);
     testData.add(new AuditMessage(1456956659470L,
-                                  NamespaceId.DEFAULT.app("app1"),
+                                  TEST_NAMESPACE.app("app1"),
                                   "user1",
                                   AuditType.METADATA_CHANGE,
                                   payload)
     );
     testData.add(new AuditMessage(1456956659471L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
+                                  TEST_NAMESPACE.dataset("ds1"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
     testData.add(new AuditMessage(1456956659472L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
+                                  TEST_NAMESPACE.dataset("ds1"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
     testData.add(new AuditMessage(1456956659473L,
-                                  NamespaceId.DEFAULT.dataset("ds6"),
+                                  TEST_NAMESPACE.dataset("ds6"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
     testData.add(new AuditMessage(1456956659468L,
-                                  NamespaceId.DEFAULT.stream("strm123"),
+                                  TEST_NAMESPACE.stream("strm123"),
                                   "user1",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ, ns1.app("app1").flow("flow1").run("run1"))));
     testData.add(new AuditMessage(1456956659460L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
+                                  TEST_NAMESPACE.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659502L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
+                                  TEST_NAMESPACE.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659500L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
+                                  TEST_NAMESPACE.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659504L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
+                                  TEST_NAMESPACE.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.UNKNOWN, new SystemServiceId("explore"))
                  )
     );
     testData.add(new AuditMessage(1456956659505L,
-                                  NamespaceId.DEFAULT.dataset("ds3"),
+                                  TEST_NAMESPACE.dataset("ds3"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659506L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
+                                  TEST_NAMESPACE.dataset("ds1"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app("a").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659507L,
-                                  NamespaceId.DEFAULT.dataset("ds1"),
+                                  TEST_NAMESPACE.dataset("ds1"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ, ns1.app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659509L,
-                                  NamespaceId.DEFAULT.dataset("ds8"),
+                                  TEST_NAMESPACE.dataset("ds8"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ, ns1.app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659511L,
-                                  NamespaceId.DEFAULT.dataset("ds9"),
+                                  TEST_NAMESPACE.dataset("ds9"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.READ, ns1.app("b").service("program2"))
                  )
     );
     testData.add(new AuditMessage(1456956659512L,
-                                  NamespaceId.DEFAULT.dataset("ds5"),
+                                  TEST_NAMESPACE.dataset("ds5"),
                                   "user1",
                                   AuditType.CREATE,
                                   AuditPayload.EMPTY_PAYLOAD));
     testData.add(new AuditMessage(1456956659513L,
-                                  NamespaceId.DEFAULT.dataset(TrackerApp.AUDIT_LOG_DATASET_NAME),
+                                  TEST_NAMESPACE.dataset(TrackerApp.AUDIT_LOG_DATASET_NAME),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659516L,
-                                  NamespaceId.DEFAULT.dataset("dsx"),
+                                  TEST_NAMESPACE.dataset("dsx"),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app(TrackerApp.APP_NAME).service("program1"))
                  )
     );
     testData.add(new AuditMessage(1456956659513L,
-                                  NamespaceId.DEFAULT.dataset(AuditLogConfig.DEFAULT_OFFSET_DATASET),
+                                  TEST_NAMESPACE.dataset(AuditLogConfig.DEFAULT_OFFSET_DATASET),
                                   "user4",
                                   AuditType.ACCESS,
                                   new AccessPayload(AccessType.WRITE, ns1.app("b").service("program1"))
