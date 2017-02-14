@@ -46,13 +46,14 @@ import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
-import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
@@ -169,15 +170,18 @@ public class WorkflowTest extends AudiTestBase {
                             @Nullable Integer threshold) throws Exception {
     // Wait for previous runs to finish
     List<RunRecord> history = workflowManager.getHistory();
-    workflowManager.waitForRuns(ProgramRunStatus.COMPLETED, history.size(), 15, TimeUnit.MINUTES);
-    if (threshold == null) {
-      workflowManager.start();
-    } else {
-      workflowManager.start(ImmutableMap.of("min.pages.threshold", String.valueOf(threshold)));
+    Map<String, String> args = new HashMap<>();
+    args.put("system.resources.memory", "1024");
+    if (threshold != null) {
+      args.put("min.pages.threshold", String.valueOf(threshold));
     }
+    workflowManager.start(args);
 
     // Wait for the current run to finish
     workflowManager.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1, 15, TimeUnit.MINUTES);
+    // Wait for the workflow status. The timeout here is actually a sleep so, the timeout is a low value and instead
+    // we retry a large number of times.
+    workflowManager.waitForStatus(false, 60, 1);
     String pid = getLatestPid(workflowManager.getHistory());
     WorkflowTokenNodeDetail tokenAtCondition =
       workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
