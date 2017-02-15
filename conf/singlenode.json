@@ -5,7 +5,7 @@
         "metrics.processor.memory.mb": "512",
         "metrics.memory.mb": "512",
         "stream.container.memory.mb": "512",
-        "messaging.container.memory.mb": "256",
+        "messaging.container.memory.mb": "257",
         "explore.executor.container.memory.mb": "2048"
       }
     },
