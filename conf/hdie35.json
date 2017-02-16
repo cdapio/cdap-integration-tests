@@ -8,7 +8,8 @@
         "hadoop.security.authorization": "false"
       },
       "hdfs_site": {
-        "dfs.webhdfs.enabled": "false"
+        "dfs.webhdfs.enabled": "false",
+        "dfs.permissions.enabled": "false"
       }
     },
     "hbase": {
