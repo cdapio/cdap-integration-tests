@@ -18,6 +18,7 @@ package co.cask.cdap.longrunning.txprune;
 
 import co.cask.cdap.test.TestState;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,11 +27,12 @@ import java.util.Map;
 @SuppressWarnings("WeakerAccess")
 public class InvalidListPruneTestState implements TestState {
   private final int iteration;
-  // Map of iteration to invalid id generated during that iteration
-  private final Map<Integer, Long> invalidTxIds;
+  // Map of iteration to invalid ids generated during that iteration
+  private final Map<Integer, List<Long>> invalidTxIds;
 
-  public InvalidListPruneTestState(int iteration, Map<Integer, Long> invalidTxIds) {
+  public InvalidListPruneTestState(int iteration, Map<Integer, List<Long>> invalidTxIds) {
     this.iteration = iteration;
+    // TODO: make this immutable
     this.invalidTxIds = invalidTxIds;
   }
 
@@ -38,7 +40,7 @@ public class InvalidListPruneTestState implements TestState {
     return iteration;
   }
 
-  public Map<Integer, Long> getInvalidTxIds() {
+  public Map<Integer, List<Long>> getInvalidTxIds() {
     return invalidTxIds;
   }
 
