@@ -154,7 +154,7 @@ public class OperationalStatsTest extends AudiTestBase {
     Assert.assertTrue(toInt(entities.get("Datasets")) >= 0);
     Assert.assertTrue(toInt(entities.get("Streams")) >= 0);
     Assert.assertTrue(toInt(entities.get("StreamViews")) >= 0);
-    Map<String, Object> connections = cdapStats.get("connections");
+    Map<String, Object> connections = cdapStats.get("lasthourload");
     Assert.assertTrue(toLong(connections.get("TotalRequests")) >= 0);
     Assert.assertTrue(toLong(connections.get("Successful")) >= 0);
     Assert.assertTrue(toLong(connections.get("ServerErrors")) >= 0);
