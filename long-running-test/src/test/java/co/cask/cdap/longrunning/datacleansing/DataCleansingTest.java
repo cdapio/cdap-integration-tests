@@ -37,6 +37,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 
 import java.io.IOException;
 import java.net.URL;
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Data Cleansing long running test
  */
+@Ignore
 public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestState> {
   private static final int CLEAN_RECORDS_PER_BATCH = 70;
   private static final int INVALID_RECORDS_PER_BATCH = 30;
