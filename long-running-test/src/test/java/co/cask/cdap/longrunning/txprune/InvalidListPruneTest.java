@@ -17,6 +17,8 @@
 package co.cask.cdap.longrunning.txprune;
 
 import co.cask.cdap.client.StreamClient;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.ProgramRunStatus;
@@ -24,8 +26,13 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpResponse;
+import co.cask.common.http.ObjectResponse;
 import com.google.common.base.Charsets;
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
+import com.google.common.reflect.TypeToken;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Connection;
@@ -37,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -45,7 +53,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTestState> {
   private static final Logger LOG = LoggerFactory.getLogger(InvalidListPruneTest.class);
-  private static final long MAX_ITERATIONS = 10000000;
+  private static final long MAX_EVENTS = 10000000;
   private static final int BATCH_SIZE = 5000;
 
   @Override
@@ -65,7 +73,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
   @Override
   public InvalidListPruneTestState getInitialState() {
-    return new InvalidListPruneTestState(0, new HashMap<Integer, Long>());
+    return new InvalidListPruneTestState(0, new HashMap<Integer, List<Long>>());
   }
 
   @Override
@@ -87,6 +95,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   @Override
   public InvalidListPruneTestState runOperations(InvalidListPruneTestState state) throws Exception {
     int iteration = state.getIteration() + 1;
+    List<Long> invalidList = getInvalidList();
 
     flushAndCompactTables();
 
@@ -96,7 +105,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     // Create unique events for this iteration using the iteration id as part of the event
     StringWriter writer = new StringWriter();
     for (int i = 0; i < BATCH_SIZE; i++) {
-      writer.write(String.format("%s", (iteration * MAX_ITERATIONS) + i));
+      writer.write(String.format("%s", (iteration * MAX_EVENTS) + i));
       writer.write("\n");
     }
 
@@ -112,7 +121,9 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     applicationManager.getMapReduceManager(InvalidTxGeneratorApp.InvalidMapReduce.MR_NAME).start();
 
     // TODO: get the invalid transaction for the MR
-    return new InvalidListPruneTestState(iteration, state.getInvalidTxIds());
+    HashMap<Integer, List<Long>> invalidTxIds = Maps.newHashMap(state.getInvalidTxIds());
+    invalidTxIds.put(iteration, invalidList);
+    return new InvalidListPruneTestState(iteration, invalidTxIds);
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
@@ -141,5 +152,16 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
       conf.set(entry.getKey(), entry.getValue().getValue());
     }
     return conf;
+  }
+
+
+  private List<Long> getInvalidList() throws IOException, UnauthorizedException, UnauthenticatedException {
+    RESTClient restClient = getRestClient();
+    ClientConfig config = getClientConfig();
+    HttpResponse response = restClient.execute(HttpMethod.GET, config.resolveURL("transactions/invalid"),
+                                               config.getAccessToken());
+    List<Long> responseObject =
+      ObjectResponse.fromJsonBody(response, new TypeToken<List<Long>>() { }).getResponseObject();
+    return responseObject;
   }
 }
