@@ -29,6 +29,7 @@ import co.cask.cdap.test.LongRunningTestBase;
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import org.junit.Assert;
+import org.junit.Ignore;
 
 import java.io.StringWriter;
 import java.util.concurrent.Callable;
@@ -37,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests readless increment functionality of {@link Table}.
  */
+@Ignore
 public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   private static final int BATCH_SIZE = 100;
   public static final int SUM_BATCH = (BATCH_SIZE * (BATCH_SIZE - 1)) / 2;
