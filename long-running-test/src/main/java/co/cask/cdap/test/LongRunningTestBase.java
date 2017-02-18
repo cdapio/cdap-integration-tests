@@ -139,7 +139,8 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
 
       LOG.info("Calling awaitOperations...");
       awaitOperations(state);
-      verifyRuns(state);
+      state = verifyRuns(state);
+      LOG.info("Modified state after verifyRuns: {}", state);
     } finally {
       try {
         stop();
@@ -157,8 +158,8 @@ public abstract class LongRunningTestBase<T extends TestState> extends AudiTestB
     LOG.info("Calling awaitOperations...");
     awaitOperations(state);
     LOG.info("Calling verifyRuns...");
-    verifyRuns(state);
-    LOG.info("Calling runOperations...");
+    state = verifyRuns(state);
+    LOG.info("Calling runOperations with updated state: {}", state);
     state = runOperations(state);
     LOG.info("Got output state = {}", state);
 
