@@ -16,20 +16,25 @@
 
 package co.cask.cdap.longrunning.txprune;
 
+import co.cask.cdap.api.dataset.DatasetAdmin;
+import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.ConfigEntry;
+import co.cask.cdap.proto.DatasetInstanceConfiguration;
 import co.cask.cdap.proto.DatasetMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
+import co.cask.cdap.test.RemoteDatasetAdmin;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
@@ -70,6 +75,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   private static final Logger LOG = LoggerFactory.getLogger(InvalidListPruneTest.class);
   private static final long MAX_EVENTS = 10000000;
   private static final int BATCH_SIZE = 5000;
+  private static final int MAX_EMPTY_TABLES = 10; // If this changes, old empty tables may need manual cleanup
 
   @Override
   public void deploy() throws Exception {
@@ -132,6 +138,8 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   public InvalidListPruneTestState runOperations(InvalidListPruneTestState state) throws Exception {
     int iteration = state.getIteration() + 1;
     List<Long> invalidList = getInvalidList();
+
+    manageEmptyDatasets(getLongRunningNamespace(), iteration);
 
     flushAndCompactTables();
 
@@ -204,6 +212,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   }
 
 
+  // TODO: Move this check into a Worker, and check all the CDAP tables
   private void verifyInvalidDataRemoval(DatasetId dataset, Set<Long> prunedTxIds)
     throws IOException, UnauthorizedException, UnauthenticatedException {
     if (prunedTxIds.isEmpty()) {
@@ -247,6 +256,33 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
         }
       }
       LOG.info("Verified that {} cells in dataset {} do not contain data from pruned transactions", cellCount, dataset);
+    }
+  }
+
+  private void manageEmptyDatasets(NamespaceId namespaceId, int iteration) throws Exception {
+    // Create an empty table for this iteration
+    String baseName = "invalid-tx-empty-table-";
+    DatasetId datasetId = namespaceId.dataset(baseName + iteration);
+    String typeName = co.cask.cdap.api.dataset.table.Table.class.getName();
+    LOG.info("Creating empty dataset {}", datasetId);
+    DatasetAdmin datasetAdmin =
+      addDatasetInstance(namespaceId, typeName, datasetId.getEntityName(), DatasetProperties.EMPTY);
+    Assert.assertTrue("Cannot create empty dataset " + datasetId, datasetAdmin.exists());
+    datasetAdmin.close();
+
+    // Now cleanup empty datasets from earlier runs
+    int startIteration = iteration - (MAX_EMPTY_TABLES * 5);
+    startIteration = startIteration < 0 ? 0 : startIteration;
+    DatasetInstanceConfiguration dsConf =
+      new DatasetInstanceConfiguration(typeName, DatasetProperties.EMPTY.getProperties());
+    for (int i = startIteration; i < iteration - MAX_EMPTY_TABLES; i++) {
+      DatasetId instance = namespaceId.dataset(baseName + i);
+      try (RemoteDatasetAdmin remoteDatasetAdmin = new RemoteDatasetAdmin(getDatasetClient(), instance, dsConf)) {
+        if (remoteDatasetAdmin.exists()) {
+          LOG.info("Dropping empty dataset {}", instance);
+          remoteDatasetAdmin.drop();
+        }
+      }
     }
   }
 }
