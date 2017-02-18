@@ -61,8 +61,9 @@ public interface LongRunningTest<T extends TestState> {
    * </p>
    *
    * @param state state saved from previous call to #runOperations
+   * @return the state after verification
    */
-  void verifyRuns(T state) throws Exception;
+  T verifyRuns(T state) throws Exception;
 
   /**
    * Called during every run of the test after #verifyRuns.

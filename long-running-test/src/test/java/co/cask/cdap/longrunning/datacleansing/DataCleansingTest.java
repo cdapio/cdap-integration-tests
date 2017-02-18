@@ -95,13 +95,14 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   @Override
-  public void verifyRuns(DataCleansingTestState state) throws Exception {
+  public DataCleansingTestState verifyRuns(DataCleansingTestState state) throws Exception {
     LOG.info("verifying runs for data cleaning");
     // For now, check total number of clean records and invalid records
     Assert.assertEquals(state.getEndInvalidRecordPid(), getTotalRecords(true) + getTotalRecords(false));
 
     // verify segregated records
     Assert.assertTrue(verifyRecordsWithExplore(state));
+    return state;
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
