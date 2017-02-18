@@ -19,6 +19,7 @@ package co.cask.cdap.longrunning.txprune;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.ProgramRunStatus;
@@ -31,6 +32,7 @@ import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.TypeToken;
 import org.apache.hadoop.conf.Configuration;
@@ -38,14 +40,17 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -88,8 +93,26 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   }
 
   @Override
-  public void verifyRuns(InvalidListPruneTestState state) throws Exception {
+  public InvalidListPruneTestState verifyRuns(InvalidListPruneTestState state) throws Exception {
+    // Verify that the invalid ids from the 5th iteration earlier have been pruned
+    // TODO: This check has to be enhanced to take into account test iteration interval, prune interval, tx max lifetime
+    int checkIteration = state.getIteration() - 5;
+    Set<Long> removeIds = new HashSet<>();
+    Map<Integer, List<Long>> newIterationState = new HashMap<>();
+    for (Map.Entry<Integer, List<Long>> entry : state.getInvalidTxIds().entrySet()) {
+      int iteration = entry.getKey();
+      if (iteration < checkIteration) {
+        removeIds.addAll(entry.getValue());
+      } else {
+        newIterationState.put(entry.getKey(), entry.getValue());
+      }
+    }
 
+    Set<Long> currentInvalids = Sets.newHashSet(getInvalidList());
+    Sets.SetView<Long> notRemovedIds = Sets.intersection(currentInvalids, removeIds);
+    Assert.assertTrue("Expected the following invalid ids to be pruned: " + notRemovedIds, notRemovedIds.isEmpty());
+
+    return new InvalidListPruneTestState(state.getIteration(), newIterationState);
   }
 
   @Override
@@ -99,8 +122,22 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     flushAndCompactTables();
 
+    truncateAndSendEvents(InvalidTxGeneratorApp.STREAM, iteration);
+
+    // Now run the mapreduce job
+    ApplicationManager applicationManager = getApplicationManager();
+    applicationManager.getMapReduceManager(InvalidTxGeneratorApp.InvalidMapReduce.MR_NAME).start();
+
+    // TODO: get the invalid transaction for the MR
+    HashMap<Integer, List<Long>> invalidTxIds = Maps.newHashMap(state.getInvalidTxIds());
+    invalidTxIds.put(iteration, invalidList);
+    return new InvalidListPruneTestState(iteration, invalidTxIds);
+  }
+
+  private void truncateAndSendEvents(String stream, int iteration)
+    throws IOException, StreamNotFoundException, UnauthenticatedException, UnauthorizedException {
     StreamClient streamClient = getStreamClient();
-    streamClient.truncate(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM));
+    streamClient.truncate(getLongRunningNamespace().stream(stream));
 
     // Create unique events for this iteration using the iteration id as part of the event
     StringWriter writer = new StringWriter();
@@ -112,18 +149,9 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     // Throw an exception to create an invalid transaction
     writer.write(InvalidTxGeneratorApp.EXCEPTION_STRING);
     writer.write("\n");
-    LOG.info("Writing {} events in one batch to stream {}", BATCH_SIZE + 1, InvalidTxGeneratorApp.STREAM);
-    streamClient.sendBatch(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), "text/plain",
+    LOG.info("Writing {} events in one batch to stream {}", BATCH_SIZE + 1, stream);
+    streamClient.sendBatch(getLongRunningNamespace().stream(stream), "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
-
-    // Now run the mapreduce job
-    ApplicationManager applicationManager = getApplicationManager();
-    applicationManager.getMapReduceManager(InvalidTxGeneratorApp.InvalidMapReduce.MR_NAME).start();
-
-    // TODO: get the invalid transaction for the MR
-    HashMap<Integer, List<Long>> invalidTxIds = Maps.newHashMap(state.getInvalidTxIds());
-    invalidTxIds.put(iteration, invalidList);
-    return new InvalidListPruneTestState(iteration, invalidTxIds);
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
@@ -160,8 +188,6 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     ClientConfig config = getClientConfig();
     HttpResponse response = restClient.execute(HttpMethod.GET, config.resolveURL("transactions/invalid"),
                                                config.getAccessToken());
-    List<Long> responseObject =
-      ObjectResponse.fromJsonBody(response, new TypeToken<List<Long>>() { }).getResponseObject();
-    return responseObject;
+    return ObjectResponse.fromJsonBody(response, new TypeToken<List<Long>>() { }).getResponseObject();
   }
 }
