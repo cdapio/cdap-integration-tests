@@ -61,6 +61,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -146,7 +148,9 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
       flushAndCompactTables();
     }
 
-    truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), iteration);
+    List<String> events = generateStreamEvents(iteration);
+
+    truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), events);
 
     // Now run the mapreduce job
     ApplicationManager applicationManager = getApplicationManager();
@@ -158,22 +162,30 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     return new InvalidListPruneTestState(iteration, invalidTxIds);
   }
 
-  private void truncateAndSendEvents(StreamId stream, int iteration)
+  private List<String> generateStreamEvents(int iteration) {
+    // Create unique events for this iteration using the iteration id as part of the event
+    List<String> events = new ArrayList<>(BATCH_SIZE + 1);
+    for (int i = 0; i < BATCH_SIZE; i++) {
+      events.add(String.format("%s", (iteration * MAX_EVENTS) + i));
+    }
+
+    // Throw an exception to create an invalid transaction at the end
+    events.add(InvalidTxGeneratorApp.EXCEPTION_STRING);
+    return Collections.unmodifiableList(events);
+  }
+
+  private void truncateAndSendEvents(StreamId stream, List<String> events)
     throws IOException, StreamNotFoundException, UnauthenticatedException, UnauthorizedException {
     StreamClient streamClient = getStreamClient();
     streamClient.truncate(stream);
 
-    // Create unique events for this iteration using the iteration id as part of the event
     StringWriter writer = new StringWriter();
-    for (int i = 0; i < BATCH_SIZE; i++) {
-      writer.write(String.format("%s", (iteration * MAX_EVENTS) + i));
+    for (String event : events) {
+      writer.write(event);
       writer.write("\n");
     }
 
-    // Throw an exception to create an invalid transaction
-    writer.write(InvalidTxGeneratorApp.EXCEPTION_STRING);
-    writer.write("\n");
-    LOG.info("Writing {} events in one batch to stream {}", BATCH_SIZE + 1, stream);
+    LOG.info("Writing {} events in one batch to stream {}", events.size(), stream);
     streamClient.sendBatch(stream, "text/plain",
                            ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
   }
@@ -184,7 +196,8 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
   private void flushAndCompactTables() throws IOException, UnauthorizedException, UnauthenticatedException {
     try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
-      LOG.info("Using connection: {}", connection.getConfiguration().get("hbase.zookeeper.quorum"));
+      LOG.info("Flushing and compacting using connection: {}",
+               connection.getConfiguration().get("hbase.zookeeper.quorum"));
       HBaseAdmin admin = new HBaseAdmin(connection);
       HTableDescriptor[] descriptors = admin.listTables();
       for (HTableDescriptor descriptor : descriptors) {
