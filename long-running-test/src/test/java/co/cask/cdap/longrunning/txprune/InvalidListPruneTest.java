@@ -79,6 +79,8 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   private static final long MAX_EVENTS = 10000000;
   private static final int BATCH_SIZE = 5000;
   private static final int MAX_EMPTY_TABLES = 10; // If this changes, old empty tables may need manual cleanup
+  private static final int COMPACT_ITERATION = 5;
+  private static final int PRUNE_CHECK_ITERATION = 10;
 
   @Override
   public void deploy() throws Exception {
@@ -115,7 +117,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   public InvalidListPruneTestState verifyRuns(InvalidListPruneTestState state) throws Exception {
     // Verify that the invalid ids from the 5th iteration earlier have been pruned
     // TODO: This check has to be enhanced to take into account test iteration interval, prune interval, tx max lifetime
-    int checkIteration = state.getIteration() - 5;
+    int checkIteration = state.getIteration() - PRUNE_CHECK_ITERATION;
     Set<Long> removeIds = new TreeSet<>();
     Map<Integer, List<Long>> newIterationState = new HashMap<>();
     for (Map.Entry<Integer, List<Long>> entry : state.getInvalidTxIds().entrySet()) {
@@ -145,7 +147,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     manageEmptyDatasets(getLongRunningNamespace(), iteration);
 
     // flush and compact every other iteration
-    if (iteration % 5 == 0) {
+    if (iteration % COMPACT_ITERATION == 0) {
       flushAndCompactTables();
     }
 
