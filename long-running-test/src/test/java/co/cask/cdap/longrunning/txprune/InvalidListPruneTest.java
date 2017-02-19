@@ -16,6 +16,7 @@
 
 package co.cask.cdap.longrunning.txprune;
 
+import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.DatasetAdmin;
 import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.client.StreamClient;
@@ -144,11 +145,13 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     manageEmptyDatasets(getLongRunningNamespace(), iteration);
 
     // flush and compact every other iteration
-    if (iteration % 2 == 0) {
+    if (iteration % 5 == 0) {
       flushAndCompactTables();
     }
 
     List<String> events = generateStreamEvents(iteration);
+
+    splitTable(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), events);
 
     truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), events);
 
@@ -194,6 +197,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     return getApplicationManager(getLongRunningNamespace().app(InvalidTxGeneratorApp.APP_NAME));
   }
 
+  @SuppressWarnings("deprecation")
   private void flushAndCompactTables() throws IOException, UnauthorizedException, UnauthenticatedException {
     try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
       LOG.info("Flushing and compacting using connection: {}",
@@ -236,21 +240,8 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
       return;
     }
 
-    RESTClient restClient = getRestClient();
-    ClientConfig config = getClientConfig();
-    HttpResponse response =
-      restClient.execute(HttpMethod.GET,
-                         config.resolveNamespacedURLV3(dataset.getParent(), "data/datasets/" + dataset.getDataset()),
-                         config.getAccessToken());
-    DatasetMeta datasetMeta =
-      ObjectResponse.fromJsonBody(response, new TypeToken<DatasetMeta>() { }).getResponseObject();
-    String datasetType = datasetMeta.getSpec().getType();
-    // We only know how to verify key value table!
-    // TODO: would be good to have the logic to get underlying HBase tables of any dataset
-    Assert.assertEquals("co.cask.cdap.api.dataset.lib.KeyValueTable", datasetType);
     // KeyValueTable only has one underlying HBase table
-    String hbaseTableName = "cdap_" + dataset.getParent().getEntityName() + ":" +
-      datasetMeta.getSpec().getSpecifications().values().iterator().next().getName();
+    String hbaseTableName = getHBaseTableNameForKV(dataset);
 
     // Scan and make sure that invalid data is not present in the table
     try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
@@ -300,5 +291,46 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
         }
       }
     }
+  }
+
+  @SuppressWarnings("deprecation")
+  private void splitTable(DatasetId dataset, List<String> events)
+    throws IOException, UnauthorizedException, UnauthenticatedException {
+    String hBaseTableName = getHBaseTableNameForKV(dataset);
+
+    int mid = events.size() / 2;
+    if (events.isEmpty() || mid < 1) {
+      LOG.warn("Not splitting table {} due to insufficient events!", hBaseTableName);
+      return;
+    }
+
+    byte[] splitPoint = Bytes.toBytes(events.get(mid));
+    try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
+      LOG.info("Splitting table {} using connection: {}", hBaseTableName,
+               connection.getConfiguration().get("hbase.zookeeper.quorum"));
+      HBaseAdmin admin = new HBaseAdmin(connection);
+      admin.split(TableName.valueOf(hBaseTableName), splitPoint);
+    }
+  }
+
+  private String getHBaseTableNameForKV(DatasetId dataset)
+    throws IOException, UnauthorizedException, UnauthenticatedException {
+    RESTClient restClient = getRestClient();
+    ClientConfig config = getClientConfig();
+    HttpResponse response =
+      restClient.execute(HttpMethod.GET,
+                         config.resolveNamespacedURLV3(dataset.getParent(), "data/datasets/" + dataset.getDataset()),
+                         config.getAccessToken());
+    DatasetMeta datasetMeta =
+      ObjectResponse.fromJsonBody(response, new TypeToken<DatasetMeta>() { }).getResponseObject();
+    String datasetType = datasetMeta.getSpec().getType();
+    // We only know how to verify key value table!
+    // TODO: would be good to have the logic to get underlying HBase tables of any dataset
+    Assert.assertEquals("co.cask.cdap.api.dataset.lib.KeyValueTable", datasetType);
+    // KeyValueTable only has one underlying HBase table
+    //noinspection UnnecessaryLocalVariable
+    String hbaseTableName = "cdap_" + dataset.getParent().getEntityName() + ":" +
+      datasetMeta.getSpec().getSpecifications().values().iterator().next().getName();
+    return hbaseTableName;
   }
 }
