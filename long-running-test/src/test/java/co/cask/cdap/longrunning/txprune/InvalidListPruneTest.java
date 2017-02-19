@@ -151,7 +151,9 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     List<String> events = generateStreamEvents(iteration);
 
-    splitTable(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), events);
+    if (iteration % 3 == 0) {
+      splitTable(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), events);
+    }
 
     truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), events);
 
