@@ -141,7 +141,10 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     manageEmptyDatasets(getLongRunningNamespace(), iteration);
 
-    flushAndCompactTables();
+    // flush and compact every other iteration
+    if (iteration % 2 == 0) {
+      flushAndCompactTables();
+    }
 
     truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), iteration);
 
