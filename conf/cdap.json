@@ -8,6 +8,9 @@
       "version": "4.1.0-1"
     },
     "hadoop": {
+      "core_site": {
+        "hadoop.proxyuser.hive.groups": "hadoop,hive,cdap,alice,bob,eve"
+      },
       "hdfs_site": {
         "dfs.namenode.delegation.token.renew-interval": "600000",
         "dfs.namenode.delegation.token.max-lifetime": "1200000"
