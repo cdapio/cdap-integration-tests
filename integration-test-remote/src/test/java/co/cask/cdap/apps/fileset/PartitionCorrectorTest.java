@@ -62,14 +62,14 @@ public class PartitionCorrectorTest extends AudiTestBase {
     pfsService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 100; i++) {
       HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, String.valueOf(i))).build(),
                                                       getClientConfig().getAccessToken());
       Assert.assertEquals(200, response.getResponseCode());
     }
 
     QueryClient queryClient = new QueryClient(getClientConfig());
-    validate(queryClient, 50);
+    validate(queryClient, 100);
 
     dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("batch.size", "20"));
     dropPartitionsAndCorrect(applicationManager, ImmutableMap.of("disable.explore", "false", "batch.size", "20"));
@@ -81,9 +81,9 @@ public class PartitionCorrectorTest extends AudiTestBase {
     // delete about half of the partitions directly in hive
     QueryClient queryClient = new QueryClient(getClientConfig());
     ExploreExecutionResult results = queryClient
-      .execute(TEST_NAMESPACE, "alter table dataset_pfs drop partition (key>'29')").get();
+      .execute(TEST_NAMESPACE, "alter table dataset_pfs drop partition (key>'49')").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
-    validate(queryClient, 23); // (2-9, 30-49 were dropped)
+    validate(queryClient, 45); // (5-9, 50-99 were dropped)
 
     // run the partition corrector. This should bring all partitions back
     WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker");
@@ -91,7 +91,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
     pfsWorker.start(ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
     pfsWorker.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1,
                           PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
-    validate(queryClient, 50);
+    validate(queryClient, 100);
   }
 
   private void validate(QueryClient client, int expected)
