@@ -107,7 +107,7 @@ public class DatasetTest extends AudiTestBase {
     wordStream.send("hello world");
 
     RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
-    flowletMetrics.waitForProcessed(1, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    flowletMetrics.waitForProcessed(1, 300, TimeUnit.SECONDS);
 
     // verify through service that there are 2 words
     Map<String, Object> responseMap = getWordCountStats(wordCountService);
@@ -146,7 +146,7 @@ public class DatasetTest extends AudiTestBase {
   }
 
   private Map<String, Object> getWordCountStats(ServiceManager wordCountService) throws Exception {
-    URL url = new URL(wordCountService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS), "stats");
+    URL url = new URL(wordCountService.getServiceURL(300, TimeUnit.SECONDS), "stats");
     HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     return GSON.fromJson(response.getResponseBodyAsString(),

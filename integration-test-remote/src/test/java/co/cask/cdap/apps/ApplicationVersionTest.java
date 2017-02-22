@@ -74,7 +74,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     serviceManagerV1.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Verify the service in ConfigTestApp v1 returns correct responses
-    URL urlV1 = new URL(serviceManagerV1.getServiceURL(), "ping");
+    URL urlV1 = new URL(serviceManagerV1.getServiceURL(300, TimeUnit.SECONDS), "ping");
     // we have to make the first handler call after service starts with a retry
     HttpResponse response = getRestClient().execute(HttpRequest.get(urlV1).build(), getClientConfig().getAccessToken(),
                                                     HttpURLConnection.HTTP_OK);
@@ -122,7 +122,7 @@ public class ApplicationVersionTest extends AudiTestBase {
                                        HttpURLConnection.HTTP_OK);
     Assert.assertEquals(200, response.getResponseCode());
     Assert.assertEquals("tV1_update", response.getResponseBodyAsString());
-    URL urlV2 = new URL(serviceManagerV2.getServiceURL(), "ping");
+    URL urlV2 = new URL(serviceManagerV2.getServiceURL(300, TimeUnit.SECONDS), "ping");
     response = getRestClient().execute(HttpRequest.get(urlV2).build(), getClientConfig().getAccessToken(),
                                        HttpURLConnection.HTTP_OK);
     Assert.assertEquals(200, response.getResponseCode());
@@ -190,7 +190,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     serviceManagerV2.start();
     serviceManagerV2.waitForRun(ProgramRunStatus.RUNNING, 80, TimeUnit.SECONDS);
 
-    URL urlV2 = new URL(serviceManagerV2.getServiceURL(), "ping");
+    URL urlV2 = new URL(serviceManagerV2.getServiceURL(300, TimeUnit.SECONDS), "ping");
     response = getRestClient().execute(HttpRequest.get(urlV2).build(), getClientConfig().getAccessToken(),
                                        HttpURLConnection.HTTP_OK);
     Assert.assertEquals(200, response.getResponseCode());
