@@ -54,6 +54,7 @@ import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
 import co.cask.cdap.remote.dataset.test.RemoteTableTest;
+import co.cask.cdap.security.ImpersonationTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -77,6 +78,7 @@ import org.junit.runners.Suite;
   ExploreTest.class,
   FileSetTest.class,
   HangingWorkerTest.class,
+  ImpersonationTest.class,
   KVTableWithProjectionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
