@@ -89,7 +89,7 @@ public class WordCountTest extends AudiTestBase {
 
       // try out metricsClient#getFlowletMetrics()
       RuntimeMetrics counterMetrics = flowManager.getFlowletMetrics("counter");
-      counterMetrics.waitForProcessed(numWordsProcessed, 300, TimeUnit.SECONDS);
+      counterMetrics.waitForProcessed(numWordsProcessed, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
       int longestWordLength = longestString(wordEvent.split(" ")).length();
       longestWordLengthAcrossRuns += longestWordLength;

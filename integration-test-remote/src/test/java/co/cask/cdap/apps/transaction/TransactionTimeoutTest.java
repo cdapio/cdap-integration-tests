@@ -62,8 +62,8 @@ public class TransactionTimeoutTest extends AudiTestBase {
 
     RuntimeMetrics aMetrics = flowManager.getFlowletMetrics(TransactionTimeoutApp.FLOWLET_A);
     RuntimeMetrics bMetrics = flowManager.getFlowletMetrics(TransactionTimeoutApp.FLOWLET_B);
-    aMetrics.waitForProcessed(1, 300, TimeUnit.SECONDS);
-    bMetrics.waitForProcessed(1, 300, TimeUnit.SECONDS);
+    aMetrics.waitForProcessed(1, 90, TimeUnit.SECONDS);
+    bMetrics.waitForProcessed(1, 90, TimeUnit.SECONDS);
 
     flowManager.stop();
     workerManager.waitForRun(ProgramRunStatus.COMPLETED, 60, TimeUnit.SECONDS);
