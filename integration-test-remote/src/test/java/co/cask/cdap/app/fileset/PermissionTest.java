@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.fileset;
+package co.cask.cdap.app.fileset;
 
 import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.api.dataset.lib.FileSetProperties;
