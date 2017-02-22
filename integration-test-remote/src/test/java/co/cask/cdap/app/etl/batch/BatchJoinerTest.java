@@ -280,7 +280,7 @@ public class BatchJoinerTest extends ETLTestBase {
 
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)
     throws IOException, UnauthenticatedException, UnauthorizedException {
-    URL pfsURL = new URL(serviceManager.getServiceURL(), String.format("read/%s", sink));
+    URL pfsURL = new URL(serviceManager.getServiceURL(300, TimeUnit.SECONDS), String.format("read/%s", sink));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, pfsURL, getClientConfig().getAccessToken());
 
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
