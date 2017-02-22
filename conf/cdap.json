@@ -5,7 +5,7 @@
         "explore.enabled": "true",
         "cdap.ugi.cache.expiration.ms": "60000"
       },
-      "version": "4.1.0-1"
+      "version": "4.2.0-1"
     },
     "hadoop": {
       "hdfs_site": {
