@@ -21,6 +21,7 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.SDKIncompatible;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.gson.Gson;
@@ -44,8 +45,12 @@ public class OperationalStatsTest extends AudiTestBase {
     new TypeToken<Map<String, Map<String, Object>>>() { }.getType();
 
   @Test
-  @Category(MapR5Incompatible.class)
-  // incompatible with MapR right now because a lot of these stats are currently unavailable for MapRFS
+  @Category({
+    // incompatible with MapR right now because a lot of these stats are currently unavailable for MapRFS
+    MapR5Incompatible.class,
+    // HDFS is not run in SDK
+    SDKIncompatible.class
+  })
   public void testHDFSStats() throws Exception {
     Map<String, String> hdfsInfo = getInfoStats("hdfs");
     Assert.assertTrue(hdfsInfo.containsKey("Version") && !hdfsInfo.get("Version").isEmpty());
@@ -69,6 +74,10 @@ public class OperationalStatsTest extends AudiTestBase {
   }
 
   @Test
+  @Category({
+    // YARN is not run in SDK
+    SDKIncompatible.class
+  })
   public void testYarnStats() throws Exception {
     Map<String, String> yarnInfo = getInfoStats("yarn");
     Assert.assertTrue(yarnInfo.containsKey("Version") && !yarnInfo.get("Version").isEmpty());
@@ -115,6 +124,10 @@ public class OperationalStatsTest extends AudiTestBase {
   }
 
   @Test
+  @Category({
+    // HBase is not run in SDK
+    SDKIncompatible.class
+  })
   public void testHBaseStats() throws Exception {
     Map<String, String> hbaseInfo = getInfoStats("hbase");
     Assert.assertTrue(hbaseInfo.containsKey("Version") && !hbaseInfo.get("Version").isEmpty());
