@@ -169,16 +169,4 @@ public class ImpersonationTest extends AudiTestBase {
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount, list.size());
   }
-
-  // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
-  @Nullable
-  private NamespaceMeta getById(List<NamespaceMeta> namespaces, final NamespaceId namespaceId) {
-    Iterable<NamespaceMeta> filter = Iterables.filter(namespaces, new Predicate<NamespaceMeta>() {
-      @Override
-      public boolean apply(@Nullable NamespaceMeta namespaceMeta) {
-        return namespaceMeta != null && namespaceId.getNamespace().equals(namespaceMeta.getName());
-      }
-    });
-    return Iterables.getFirst(filter, null);
-  }
 }
