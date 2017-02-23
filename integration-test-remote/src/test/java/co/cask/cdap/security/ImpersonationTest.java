@@ -50,17 +50,13 @@ import javax.annotation.Nullable;
  */
 public class ImpersonationTest extends AudiTestBase {
   private static final NamespaceId NS1 = new NamespaceId("namespace1");
+  private static final String ALICE = "alice";
+  private static final String EVE = "eve";
+  private static final String BOB = "bob";
 
   @Test
-  public void testNamespaceImpersonation() throws Exception {
+  public void testBasicNamespaceImpersonation() throws Exception {
     NamespaceClient namespaceClient = getNamespaceClient();
-
-    // initially, only the default namespace should exist
-    List<NamespaceMeta> list = namespaceClient.list();
-    int initialNamespaceCount = list.size();
-    NamespaceMeta defaultMeta = getById(list, NamespaceId.DEFAULT);
-    Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
-
     try {
       namespaceClient.get(NS1);
       Assert.fail("Expected namespace not to exist: " + NS1);
@@ -68,14 +64,14 @@ public class ImpersonationTest extends AudiTestBase {
       // expected
     }
 
-    // namespace create should work with or without description
     registerForDeletion(NS1);
+
+    List<NamespaceMeta> list = namespaceClient.list();
+    int initialNamespaceCount = list.size();
 
     NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
       .setName(NS1)
-      .setDescription("testDescription")
-      .setSchedulerQueueName("testSchedulerQueueName")
-      .setPrincipal("alice")
+      .setPrincipal(ALICE)
       .setGroupName("admin")
       .setKeytabURI("/etc/security/keytabs/alice.keytab")
       .build();
@@ -85,52 +81,69 @@ public class ImpersonationTest extends AudiTestBase {
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount + 1, list.size());
     Assert.assertTrue(list.contains(ns1Meta));
-    NamespaceMeta retrievedNs1Meta = getById(list, NS1);
+    //NamespaceMeta retrievedNs1Meta = getById(list, NS1);
+    NamespaceMeta retrievedNs1Meta = namespaceClient.get(NS1);
     Assert.assertNotNull(String.format("Failed to find namespace with name %s in list: %s",
                                        NS1, Joiner.on(", ").join(list)), retrievedNs1Meta);
     Assert.assertEquals(ns1Meta, retrievedNs1Meta);
-    Assert.assertTrue(list.contains(NamespaceMeta.DEFAULT));
     Assert.assertEquals(ns1Meta, namespaceClient.get(NS1));
 
-    // Test Streams
+    // Test Stream creation with impersonated namespace
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-    StreamId STREAM_ID1 = NS1.stream("streamTest1");
+    StreamId STREAM_ID = NS1.stream("streamTest");
 
     // create properties with user not in the same group as the user who created the namespace
     StreamProperties streamProperties =
-      new StreamProperties(1L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
-                                                       ImmutableMap.<String, String>of()), 128, null, "eve");
+      new StreamProperties(0L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
+                                                       ImmutableMap.<String, String>of()), 128, null, EVE);
     try {
-      streamClient.create(STREAM_ID1, streamProperties);
+      streamClient.create(STREAM_ID, streamProperties);
       Assert.fail("Expected stream creation to fail for this user");
     } catch (IOException expected) {
-      expected.printStackTrace();
+      Assert.assertTrue(expected.getMessage().contains(String.format("Failed to create directory at")));
+      try {
+        streamClient.getConfig(STREAM_ID);
+      } catch (Exception ioe) {
+        Assert.assertTrue(ioe.getMessage().contains(String.format("was not found")));
+      }
     }
 
     // check if stream can be created in the namespace by the owner user
-    StreamId STREAM_ID2 = NS1.stream("streamTest2");
     streamProperties = new StreamProperties(1L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
-                                                               ImmutableMap.<String, String>of()), 128, null, "alice");
+                                                               ImmutableMap.<String, String>of()), 128, null, ALICE);
+
+    streamClient.create(STREAM_ID, streamProperties);
+    Assert.assertEquals(streamProperties, streamClient.getConfig(STREAM_ID));
+
+    // check if user in the same group as owner can also create a stream
+    StreamId STREAM_ID2 = NS1.stream("streamTest2");
+    streamProperties = new StreamProperties(1L,
+                                            new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
+                                                                    ImmutableMap.<String, String>of()), 128, null, BOB);
     streamClient.create(STREAM_ID2, streamProperties);
     Assert.assertEquals(streamProperties, streamClient.getConfig(STREAM_ID2));
 
 
     // Test Datasets
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
-    DatasetId testDatasetInstance1 = NS1.dataset("testDataset1");
+    DatasetId testDatasetInstance = NS1.dataset("testDataset");
 
     try {
-      datasetClient.create(testDatasetInstance1, new DatasetInstanceConfiguration("table", null, null, "eve"));
+      datasetClient.create(testDatasetInstance, new DatasetInstanceConfiguration("table", null, null, EVE));
       Assert.fail("Expected dataset creation to fail for this user");
     } catch (Exception expected) {
-      expected.printStackTrace();
+      Assert.assertTrue(expected.getMessage().contains(String.format("Insufficient permissions")));
+      try {
+        datasetClient.get(testDatasetInstance);
+      } catch (IOException ioe) {
+        Assert.assertTrue(ioe.getMessage().contains(String.format("was not found")));
+      }
     }
 
-    DatasetId testDatasetInstance2 = NS1.dataset("testDataset2");
-    datasetClient.create(testDatasetInstance2, new DatasetInstanceConfiguration("table", null, null, "alice"));
+    datasetClient.create(testDatasetInstance, new DatasetInstanceConfiguration("table", null, null, ALICE));
 
     // Verify owner was able to create the dataset
-    Assert.assertTrue(datasetClient.exists(testDatasetInstance2));
+    Assert.assertTrue(datasetClient.exists(testDatasetInstance));
 
     // Test Apps
     ArtifactId artifactId = NS1.artifact("WikipediaPipelineArtifact", "1.0.0");
@@ -139,24 +152,22 @@ public class ImpersonationTest extends AudiTestBase {
     ArtifactSummary artifactSummary =  new ArtifactSummary("WikipediaPipelineArtifact", "1.0.0");
     ApplicationId applicationId = NS1.app(WikipediaPipelineApp.class.getSimpleName());
 
-    // deploy should fail when trying with user not in the same group as the owner
+    // deploy should fail when trying with user not in the same group as the namespace config
     try {
-      deployApplication(applicationId, new AppRequest(artifactSummary, null, "eve"));
+      deployApplication(applicationId, new AppRequest(artifactSummary, null, EVE));
       Assert.fail("Expected deploy app to fail for this user");
     } catch (Exception expected) {
-      expected.printStackTrace();
+      Assert.assertTrue(expected.getMessage().contains(String.format("Insufficient permissions")));
     }
 
     // Check if application can be deployed by onwer
-    deployApplication(applicationId, new AppRequest(artifactSummary, null, "alice"));
+    deployApplication(applicationId, new AppRequest(artifactSummary, null, ALICE));
 
     // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
     namespaceClient.delete(NS1);
 
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount, list.size());
-    defaultMeta = getById(list, NamespaceId.DEFAULT);
-    Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
   }
 
   // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
