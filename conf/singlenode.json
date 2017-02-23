@@ -4,10 +4,10 @@
       "cdap_site": {
         "metrics.processor.memory.mb": "512",
         "metrics.memory.mb": "512",
-        "stream.container.memory.mb": "512",
+        "stream.container.memory.mb": "600",
         "data.tx.memory.mb": "512",
-        "log.saver.container.memory.mb": "1024",
-        "explore.executor.container.memory.mb": "1229"
+        "log.saver.container.memory.mb": "1044",
+        "explore.executor.container.memory.mb": "1568"
       }
     },
     "hadoop": {
