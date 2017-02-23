@@ -30,6 +30,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.cdap.test.suite.category.SDKIncompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -58,7 +59,10 @@ import javax.annotation.Nullable;
  */
 @Category({
   // Do not run the tests on SDK because the local MR runner does not appear to obey the umask
-  SDKIncompatible.class
+  SDKIncompatible.class,
+  // Do not run for MapR, CDAP-8721, CDAP-8723: in MapR fs the permissions and group of the parent are not
+  // inherited by the child.
+  MapR5Incompatible.class
 })
 public class PermissionTest extends AudiTestBase {
 
