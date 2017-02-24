@@ -22,9 +22,12 @@ import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.common.NamespaceNotFoundException;
+import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.examples.wikipedia.WikipediaPipelineApp;
+import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.DatasetInstanceConfiguration;
 import co.cask.cdap.proto.NamespaceMeta;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
@@ -33,26 +36,49 @@ import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
+import co.cask.cdap.sportresults.ScoreCounter;
+import co.cask.cdap.sportresults.SportResults;
+import co.cask.cdap.sportresults.UploadService;
+import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
+import co.cask.cdap.test.ServiceManager;
+import co.cask.cdap.test.StreamManager;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
-import com.google.common.base.Predicate;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
+import org.apache.hadoop.security.authentication.util.KerberosName;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
-import javax.annotation.Nullable;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  *  Impersonation Tests
  */
 public class ImpersonationTest extends AudiTestBase {
-  private static final NamespaceId NS1 = new NamespaceId("namespace1");
+  private static final NamespaceId NS1 = new NamespaceId("ns1");
+  private static final NamespaceId NS2 = new NamespaceId("ns2");
   private static final String ALICE = "alice";
   private static final String EVE = "eve";
   private static final String BOB = "bob";
+
+  private static final String FANTASY_2014 =
+    "2014/1/3,My Team,Your Team,24,17\n" +
+      "2014/3/5,My Team,Other Team,17,16\n";
+  private static final String FANTASY_2015 =
+    "2015/3/10,Your Team,My Team,32,12\n" +
+      "2014/8/12,Other Team,Your Team,24,14\n";
+  private static final String CRITTERS_2014 =
+    "2015/3/10,Red Falcons,Blue Bonnets,28,17\n" +
+      "2014/8/12,Green Berets,Red Falcons,23,8\n";
 
   @Test
   public void testBasicNamespaceImpersonation() throws Exception {
@@ -73,7 +99,7 @@ public class ImpersonationTest extends AudiTestBase {
       .setName(NS1)
       .setPrincipal(ALICE)
       .setGroupName("admin")
-      .setKeytabURI("/etc/security/keytabs/alice.keytab")
+      .setKeytabURI(getKeytabURIforPrincipal(ALICE))
       .build();
     namespaceClient.create(ns1Meta);
 
@@ -81,7 +107,6 @@ public class ImpersonationTest extends AudiTestBase {
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount + 1, list.size());
     Assert.assertTrue(list.contains(ns1Meta));
-    //NamespaceMeta retrievedNs1Meta = getById(list, NS1);
     NamespaceMeta retrievedNs1Meta = namespaceClient.get(NS1);
     Assert.assertNotNull(String.format("Failed to find namespace with name %s in list: %s",
                                        NS1, Joiner.on(", ").join(list)), retrievedNs1Meta);
@@ -168,5 +193,90 @@ public class ImpersonationTest extends AudiTestBase {
 
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount, list.size());
+  }
+
+  @Test
+  public void testAcrossNamespaces() throws Exception {
+    NamespaceClient namespaceClient = getNamespaceClient();
+
+    registerForDeletion(NS1);
+    NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
+      .setName(NS1)
+      .setDescription("testNamespace1")
+      .setPrincipal(ALICE)
+      .setGroupName("deployer")
+      .setKeytabURI(getKeytabURIforPrincipal(ALICE))
+      .build();
+    namespaceClient.create(ns1Meta);
+
+    ArtifactId artifactId = NS1.artifact("SportResults", "1.0.0");
+    getTestManager().addAppArtifact(artifactId, SportResults.class);
+
+    ArtifactSummary artifactSummary =  new ArtifactSummary("SportResults", "1.0.0");
+    ApplicationId applicationId = NS1.app(SportResults.class.getSimpleName());
+
+    deployApplication(applicationId, new AppRequest(artifactSummary, null, BOB));
+
+    registerForDeletion(NS2);
+    NamespaceMeta ns2Meta = new NamespaceMeta.Builder()
+      .setName(NS2)
+      .setDescription("testNamespace2")
+      .setPrincipal(EVE)
+      .setGroupName("deployer")
+      .setKeytabURI(getKeytabURIforPrincipal(EVE))
+      .build();
+    namespaceClient.create(ns2Meta);
+
+    ArtifactId artifactId2 = NS2.artifact("SportResults", "1.0.0");
+    getTestManager().addAppArtifact(artifactId2, SportResults.class);
+    ApplicationId applicationId2 = NS2.app(SportResults.class.getSimpleName());
+
+    ApplicationManager applicationManager = deployApplication(applicationId2,
+                                                              new AppRequest(artifactSummary, null, BOB));
+
+    Map<String, String> args = new HashMap<>();
+    // Have this program read and write from the Dataset in different namespace
+    args.put("namespace", NS1.getNamespace());
+    ServiceManager serviceManager =
+      applicationManager.getServiceManager(UploadService.class.getSimpleName()).start(args);
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForStatus(true);
+
+    // upload a few dummy results
+    URL url = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS*2, TimeUnit.SECONDS);
+    uploadResults(url, "fantasy", 2014, FANTASY_2014);
+    uploadResults(url, "fantasy", 2015, FANTASY_2015);
+    uploadResults(url, "critters", 2014, CRITTERS_2014);
+
+    args = new HashMap<>();
+    args.put("league", "fantasy");
+    // Have this program read and write from the Dataset in different namespace
+    args.put("namespace", NS1.getNamespace());
+    applicationManager.getMapReduceManager(ScoreCounter.class.getSimpleName()).start(args);
+  }
+
+  // write a file to the file set using the service
+  private void uploadResults(URL url, String league, int season, String content) throws Exception {
+    URL fullURL = new URL(url, String.format("leagues/%s/seasons/%d", league, season));
+    HttpResponse response = getRestClient().execute(HttpMethod.PUT, fullURL, content,
+                                                      ImmutableMap.<String, String>of("Content-type", "text/csv"),
+                                                      getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
+  }
+
+  private String getKeytabURIforPrincipal(String principal) throws Exception {
+    ConfigEntry configEntry = getMetaClient().getCDAPConfig().get(Constants.Security.KEYTAB_PATH);
+    Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s", Constants.Security.KEYTAB_PATH);
+    String name = new KerberosName(principal).getShortName();
+    return configEntry.getValue().replace(Constants.USER_NAME_SPECIFIER, name);
+  }
+
+  private void createTestData(NamespaceId namespaceId) throws Exception {
+    StreamId likesStream = namespaceId.stream("pageTitleStream");
+    StreamManager likesStreamManager = getTestManager().getStreamManager(likesStream);
+    String like1 = "{\"name\":\"Metallica\",\"id\":\"107926539230502\",\"created_time\":\"2015-06-25T17:14:47+0000\"}";
+    String like2 = "{\"name\":\"grunge\",\"id\":\"911679552186992\",\"created_time\":\"2015-07-20T17:37:04+0000\"}";
+    likesStreamManager.send(like1);
+    likesStreamManager.send(like2);
   }
 }
