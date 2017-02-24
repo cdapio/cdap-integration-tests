@@ -1,7 +1,13 @@
 {
   "config": {
     "cdap": {
-      "version": "4.1.0-1"
+      "version": "4.1.0-1",
+      "cdap.ugi.cache.expiration.ms": "60000",
+      "data.tx.prune.interval":"600",
+      "data.tx.max.lifetime": "960",
+      "data.tx.long.timeout": "900",
+      "data.tx.max.timeout": "300",
+      "data.tx.grace.period": "60"
     },
     "hadoop": {
       "hdfs_site": {
