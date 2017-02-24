@@ -14,7 +14,6 @@
  * the License.
  */
 
-
 package co.cask.cdap.apps.appimpersonation;
 
 import co.cask.cdap.api.Predicate;
@@ -49,9 +48,9 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
- * This is a simple FileProcessApp example.
+ * This is a simple FileProcessorApp example.
  */
-public class FileProcessApp extends AbstractApplication {
+public class FileProcessorApp extends AbstractApplication {
 
   private static final String RAW = "X-raw";
   private static final String GOLD = "X-gold";
@@ -107,7 +106,7 @@ public class FileProcessApp extends AbstractApplication {
                                                                             context.getLogicalStartTime()).build();
 
       partitionCommitter =
-        PartitionBatchInput.setInput(context, FileProcessApp.RAW,
+        PartitionBatchInput.setInput(context, FileProcessorApp.RAW,
                                      new KVTableStatePersistor("consumingState", "state.key"),
                                      ConsumerConfiguration.builder().setPartitionPredicate(
                                        new Predicate<PartitionDetail>() {
@@ -122,7 +121,7 @@ public class FileProcessApp extends AbstractApplication {
                                          }}).build());
       Map<String, String> outputArgs = new HashMap<>();
       PartitionedFileSetArguments.setOutputPartitionKey(outputArgs, outputPartitionKey);
-      context.addOutput(Output.ofDataset(FileProcessApp.GOLD, outputArgs));
+      context.addOutput(Output.ofDataset(FileProcessorApp.GOLD, outputArgs));
       Job job = context.getHadoopJob();
       job.setMapperClass(FileProcessMapper.class);
       job.setNumReduceTasks(0);
