@@ -18,7 +18,7 @@
 
 while true
 do
-  if [ ! -z ${hbase_user} ]; then echo "${hbase_password}" | kinit "${hbase_user}"; fi
+  echo "realtime" | kinit hbase
   for i in `echo "list" | hbase shell | grep 'cdap_system' | fgrep -v '['`; do echo "flush '$i'"; echo "major_compact '$i'"; done | hbase shell
-  sleep 600
+  sleep ${1:-600}
 done
