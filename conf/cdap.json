@@ -4,7 +4,12 @@
       "cdap_site": {
         "explore.enabled": "true",
         "cdap.ugi.cache.expiration.ms": "60000",
-        "cdap.http.client.read.timeout.ms":"120000"
+        "cdap.http.client.read.timeout.ms":"120000",
+        "data.tx.prune.interval":"600",
+        "data.tx.max.lifetime": "960",
+        "data.tx.long.timeout": "900",
+        "data.tx.max.timeout": "300",
+        "data.tx.grace.period": "60"
       },
       "version": "4.1.0-1"
     },
