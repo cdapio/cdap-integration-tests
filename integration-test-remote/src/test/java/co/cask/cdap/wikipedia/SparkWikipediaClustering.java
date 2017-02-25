@@ -18,6 +18,8 @@ package co.cask.cdap.wikipedia;
 
 import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.spark.AbstractSpark;
+import co.cask.cdap.examples.wikipedia.ScalaSparkKMeans;
+import co.cask.cdap.examples.wikipedia.ScalaSparkLDA;
 
 /**
  * Spark program that executes in a workflow and analyzes wikipedia data

@@ -29,6 +29,7 @@ import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
+import co.cask.cdap.examples.wikipedia.Term;
 import com.google.gson.JsonObject;
 
 import java.util.ArrayList;

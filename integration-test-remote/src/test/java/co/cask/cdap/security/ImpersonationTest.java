@@ -115,19 +115,19 @@ public class ImpersonationTest extends AudiTestBase {
 
     // Test Stream creation with impersonated namespace
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-    StreamId STREAM_ID = NS1.stream("streamTest");
+    StreamId streamId = NS1.stream("streamTest");
 
     // create properties with user not in the same group as the user who created the namespace
     StreamProperties streamProperties =
       new StreamProperties(0L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
                                                        ImmutableMap.<String, String>of()), 128, null, EVE);
     try {
-      streamClient.create(STREAM_ID, streamProperties);
+      streamClient.create(streamId, streamProperties);
       Assert.fail("Expected stream creation to fail for this user");
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("Failed to create directory at")));
       try {
-        streamClient.getConfig(STREAM_ID);
+        streamClient.getConfig(streamId);
       } catch (Exception ioe) {
         Assert.assertTrue(ioe.getMessage().contains(String.format("was not found")));
       }
@@ -137,16 +137,16 @@ public class ImpersonationTest extends AudiTestBase {
     streamProperties = new StreamProperties(1L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
                                                                ImmutableMap.<String, String>of()), 128, null, ALICE);
 
-    streamClient.create(STREAM_ID, streamProperties);
-    Assert.assertEquals(streamProperties, streamClient.getConfig(STREAM_ID));
+    streamClient.create(streamId, streamProperties);
+    Assert.assertEquals(streamProperties, streamClient.getConfig(streamId));
 
     // check if user in the same group as owner can also create a stream
-    StreamId STREAM_ID2 = NS1.stream("streamTest2");
+    StreamId streamId1 = NS1.stream("streamTest2");
     streamProperties = new StreamProperties(1L,
                                             new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
                                                                     ImmutableMap.<String, String>of()), 128, null, BOB);
-    streamClient.create(STREAM_ID2, streamProperties);
-    Assert.assertEquals(streamProperties, streamClient.getConfig(STREAM_ID2));
+    streamClient.create(streamId1, streamProperties);
+    Assert.assertEquals(streamProperties, streamClient.getConfig(streamId1));
 
 
     // Test Datasets
@@ -243,7 +243,7 @@ public class ImpersonationTest extends AudiTestBase {
     serviceManager.waitForStatus(true);
 
     // upload a few dummy results
-    URL url = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS*2, TimeUnit.SECONDS);
+    URL url = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS * 2, TimeUnit.SECONDS);
     uploadResults(url, "fantasy", 2014, FANTASY_2014);
     uploadResults(url, "fantasy", 2015, FANTASY_2015);
     uploadResults(url, "critters", 2014, CRITTERS_2014);
