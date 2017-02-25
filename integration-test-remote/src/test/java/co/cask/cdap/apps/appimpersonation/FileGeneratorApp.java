@@ -17,6 +17,7 @@
 
 package co.cask.cdap.apps.appimpersonation;
 
+import co.cask.cdap.api.Config;
 import co.cask.cdap.api.TxRunnable;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.common.Bytes;
@@ -27,26 +28,60 @@ import co.cask.cdap.api.dataset.lib.PartitionedFileSet;
 import co.cask.cdap.api.dataset.lib.PartitionedFileSetProperties;
 import co.cask.cdap.api.dataset.lib.Partitioning;
 import co.cask.cdap.api.worker.AbstractWorker;
+import co.cask.cdap.internal.guava.reflect.TypeToken;
+import com.google.gson.Gson;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.twill.filesystem.Location;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.OutputStream;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * This is a simple FileGeneratorApp example.
+ * This {@code Application} generates files and stores them into a {@code PartitionedFileSet}.
  */
-public class FileGeneratorApp extends AbstractApplication {
+public class FileGeneratorApp extends AbstractApplication<FileGeneratorApp.FileGeneratorAppConfig> {
 
-  private static final String RAW = "X-raw";
+  private static final Logger LOG = LoggerFactory.getLogger(FileGeneratorApp.class);
+
+  public static final String RAW = "X-raw";
+
+  public static class FileGeneratorAppConfig extends Config {
+    public String resultPerms = null;
+    public String resultGroup = null;
+    public String resultGrants = null;
+    public String resultDatabase = null;
+  }
 
   @Override
   public void configure() {
-    setName("FileGenerator");
-    createDataset(RAW, PartitionedFileSet.class, PartitionedFileSetProperties.builder()
+    FileGeneratorAppConfig config = getConfig();
+
+    PartitionedFileSetProperties.Builder builder = PartitionedFileSetProperties.builder()
       // Properties for partitioning
-      .setPartitioning(Partitioning.builder().addLongField("time").build())
+      .setPartitioning(Partitioning.builder().addLongField("time").build());
+
+    if (config.resultGrants != null) {
+      Map<String, String> grants = new Gson().fromJson(config.resultGrants,
+                                                       new TypeToken<Map<String, String>>() {
+                                                       }.getType());
+      builder.setTablePermissions(grants);
+    }
+
+    if (config.resultGroup != null) {
+      builder.setFileGroup(config.resultGroup);
+    }
+    if (config.resultPerms != null) {
+      builder.setFilePermissions(config.resultPerms);
+    }
+    if (config.resultDatabase != null) {
+      builder.setExploreDatabaseName(config.resultDatabase);
+    }
+
+    createDataset(RAW, PartitionedFileSet.class, builder
       // Properties for file set
       .setInputFormat(TextInputFormat.class)
       .setOutputFormat(TextOutputFormat.class)
@@ -59,7 +94,7 @@ public class FileGeneratorApp extends AbstractApplication {
   }
 
   /**
-   *
+   * A {@code Worker} which generates files and stores them in a {@code PartitionedFileSet}.
    */
   public class FileGeneratorWorker extends AbstractWorker {
     private volatile boolean stopped;
@@ -71,10 +106,10 @@ public class FileGeneratorApp extends AbstractApplication {
           getContext().execute(new TxRunnable() {
             @Override
             public void run(DatasetContext datasetContext) throws Exception {
-              PartitionedFileSet XrawFileSet = datasetContext.getDataset(FileGeneratorApp.RAW);
+              PartitionedFileSet xRawFileSet = datasetContext.getDataset(FileGeneratorApp.RAW);
               PartitionKey partitionKey = PartitionKey.builder().addLongField("time",
                                                                               System.currentTimeMillis()).build();
-              PartitionOutput outputPartition = XrawFileSet.getPartitionOutput(partitionKey);
+              PartitionOutput outputPartition = xRawFileSet.getPartitionOutput(partitionKey);
 
               Location partitionDir = outputPartition.getLocation();
               partitionDir.mkdirs();
@@ -88,7 +123,7 @@ public class FileGeneratorApp extends AbstractApplication {
           });
           TimeUnit.SECONDS.sleep(5);
         } catch (Exception e) {
-          // no-op
+          LOG.error("An exception was thrown", e);
         }
       }
     }

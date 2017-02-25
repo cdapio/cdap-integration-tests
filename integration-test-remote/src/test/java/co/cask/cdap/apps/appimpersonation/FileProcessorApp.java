@@ -48,20 +48,19 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
- * This is a simple FileProcessorApp example.
+ * This {@code Application} reads files written by {@code FileGeneratorApp} and rewrites them elsewhere.
  */
 public class FileProcessorApp extends AbstractApplication {
 
-  private static final String RAW = "X-raw";
-  private static final String GOLD = "X-gold";
-  private static String WORKFLOW_NAME = "FileProcessWorkflow";
-  private static String MAPREDECE_NAME = "FileProcessMapReduce";
+  private static final String WORKFLOW_NAME = "FileProcessWorkflow";
+  private static final String MAPREDUCE_NAME = "FileProcessMapReduce";
   // in milliseconds
-  private static long readLastNMins = 10 * 60 * 1000;
+  private static final long READ_LAST_N_MINS = 10 * 60 * 1000;
+
+  public static final String GOLD = "X-gold";
 
   @Override
   public void configure() {
-    setName("FileProcessor");
     createDataset("consumingState", KeyValueTable.class);
     createDataset(GOLD, PartitionedFileSet.class, PartitionedFileSetProperties.builder()
       // Properties for partitioning
@@ -86,7 +85,7 @@ public class FileProcessorApp extends AbstractApplication {
     @Override
     protected void configure() {
       setName(WORKFLOW_NAME);
-      addMapReduce(MAPREDECE_NAME);
+      addMapReduce(MAPREDUCE_NAME);
     }
   }
 
@@ -96,7 +95,7 @@ public class FileProcessorApp extends AbstractApplication {
 
     @Override
     public void configure() {
-      setName(MAPREDECE_NAME);
+      setName(MAPREDUCE_NAME);
     }
 
     @Override
@@ -106,7 +105,7 @@ public class FileProcessorApp extends AbstractApplication {
                                                                             context.getLogicalStartTime()).build();
 
       partitionCommitter =
-        PartitionBatchInput.setInput(context, FileProcessorApp.RAW,
+        PartitionBatchInput.setInput(context, FileGeneratorApp.RAW,
                                      new KVTableStatePersistor("consumingState", "state.key"),
                                      ConsumerConfiguration.builder().setPartitionPredicate(
                                        new Predicate<PartitionDetail>() {
@@ -117,7 +116,8 @@ public class FileProcessorApp extends AbstractApplication {
                                            }
                                            long creationTime = partitionDetail.getMetadata().getCreationTime();
                                            long startTime = context.getLogicalStartTime();
-                                           return creationTime + readLastNMins > startTime && creationTime < startTime;
+                                           return creationTime + READ_LAST_N_MINS > startTime &&
+                                             creationTime < startTime;
                                          }}).build());
       Map<String, String> outputArgs = new HashMap<>();
       PartitionedFileSetArguments.setOutputPartitionKey(outputArgs, outputPartitionKey);
