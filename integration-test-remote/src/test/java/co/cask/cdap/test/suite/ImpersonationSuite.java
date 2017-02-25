@@ -17,6 +17,7 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.security.AppImpersonationTest;
+import co.cask.cdap.security.CrossNSAppImpersonationTest;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -29,7 +30,8 @@ import org.junit.runners.Suite;
   // TODO: Currently impersonation integration test runs on CDH5.5 clusters only. Once we support running on different
   // distros, this should be AllTests.class
   CDH55Suite.class,
-  AppImpersonationTest.class
+  AppImpersonationTest.class,
+  CrossNSAppImpersonationTest.class
 })
 public class ImpersonationSuite {
 }
