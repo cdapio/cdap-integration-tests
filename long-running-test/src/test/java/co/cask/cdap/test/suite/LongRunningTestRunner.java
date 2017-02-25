@@ -38,7 +38,7 @@ import java.util.Map;
  * Suite to run all long running tests for CDAP
  */
 @RunWith(AutoSuiteRunner.class)
-@AutoSuiteRunner.Matches(packages = "co.cask.cdap.longrunning")
+@AutoSuiteRunner.Matches(packages = "co.cask.cdap.longrunning.queue")
 public class LongRunningTestRunner {
   private static final Logger LOG = LoggerFactory.getLogger(LongRunningTestRunner.class);
   private static final String INPUT_STATE_PROP = "input.state";
