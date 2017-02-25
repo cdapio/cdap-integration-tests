@@ -45,6 +45,8 @@ import co.cask.cdap.proto.id.StreamViewId;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.proto.metadata.lineage.RelationRecord;
+import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.MapReduceManager;
 import com.google.common.collect.ImmutableSet;
 import org.apache.twill.api.RunId;
 import org.junit.Assert;
@@ -68,16 +70,6 @@ public class LineageUpgradeTest extends UpgradeTestBase {
 
   private static final String PURCHASE_VIEW_FIELD = "purchaseViewBody";
 
-  private final StreamClient streamClient;
-  private final ProgramClient programClient;
-  private final LineageClient lineageClient;
-
-  public LineageUpgradeTest() {
-    this.streamClient = new StreamClient(getClientConfig(), getRestClient());
-    this.programClient = new ProgramClient(getClientConfig(), getRestClient());
-    this.lineageClient = new LineageClient(getClientConfig(), getRestClient());
-  }
-
   @Override
   public void preStage() throws Exception {
     // create lineage test namespace
@@ -85,7 +77,7 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     getNamespaceClient().create(namespaceMeta);
 
     // deploy an application
-    deployApplication(LINEAGE_NAMESPACE, PurchaseApp.class);
+    ApplicationManager appManager = deployApplication(LINEAGE_NAMESPACE, PurchaseApp.class);
 
     // create a view
     Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
@@ -94,13 +86,18 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     viewClient.createOrUpdate(PURCHASE_VIEW,
                               new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
-    streamClient.sendEvent(PURCHASE_STREAM, "John bought 10 Apples for $1000");
+    getStreamClient().sendEvent(PURCHASE_STREAM, "John bought 10 Apples for $1000");
     long startTime = 0;
-    RunId runId = waitForStart(PURCHASE_HISTORY_BUILDER);
+
+    MapReduceManager mrManager = appManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getProgram()).start();
+    mrManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
+    RunId runId = getRunningProgramRunId(PURCHASE_HISTORY_BUILDER);
+
     waitForStop(PURCHASE_HISTORY_BUILDER, true);
     long stopTime = TimeMathParser.nowInSeconds();
 
-    LineageRecord lineage = lineageClient.getLineage(PURCHASES, startTime, stopTime, 10);
+    LineageRecord lineage = new LineageClient(getClientConfig(), getRestClient())
+      .getLineage(PURCHASES, startTime, stopTime, 10);
     LineageRecord expected = getExpectedLineageRecord(stopTime, runId);
 
     Assert.assertEquals(expected, lineage);
@@ -111,7 +108,8 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     long startTime = 0;
     long stopTime = TimeMathParser.nowInSeconds();
 
-    LineageRecord lineage = lineageClient.getLineage(PURCHASES, startTime, stopTime, 10);
+    LineageRecord lineage = new LineageClient(getClientConfig(), getRestClient())
+      .getLineage(PURCHASES, startTime, stopTime, 10);
     Set<RelationRecord> relations = lineage.getRelations();
 
     // Only concerned about the program access, not the run id, so get it from the query
@@ -135,23 +133,24 @@ public class LineageUpgradeTest extends UpgradeTestBase {
       Collections.<CollapseType>emptySet());
   }
 
-  private RunId waitForStart(final ProgramId program) throws Exception {
-    programClient.start(program);
-    waitState(program, ProgramStatus.RUNNING);
-    return getRunningProgramRunId(program);
-  }
-
   private RunId getRunningProgramRunId(final ProgramId program) throws Exception {
     waitState(program, ProgramStatus.RUNNING);
-    List<RunRecord> programRuns = programClient.getProgramRuns(program, ProgramStatus.RUNNING.name(), 0,
-                                                               Long.MAX_VALUE, Integer.MAX_VALUE);
-    return RunIds.fromString(programRuns.get(0).toString());
+    Tasks.waitFor(false, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        return getProgramClient().getProgramRuns(program, ProgramStatus.RUNNING.name(), 0,
+                                          Long.MAX_VALUE, Integer.MAX_VALUE).isEmpty();
+      }
+    }, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    List<RunRecord> programRuns = getProgramClient().getProgramRuns(program, ProgramStatus.RUNNING.name(), 0,
+                                                                    Long.MAX_VALUE, Integer.MAX_VALUE);
+    return RunIds.fromString(programRuns.get(0).getPid());
   }
 
   private void waitForStop(ProgramId program, boolean needsStop) throws Exception {
-    if (needsStop && programClient.getStatus(program).equals(ProgramRunStatus.RUNNING.toString())) {
+    if (needsStop && getProgramClient().getStatus(program).equals(ProgramRunStatus.RUNNING.toString())) {
       LOG.info("Stopping program {}", program);
-      programClient.stop(program);
+      getProgramClient().stop(program);
     }
     waitState(program, ProgramStatus.STOPPED);
     LOG.info("Program {} has stopped", program);
@@ -161,7 +160,7 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     Tasks.waitFor(state.toString(), new Callable<String>() {
       @Override
       public String call() throws Exception {
-        return programClient.getStatus(program);
+        return getProgramClient().getStatus(program);
       }
     }, 60000, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
   }
