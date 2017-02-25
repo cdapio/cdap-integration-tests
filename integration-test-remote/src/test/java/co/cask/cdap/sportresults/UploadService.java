@@ -123,8 +123,6 @@ public class UploadService extends AbstractService {
       final AtomicReference<PartitionDetail> partitionDetail = new AtomicReference<>();
       final String namespace = getContext().getRuntimeArguments().get("namespace");
 
-      System.out.println("GOT NAMESPACE => " + namespace + " request " + request);
-
       getContext().execute(new TxRunnable() {
         @Override
         public void run(DatasetContext context) throws Exception {
@@ -136,7 +134,6 @@ public class UploadService extends AbstractService {
             }
             partitionDetail.set(results.getPartition(key));
           } catch (Exception e) {
-            System.out.println("ERROR = " + e.toString());
             e.printStackTrace();
           }
         }
@@ -153,7 +150,6 @@ public class UploadService extends AbstractService {
         results = getContext().getDataset("results");
       }
       final PartitionOutput output = results.getPartitionOutput(key);
-      System.out.println("2 GOT NAMESPACE => " + namespace);
 
       try {
         final Location partitionDir = output.getLocation();
@@ -168,10 +164,9 @@ public class UploadService extends AbstractService {
           @Override
           public void onReceived(ByteBuffer chunk, Transactional transactional) throws Exception {
             try {
-              System.out.println("WRITE chunk " + chunk.toString());
               channel.write(chunk);
             } catch (Exception e) {
-              System.out.println("ERROR WHILE WRITING. " + e);
+              e.printStackTrace();
             }
           }
 
@@ -181,7 +176,7 @@ public class UploadService extends AbstractService {
               channel.close();
               output.addPartition();
             } catch (Exception e) {
-              System.out.println("ERROR with addPartition " + e);
+              e.printStackTrace();
             }
             responder.sendStatus(200);
           }
