@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.data.format.FormatSpecification;
@@ -90,12 +91,11 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     long startTime = 0;
 
     MapReduceManager mrManager = appManager.getMapReduceManager(PURCHASE_HISTORY_BUILDER.getProgram()).start();
-    mrManager.waitForStatus(true, PROGRAM_START_STOP_TIMEOUT_SECONDS, 1);
-    RunId runId = getRunningProgramRunId(PURCHASE_HISTORY_BUILDER);
+    mrManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
-    waitForStop(PURCHASE_HISTORY_BUILDER, true);
+    RunId runId = RunIds.fromString(mrManager.getHistory().get(0).getPid());
+
     long stopTime = TimeMathParser.nowInSeconds();
-
     LineageRecord lineage = new LineageClient(getClientConfig(), getRestClient())
       .getLineage(PURCHASES, startTime, stopTime, 10);
     LineageRecord expected = getExpectedLineageRecord(stopTime, runId);
@@ -131,37 +131,5 @@ public class LineageUpgradeTest extends UpgradeTestBase {
         new Relation(PURCHASES, PURCHASE_HISTORY_BUILDER, AccessType.READ, runId)
       )),
       Collections.<CollapseType>emptySet());
-  }
-
-  private RunId getRunningProgramRunId(final ProgramId program) throws Exception {
-    waitState(program, ProgramStatus.RUNNING);
-    Tasks.waitFor(false, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        return getProgramClient().getProgramRuns(program, ProgramStatus.RUNNING.name(), 0,
-                                          Long.MAX_VALUE, Integer.MAX_VALUE).isEmpty();
-      }
-    }, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    List<RunRecord> programRuns = getProgramClient().getProgramRuns(program, ProgramStatus.RUNNING.name(), 0,
-                                                                    Long.MAX_VALUE, Integer.MAX_VALUE);
-    return RunIds.fromString(programRuns.get(0).getPid());
-  }
-
-  private void waitForStop(ProgramId program, boolean needsStop) throws Exception {
-    if (needsStop && getProgramClient().getStatus(program).equals(ProgramRunStatus.RUNNING.toString())) {
-      LOG.info("Stopping program {}", program);
-      getProgramClient().stop(program);
-    }
-    waitState(program, ProgramStatus.STOPPED);
-    LOG.info("Program {} has stopped", program);
-  }
-
-  private void waitState(final ProgramId program, ProgramStatus state) throws Exception {
-    Tasks.waitFor(state.toString(), new Callable<String>() {
-      @Override
-      public String call() throws Exception {
-        return getProgramClient().getStatus(program);
-      }
-    }, 60000, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
   }
 }
