@@ -59,9 +59,11 @@ public class TopNMapReduce extends AbstractMapReduce {
   @Override
   public void initialize() throws Exception {
     MapReduceContext context = getContext();
-    String inputNamespace = context.getRuntimeArguments().get("input_namespace");
-    String outputNamespace = context.getRuntimeArguments().get("output_namespace");
     Map<String, String> runtimeArguments = context.getRuntimeArguments();
+
+    String inputNamespace = runtimeArguments.get("input_namespace");
+    String outputNamespace = runtimeArguments.get("output_namespace");
+
     Job job = context.getHadoopJob();
     WorkflowToken workflowToken = context.getWorkflowToken();
     int topNRank = 10;

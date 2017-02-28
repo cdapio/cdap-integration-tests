@@ -83,11 +83,13 @@ public class StreamToDataset extends AbstractMapReduce {
     job.setMapperClass(mapper);
 
     if (inputNamespace != null) {
+      LOG.info("Using {} as input namespace", inputNamespace);
       context.addInput(Input.ofStream(inputStream).fromNamespace(inputNamespace));
     } else {
       context.addInput(Input.ofStream(inputStream));
     }
     if (outputNamespace != null) {
+      LOG.info("Using {} as output namespace", outputNamespace);
       context.addOutput(Output.ofDataset(outputDataset).fromNamespace(outputNamespace));
     } else {
       context.addOutput(Output.ofDataset(outputDataset));
