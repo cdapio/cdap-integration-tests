@@ -29,6 +29,8 @@ import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
 import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
+import co.cask.cdap.app.fileset.PermissionTest;
+import co.cask.cdap.app.mapreduce.readless.ReadlessIncrementTest;
 import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.ApplicationVersionTest;
@@ -40,7 +42,6 @@ import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
-import co.cask.cdap.apps.mapreduce.readless.ReadlessIncrementTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.purchase.StreamSchedulerTest;
@@ -84,6 +85,7 @@ import org.junit.runners.Suite;
   OperationalStatsTest.class,
   PartitionCorrectorTest.class,
   PartitionedFileSetUpdateTest.class,
+  PermissionTest.class,
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
   ReadlessIncrementTest.class,

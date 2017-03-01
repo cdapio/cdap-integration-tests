@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.mapreduce.readless;
+package co.cask.cdap.app.mapreduce.readless;
 
 import co.cask.cdap.api.ProgramLifecycle;
 import co.cask.cdap.api.app.AbstractApplication;

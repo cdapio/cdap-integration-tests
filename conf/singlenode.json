@@ -5,7 +5,9 @@
         "metrics.processor.memory.mb": "512",
         "metrics.memory.mb": "512",
         "stream.container.memory.mb": "512",
-        "messaging.container.memory.mb": "257"
+        "data.tx.memory.mb": "350",
+        "log.saver.container.memory.mb": "768",
+        "explore.executor.container.memory.mb": "1100"
       }
     },
     "hadoop": {
