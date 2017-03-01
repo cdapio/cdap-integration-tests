@@ -36,7 +36,6 @@ import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.AudiTestBase;
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import org.apache.hadoop.security.authentication.util.KerberosName;
@@ -44,7 +43,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  *  Impersonation Tests
@@ -66,11 +64,7 @@ public class BasicImpersonationTest extends AudiTestBase {
     } catch (NamespaceNotFoundException expected) {
       // expected
     }
-
     registerForDeletion(NS1);
-
-    List<NamespaceMeta> list = namespaceClient.list();
-    int initialNamespaceCount = list.size();
 
     NamespaceMeta ns1Meta = new NamespaceMeta.Builder()
       .setName(NS1)
@@ -79,32 +73,26 @@ public class BasicImpersonationTest extends AudiTestBase {
       .setKeytabURI(getKeytabURIforPrincipal(ALICE))
       .build();
     namespaceClient.create(ns1Meta);
+    Assert.assertTrue(namespaceClient.exists(NS1));
 
-    // list should contain the default namespace as well as the one explicitly created
-    list = namespaceClient.list();
-    Assert.assertEquals(initialNamespaceCount + 1, list.size());
-    Assert.assertTrue(list.contains(ns1Meta));
     NamespaceMeta retrievedNs1Meta = namespaceClient.get(NS1);
-    Assert.assertNotNull(String.format("Failed to find namespace with name %s in list: %s",
-                                       NS1, Joiner.on(", ").join(list)), retrievedNs1Meta);
     Assert.assertEquals(ns1Meta, retrievedNs1Meta);
-    Assert.assertEquals(ns1Meta, namespaceClient.get(NS1));
 
     // Test Stream creation with impersonated namespace
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-    StreamId STREAM_ID = NS1.stream("streamTest");
+    StreamId streamId = NS1.stream("streamTest");
 
     // create properties with user not in the same group as the user who created the namespace
     StreamProperties streamProperties =
       new StreamProperties(0L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
                                                        ImmutableMap.<String, String>of()), 128, null, EVE);
     try {
-      streamClient.create(STREAM_ID, streamProperties);
+      streamClient.create(streamId, streamProperties);
       Assert.fail("Expected stream creation to fail for this user");
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().contains(String.format("Failed to create directory at")));
       try {
-        streamClient.getConfig(STREAM_ID);
+        streamClient.getConfig(streamId);
       } catch (Exception ioe) {
         Assert.assertTrue(ioe.getMessage().contains(String.format("was not found")));
       }
@@ -114,16 +102,16 @@ public class BasicImpersonationTest extends AudiTestBase {
     streamProperties = new StreamProperties(1L, new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
                                                                ImmutableMap.<String, String>of()), 128, null, ALICE);
 
-    streamClient.create(STREAM_ID, streamProperties);
-    Assert.assertEquals(streamProperties, streamClient.getConfig(STREAM_ID));
+    streamClient.create(streamId, streamProperties);
+    Assert.assertEquals(streamProperties, streamClient.getConfig(streamId));
 
     // check if user in the same group as owner can also create a stream
-    StreamId STREAM_ID2 = NS1.stream("streamTest2");
+    StreamId streamId2 = NS1.stream("streamTest2");
     streamProperties = new StreamProperties(1L,
                                             new FormatSpecification("csv", Schema.parseSQL("name string, id int"),
                                                                     ImmutableMap.<String, String>of()), 128, null, BOB);
-    streamClient.create(STREAM_ID2, streamProperties);
-    Assert.assertEquals(streamProperties, streamClient.getConfig(STREAM_ID2));
+    streamClient.create(streamId2, streamProperties);
+    Assert.assertEquals(streamProperties, streamClient.getConfig(streamId2));
 
 
     // Test Datasets
@@ -165,11 +153,8 @@ public class BasicImpersonationTest extends AudiTestBase {
     // Check if application can be deployed by onwer
     deployApplication(applicationId, new AppRequest(artifactSummary, null, ALICE));
 
-    // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
     namespaceClient.delete(NS1);
-
-    list = namespaceClient.list();
-    Assert.assertEquals(initialNamespaceCount, list.size());
+    Assert.assertFalse(namespaceClient.exists(NS1));
   }
 
   private String getKeytabURIforPrincipal(String principal) throws Exception {
