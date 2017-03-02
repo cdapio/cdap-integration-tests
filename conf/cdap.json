@@ -3,7 +3,8 @@
     "cdap": {
       "cdap_site": {
         "explore.enabled": "true",
-        "cdap.ugi.cache.expiration.ms": "60000"
+        "cdap.ugi.cache.expiration.ms": "60000",
+        "security.keytab.path":"/tmp/keytabs/${name}.headless.keytab"
       },
       "version": "4.1.0-1"
     },
