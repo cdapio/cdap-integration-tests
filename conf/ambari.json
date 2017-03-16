@@ -10,9 +10,21 @@
         "yum_repo_url": "file:///tmp/cdap-yum-repo/4.1",
         "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.1/pubkey.gpg"
       },
-      "version": "4.1.0-1",
+      "version": "4.1.0-2",
       "ambari": {
-        "version": "4.1.0-1"
+        "version": "4.1.1-1"
+      },
+      "cdap_site": {
+        "explore.executor.container.memory.mb": "2048",
+        "metrics.processor.memory.mb": "512"
+      }
+    },
+    "hadoop": {
+      "mapred_site": {
+        "mapreduce.map.java.opts": "-Xmx1536m",
+        "mapreduce.map.memory.mb": "2048",
+        "mapreduce.reduce.java.opts": "-Xmx1536m",
+        "mapreduce.reduce.memory.mb": "2048"
       }
     }
   },
