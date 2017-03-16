@@ -21,15 +21,10 @@ import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.BatchJoinerTest;
-import co.cask.cdap.app.etl.batch.DecisionTreeRegressionTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
-import co.cask.cdap.app.etl.batch.LogisticRegressionTest;
-import co.cask.cdap.app.etl.batch.NGramTransformTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
-import co.cask.cdap.app.etl.batch.SparkPluginsTest;
-import co.cask.cdap.app.etl.batch.TokenizerTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
@@ -76,17 +71,14 @@ import org.junit.runners.Suite;
   BatchJoinerTest.class,
   DatasetTest.class,
   DataStreamsTest.class,
-  DecisionTreeRegressionTest.class,
   ETLMapReduceTest.class,
   ExcelInputReaderTest.class,
   ExploreTest.class,
   FileSetTest.class,
   HangingWorkerTest.class,
   KVTableWithProjectionTest.class,
-  LogisticRegressionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
-  NGramTransformTest.class,
   NormalizeTest.class,
   OperationalStatsTest.class,
   PartitionCorrectorTest.class,
@@ -103,9 +95,7 @@ import org.junit.runners.Suite;
   SparkPageRankAppTest.class,
   StreamSchedulerTest.class,
   StreamTest.class,
-  SparkPluginsTest.class,
   StreamTPFSWithProjectionTest.class,
-  TokenizerTest.class,
   TrackerTest.class,
   ValueMapperTest.class,
   WordCountTest.class,
