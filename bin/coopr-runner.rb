@@ -31,7 +31,7 @@ options = {}
 begin
   op = OptionParser.new do |opts|
     opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
-    opts.on('-a', '--action ACTION', '"create", "reconfigure[-without-restart], "add-services", "[re]start", "stop", or "delete". Defaults to "create"') do |a|
+    opts.on('-a', '--action ACTION', '"create", "poll", "reconfigure[-without-restart], "add-services", "[re]start", "stop", or "delete". Defaults to "create"') do |a|
       options[:action] = a
     end
     opts.on('-u', '--uri URI', 'Server URI, defaults to ENV[\'COOPR_SERVER_URI\'] else "http://localhost:55054"') do |u|
@@ -632,7 +632,7 @@ when /create/i
   end
 
 # Actions for an existing cluster
-when /reconfigure|add-services|stop|start|restart|delete/i
+when /poll|reconfigure|add-services|stop|start|restart|delete/i
   # Ensure cluster id file from previous task is present
   raise 'Must supply --cluster-id-file [file] to specify cluster ID to operate on' unless options[:cluster_id_file]
   raise "No cluster id file present. Expecting #{options[:cluster_id_file]}" unless ::File.exist?(options[:cluster_id_file])
@@ -647,8 +647,8 @@ when /reconfigure|add-services|stop|start|restart|delete/i
   # Create cluster manager
   mgr = Cask::CooprDriver::ClusterManager.new(spec, options)
 
-  # Operate cluster only if active
-  if mgr.active? || options[:action] =~ /^reconfigure/
+  # Only operate if cluster is active, doing a reconfigure, or we're polling
+  if mgr.active? || options[:action] =~ /^reconfigure/ || options[:action] =~ /^poll/
     case options[:action]
     when /^reconfigure-without-restart/i
       mgr.reconfigure_without_restart(options)
@@ -668,8 +668,6 @@ when /reconfigure|add-services|stop|start|restart|delete/i
       mgr.restart
     when /^delete/i
       mgr.delete
-    else
-      raise "Unknown action specified: #{options[:action]}"
     end
     # Wait for operation to complete
     mgr.poll_until_active unless options[:action] =~ /delete/i
