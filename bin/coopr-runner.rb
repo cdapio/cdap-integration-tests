@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: UTF-8
 #
-# Copyright © 2012-2016 Cask Data, Inc.
+# Copyright © 2012-2017 Cask Data, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -100,6 +100,9 @@ begin
     opts.on('--cluster-id-file FILE', 'Filename to write the ID of the created Coopr cluster, or to read as input for any actions other than "create". Defaults to COOPR_DRIVER_CLUSTER_ID_FILE "cdap-auto-clusterid.txt"') do |f|
       options[:cluster_id_file] = f
     end
+    opts.on('--disable-polling', 'Disable polling for completion of cluster job. Defaults to false (will poll for job completion)') do |f|
+      options[:disable_polling] = f
+    end
 
     opts.separator ''
     opts.separator 'Required Arguments: None'
@@ -109,7 +112,7 @@ begin
     opts.separator '    --name mycluster --num-machines 1 --provider google --hardwaretype standard-xlarge --imagetype centos6 \\'
     opts.separator "    --distribution cdh --distribution-version 5 --branch develop --services 'some-optional-service' \\"
     opts.separator "    --initial-lease-duration 86400000 --config '{\"arbitrary\":\"json\"}' --provider-fields '{\"google_data_disk_size_gb\":\"300\"}' \\"
-    opts.separator '    --merge-open-prs true --cluster-service-ip-file cdap-auto-ip.txt --cluster-id-file cdap-auto-clusterid.txt'
+    opts.separator '    --merge-open-prs true --disable-polling true --cluster-service-ip-file cdap-auto-ip.txt --cluster-id-file cdap-auto-clusterid.txt'
     opts.separator ''
   end
   op.parse!(ARGV)
@@ -600,12 +603,14 @@ when /create/i
 
   # Wait for server to schedule tasks then start polling
   sleep 5
-  mgr.poll_until_active
+  mgr.poll_until_active unless options[:disable_polling]
 
   if options[:cluster_service_ip_file]
     ip = nil
+    if options[:disable_polling]
+      puts "Cluster polling disabled on command line... skipping writing to #{options[:cluster_service_ip_file]}"
     # Determine which host runs our desired service
-    if options[:cluster_service_to_check]
+    elsif options[:cluster_service_to_check]
       begin
         puts "Searching for Coopr service: #{options[:cluster_service_to_check]}"
         ip = mgr.get_access_ip_for_service(options[:cluster_service_to_check])
@@ -624,7 +629,7 @@ when /create/i
       raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
     end
 
-    ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
+    ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) } unless options[:disable_polling]
   end
 
   if options[:cluster_id_file]
@@ -672,7 +677,7 @@ when /reconfigure|add-services|stop|start|restart|delete/i
       raise "Unknown action specified: #{options[:action]}"
     end
     # Wait for operation to complete
-    mgr.poll_until_active unless options[:action] =~ /delete/i
+    mgr.poll_until_active unless options[:action] =~ /delete/i || options[:disable_polling]
   else
     puts "Cluster #{id} not active. Skipping #{options[:action]}"
   end
