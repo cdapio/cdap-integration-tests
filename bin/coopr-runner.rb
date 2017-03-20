@@ -609,27 +609,29 @@ when /create/i
     ip = nil
     if options[:disable_polling]
       puts "Cluster polling disabled on command line... skipping writing to #{options[:cluster_service_ip_file]}"
-    # Determine which host runs our desired service
-    elsif options[:cluster_service_to_check]
-      begin
-        puts "Searching for Coopr service: #{options[:cluster_service_to_check]}"
-        ip = mgr.get_access_ip_for_service(options[:cluster_service_to_check])
-      end
-      raise "No nodes for #{options[:cluster_service_to_check]} service found on cluster #{mgr.id}" if ip.nil?
     else
-      # Check for all cdap service variants
-      %w(cdap-auto-with-auth cdap-mapr-auto-with-auth cdap-auto cdap-mapr-auto cdap-sdk-auto cdap).each do |svc|
+      # Determine which host runs our desired service
+      if options[:cluster_service_to_check]
         begin
-          ip = mgr.get_access_ip_for_service(svc)
-          break
-        rescue
-          # keep looking for remaining cdap services
+          puts "Searching for Coopr service: #{options[:cluster_service_to_check]}"
+          ip = mgr.get_access_ip_for_service(options[:cluster_service_to_check])
         end
+        raise "No nodes for #{options[:cluster_service_to_check]} service found on cluster #{mgr.id}" if ip.nil?
+      else
+        # Check for all cdap service variants
+        %w(cdap-auto-with-auth cdap-mapr-auto-with-auth cdap-auto cdap-mapr-auto cdap-sdk-auto cdap).each do |svc|
+          begin
+            ip = mgr.get_access_ip_for_service(svc)
+            break
+          rescue
+            # keep looking for remaining cdap services
+          end
+        end
+        raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
       end
-      raise "No nodes for cdap services found on cluster #{mgr.id}" if ip.nil?
+      # Write out ip file
+      ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) }
     end
-
-    ::File.open(options[:cluster_service_ip_file], 'w') { |file| file.puts(ip) } unless options[:disable_polling]
   end
 
   if options[:cluster_id_file]
