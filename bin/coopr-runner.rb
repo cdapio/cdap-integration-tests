@@ -83,6 +83,10 @@ begin
     opts.on('-s', '--services SERVICES', 'comma-separated list of service names to be added to the clustertemplate defaults, default empty') do |s|
       options[:services] = s.split(',')
     end
+    opts.on('-s', '--remove-services SERVICES', 'comma-separated list of service names to be removed from the clustertemplate defaults, default empty') do |s|
+      options[:remove_services] = [] unless options[:remove_services]
+      options[:remove_services] += s.split(',')
+    end
     opts.on('-l', '--initial-lease-duration LEASETIME', 'Initial lease duration in milliseconds, else template default') do |l|
       options[:lease] = l
     end
@@ -121,6 +125,7 @@ options[:hardwaretype] = options[:hardwaretype] || ENV['COOPR_DRIVER_HARDWARETYP
 options[:imagetype] = options[:imagetype] || ENV['COOPR_DRIVER_IMAGETYPE'] || nil
 
 options[:services] = [] if options[:services].nil?
+options[:remove_services] = [] if options[:remove_services].nil?
 
 module Cask
   module CooprDriver
@@ -253,12 +258,19 @@ module Cask
         @config_contents['cdap_auto']['merge_open_prs'] = 'true' if bool.to_s == 'true'
       end
 
-      # Generate the full list of services, union of clusterTemplate defaults and options[:services]
+      # Generate the full list of services, union of clusterTemplate defaults minus options[:remove_services], and options[:services]
       def init_services_contents(options)
         load_cluster_template_contents if @cluster_template_contents.empty?
 
         # Start with the default services from the clusterTemplate
         @services_contents = @cluster_template_contents['defaults']['services']
+
+        # Remove any services specified via options
+        unless options[:remove_services].nil? || options[:remove_services].empty?
+          options[:remove_services].each do |service|
+            remove_service(service)
+          end
+        end
 
         # Add any additional services specified via options
         unless options[:services].nil? || options[:services].empty?
@@ -271,6 +283,11 @@ module Cask
       # Add a single service
       def add_service(service)
         @services_contents.push(service) unless @services_contents.include?(service)
+      end
+
+      # Remove a single service
+      def remove_service(service)
+        @services_contents.delete(service) if @services_contents.include?(service)
       end
 
       # Set the size of the cluster to the cluster_template minimum, else 1
