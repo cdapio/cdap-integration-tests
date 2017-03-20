@@ -73,8 +73,8 @@ begin
     opts.on('-b', '--branch BRANCH', 'Git branch to build CDAP from. Defaults to empty') do |b|
       options[:branch] = b
     end
-    opts.on('-m', '--merge-open-prs', 'Merge any open Pull Requests against the given --branch. Defaults to false') do |m|
-      options[:merge_open_prs] = m
+    opts.on('-m', '--merge-open-prs', 'Merge any open Pull Requests against the given --branch') do
+      options[:merge_open_prs] = true
     end
     opts.on('-c', '--config CONFIG', 'config to be forcibly merged into clustertemplate default config, default empty') do |c|
       options[:config] = [] unless options[:config]
@@ -100,8 +100,8 @@ begin
     opts.on('--cluster-id-file FILE', 'Filename to write the ID of the created Coopr cluster, or to read as input for any actions other than "create". Defaults to COOPR_DRIVER_CLUSTER_ID_FILE "cdap-auto-clusterid.txt"') do |f|
       options[:cluster_id_file] = f
     end
-    opts.on('--disable-polling', 'Disable polling for completion of cluster job. Defaults to false (will poll for job completion)') do |f|
-      options[:disable_polling] = f
+    opts.on('--disable-polling', 'Disable polling for completion of cluster job') do
+      options[:disable_polling] = true
     end
 
     opts.separator ''
@@ -112,7 +112,7 @@ begin
     opts.separator '    --name mycluster --num-machines 1 --provider google --hardwaretype standard-xlarge --imagetype centos6 \\'
     opts.separator "    --distribution cdh --distribution-version 5 --branch develop --services 'some-optional-service' \\"
     opts.separator "    --initial-lease-duration 86400000 --config '{\"arbitrary\":\"json\"}' --provider-fields '{\"google_data_disk_size_gb\":\"300\"}' \\"
-    opts.separator '    --merge-open-prs true --disable-polling true --cluster-service-ip-file cdap-auto-ip.txt --cluster-id-file cdap-auto-clusterid.txt'
+    opts.separator '    --merge-open-prs --disable-polling --cluster-service-ip-file cdap-auto-ip.txt --cluster-id-file cdap-auto-clusterid.txt'
     opts.separator ''
   end
   op.parse!(ARGV)
