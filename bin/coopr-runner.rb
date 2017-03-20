@@ -648,7 +648,7 @@ when /poll|reconfigure|add-services|stop|start|restart|delete/i
   mgr = Cask::CooprDriver::ClusterManager.new(spec, options)
 
   # Only operate if cluster is active, doing a reconfigure, or we're polling
-  if mgr.active? || options[:action] =~ /^reconfigure/ || options[:action] =~ /^poll/
+  if mgr.active? || options[:action] =~ /^reconfigure/i || options[:action] =~ /^poll/i
     case options[:action]
     when /^reconfigure-without-restart/i
       mgr.reconfigure_without_restart(options)
@@ -668,6 +668,9 @@ when /poll|reconfigure|add-services|stop|start|restart|delete/i
       mgr.restart
     when /^delete/i
       mgr.delete
+    when /^poll/i
+    else
+      raise "Unknown action specified: #{options[:action]}"
     end
     # Wait for operation to complete
     mgr.poll_until_active unless options[:action] =~ /delete/i

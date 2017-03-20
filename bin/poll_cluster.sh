@@ -50,7 +50,7 @@ parse_args() {
         ;;
     esac
   done
-  if [[ -n ${COOPR_DRIVER_CLUSTER_ID_FILE} ]]; then
+  if [[ -n ${COOPR_DRIVER_CLUSTER_ID_FILE} ]] && [[ -z ${__id} ]]; then
     export __id=$(cluster_id)
   fi
 }
@@ -75,7 +75,7 @@ poll_until_active() {
     if [[ $? -eq 0 ]]; then
       break
     fi
-    if [[ $(echo -n $(_status) | grep pending >/dev/null) ]]; then
+    if [[ $(echo -n $(_status) | grep pending >/dev/null; echo $?) -eq 0 ]]; then
       echo -n .
     else
       echo
