@@ -22,7 +22,9 @@ export COOPR_API_USER=${COOPR_API_USER:-admin}
 
 export COOPR_SERVICE=${COOPR_SERVICE:-cdap}
 
-die() { echo "ERROR: ${*}"; exit 1; };
+set -e
+
+die() { echo "ERROR: ${*}" >&2; return 1; };
 
 cluster_id() { echo $(<"${COOPR_DRIVER_CLUSTER_ID_FILE}"); };
 
@@ -90,7 +92,7 @@ _status() { _request /clusters/${__id}/status | python -mjson.tool 2>/dev/null; 
 
 # Polls for cluster status, returns true if cluster active
 active() {
-  echo -n $(_status) | grep active >/dev/null
+  _status | grep active >/dev/null
 }
 
 poll_until_active() {
@@ -100,7 +102,7 @@ poll_until_active() {
     if [[ $? -eq 0 ]]; then
       break
     fi
-    if [[ $(echo -n $(_status) | grep pending >/dev/null; echo $?) -eq 0 ]]; then
+    if [[ $(_status | grep pending >/dev/null; echo $?) -eq 0 ]]; then
       echo -n .
     else
       echo
@@ -116,34 +118,33 @@ poll_until_active() {
 get_access_ip_for_service() {
   local __svc=${1}
   local __json="{\"clusterId\": \"${__id}\", \"services\": [\"${__svc}\"]}"
-  local __nodes=$(_request /getNodeProperties -XPOST -d "${__json}" | python -mjson.tool 2>/dev/null)
-  local __v4s=$(echo -n "${__nodes}" | grep access_v4)
+  local __nodes=$(_request /getNodeProperties -XPOST -d "${__json}" | python -mjson.tool)
+  echo -n "${__nodes}" | grep access_v4 >/dev/null
   local __ret=$?
   if [[ ${__ret} -eq 0 ]]; then
-    echo ${__v4s} | awk '{print $2}' | sed 's/"//g;s/,//g' | head -n 1
+    echo -n "${__nodes}" | grep access_v4 | awk '{print $2}' | sed 's/"//g;s/,//g' | head -n 1
+    return
   fi
+  return 1
 } 
-
-cluster_ip() {
-  local __ip=$(get_access_ip_for_service ${COOPR_SERVICE})
-  if [[ -n ${__ip} ]]; then
-    echo "${__ip}"
-  else
-    die "Could not find ${COOPR_SERVICE} on cluster ${__id}"
-  fi
-}
 
 write_ip_file() {
   if [[ -n ${COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE} ]]; then
-    echo $(cluster_ip) > ${COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE}
-    echo "Found service ${COOPR_SERVICE} on $(<${COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE})"
+    __ip=$(get_access_ip_for_service ${COOPR_SERVICE})
+    __ret=$?
+    if [[ ${__ret} -eq 0 ]]; then
+      echo ${__ip} > ${COOPR_DRIVER_CLUSTER_SERVICE_IP_FILE}
+      echo "Found service ${COOPR_SERVICE} on ${__ip}"
+    else
+      die "Could not find service ${COOPR_SERVICE} on ${__id}"
+    fi
   fi
 }
 
 main() {
-  parse_args ${@}
-  poll_until_active
-  write_ip_file
+  parse_args ${@} || return 1
+  poll_until_active || return 1
+  write_ip_file || return 1
 }
 
-main ${@}
+main ${@} || exit $?
