@@ -1,14 +1,3 @@
 {
-  "config": {
-    "cloudera_manager": {
-      "services": {
-        "cdap": {
-          "serviceConfigs": {
-            "security_authorization_extension_jar_path":"/data/cloudera/parcels/CDAP/master/ext/security/cdap-sentry-binding-0.3.0-SNAPSHOT.jar"
-          }
-        }
-      }
-    }
-  },
   "initial-lease-duration": 82800000
 }
