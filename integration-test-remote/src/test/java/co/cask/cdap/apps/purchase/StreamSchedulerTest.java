@@ -76,7 +76,6 @@ public class StreamSchedulerTest extends AudiTestBase {
 
     WorkflowManager purchaseHistoryWorkflow = applicationManager.getWorkflowManager("PurchaseHistoryWorkflow");
 
-    purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 5 minutes for the map reduce to execute
     purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
@@ -93,7 +92,6 @@ public class StreamSchedulerTest extends AudiTestBase {
     scheduleClient.resume(dataSchedule);
     Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
-    purchaseHistoryWorkflow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     // wait 5 minutes for the mapreduce to execute
     purchaseHistoryWorkflow.waitForRuns(ProgramRunStatus.COMPLETED, 2, 5, TimeUnit.MINUTES);
 
