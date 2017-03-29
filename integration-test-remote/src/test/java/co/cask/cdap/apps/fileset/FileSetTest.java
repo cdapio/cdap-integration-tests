@@ -93,9 +93,7 @@ public class FileSetTest extends AudiTestBase {
       .start(ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
                              "dataset.counts.output.path", "out.txt"));
 
-    // mapreduce should start and then complete
-    wordCountManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    // wait 5 minutes for mapreduce to execute
+    // wait 5 minutes for mapreduce to complete
     wordCountManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     url = new URL(serviceURL, "counts?path=out.txt/part-r-00000");
