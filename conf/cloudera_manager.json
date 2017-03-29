@@ -1,3 +1,4 @@
 {
-  "initial-lease-duration": 82800000
+  "initial-lease-duration": 82800000,
+  "services": "generic-users"
 }
