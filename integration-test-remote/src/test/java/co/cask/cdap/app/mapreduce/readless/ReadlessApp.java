@@ -144,6 +144,7 @@ public class ReadlessApp extends AbstractApplication {
       job.setMapperClass(CountMapper.class);
       job.setReducerClass(CountReducer.class);
       job.setNumReduceTasks(1);
+      job.setSpeculativeExecution(false);
     }
 
     @Override
