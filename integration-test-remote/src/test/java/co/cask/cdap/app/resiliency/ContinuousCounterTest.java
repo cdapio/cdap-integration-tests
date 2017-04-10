@@ -17,12 +17,14 @@
 package co.cask.cdap.app.resiliency;
 
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.ProgramRunStatus;
+import co.cask.cdap.security.authentication.client.AccessToken;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DisruptionTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ServiceManager;
-import co.cask.chaosmonkey.ChaosMonkeyService;
+import co.cask.chaosmonkey.proto.ClusterDisrupter;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.gson.Gson;
@@ -34,6 +36,7 @@ import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -46,7 +49,7 @@ public class ContinuousCounterTest extends DisruptionTestBase {
   @Test
   public void test() throws Exception {
     RESTClient restClient = getRestClient();
-    ChaosMonkeyService chaosMonkeyService = getChaosMonkeyService();
+    ClusterDisrupter clusterDisrupter = getClusterDisrupter();
     ApplicationManager applicationManager = deployApplication(ContinuousCounterApp.class);
 
     FlowManager flowManager = applicationManager.getFlowManager("ContinuousCounterFlow").start();
@@ -58,9 +61,9 @@ public class ContinuousCounterTest extends DisruptionTestBase {
     URL url = new URL(serviceURL, "allCounter");
 
     // Stopping and restarting CDAP master service with a short delay in between
-    chaosMonkeyService.stopAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    clusterDisrupter.stopAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     TimeUnit.SECONDS.sleep(2);
-    chaosMonkeyService.startAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    clusterDisrupter.startAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Waiting for CDAP to be fully restarted
     checkSystemServices();
@@ -68,12 +71,14 @@ public class ContinuousCounterTest extends DisruptionTestBase {
     // Query the ContinuousCounterService twice with a short delay in between
     HttpResponse response = restClient.execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     List<Integer> values = GSON.fromJson(response.getResponseBodyAsString(), RETURN_TYPE);
-    TimeUnit.SECONDS.sleep(3);
+
+    // Check that flow has restarted and continues running
+    CheckCounter checkCounter = new CheckCounter(values.size(), restClient, url, getClientConfig().getAccessToken());
+    Tasks.waitFor(true, checkCounter, 60, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
+
+    // Check that flow restarted properly and there are no gaps in the counter
     response = restClient.execute(HttpMethod.GET, url, getClientConfig().getAccessToken());
     List<Integer> newValues = GSON.fromJson(response.getResponseBodyAsString(), RETURN_TYPE);
-
-    // Make sure that the counter has increased, and there are no gaps in the counter
-    Assert.assertTrue(newValues.size() > values.size());
     Assert.assertFalse(hasGaps(newValues));
   }
 
@@ -85,5 +90,25 @@ public class ContinuousCounterTest extends DisruptionTestBase {
       }
     }
     return false;
+  }
+
+  public static class CheckCounter implements Callable<Boolean> {
+    private final Integer initialValue;
+    private final RESTClient restClient;
+    private final URL url;
+    private final AccessToken accessToken;
+
+    CheckCounter(Integer initialValue, RESTClient restClient, URL url, AccessToken accessToken) {
+      this.initialValue = initialValue;
+      this.restClient = restClient;
+      this.url = url;
+      this.accessToken = accessToken;
+    }
+
+    public Boolean call() throws Exception {
+      HttpResponse response = restClient.execute(HttpMethod.GET, url, accessToken);
+      List<Integer> values = GSON.fromJson(response.getResponseBodyAsString(), RETURN_TYPE);
+      return values.size() > initialValue;
+    }
   }
 }

@@ -20,24 +20,33 @@ import co.cask.chaosmonkey.ChaosMonkeyService;
 import co.cask.chaosmonkey.Clusters;
 import co.cask.chaosmonkey.common.Constants;
 import co.cask.chaosmonkey.common.conf.Configuration;
+import co.cask.chaosmonkey.proto.ClusterDisrupter;
 import co.cask.chaosmonkey.proto.ClusterInfoCollector;
+import org.junit.BeforeClass;
 
 /**
  * Wrapper around AudiTestBase that includes ChaosMonkeyService
  */
 public class DisruptionTestBase extends AudiTestBase {
 
-  private final ChaosMonkeyService chaosMonkeyService;
+  private final ClusterDisrupter clusterDisrupter;
+  private static Configuration conf;
+
+  @BeforeClass
+  public static void confSetup() {
+    conf = Configuration.create();
+  }
 
   public DisruptionTestBase() {
     super();
 
-    Configuration conf = Configuration.create();
-    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.CLUSTER_ID,
-             System.getProperty("clusterId"));
-    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.TENANT_ID, "cask-dev");
-    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.SERVER_URI,
-             "http://coopr-dev.dev.continuuity.net:55054");
+    String tenantId = System.getProperty("coopr.tenant.id", "cask-dev");
+    String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:55054");
+    String cooprClusterId = System.getProperty("coopr.cluster.id");
+
+    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.CLUSTER_ID, cooprClusterId);
+    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.TENANT_ID, tenantId);
+    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.SERVER_URI, cooprUrlAndPort);
 
     String sshUsername = System.getProperty("ssh.username", null);
     String sshKeyPassphrase = System.getProperty("ssh.key.passphrase", null);
@@ -55,14 +64,15 @@ public class DisruptionTestBase extends AudiTestBase {
 
     try {
       ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(conf);
-      chaosMonkeyService = new ChaosMonkeyService(conf, clusterInfoCollector);
+      ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(conf, clusterInfoCollector);
       chaosMonkeyService.start();
+      clusterDisrupter = chaosMonkeyService;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  protected ChaosMonkeyService getChaosMonkeyService() {
-    return chaosMonkeyService;
+  protected ClusterDisrupter getClusterDisrupter() {
+    return clusterDisrupter;
   }
 }

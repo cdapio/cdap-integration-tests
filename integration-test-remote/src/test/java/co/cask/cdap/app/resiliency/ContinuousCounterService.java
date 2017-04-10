@@ -58,11 +58,12 @@ public class ContinuousCounterService extends AbstractService {
     @GET
     public void allCounter(HttpServiceRequest request, HttpServiceResponder responder) {
       List<Integer> values = new ArrayList<>();
-      CloseableIterator<KeyValue<byte[], byte[]>> iterator = store.scan(null, null);
-      while (iterator.hasNext()) {
-        KeyValue<byte[], byte[]> kv = iterator.next();
-        String value = new String(kv.getValue());
-        values.add(new Integer(value));
+      try (CloseableIterator<KeyValue<byte[], byte[]>> iterator = store.scan(null, null)) {
+        while (iterator.hasNext()) {
+          KeyValue<byte[], byte[]> kv = iterator.next();
+          String value = new String(kv.getValue());
+          values.add(new Integer(value));
+        }
       }
 
       responder.sendJson(HttpURLConnection.HTTP_OK, values);
