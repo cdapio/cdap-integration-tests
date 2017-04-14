@@ -60,9 +60,8 @@ public class ContinuousCounterTest extends DisruptionTestBase {
     URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "allCounter");
 
-    // Stopping and restarting CDAP master service with a short delay in between
+    // Stopping and restarting CDAP master service
     clusterDisrupter.stopAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    TimeUnit.SECONDS.sleep(2);
     clusterDisrupter.startAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Waiting for CDAP to be fully restarted

@@ -35,10 +35,6 @@ public class DisruptionTestBase extends AudiTestBase {
   @BeforeClass
   public static void confSetup() {
     conf = Configuration.create();
-  }
-
-  public DisruptionTestBase() {
-    super();
 
     String tenantId = System.getProperty("coopr.tenant.id", "cask-dev");
     String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:55054");
@@ -61,7 +57,10 @@ public class DisruptionTestBase extends AudiTestBase {
     if (privateKey != null) {
       conf.set("privateKey", privateKey);
     }
+  }
 
+  public DisruptionTestBase() {
+    super();
     try {
       ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(conf);
       ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(conf, clusterInfoCollector);
