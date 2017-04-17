@@ -45,6 +45,7 @@
     <hadoop.version>2.3.0</hadoop.version>
     <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
+    <chaosmonkey.version>0.1.0-SNAPSHOT</chaosmonkey.version>
 
     <!-- Skip all test cases by default. The different test cases are enabled in the profiles defined below -->
     <skip.remote.test>true</skip.remote.test>
@@ -179,6 +180,16 @@
       <groupId>co.cask.cdap</groupId>
       <artifactId>cdap-integration-test</artifactId>
       <version>${cdap.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.chaosmonkey</groupId>
+      <artifactId>chaos-monkey-standalone</artifactId>
+      <version>${chaosmonkey.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.chaosmonkey</groupId>
+      <artifactId>chaos-monkey-proto</artifactId>
+      <version>${chaosmonkey.version}</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
