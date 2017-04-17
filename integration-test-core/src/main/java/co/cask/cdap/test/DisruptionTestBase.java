@@ -22,8 +22,7 @@ import co.cask.chaosmonkey.common.Constants;
 import co.cask.chaosmonkey.common.conf.Configuration;
 import co.cask.chaosmonkey.proto.ClusterDisrupter;
 import co.cask.chaosmonkey.proto.ClusterInfoCollector;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 /**
@@ -31,11 +30,11 @@ import org.junit.BeforeClass;
  */
 public class DisruptionTestBase extends AudiTestBase {
 
-  private ChaosMonkeyService clusterDisrupter;
+  private static ChaosMonkeyService clusterDisrupter;
   private static Configuration conf;
 
-  @Before
-  public void confSetup() {
+  @BeforeClass
+  public static void confSetup() {
     conf = Configuration.create();
 
     String tenantId = System.getProperty("coopr.tenant.id", "cask-dev");
@@ -70,8 +69,8 @@ public class DisruptionTestBase extends AudiTestBase {
     }
   }
 
-  @After
-  public void chaosMonkeyTearDown() {
+  @AfterClass
+  public static void chaosMonkeyTearDown() {
     clusterDisrupter.stop();
   }
 
