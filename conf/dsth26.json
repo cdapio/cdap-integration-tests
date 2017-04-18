@@ -1,0 +1,15 @@
+{
+  "config": {
+    "hadoop": {
+      "distribution": "hdp",
+      "distribution_version": "2.6.0.3"
+    },
+    "hive": {
+      "hive_site": {
+        "hive.metastore.schema.verification": "false",
+        "hive.metastore.schema.verification.record.version": "true"
+      }
+    }
+  },
+  "services": "spark-historyserver"
+}
