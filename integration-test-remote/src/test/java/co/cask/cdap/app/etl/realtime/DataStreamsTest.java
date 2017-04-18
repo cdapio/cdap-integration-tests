@@ -46,6 +46,7 @@ import co.cask.cdap.test.suite.category.SDKIncompatible;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -64,6 +65,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests for DataStreams app.
  */
+@Ignore
+// Enable this test once CDAP-9337 is fixed
 public class DataStreamsTest extends ETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamsTest.class);
