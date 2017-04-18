@@ -20,7 +20,7 @@ import co.cask.chaosmonkey.ChaosMonkeyService;
 import co.cask.chaosmonkey.Clusters;
 import co.cask.chaosmonkey.common.Constants;
 import co.cask.chaosmonkey.common.conf.Configuration;
-import co.cask.chaosmonkey.proto.ClusterDisrupter;
+import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.chaosmonkey.proto.ClusterInfoCollector;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,7 +30,7 @@ import org.junit.BeforeClass;
  */
 public class DisruptionTestBase extends AudiTestBase {
 
-  private static ChaosMonkeyService clusterDisrupter;
+  private static ChaosMonkeyService clusterDisruptor;
   private static Configuration conf;
 
   @BeforeClass
@@ -63,7 +63,7 @@ public class DisruptionTestBase extends AudiTestBase {
       ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(conf);
       ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(conf, clusterInfoCollector);
       chaosMonkeyService.start();
-      clusterDisrupter = chaosMonkeyService;
+      clusterDisruptor = chaosMonkeyService;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -71,10 +71,10 @@ public class DisruptionTestBase extends AudiTestBase {
 
   @AfterClass
   public static void chaosMonkeyTearDown() {
-    clusterDisrupter.stop();
+    clusterDisruptor.stop();
   }
 
-  protected ClusterDisrupter getClusterDisrupter() {
-    return clusterDisrupter;
+  protected ClusterDisruptor getClusterDisruptor() {
+    return clusterDisruptor;
   }
 }

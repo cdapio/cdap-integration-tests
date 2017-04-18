@@ -24,7 +24,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DisruptionTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ServiceManager;
-import co.cask.chaosmonkey.proto.ClusterDisrupter;
+import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.gson.Gson;
@@ -49,7 +49,7 @@ public class ContinuousCounterTest extends DisruptionTestBase {
   @Test
   public void test() throws Exception {
     RESTClient restClient = getRestClient();
-    ClusterDisrupter clusterDisrupter = getClusterDisrupter();
+    ClusterDisruptor clusterDisruptor = getClusterDisruptor();
     ApplicationManager applicationManager = deployApplication(ContinuousCounterApp.class);
 
     FlowManager flowManager = applicationManager.getFlowManager("ContinuousCounterFlow").start();
@@ -61,8 +61,8 @@ public class ContinuousCounterTest extends DisruptionTestBase {
     URL url = new URL(serviceURL, "allCounter");
 
     // Stopping and restarting CDAP master service
-    clusterDisrupter.stopAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    clusterDisrupter.startAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    clusterDisruptor.stopAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    clusterDisruptor.startAndWait("cdap-master", PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // Waiting for CDAP to be fully restarted
     checkSystemServices();
