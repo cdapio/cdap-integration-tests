@@ -1,6 +1,9 @@
 {
   "config": {
     "cdap": {
+      "cdap_site": {
+        "cdap.http.client.read.timeout.ms":"120000"
+      },
       "version": "4.1.0-1"
     },
     "hadoop": {
