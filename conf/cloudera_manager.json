@@ -1,4 +1,7 @@
 {
+  "provider-fields": {
+    "zone_name": "us-central1-c"
+  },
   "initial-lease-duration": 82800000,
   "services": "generic-users"
 }
