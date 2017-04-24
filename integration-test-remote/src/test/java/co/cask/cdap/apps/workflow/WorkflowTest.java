@@ -16,11 +16,10 @@
 
 package co.cask.cdap.apps.workflow;
 
-import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.common.NotFoundException;
-import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.examples.wikipedia.SparkWikipediaClustering;
+import co.cask.cdap.examples.wikipedia.TestData;
 import co.cask.cdap.examples.wikipedia.TopNMapReduce;
 import co.cask.cdap.examples.wikipedia.WikiContentValidatorAndNormalizer;
 import co.cask.cdap.examples.wikipedia.WikipediaPipelineApp;
@@ -32,10 +31,8 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
-import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
@@ -54,7 +51,6 @@ import org.junit.experimental.categories.Category;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
@@ -89,7 +85,7 @@ public class WorkflowTest extends AudiTestBase {
     AppRequest<WikipediaPipelineApp.WikipediaAppConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, appConfig);
     ApplicationManager appManager = deployApplication(APP_ID, appRequest);
     // Setup input streams with test data
-    createTestData();
+    TestData.sendTestData(TEST_NAMESPACE, getTestManager());
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(WikipediaPipelineWorkflow.class.getSimpleName());
     // Test with default threshold. Workflow should not proceed beyond first condition.
@@ -106,59 +102,9 @@ public class WorkflowTest extends AudiTestBase {
     AppRequest<WikipediaPipelineApp.WikipediaAppConfig> appRequest = new AppRequest<>(ARTIFACT_SUMMARY, appConfig);
     ApplicationManager appManager = deployApplication(APP_ID, appRequest);
     // Setup input streams with test data
-    createTestData();
+    TestData.sendTestData(TEST_NAMESPACE, getTestManager());
     WorkflowManager workflowManager = appManager.getWorkflowManager(WikipediaPipelineWorkflow.class.getSimpleName());
     testWorkflow(workflowManager, appConfig, 1);
-  }
-
-  private void createTestData() throws Exception {
-    StreamId likesStream = TEST_NAMESPACE.stream("pageTitleStream");
-    StreamManager likesStreamManager = getTestManager().getStreamManager(likesStream);
-    String like1 = "{\"name\":\"Metallica\",\"id\":\"107926539230502\",\"created_time\":\"2015-06-25T17:14:47+0000\"}";
-    String like2 = "{\"name\":\"grunge\",\"id\":\"911679552186992\",\"created_time\":\"2015-07-20T17:37:04+0000\"}";
-    likesStreamManager.send(like1);
-    likesStreamManager.send(like2);
-    StreamId rawWikiDataStream = TEST_NAMESPACE.stream("wikiStream");
-    StreamManager rawWikipediaStreamManager = getTestManager().getStreamManager(rawWikiDataStream);
-    String data1 = "{\"batchcomplete\":\"\",\"query\":{\"normalized\":[{\"from\":\"metallica\",\"to\":\"Metallica\"}]" +
-      ",\"pages\":{\"18787\":{\"pageid\":18787,\"ns\":0,\"title\":\"Metallica\",\"revisions\":[{\"contentformat\":" +
-      "\"text/x-wiki\",\"contentmodel\":\"wikitext\",\"*\":\"{{Other uses}}{{pp-semi|small=yes}}{{pp-move-indef|" +
-      "small=yes}}{{Use mdy dates|date=April 2013}}{{Infobox musical artist|name = Metallica|image = Metallica at " +
-      "The O2 Arena London 2008.jpg|caption = Metallica in [[London]] in 2008. From left to right: [[Kirk Hammett]], " +
-      "[[Lars Ulrich]], [[James Hetfield]] and [[Robert Trujillo]]\"}]}}}}";
-    String data2 = "{\"batchcomplete\":\"\",\"query\":{\"pages\":{\"51580\":{\"pageid\":51580,\"ns\":0," +
-      "\"title\":\"Grunge\",\"revisions\":[{\"contentformat\":\"text/x-wiki\",\"contentmodel\":\"wikitext\"," +
-      "\"*\":\"{{About|the music genre}}{{Infobox music genre| name  = Grunge| bgcolor = crimson| color = white| " +
-      "stylistic_origins = {{nowrap|[[Alternative rock]], [[hardcore punk]],}} [[Heavy metal music|heavy metal]], " +
-      "[[punk rock]], [[hard rock]], [[noise rock]]| cultural_origins  = Mid-1980s, [[Seattle|Seattle, Washington]], " +
-      "[[United States]]| instruments = [[Electric guitar]], [[bass guitar]], [[Drum kit|drums]], " +
-      "[[Singing|vocals]]| derivatives = [[Post-grunge]], [[nu metal]]| subgenrelist = | subgenres = | fusiongenres" +
-      "      = | regional_scenes   = [[Music of Washington (state)|Washington state]]| other_topics      = * " +
-      "[[Alternative metal]]* [[Generation X]]* [[Grunge speak|grunge speak hoax]]* [[timeline of alternative " +
-      "rock]]}}'''Grunge''' (sometimes referred to as the '''Seattle sound''') is a subgenre of [[alternative rock]]" +
-      " that emerged during the mid-1980s in the American state of [[Washington (state)|Washington]], particularly " +
-      "in [[Seattle]].  The early grunge movement revolved around Seattle's [[independent record label]] " +
-      "[[Sub Pop]], but by the early 1990s its popularity had spread, with grunge acts in California and other " +
-      "parts of the U.S. building strong followings and signing major record deals.Grunge became commercially " +
-      "successful in the first half of the 1990s, due mainly to the release of [[Nirvana (band)|Nirvana]]'s " +
-      "''[[Nevermind]]'', [[Pearl Jam]]'s ''[[Ten (Pearl Jam album)|Ten]]'', [[Soundgarden]]'s " +
-      "''[[Badmotorfinger]]'', [[Alice in Chains]]' ''[[Dirt (Alice in Chains album)|Dirt]]'', and " +
-      "[[Stone Temple Pilots]]' ''[[Core (Stone Temple Pilots album)|Core]]''.\"}]}}}}";
-    rawWikipediaStreamManager.send(data1);
-    rawWikipediaStreamManager.send(data2);
-
-    waitForStreamToBePopulated(likesStreamManager, 2);
-    waitForStreamToBePopulated(rawWikipediaStreamManager, 2);
-  }
-
-  private void waitForStreamToBePopulated(final StreamManager streamManager, int numEvents) throws Exception {
-    Tasks.waitFor(numEvents, new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        List<StreamEvent> streamEvents = streamManager.getEvents(0, Long.MAX_VALUE, Integer.MAX_VALUE);
-        return streamEvents.size();
-      }
-    }, 10, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
   private void testWorkflow(WorkflowManager workflowManager,

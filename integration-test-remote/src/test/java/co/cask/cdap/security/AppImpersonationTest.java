@@ -21,10 +21,8 @@ import co.cask.cdap.apps.appimpersonation.FileProcessorApp;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.NamespaceNotFoundException;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.explore.service.ExploreException;
-import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
@@ -37,8 +35,6 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.WorkerManager;
 import co.cask.cdap.test.WorkflowManager;
-import com.google.common.base.Preconditions;
-import org.apache.hadoop.security.authentication.util.KerberosName;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -62,7 +58,7 @@ public class AppImpersonationTest extends AudiTestBase {
     NamespaceClient namespaceClient = getNamespaceClient();
     try {
       namespaceClient.get(NAMESPACE_ID);
-      Assume.assumeTrue("Expected namespace not to exist: " + NAMESPACE_ID, false);
+      Assert.fail();
     } catch (NamespaceNotFoundException expected) {
       // expected
     }
@@ -72,7 +68,7 @@ public class AppImpersonationTest extends AudiTestBase {
       .setName(NAMESPACE_ID)
       .setPrincipal(ALICE)
       .setGroupName(GROUP)
-      .setKeytabURI(getKeytabURIforPrincipal(ALICE));
+      .setKeytabURI(SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()));
     namespaceClient.create(nsMetaBuilder.build());
     // test if namespace exists
     namespaceClient.get(NAMESPACE_ID);
@@ -146,14 +142,5 @@ public class AppImpersonationTest extends AudiTestBase {
       // expected
       Assert.assertTrue(e.getCause() instanceof ExploreException);
     }
-  }
-
-  private String getKeytabURIforPrincipal(String principal) throws Exception {
-    // Get the configured keytab path from cdap-site.xml
-    ConfigEntry configEntry = getMetaClient().getCDAPConfig().get(Constants.Security.KEYTAB_PATH);
-    Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s", Constants.Security.KEYTAB_PATH);
-    String name = new KerberosName(principal).getShortName();
-    // replace Constants.USER_NAME_SPECIFIER with the given name
-    return configEntry.getValue().replace(Constants.USER_NAME_SPECIFIER, name);
   }
 }
