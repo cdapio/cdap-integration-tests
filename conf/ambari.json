@@ -1,7 +1,6 @@
 {
   "provider-fields": {
-    "google_data_disk_size_gb": "",
-    "google_root_disk_size_gb": "200"
+    "zone_name": "us-central1-c"
   },
   "config": {
     "cdap": {
