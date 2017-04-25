@@ -59,6 +59,9 @@ public class DisruptionTestBase extends AudiTestBase {
       conf.set("privateKey", privateKey);
     }
 
+    conf.set("hbase-master.disruptions", "co.cask.cdap.app.resiliency.plugins.MajorCompact," +
+      Constants.Plugins.DEFAULT_DISRUPTIONS);
+
     try {
       ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(conf);
       ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(conf, clusterInfoCollector);
