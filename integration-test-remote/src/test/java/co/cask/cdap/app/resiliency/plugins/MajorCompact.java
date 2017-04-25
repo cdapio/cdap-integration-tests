@@ -43,7 +43,7 @@ public class MajorCompact implements Disruption {
 
     String user = serviceArguments.get("user");
     if (user == null) {
-      user = "root";
+      user = "hbase";
     }
 
     String keytabPath = serviceArguments.get("keytab.path");
