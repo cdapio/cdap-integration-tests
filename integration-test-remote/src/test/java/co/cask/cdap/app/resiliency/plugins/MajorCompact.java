@@ -30,29 +30,51 @@ import java.util.Map;
 
 /**
  * A disruption that performs a major compaction on hbase
+ *
+ * Example:
+ * clusterDisruptor.disruptAndWait("hbase-master", "major-compact", actionArguments, timeoutSeconds, TimeUnit.Seconds);
  */
 public class MajorCompact implements Disruption {
   private static final Logger LOG = LoggerFactory.getLogger(MajorCompact.class);
 
   @Override
-  public void disrupt(Collection<RemoteProcess> collection, Map<String, String> map) throws Exception {
-    RemoteProcess remoteProcess = collection.iterator().next();
-    ShellOutput output = remoteProcess.execAndGetOutput("sudo kinit -kt /etc/security/keytabs/hbase.service.keytab" +
-                                                          " hbase/`hostname -f`; echo \"list\" | sudo hbase shell " +
-                                                          "| fgrep '['");
+  public void disrupt(Collection<RemoteProcess> processes, Map<String, String> serviceArguments) throws Exception {
+    RemoteProcess remoteProcess = processes.iterator().next();
 
+    String user = serviceArguments.get("user");
+    if (user == null) {
+      user = "root";
+    }
+
+    String keytabPath = serviceArguments.get("keytab.path");
+    if (keytabPath == null) {
+      keytabPath = "/etc/security/keytabs/hbase.service.keytab";
+    }
+
+    String authEnabled = serviceArguments.get("auth.enabled");
+    String authString = String.format("sudo -su %s kinit -kt %s hbase/`hostname -f`;", user, keytabPath);
+    if (authEnabled != null && authEnabled.equals("false")) {
+      authString = "";
+    }
+    ShellOutput output = remoteProcess.execAndGetOutput(String.format("%s echo \"list\" | sudo -u %s hbase " +
+                                                                        "shell | fgrep '['", authString, user));
+
+    // stdout is in the format of ["tableName1" "tableName2" "tableName3"....] and needs to be changed to
+    // flush '\''tableName1'\''\n major_compact '\''table1'\''\n ...
     String outputString = output.standardOutput.replace("\"", "").replace("[", "").replace("]","")
       .replaceAll("\\s+", "");
     String[] outputArray = outputString.split(",");
-    List<String> commands = new ArrayList<>();
-    for (int idx = 0; idx < outputArray.length; ++idx) {
-      commands.add("flush '\\''" + outputArray[idx] + "'\\''");
-      commands.add("major_compact '\\''" + outputArray[idx] + "'\\''");
+    StringBuilder stringBuilder = new StringBuilder();
+    for (String tableName : outputArray) {
+      // '\\'' will result in a single quote when passed into hbase shell, echo will exclude the outer quotes and
+      // include the escaped single quote
+      stringBuilder.append("flush '\\''" + tableName + "'\\''\n");
+      stringBuilder.append("major_compact '\\''" + tableName + "'\\''\n");
     }
-    String commandsString = Joiner.on("\n").join(commands);
+    String commandsString = stringBuilder.toString();
 
-    remoteProcess.execAndGetOutput(String.format("sudo kinit -kt /etc/security/keytabs/hbase.service.keytab hbase/" +
-                                                   "`hostname -f`; echo \"%s\" | sudo hbase shell", commandsString));
+    remoteProcess.execAndGetOutput(String.format("%s echo \"%s\" | sudo -u %s hbase shell",
+                                                 authString, commandsString, user));
   }
 
   @Override
