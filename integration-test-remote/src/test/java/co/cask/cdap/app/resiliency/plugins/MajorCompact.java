@@ -58,7 +58,7 @@ public class MajorCompact implements Disruption {
 
     // stdout is in the format of ["tableName1" "tableName2" "tableName3"....] and needs to be changed to
     // flush '\''tableName1'\''\n major_compact '\''table1'\''\n ...
-    String outputString = output.standardOutput.replace("\"", "").replace("[", "").replace("]","")
+    String outputString = output.standardOutput.replace("\"", "").replace("[", "").replace("]", "")
       .replaceAll("\\s+", "");
     String[] outputArray = outputString.split(",");
     StringBuilder stringBuilder = new StringBuilder();
