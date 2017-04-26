@@ -59,27 +59,23 @@ public class ReadlessIncrementTest extends AudiTestBase {
 
     ApplicationManager appManager = deployApplication(ReadlessApp.class);
 
-    try {
-      ServiceManager serviceManager = appManager.getServiceManager(ReadlessApp.SERVICE_NAME);
-      serviceManager.start();
+    ServiceManager serviceManager = appManager.getServiceManager(ReadlessApp.SERVICE_NAME);
+    serviceManager.start();
 
-      MapReduceManager mapReduceManager = appManager.getMapReduceManager(ReadlessApp.MAPREDUCE_NAME);
-      mapReduceManager.start();
-      mapReduceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    MapReduceManager mapReduceManager = appManager.getMapReduceManager(ReadlessApp.MAPREDUCE_NAME);
+    mapReduceManager.start();
+    mapReduceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
-      serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.SECONDS);
-      URL url = new URL(serviceManager.getServiceURL(), "get");
-      HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken(),
-                                                      HttpURLConnection.HTTP_OK);
-      Assert.assertEquals(200, response.getResponseCode());
-      Map<String, Long> map = new Gson().fromJson(response.getResponseBodyAsString(),
-                                                  new TypeToken<Map<String, Long>>() {
-                                                  }.getType());
-      Assert.assertEquals(new Long(20L), map.get("increments"));
-      Assert.assertEquals(new Long(20L), map.get("mapCount"));
-      Assert.assertEquals(new Long(20L), map.get("reduceCount"));
-    } finally {
-      appManager.stopAll();
-    }
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.SECONDS);
+    URL url = new URL(serviceManager.getServiceURL(), "get");
+    HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken(),
+                                                    HttpURLConnection.HTTP_OK);
+    Assert.assertEquals(200, response.getResponseCode());
+    Map<String, Long> map = new Gson().fromJson(response.getResponseBodyAsString(),
+                                                new TypeToken<Map<String, Long>>() {
+                                                }.getType());
+    Assert.assertEquals(new Long(20L), map.get("increments"));
+    Assert.assertEquals(new Long(20L), map.get("mapCount"));
+    Assert.assertEquals(new Long(20L), map.get("reduceCount"));
   }
 }
