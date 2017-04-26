@@ -19,13 +19,10 @@ package co.cask.cdap.app.resiliency.plugins;
 import co.cask.chaosmonkey.Disruption;
 import co.cask.chaosmonkey.RemoteProcess;
 import co.cask.chaosmonkey.ShellOutput;
-import com.google.common.base.Joiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 /**
