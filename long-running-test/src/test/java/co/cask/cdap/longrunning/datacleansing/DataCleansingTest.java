@@ -110,7 +110,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   public DataCleansingTestState runOperations(DataCleansingTestState state) throws Exception {
     ApplicationManager applicationManager = getApplicationManager();
     ServiceManager serviceManager = applicationManager.getServiceManager(DataCleansingService.NAME);
-    URL serviceURL = serviceManager.getServiceURL();
+    URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     LOG.info("Writing {} events in one batch", CLEAN_RECORDS_PER_BATCH + INVALID_RECORDS_PER_BATCH);
     // write a set of records to one partition and run the DataCleansingMapReduce job on that one partition

@@ -108,8 +108,8 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
   private void verifyTPFSData(ServiceManager serviceManager, String tpfsName)
     throws IOException, UnauthenticatedException, UnauthorizedException {
 
-    URL tpfsURL = new URL(serviceManager.getServiceURL(), TPFSService.TPFS_PATH +
-      String.format("/%s?time=1", tpfsName));
+    URL tpfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+                          TPFSService.TPFS_PATH + String.format("/%s?time=1", tpfsName));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, tpfsURL, getClientConfig().getAccessToken());
     List<IntegrationTestRecord> responseObject = ObjectResponse.<List<IntegrationTestRecord>>fromJsonBody(
       response, new TypeToken<List<IntegrationTestRecord>>() {
