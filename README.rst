@@ -93,7 +93,7 @@ Here, ``-Dlong.test`` is used to specify multiple comma separated tests.
 
 Chaos Monkey in ITN
 ------------------
-Tests that extend DisruptionTestBase can use getClusterDisruptor() to get an instance of ChaosMonkeyService. This instance of chaos monkey can be configured by including a chaos-monkey-site.xml. ContinuousCounterTest can be used as a reference for testing with chaos monkey.
+Tests that extend DisruptionTestBase can use getClusterDisruptor() to get an instance of ChaosMonkeyService. ContinuousCounterTest can be used as a reference for testing with chaos monkey.
 
 To locally run tests with DisruptionTestBase::
 
