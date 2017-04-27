@@ -91,6 +91,24 @@ Here, ``-Dlong.test`` is used to specify multiple comma separated tests.
 ``-Dlong.running.namespace`` is used to specify namespace name for all long running tests. If not specified, 'Default' namespace will be used.
 
 
+Chaos Monkey in ITN
+------------------
+Tests that extend DisruptionTestBase can use getClusterDisruptor() to get an instance of ChaosMonkeyService. This instance of chaos monkey can be configured by including a chaos-monkey-site.xml. ContinuousCounterTest can be used as a reference for testing with chaos monkey.
+
+To locally run tests with DisruptionTestBase::
+
+  mvn clean test -DinstanceUri=<HostAndPort> -Dcoopr.cluster.id=<CooprClusterID>
+
+Additional properties include::
+
+  ssh.username - ssh username, if it different from system user
+  ssh.passphrase - private key passphrase, if applicable
+  ssh.private.key - path to the private key, will check common key spots like ~/.ssh/id_rsa if not provided
+
+To run a test using DisruptionTestBase against a non-Coopr cluster, refer to https://github.com/caskdata/chaos-monkey for steps in cluster information collector setup
+
+To run a disruption test on bamboo, add the test to DisruptionTests in DisruptionTestSuite and manually launch a run from Integration Tests - Disruption
+
 License and Trademarks
 ======================
 
