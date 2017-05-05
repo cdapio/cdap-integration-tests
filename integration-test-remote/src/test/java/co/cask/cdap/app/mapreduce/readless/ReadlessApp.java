@@ -17,6 +17,7 @@
 package co.cask.cdap.app.mapreduce.readless;
 
 import co.cask.cdap.api.ProgramLifecycle;
+import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.batch.Input;
@@ -125,6 +126,8 @@ public class ReadlessApp extends AbstractApplication {
     protected void configure() {
       super.configure();
       setName(MAPREDUCE_NAME);
+      setMapperResources(new Resources(1024));
+      setReducerResources(new Resources(1024));
     }
 
     @Override
