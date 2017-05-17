@@ -335,7 +335,7 @@ public class XMLReaderTest extends ETLTestBase {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderPatternTest")
       .put("path", sourcePath)
-      .put("targetFolder", targetPath)
+      .put("targetFolder", targetPath + "*")
       .put("pattern", "log.xml$") //file name ends with log.xml
       .put("nodePath", "/catalog/book/price")
       .put("reprocessingRequired", "No")
@@ -383,7 +383,7 @@ public class XMLReaderTest extends ETLTestBase {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderInvalidPatternTest")
       .put("path", sourcePath)
-      .put("targetFolder", targetPath)
+      .put("targetFolder", targetPath + "*")
       .put("pattern", "^small") //file name start with small, invalid pattern
       .put("nodePath", "/catalog/book/price")
       .put("reprocessingRequired", "No")
