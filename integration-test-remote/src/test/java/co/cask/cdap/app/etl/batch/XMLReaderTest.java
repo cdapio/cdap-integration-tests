@@ -143,11 +143,12 @@ public class XMLReaderTest extends ETLTestBase {
     return deployApplication(appId, appRequest);
   }
 
-  private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException,
+  private void startWorkFlow(ApplicationManager appManager,
+                             ProgramRunStatus expectedStatus) throws TimeoutException, InterruptedException,
     ExecutionException {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(expectedStatus, 5, TimeUnit.MINUTES);
   }
 
   @Test
@@ -188,7 +189,7 @@ public class XMLReaderTest extends ETLTestBase {
     trackingTable.flush();
 
     //Manually trigger the pipeline
-    startWorkFlow(appManager);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -248,7 +249,7 @@ public class XMLReaderTest extends ETLTestBase {
     trackingTable.flush();
 
     //Manually trigger the pipeline
-    startWorkFlow(appManager);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -300,7 +301,7 @@ public class XMLReaderTest extends ETLTestBase {
     trackingTable.flush();
 
     //Manually trigger the pipeline
-    startWorkFlow(appManager);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -334,7 +335,7 @@ public class XMLReaderTest extends ETLTestBase {
     String xmlTrackingTable = "XMLPatternTrackingTable";
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderPatternTest")
-      .put("path", sourcePath)
+      .put("path", sourcePath + "*")
       .put("targetFolder", targetPath)
       .put("pattern", "log.xml$") //file name ends with log.xml
       .put("nodePath", "/catalog/book/price")
@@ -350,7 +351,7 @@ public class XMLReaderTest extends ETLTestBase {
                                                       outputDatasetName);
 
     //Manually trigger the pipeline
-    startWorkFlow(appManager);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -382,7 +383,7 @@ public class XMLReaderTest extends ETLTestBase {
     String xmlTrackingTable = "XMLInvalidPatternTrackingTable";
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put(Constants.Reference.REFERENCE_NAME, "XMLReaderInvalidPatternTest")
-      .put("path", sourcePath)
+      .put("path", sourcePath + "*")
       .put("targetFolder", targetPath)
       .put("pattern", "^small") //file name start with small, invalid pattern
       .put("nodePath", "/catalog/book/price")
@@ -398,7 +399,7 @@ public class XMLReaderTest extends ETLTestBase {
                                                       outputDatasetName);
 
     //Manually trigger the pipeline
-    startWorkFlow(appManager);
+    startWorkFlow(appManager, ProgramRunStatus.FAILED);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
