@@ -17,12 +17,12 @@
 package co.cask.cdap.apps;
 
 import co.cask.cdap.ConfigTestApp;
+import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.ServiceClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.ServiceId;

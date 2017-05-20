@@ -17,9 +17,9 @@
 package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
+import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.MetadataClient;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.NamespaceId;

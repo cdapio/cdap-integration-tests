@@ -16,6 +16,7 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.apps.appimpersonation.FileGeneratorApp;
 import co.cask.cdap.apps.appimpersonation.FileProcessorApp;
 import co.cask.cdap.client.NamespaceClient;
@@ -27,7 +28,6 @@ import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.NamespaceId;
