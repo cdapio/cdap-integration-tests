@@ -17,6 +17,7 @@
 package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
+import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.client.ApplicationClient;
@@ -31,7 +32,6 @@ import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLRealtimeConfig;
 import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.StreamId;

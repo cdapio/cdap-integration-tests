@@ -16,6 +16,7 @@
 
 package co.cask.cdap.apps.workflow;
 
+import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.common.NotFoundException;
 import co.cask.cdap.examples.wikipedia.SparkWikipediaClustering;
@@ -28,7 +29,6 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.WorkflowTokenNodeDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
-import co.cask.cdap.proto.artifact.ArtifactSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.test.ApplicationManager;
