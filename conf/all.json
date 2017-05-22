@@ -1,5 +1,6 @@
 {
   "provider-fields": {
+    "bootstrap_interface": "bind_v4",
     "zone_name": "us-east1-c"
   }
 }
