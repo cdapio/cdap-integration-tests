@@ -79,7 +79,7 @@ public class PurchaseAudiTest extends AudiTestBase {
 
     // PurchaseHistoryWorkflow should have two schedules in suspended state
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
-    List<ScheduleSpecification> workflowSchedules = scheduleClient.list(PURCHASE_HISTORY_WORKFLOW);
+    List<ScheduleSpecification> workflowSchedules = scheduleClient.listSchedules(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(2, workflowSchedules.size());
     checkScheduleState(scheduleClient, Scheduler.ScheduleState.SUSPENDED, workflowSchedules);
 
