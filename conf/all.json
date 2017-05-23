@@ -1,4 +1,9 @@
 {
+  "config": {
+    "java": {
+      "install_flavor": "openjdk"
+    }
+  },
   "provider-fields": {
     "zone_name": "us-east1-c"
   }
