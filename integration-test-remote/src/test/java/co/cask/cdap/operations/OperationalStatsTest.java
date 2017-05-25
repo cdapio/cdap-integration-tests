@@ -181,8 +181,6 @@ public class OperationalStatsTest extends AudiTestBase {
     Assert.assertTrue(toLong(transactions.get("NumInvalidTransactions")) >= 0);
     Assert.assertTrue(toLong(transactions.get("ReadPointer")) >= 0);
     Assert.assertTrue(toLong(transactions.get("WritePointer")) >= 0);
-    Assert.assertTrue(toLong(transactions.get("VisibilityUpperBound")) >= 0);
-    Assert.assertTrue(toLong(transactions.get("SnapshotTime")) >= 0);
   }
   
   private int toInt(Object object) {
