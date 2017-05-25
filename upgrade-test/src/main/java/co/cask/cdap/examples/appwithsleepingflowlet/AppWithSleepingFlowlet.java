@@ -18,11 +18,18 @@ package co.cask.cdap.examples.appwithsleepingflowlet;
 
 import co.cask.cdap.api.annotation.ProcessInput;
 import co.cask.cdap.api.app.AbstractApplication;
+import co.cask.cdap.api.customaction.AbstractCustomAction;
+import co.cask.cdap.api.customaction.CustomAction;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.flow.AbstractFlow;
 import co.cask.cdap.api.flow.flowlet.AbstractFlowlet;
 import co.cask.cdap.api.flow.flowlet.OutputEmitter;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
+import co.cask.cdap.api.workflow.AbstractWorkflow;
+import co.cask.cdap.api.workflow.Workflow;
+import co.cask.cdap.internal.schedule.TimeSchedule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -31,12 +38,40 @@ import java.util.concurrent.TimeUnit;
  * The purpose of this sleep is to make it so that the flowlet has pending events on the queue it processes from.
  */
 public class AppWithSleepingFlowlet extends AbstractApplication {
+  public static final String NAME = "AppWithSleepingFlowlet";
 
   @Override
   public void configure() {
-    setName("AppWithSleepingFlowlet");
+    setName(NAME);
     addStream(new Stream("ingestStream"));
     addFlow(new FlowWithSleepingFlowlet());
+    addWorkflow(new DummyWorkflow());
+    scheduleWorkflow(new TimeSchedule("wfs", "desc", "0/30 * * * * ?"), DummyWorkflow.class.getSimpleName());
+  }
+
+  /**
+   * {@link Workflow} that has {@link SimpleAction} in it.
+   */
+  public static final class DummyWorkflow extends AbstractWorkflow {
+    public static final String NAME = "dummyWorkflow";
+
+    @Override
+    protected void configure() {
+      setName(NAME);
+      addAction(new SimpleAction());
+    }
+  }
+
+  /**
+   * {@link CustomAction} that does nothing.
+   */
+  public static final class SimpleAction extends AbstractCustomAction {
+    private static final Logger LOG = LoggerFactory.getLogger(SimpleAction.class);
+
+    @Override
+    public void run() throws Exception {
+      LOG.info("Just another log statement.");
+    }
   }
 
   /**
