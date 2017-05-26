@@ -61,7 +61,13 @@ public class StreamSchedulerTest extends AudiTestBase {
       new StreamProperties(purchaseStreamProperties.getTTL(), purchaseStreamProperties.getFormat(), 1);
     streamClient.setStreamProperties(purchaseStream, streamPropertiesToSet);
     purchaseStreamProperties = streamClient.getConfig(purchaseStream);
-    Assert.assertEquals(streamPropertiesToSet, purchaseStreamProperties);
+    // if the test is running in an impersonated namespace then the stream principal will be inherited from
+    // the namespace principal and the properties will include that
+    String nsPrincipal = getNamespaceClient().get(TEST_NAMESPACE).getConfig().getPrincipal();
+    StreamProperties expectedStreamProperties = new StreamProperties(streamPropertiesToSet.getTTL(),
+                                                                     streamPropertiesToSet.getFormat(), 1, null,
+                                                                     nsPrincipal);
+    Assert.assertEquals(expectedStreamProperties, purchaseStreamProperties);
     Assert.assertEquals((Integer) 1, purchaseStreamProperties.getNotificationThresholdMB());
 
     // schedule actions: Initially schedules are suspended so resume them
