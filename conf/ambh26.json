@@ -8,6 +8,11 @@
     "hadoop": {
       "distribution": "hdp",
       "distribution_version": "2.6.0.3"
+    },
+    "cdap": {
+      "cdap_env": {
+        "spark_major_version":"2"
+      }
     }
   }
 }

@@ -42,6 +42,7 @@ import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
+import co.cask.cdap.test.suite.category.HDP26Spark2Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import org.junit.Assert;
 import org.junit.Before;
@@ -62,6 +63,7 @@ import javax.annotation.Nullable;
   HDP21Incompatible.class,
   HDP22Incompatible.class,
   HDP23Incompatible.class,
+  HDP26Spark2Incompatible.class,
   CDH51Incompatible.class,
   CDH52Incompatible.class,
   CDH53Incompatible.class,

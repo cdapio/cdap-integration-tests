@@ -48,6 +48,7 @@ import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
+import co.cask.cdap.test.suite.category.HDP26Spark2Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -74,6 +75,7 @@ import java.util.concurrent.TimeUnit;
 @Category({
   HDP20Incompatible.class,
   HDP21Incompatible.class,
+  HDP26Spark2Incompatible.class,
   CDH51Incompatible.class,
   CDH52Incompatible.class,
   // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
