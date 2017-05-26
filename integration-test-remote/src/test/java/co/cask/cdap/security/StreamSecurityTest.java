@@ -8,20 +8,25 @@ import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +55,31 @@ import java.util.concurrent.TimeUnit;
 public class StreamSecurityTest extends AudiTestBase {
   private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
   private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
+
+  private static final String ADMIN_USER = "cdapitn";
+  private static final String ALICE = "alice";
+  private static final String BOB = "bob";
+  private static final String CAROL = "carol";
+  private static final String EVE = "eve";
+  private static final String PASSWORD_SUFFIX = "password";
+  private static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
+
+  // This is to work around https://issues.cask.co/browse/CDAP-7680
+  // Where we don't delete privileges when a namespace is deleted.
+  private static String generateRandomName() {
+    // This works by choosing 130 bits from a cryptographically secure random bit generator, and encoding them in
+    // base-32. 128 bits is considered to be cryptographically strong, but each digit in a base 32 number can encode
+    // 5 bits, so 128 is rounded up to the next multiple of 5. Base 32 system uses alphabets A-Z and numbers 2-7
+    return new BigInteger(130, new SecureRandom()).toString(32);
+  }
+
+  @Before
+  public void setup() throws UnauthorizedException, IOException, UnauthenticatedException {
+    ConfigEntry configEntry = this.getMetaClient().getCDAPConfig().get("security.authorization.enabled");
+    Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
+                               "security.authorization.enabled");
+    Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "Authorization not enabled.");
+  }
 
   @Test
   public void testStreams() throws Exception {
@@ -85,6 +115,32 @@ public class StreamSecurityTest extends AudiTestBase {
     Assert.assertEquals(0, events.size());
   }
 
+
+  /**
+      ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+ +    RESTClient adminClient = new RESTClient(adminConfig);
+ +    adminClient.addListener(createRestClientListener());
+ +
+ +    String name = generateRandomName();
+ +    NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
+ +    getTestManager(adminConfig, adminClient).createNamespace(meta);
+ +
+ +    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+ +    RESTClient carolClient = new RESTClient(carolConfig);
+ +    carolClient.addListener(createRestClientListener());
+ +
+ +    ApplicationClient applicationClient = new ApplicationClient(carolConfig, carolClient);
+ +    NamespaceId namespaceId = new NamespaceId(name);
+ +
+ +    // Now authorize the user to access the namespace
+ +    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+ +    authorizationClient.grant(namespaceId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
+ +    //fail if getting the list result in exception
+ +    applicationClient.list(namespaceId);
+ +
+ +    // Now revoke the user to access the namespace'
+ +    authorizationClient.revoke(namespaceId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
+   */
   @Test
   public void testNonexistentStreams() throws Exception {
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
