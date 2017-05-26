@@ -28,7 +28,7 @@ import org.junit.BeforeClass;
 /**
  * Wrapper around AudiTestBase that includes ChaosMonkeyService
  */
-public class DisruptionTestBase extends AudiTestBase {
+public class DisruptionTestBase extends IntegrationTestBase {
 
   private static ChaosMonkeyService clusterDisruptor;
   private static Configuration conf;
@@ -38,7 +38,7 @@ public class DisruptionTestBase extends AudiTestBase {
     conf = Configuration.create();
 
     String tenantId = System.getProperty("coopr.tenant.id", "cask-dev");
-    String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:55054");
+    String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:8100");
     String cooprClusterId = System.getProperty("coopr.cluster.id");
 
     conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.CLUSTER_ID, cooprClusterId);
@@ -59,7 +59,7 @@ public class DisruptionTestBase extends AudiTestBase {
       conf.set("privateKey", privateKey);
     }
 
-    conf.set("hbase-master.disruptions", "co.cask.cdap.app.resiliency.plugins.MajorCompact," +
+    conf.set("hbase-master.disrptions", "co.cask.cdap.app.resiliency.plugins.MajorCompact," +
       Constants.Plugins.DEFAULT_DISRUPTIONS);
 
     try {

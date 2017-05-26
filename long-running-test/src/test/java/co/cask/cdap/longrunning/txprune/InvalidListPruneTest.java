@@ -33,9 +33,12 @@ import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.DisruptionTestBase;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.RemoteDatasetAdmin;
+import co.cask.chaosmonkey.ChaosMonkeyService;
+import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
@@ -134,7 +137,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     Assert.assertTrue("Expected the following invalid ids to be pruned: " + notRemovedIds, notRemovedIds.isEmpty());
     LOG.info("Pruned invalid ids: {}", removeIds);
 
-    verifyInvalidDataRemoval(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), removeIds);
+    //verifyInvalidDataRemoval(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), removeIds);
 
     return new InvalidListPruneTestState(state.getIteration(), newIterationState);
   }
@@ -153,9 +156,9 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     List<String> events = generateStreamEvents(iteration);
 
-    if (iteration % 24 == 0) {
-      splitTable(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), events);
-    }
+//    if (iteration % 24 == 0) {
+//      splitTable(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), events);
+//    }
 
     truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), events);
 
@@ -202,19 +205,23 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   }
 
   @SuppressWarnings("deprecation")
-  private void flushAndCompactTables() throws IOException, UnauthorizedException, UnauthenticatedException {
-    try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
-      LOG.info("Flushing and compacting using connection: {}",
-               connection.getConfiguration().get("hbase.zookeeper.quorum"));
-      HBaseAdmin admin = new HBaseAdmin(connection);
-      HTableDescriptor[] descriptors = admin.listTables();
-      for (HTableDescriptor descriptor : descriptors) {
-        LOG.info("Flushing table {}", descriptor.getTableName());
-        admin.flush(descriptor.getTableName());
-        LOG.info("Major compacting table {}", descriptor.getTableName());
-        admin.majorCompact(descriptor.getTableName());
-      }
-    }
+  private void flushAndCompactTables() throws Exception {
+    ClusterDisruptor clusterDisruptor = getClusterDisruptor();
+    clusterDisruptor.disruptAndWait("hbase-master", "major-compact", null, 60, TimeUnit.SECONDS);
+
+
+//    try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
+//      LOG.info("Flushing and compacting using connection: {}",
+//               connection.getConfiguration().get("hbase.zookeeper.quorum"));
+//      HBaseAdmin admin = new HBaseAdmin(connection);
+//      HTableDescriptor[] descriptors = admin.listTables();
+//      for (HTableDescriptor descriptor : descriptors) {
+//        LOG.info("Flushing table {}", descriptor.getTableName());
+//        admin.flush(descriptor.getTableName());
+//        LOG.info("Major compacting table {}", descriptor.getTableName());
+//        admin.majorCompact(descriptor.getTableName());
+//      }
+//    }
   }
 
   private Configuration getHBaseConf() throws UnauthorizedException, IOException, UnauthenticatedException {
@@ -246,6 +253,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     // KeyValueTable only has one underlying HBase table
     String hbaseTableName = getHBaseTableNameForKV(dataset);
+
 
     // Scan and make sure that invalid data is not present in the table
     try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
@@ -337,4 +345,11 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
       datasetMeta.getSpec().getSpecifications().values().iterator().next().getName();
     return hbaseTableName;
   }
+
+//  @Test
+//  public void test() throws Exception {
+//    RESTClient restClient = getRestClient();
+//    ClusterDisruptor clusterDisruptor = getClusterDisruptor();
+//
+//  }
 }

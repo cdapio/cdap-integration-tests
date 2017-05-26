@@ -63,7 +63,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Custom wrapper around IntegrationTestBase
  */
-public class AudiTestBase extends IntegrationTestBase {
+public class AudiTestBase extends DisruptionTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
 
   // Used for starting/stop await timeout.
