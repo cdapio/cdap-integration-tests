@@ -7,6 +7,9 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
+import java.util.concurrent.TimeoutException;
+import java.lang.InterruptedException;
+
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.StreamProperties;
@@ -20,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -30,6 +34,18 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.lang.Exception;
+
+import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.proto.NamespaceMeta;
+import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.client.ApplicationClient;
+import co.cask.cdap.client.AuthorizationClient;
+import java.util.Collections;
+import co.cask.cdap.proto.security.Action;
+import co.cask.cdap.proto.security.Principal;
+import co.cask.cdap.proto.security.Privilege;
+import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
 
 /*
  * Copyright © 2015 Cask Data, Inc.
@@ -47,11 +63,6 @@ import java.util.concurrent.TimeUnit;
  * the License.
  */
 
-
-
-/**
- * Tests various methods of a stream such as create, ingest events, fetch events, properties.
- */
 public class StreamSecurityTest extends AudiTestBase {
   private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
   private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
@@ -74,14 +85,67 @@ public class StreamSecurityTest extends AudiTestBase {
   }
 
   @Before
-  public void setup() throws UnauthorizedException, IOException, UnauthenticatedException {
+  public void setup() throws UnauthorizedException, IOException, UnauthenticatedException, TimeoutException, Exception {
     ConfigEntry configEntry = this.getMetaClient().getCDAPConfig().get("security.authorization.enabled");
     Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
                                "security.authorization.enabled");
     Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "Authorization not enabled.");
   }
 
+  /**
+   * SEC-AUTH-008's version of SEC-AUTH-019
+   * Grant a user READ access on a dataset. Try to get the dataset from a program and call a WRITE method on it.
+   * @throws Exception
+   */
   @Test
+  public void SEC_AUTH_019() throws Exception {
+
+    //creating an adminClient
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    //creating namespace with random name
+    String name = generateRandomName();
+    NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
+    getTestManager(adminConfig, adminClient).createNamespace(meta);
+
+    //create user CAROL
+    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+    RESTClient carolClient = new RESTClient(carolConfig);
+    carolClient.addListener(createRestClientListener());
+
+    //create admin client
+    StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
+
+    //start of client code here:
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId(name);
+
+    //creating a stream using admin client
+    streamAdminClient.create(STREAM_NAME);
+    StreamProperties config = streamAdminClient.getConfig(STREAM_NAME);
+    Assert.assertNotNull(config);
+
+    //now authorize the user READ access to the STREAM
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    authorizationClient.grant(STREAM_NAME, new Principal(CAROL, USER), Collections.singleton(Action.READ));
+
+    //calling a write method should fail
+    try {
+      streamCarolClient.sendEvent(STREAM_NAME, " a b ");
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // Expected
+    }
+
+    // Now delete the namespace and make sure that it is deleted
+    getNamespaceClient().delete(namespaceId);
+    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+  }
+
+  @Test
+  @Ignore
   public void testStreams() throws Exception {
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
 
@@ -115,33 +179,8 @@ public class StreamSecurityTest extends AudiTestBase {
     Assert.assertEquals(0, events.size());
   }
 
-
-  /**
-      ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
- +    RESTClient adminClient = new RESTClient(adminConfig);
- +    adminClient.addListener(createRestClientListener());
- +
- +    String name = generateRandomName();
- +    NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
- +    getTestManager(adminConfig, adminClient).createNamespace(meta);
- +
- +    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
- +    RESTClient carolClient = new RESTClient(carolConfig);
- +    carolClient.addListener(createRestClientListener());
- +
- +    ApplicationClient applicationClient = new ApplicationClient(carolConfig, carolClient);
- +    NamespaceId namespaceId = new NamespaceId(name);
- +
- +    // Now authorize the user to access the namespace
- +    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
- +    authorizationClient.grant(namespaceId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
- +    //fail if getting the list result in exception
- +    applicationClient.list(namespaceId);
- +
- +    // Now revoke the user to access the namespace'
- +    authorizationClient.revoke(namespaceId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
-   */
   @Test
+  @Ignore
   public void testNonexistentStreams() throws Exception {
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
 
