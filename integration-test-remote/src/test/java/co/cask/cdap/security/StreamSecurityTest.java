@@ -98,7 +98,6 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  @Ignore
   public void SEC_AUTH_008() throws Exception {
 
     //creating an adminClient
@@ -207,7 +206,6 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  @Ignore
   public void SEC_AUTH_012() throws Exception {
 
     //creating an adminClient
@@ -257,8 +255,11 @@ public class StreamSecurityTest extends AudiTestBase {
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
+  /**
+   * generic stream read and write test without user authorization.
+   * @throws Exception
+   */
   @Test
-  @Ignore
   public void testStreams() throws Exception {
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
 
@@ -292,8 +293,11 @@ public class StreamSecurityTest extends AudiTestBase {
     Assert.assertEquals(0, events.size());
   }
 
+  /**
+   * generic stream nonexistent test without user authorization.
+   * @throws Exception
+   */
   @Test
-  @Ignore
   public void testNonexistentStreams() throws Exception {
     StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
 
