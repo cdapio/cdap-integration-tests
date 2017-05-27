@@ -1,7 +1,4 @@
 {
-  "provider-fields": {
-    "zone_name": "us-central1-c"
-  },
   "config": {
     "cdap": {
       "repo": {
@@ -17,15 +14,11 @@
         "explore.executor.container.memory.mb": "2048",
         "metrics.processor.memory.mb": "512"
       }
-    },
-    "hadoop": {
-      "mapred_site": {
-        "mapreduce.map.java.opts": "-Xmx1536m",
-        "mapreduce.map.memory.mb": "2048",
-        "mapreduce.reduce.java.opts": "-Xmx1536m",
-        "mapreduce.reduce.memory.mb": "2048"
-      }
     }
+  },
+  "provider-fields": {
+    "bootstrap_interface": "bind_v4",
+    "zone_name": "us-central1-c"
   },
   "initial-lease-duration": 82800000
 }
