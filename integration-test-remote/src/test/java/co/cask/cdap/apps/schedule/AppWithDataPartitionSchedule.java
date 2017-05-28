@@ -18,6 +18,7 @@ package co.cask.cdap.apps.schedule;
 
 import co.cask.cdap.AppWithFrequentScheduledWorkflows;
 import co.cask.cdap.api.app.AbstractApplication;
+import co.cask.cdap.api.app.ProgramType;
 
 /**
  * App with a schedule triggered by new partition in the dataset with name "rawRecords"
@@ -34,7 +35,7 @@ public class AppWithDataPartitionSchedule extends AbstractApplication {
     setName("AppWithDataPartitionSchedule");
     setDescription("Sample application with data partition triggered schedule");
     addWorkflow(new AppWithFrequentScheduledWorkflows.DummyWorkflow(SOME_WORKFLOW));
-    configureWorkflowSchedule(DATASET_PARTITION_SCHEDULE_1, SOME_WORKFLOW)
-      .triggerOnPartitions("rawRecords", TRIGGER_ON_NUM_PARTITIONS);
+    schedule(buildSchedule(DATASET_PARTITION_SCHEDULE_1, ProgramType.WORKFLOW, SOME_WORKFLOW)
+               .triggerOnPartitions("rawRecords", TRIGGER_ON_NUM_PARTITIONS));
   }
 }
