@@ -16,10 +16,12 @@
 
 package co.cask.cdap.apps.schedule;
 
+import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.datacleansing.DataCleansing;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.proto.ProgramRunStatus;
+import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
@@ -43,6 +45,11 @@ public class ScheduleTest extends AudiTestBase {
     // Deploy AppWithDataPartitionSchedule
     ApplicationManager appWithSchedule = deployApplication(AppWithDataPartitionSchedule.class);
     WorkflowManager workflowManager = appWithSchedule.getWorkflowManager(AppWithDataPartitionSchedule.SOME_WORKFLOW);
+
+    ScheduleId scheduleId = TEST_NAMESPACE.app(AppWithDataPartitionSchedule.NAME)
+      .schedule(AppWithDataPartitionSchedule.DATASET_PARTITION_SCHEDULE_1);
+    new ScheduleClient(getClientConfig(), getRestClient()).resume(scheduleId);
+
     // Workflow in AppWithDataPartitionSchedule has not been run before
     Assert.assertEquals(0, workflowManager.getHistory().size());
     // Create TRIGGER_ON_NUM_PARTITIONS new partitions with the service in DataCleansing app
