@@ -115,7 +115,7 @@ public class StreamSecurityTest extends AudiTestBase {
     RESTClient carolClient = new RESTClient(carolConfig);
     carolClient.addListener(createRestClientListener());
 
-    //create admin client
+    //create carol client
     StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
 
     //start of client code here:
@@ -167,7 +167,7 @@ public class StreamSecurityTest extends AudiTestBase {
     RESTClient carolClient = new RESTClient(carolConfig);
     carolClient.addListener(createRestClientListener());
 
-    //create admin client
+    //create carol client
     StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
 
     //start of client code here:
@@ -223,7 +223,7 @@ public class StreamSecurityTest extends AudiTestBase {
     RESTClient carolClient = new RESTClient(carolConfig);
     carolClient.addListener(createRestClientListener());
 
-    //create admin client
+    //create carol client
     StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
 
     //start of client code here:
@@ -244,6 +244,61 @@ public class StreamSecurityTest extends AudiTestBase {
 
     //calling a read method should success, since carol has READ privilege
     List<StreamEvent> events = streamCarolClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+                                                           Lists.<StreamEvent>newArrayList());
+
+    //Asserting what Carol read from stream matches what Admin put inside stream.
+    Assert.assertEquals(1, events.size());
+    Assert.assertEquals(" a b ", Bytes.toString(events.get(0).getBody()));
+
+    // Now delete the namespace and make sure that it is deleted
+    getNamespaceClient().delete(namespaceId);
+    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+  }
+
+  /**
+   * SEC-AUTH-019's version of SEC-AUTH-013
+   * Grant a user WRITE access on a dataset. Try to get the dataset from a program and call a WRITE method on it.
+   * @throws Exception
+   */
+  @Test
+  public void SEC_AUTH_013() throws Exception {
+
+    //creating an adminClient
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    //creating namespace with random name
+    String name = generateRandomName();
+    NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
+    getTestManager(adminConfig, adminClient).createNamespace(meta);
+
+    //create user CAROL
+    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+    RESTClient carolClient = new RESTClient(carolConfig);
+    carolClient.addListener(createRestClientListener());
+
+    //create carol client
+    StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
+
+    //start of client code here:
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId(name);
+
+    //creating a stream using admin client
+    streamAdminClient.create(STREAM_NAME);
+    StreamProperties config = streamAdminClient.getConfig(STREAM_NAME);
+    Assert.assertNotNull(config);
+
+    //now authorize carol WRITE access to the STREAM
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    authorizationClient.grant(STREAM_NAME, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
+
+    //using the user carol to write message on the stream, should succeed
+    streamCarolClient.sendEvent(STREAM_NAME, " a b ");
+
+    //calling a read method from admin client should generate expected result, since carol successfully write to the stream and admin can retrieve it
+    List<StreamEvent> events = streamAdminClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
     //Asserting what Carol read from stream matches what Admin put inside stream.
