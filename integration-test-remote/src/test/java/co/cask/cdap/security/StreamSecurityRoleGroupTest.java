@@ -148,7 +148,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     }
     authorizationClient.grant(namespaceId, role_write, Collections.singleton(Action.WRITE));
 
-    //create a principal group nscreator which already exist in UNIX system and add role_write to the group
+    //create a principal group nscreator which already exists in UNIX system and add role_write to the group
     authorizationClient.addRoleToPrincipal(role_write, new Principal(NSCREATOR, GROUP));
 
     //1. using the user Alice to write message on the stream, should succeed
@@ -253,7 +253,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     }
     authorizationClient.grant(namespaceId, role_read, Collections.singleton(Action.READ));
 
-    //create a principal group nscreator which already exist in UNIX system and add role_write to the group
+    //create a principal group nscreator which already exists in UNIX system and add role_read to the group
     authorizationClient.addRoleToPrincipal(role_read, new Principal(NSCREATOR, GROUP));
 
     //1. using the user Alice to read message on the stream, should succeed
@@ -317,8 +317,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * Alice and Bob belong to group 'nscreator' and Eve doesn't belong to 'nscreator'.
    * Now we assign a role which has WRITE privileges to 'nscreator' group.
    * Then, we let Alice and Bob listen to the stream.
-   * Expected behavior would be that Alice and Bob cannot successfully READ from to stream with only WRITE privilege to the stream,
-   * while Eve cannot.
+   * Expected behavior would be that Alice and Bob cannot successfully READ from to stream with only WRITE privilege to the stream.
    *
    * @throws Exception
    */
@@ -356,7 +355,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       //user_role already exists, it's fine to move on from here
     }
     authorizationClient.grant(namespaceId, role_write, Collections.singleton(Action.WRITE));
-    //create a principal group nscreator which already exist in UNIX system and add role_write to the group
+    //create a principal group nscreator which already exists in UNIX system and add role_write to the group
     authorizationClient.addRoleToPrincipal(role_write, new Principal(NSCREATOR, GROUP));
     streamAdminClient.sendEvent(streamId, " a b ");
     //1.calling a read method from Admin client should fail, since Admin has WRITE && READ privilege to the stream
@@ -399,6 +398,108 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       Assert.fail();
     }catch(IOException ex){
       //expected IOException 403 forbidden URL access here
+    }
+
+    // Now delete the namespace and make sure that it is deleted
+    getNamespaceClient().delete(namespaceId);
+    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+  }
+
+
+  /**
+   * SEC-AUTH-019(STREAM) and (Group and Role) based version of SEC-AUTH-008
+   * Grant a user READ access on a stream. Try to get the stream from a program and call a WRITE method on it.
+   *
+   * There are three users in the system.
+   * Alice and Bob belong to group 'nscreator' and Eve doesn't belong to 'nscreator'.
+   * Now we assign a role which has READ privileges to 'nscreator' group.
+   * Then, we let Alice and Bob WRITE to the stream.
+   * Expected behavior would be that Alice and Bob fail to write to stream with only READ privilege to the stream.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void SEC_AUTH_008() throws Exception {
+
+    //creating an adminClient
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    //creating namespace with random name
+    String name = generateRandomName();
+    NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
+    getTestManager(adminConfig, adminClient).createNamespace(meta);
+
+    //start of client code here:
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId(name);
+    //creating stream within the namespace created
+    StreamId streamId = namespaceId.stream("streamTest");
+    //creating a stream using admin client
+    streamAdminClient.create(streamId);
+    StreamProperties config = streamAdminClient.getConfig(streamId);
+    Assert.assertNotNull(config);
+
+    //now authorize READ access to role_write
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    //Create write role, grant write
+
+    Role role_read = new Role(ROLE_READ);
+    try {
+      authorizationClient.createRole(role_read);
+    }catch(RoleAlreadyExistsException ex){
+      //user_role already exists, it's fine to move on from here
+    }
+    authorizationClient.grant(namespaceId, role_read, Collections.singleton(Action.READ));
+
+    //create a principal group nscreator which already exists in UNIX system and add role_read to the group
+    authorizationClient.addRoleToPrincipal(role_read, new Principal(NSCREATOR, GROUP));
+
+    //1. using the user Alice to write message on the stream, should fail
+    //create user Alice
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+    //create Alice client
+    StreamClient streamAliceClient = new StreamClient(aliceConfig, aliceClient);
+    try {
+      streamAliceClient.sendEvent(streamId, " a b ");
+      //fail if Alice has authorization to write
+      Assert.fail();
+    }catch(UnauthorizedException ex){
+      //expected unauthorized Exception here
+    }
+
+
+    //2. using the user Bob to write message on the stream, should succeed
+    //create user Bob
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(aliceConfig);
+    bobClient.addListener(createRestClientListener());
+    //create Bob client
+    StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
+    try {
+      streamBobClient.sendEvent(streamId, " c d ");
+      //fail if Bob has authorization to write
+      Assert.fail();
+    }catch(UnauthorizedException ex){
+      //expected unauthorized Exception here
+    }
+
+    //3. using the user eve to write message on the stream, should fail
+    //create user Eve
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
+    StreamClient streamEveClient = new StreamClient(eveConfig, eveClient);
+    //create Eve client
+    try {
+      streamEveClient.sendEvent(streamId, " e f ");
+      //fail if Eve has authorization to write
+      Assert.fail();
+    }catch(UnauthorizedException ex){
+      //expected unauthorized Exception here
     }
 
     // Now delete the namespace and make sure that it is deleted
