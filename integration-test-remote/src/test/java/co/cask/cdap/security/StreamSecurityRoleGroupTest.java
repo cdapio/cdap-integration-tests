@@ -358,7 +358,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     authorizationClient.grant(namespaceId, role_write, Collections.singleton(Action.WRITE));
     //create a principal group nscreator which already exist in UNIX system and add role_write to the group
     authorizationClient.addRoleToPrincipal(role_write, new Principal(NSCREATOR, GROUP));
-
+    streamAdminClient.sendEvent(streamId, " a b ");
     //1.calling a read method from Admin client should fail, since Admin has WRITE && READ privilege to the stream
     List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
