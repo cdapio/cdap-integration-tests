@@ -51,16 +51,10 @@ import java.util.concurrent.TimeoutException;
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
 
 public class StreamSecurityTest extends AudiTestBase {
-  private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
   private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
-
   private static final String ADMIN_USER = "cdapitn";
-  private static final String ALICE = "alice";
-  private static final String BOB = "bob";
   private static final String CAROL = "carol";
-  private static final String EVE = "eve";
   private static final String PASSWORD_SUFFIX = "password";
-  private static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
 
   // This is to work around https://issues.cask.co/browse/CDAP-7680
   // Where we don't delete privileges when a namespace is deleted.

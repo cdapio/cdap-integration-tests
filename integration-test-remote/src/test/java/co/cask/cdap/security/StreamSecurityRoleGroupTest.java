@@ -58,16 +58,12 @@ import java.util.concurrent.TimeoutException;
  */
 
 public class StreamSecurityRoleGroupTest extends AudiTestBase {
-  private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
-  private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
 
   private static final String ADMIN_USER = "cdapitn";
   private static final String ALICE = "alice";
   private static final String BOB = "bob";
-  private static final String CAROL = "carol";
   private static final String EVE = "eve";
   private static final String PASSWORD_SUFFIX = "password";
-  private static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
   private static final String ROLE_READ = "role_read";
   private static final String ROLE_WRITE = "role_write";
   private static final String NSCREATOR = "nscreator";
@@ -156,7 +152,6 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     //Asserting what Carol read from stream matches what Admin put inside stream.
     Assert.assertEquals(1, events.size());
     Assert.assertEquals(" a b ", Bytes.toString(events.get(0).getBody()));
-
 
     //2. using the user Bob to write message on the stream, should succeed
     //create user Bob
@@ -396,7 +391,6 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     getNamespaceClient().delete(namespaceId);
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
-
 
   /**
    * SEC-AUTH-019(STREAM) and (Group and Role) based version of SEC-AUTH-008
