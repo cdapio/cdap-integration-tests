@@ -59,6 +59,16 @@ import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
  * the License.
  */
 
+/**
+ * Note that this test class is based on the following user id/groups
+ * [root@auth423722-1000 cdap]# id alice
+ * uid=542(alice) gid=542(alice) groups=542(alice),2303(deployers),2304(nscreator)
+ * [root@auth423722-1000 cdap]# id bob
+ * uid=543(bob) gid=543(bob) groups=543(bob),2303(deployers),2304(nscreator)
+ * [root@auth423722-1000 cdap]# id eve
+ * uid=544(eve) gid=544(eve) groups=544(eve),2302(datausers),2303(deployers)
+ */
+
 public class StreamSecurityRoleGroupTest extends AudiTestBase {
   private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
   private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
@@ -92,12 +102,12 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
   }
 
   /**
-   * SEC-AUTH-019(STREAM) and Group and Role's version of SEC-AUTH-013
+   * SEC-AUTH-019(STREAM) and (Group and Role) based version of SEC-AUTH-013
    * Grant a user WRITE access on a stream. Try to get the stream from a program and call a WRITE method on it.
    *
    * There are three users in the system.
    * Alice and Bob belong to group 'nscreator' and Eve doesn't belong to 'nscreator'.
-   * Now we assign a role which has write privileges to 'nscreator' group.
+   * Now we assign a role which has WRITE privileges to 'nscreator' group.
    * Expected behavior would be that Alice and Bob can successfully write to stream,
    * while Eve cannot.
    *
@@ -197,13 +207,13 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
   }
 
   /**
-   * SEC-AUTH-019(STREAM) and Group and Role's version of SEC-AUTH-012
+   * SEC-AUTH-019(STREAM) and (Group and Role) based version of SEC-AUTH-012
    * Grant a user READ access on a stream. Try to get the stream from a program and call a READ method on it.
    *
    * There are three users in the system.
    * Alice and Bob belong to group 'nscreator' and Eve doesn't belong to 'nscreator'.
-   * Now we assign a role which has write privileges to 'nscreator' group.
-   * Expected behavior would be that Alice and Bob can successfully write to stream,
+   * Now we assign a role which has READ privileges to 'nscreator' group.
+   * Expected behavior would be that Alice and Bob can successfully read from to stream,
    * while Eve cannot.
    *
    * @throws Exception
@@ -247,39 +257,32 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     authorizationClient.addRoleToPrincipal(role_read, new Principal(NSCREATOR, GROUP));
 
     //1. using the user Alice to read message on the stream, should succeed
-
     streamAdminClient.sendEvent(streamId, " a b ");
-
     //create user Alice
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(aliceConfig);
     aliceClient.addListener(createRestClientListener());
     //create alice client
     StreamClient streamAliceClient = new StreamClient(aliceConfig, aliceClient);
-    //calling a read method from admin client should generate expected result, since alice successfully write to the stream and admin can retrieve it
+    //calling a read method from Alice client should generate expected result, since Alice successfully write to the stream and admin can retrieve it
     List<StreamEvent> events = streamAliceClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
-
     //Asserting what Carol read from stream matches what Admin put inside stream.
     Assert.assertEquals(1, events.size());
     Assert.assertEquals(" a b ", Bytes.toString(events.get(0).getBody()));
 
 
     //2. using the user Bob to read message on the stream, should succeed
-
     streamAdminClient.sendEvent(streamId, " c d ");
-
     //create user Bob
     ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(aliceConfig);
     bobClient.addListener(createRestClientListener());
     //create bob client
     StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
-
     //calling a read method from admin client should generate expected result, since carol successfully write to the stream and admin can retrieve it
     events = streamBobClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                          Lists.<StreamEvent>newArrayList());
-
     //Asserting what Carol read from stream matches what Admin put inside stream.
     Assert.assertEquals(2, events.size());
     Assert.assertEquals(" c d ", Bytes.toString(events.get(1).getBody()));
@@ -292,12 +295,107 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     eveClient.addListener(createRestClientListener());
     //create Eve client
     StreamClient streamEveClient = new StreamClient(eveConfig, eveClient);
-
-
     try {
       //fail if Eve is allowed to read the stream here
       streamEveClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                 Lists.<StreamEvent>newArrayList());
+      Assert.fail();
+    }catch(IOException ex){
+      //expected IOException 403 forbidden URL access here
+    }
+
+    // Now delete the namespace and make sure that it is deleted
+    getNamespaceClient().delete(namespaceId);
+    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+  }
+
+  /**
+   * SEC-AUTH-019(STREAM) and (Group and Role) based version of SEC-AUTH-009
+   * Grant a user WRITE access on a stream. Try to get the stream from a program and call a READ method on it.
+   *
+   * There are three users in the system.
+   * Alice and Bob belong to group 'nscreator' and Eve doesn't belong to 'nscreator'.
+   * Now we assign a role which has WRITE privileges to 'nscreator' group.
+   * Then, we let Alice and Bob listen to the stream.
+   * Expected behavior would be that Alice and Bob cannot successfully READ from to stream with only WRITE privilege to the stream,
+   * while Eve cannot.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void SEC_AUTH_009() throws Exception {
+
+    //creating an adminClient
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    //creating namespace with random name
+    String name = generateRandomName();
+    NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
+    getTestManager(adminConfig, adminClient).createNamespace(meta);
+
+    //start of client code here:
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId(name);
+    //creating stream within the namespace created
+    StreamId streamId = namespaceId.stream("streamTest");
+    //creating a stream using admin client
+    streamAdminClient.create(streamId);
+    StreamProperties config = streamAdminClient.getConfig(streamId);
+    Assert.assertNotNull(config);
+
+    //now authorize WRITE access to role_write
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+
+    //Create write role, grant write
+    Role role_write = new Role(ROLE_WRITE);
+    try {
+      authorizationClient.createRole(role_write);
+    }catch(RoleAlreadyExistsException ex){
+      //user_role already exists, it's fine to move on from here
+    }
+    authorizationClient.grant(namespaceId, role_write, Collections.singleton(Action.WRITE));
+    //create a principal group nscreator which already exist in UNIX system and add role_write to the group
+    authorizationClient.addRoleToPrincipal(role_write, new Principal(NSCREATOR, GROUP));
+
+    //1.calling a read method from Admin client should fail, since Admin has WRITE && READ privilege to the stream
+    List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+                                                           Lists.<StreamEvent>newArrayList());
+    //Asserting what Admin read from stream matches what Admin put inside stream.
+    Assert.assertEquals(1, events.size());
+    Assert.assertEquals(" a b ", Bytes.toString(events.get(0).getBody()));
+
+
+    //2. using the user Alice to read message on the stream, should fail
+    streamAdminClient.sendEvent(streamId, " b c ");
+    //create user Alice
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+    //create alice client
+    StreamClient streamAliceClient = new StreamClient(aliceConfig, aliceClient);
+    //calling a read method from Bob client should fail, since Bob only has WRITE but not READ privilege to the stream
+    try {
+      events = streamAliceClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+                                         Lists.<StreamEvent>newArrayList());
+      Assert.fail();
+    }catch(IOException ex){
+      //expected IOException 403 forbidden URL access here
+    }
+
+    //3. using the user Bob to read message on the stream, should fail
+    streamAdminClient.sendEvent(streamId, " c d ");
+    //create user Bob
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(aliceConfig);
+    bobClient.addListener(createRestClientListener());
+    //create bob client
+    StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
+    //calling a read method from Bob client should fail, since Bob only has WRITE but not READ privilege to the stream
+    try {
+      events = streamBobClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+                                         Lists.<StreamEvent>newArrayList());
       Assert.fail();
     }catch(IOException ex){
       //expected IOException 403 forbidden URL access here
