@@ -1,25 +1,7 @@
 {
   "config": {
-    "coopr_base_to_cm": {
-      "--sentry": ""
-    },
     "cloudera_manager": {
-      "distribution_version": "5.11.0",
-      "services": {
-        "cdap": {
-          "serviceConfigs": {
-            "cdap-site.xml_service_safety_valve":"<property><name>security.authorization.extension.config.sentry.site.url</name><value>/etc/sentry/conf/sentry-site.xml</value></property>",
-            "security_authorization_admin_users": "bob"
-          }
-        }
-      }
-    },
-    "cdap": {
-      "security": {
-        "realmfile": {
-          "bob": "bobpassword"
-        }
-      }
+      "distribution_version": "5.11"
     }
   }
 }
