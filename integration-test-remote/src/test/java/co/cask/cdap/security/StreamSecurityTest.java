@@ -1,3 +1,19 @@
+/*
+ * Copyright © 2015 Cask Data, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package co.cask.cdap.security;
 
 import co.cask.cdap.api.common.Bytes;
@@ -46,22 +62,6 @@ import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
-
-/*
- * Copyright © 2015 Cask Data, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
 
 public class StreamSecurityTest extends AudiTestBase {
   private static final StreamId NONEXISTENT_STREAM = TEST_NAMESPACE.stream("nonexistentStream");
@@ -348,66 +348,4 @@ public class StreamSecurityTest extends AudiTestBase {
     Assert.assertEquals(0, events.size());
   }
 
-  /**
-   * generic stream nonexistent test without user authorization.
-   * @throws Exception
-   */
-  @Test
-  public void testNonexistentStreams() throws Exception {
-    StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-
-    // test interaction with nonexistent stream; should fail
-    try {
-      streamClient.getConfig(NONEXISTENT_STREAM);
-      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
-    } catch (StreamNotFoundException expected) {
-      // expected
-    }
-    try {
-      streamClient.sendEvent(NONEXISTENT_STREAM, "testEvent");
-      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
-    } catch (StreamNotFoundException expected) {
-      // expected
-    }
-    try {
-      streamClient.getEvents(NONEXISTENT_STREAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
-                             Lists.<StreamEvent>newArrayList());
-      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
-    } catch (StreamNotFoundException expected) {
-      // expected
-    }
-    try {
-      streamClient.truncate(NONEXISTENT_STREAM);
-      Assert.fail(String.format("Expected '%s' to not exist.", NONEXISTENT_STREAM));
-    } catch (StreamNotFoundException expected) {
-      // expected
-    }
-
-    // creation with invalid characters should fail
-    try {
-      createStream(STREAM_NAME.getStream() + "&");
-      Assert.fail();
-    } catch (BadRequestException expected) {
-      // expected
-    }
-    try {
-      createStream(STREAM_NAME.getStream() + ".");
-      Assert.fail();
-    } catch (BadRequestException expected) {
-      // expected
-    }
-  }
-
-  // We have to use RestClient directly to attempt to create a stream with an invalid name (negative test against the
-  // StreamHandler), because the StreamClient throws an IllegalArgumentException when passing in an invalid stream name.
-  private void createStream(String streamName)
-    throws BadRequestException, IOException, UnauthenticatedException, UnauthorizedException {
-    ClientConfig clientConfig = getClientConfig();
-    URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, String.format("streams/%s", streamName));
-    HttpResponse response = getRestClient().execute(HttpMethod.PUT, url, clientConfig.getAccessToken(),
-                                                    HttpURLConnection.HTTP_BAD_REQUEST);
-    if (response.getResponseCode() == HttpURLConnection.HTTP_BAD_REQUEST) {
-      throw new BadRequestException("Bad request: " + response.getResponseBodyAsString());
-    }
-  }
 }

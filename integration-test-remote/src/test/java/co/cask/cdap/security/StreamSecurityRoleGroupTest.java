@@ -1,3 +1,19 @@
+/*
+ * Copyright © 2015 Cask Data, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package co.cask.cdap.security;
 
 import co.cask.cdap.api.common.Bytes;
@@ -42,22 +58,6 @@ import java.util.concurrent.TimeoutException;
 import static co.cask.cdap.proto.security.Principal.PrincipalType.GROUP;
 import co.cask.cdap.security.spi.authorization.RoleAlreadyExistsException;
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
-
-/*
- * Copyright © 2015 Cask Data, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
 
 /**
  * Note that this test class is based on the following user id/groups
@@ -507,16 +507,4 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
-  // We have to use RestClient directly to attempt to create a stream with an invalid name (negative test against the
-  // StreamHandler), because the StreamClient throws an IllegalArgumentException when passing in an invalid stream name.
-  private void createStream(String streamName)
-    throws BadRequestException, IOException, UnauthenticatedException, UnauthorizedException {
-    ClientConfig clientConfig = getClientConfig();
-    URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, String.format("streams/%s", streamName));
-    HttpResponse response = getRestClient().execute(HttpMethod.PUT, url, clientConfig.getAccessToken(),
-                                                    HttpURLConnection.HTTP_BAD_REQUEST);
-    if (response.getResponseCode() == HttpURLConnection.HTTP_BAD_REQUEST) {
-      throw new BadRequestException("Bad request: " + response.getResponseBodyAsString());
-    }
-  }
 }
