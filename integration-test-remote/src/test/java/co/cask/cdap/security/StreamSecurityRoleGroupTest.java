@@ -22,10 +22,7 @@ import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.BadRequestException;
-import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamProperties;
@@ -34,12 +31,10 @@ import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Role;
+import co.cask.cdap.security.spi.authorization.RoleAlreadyExistsException;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.common.http.HttpMethod;
-import co.cask.common.http.HttpResponse;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,17 +42,10 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeoutException;
-
-import static co.cask.cdap.proto.security.Principal.PrincipalType.GROUP;
-import co.cask.cdap.security.spi.authorization.RoleAlreadyExistsException;
-import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
 
 /**
  * Note that this test class is based on the following user id/groups
@@ -114,7 +102,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_013() throws Exception {
+  public void secAuth013() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -140,16 +128,16 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
     //Create write role, grant write
 
-    Role role_write = new Role(ROLE_WRITE);
+    Role roleWrite = new Role(ROLE_WRITE);
     try {
-      authorizationClient.createRole(role_write);
-    }catch(RoleAlreadyExistsException ex){
+      authorizationClient.createRole(roleWrite);
+    } catch (RoleAlreadyExistsException ex) {
       //user_role already exists, it's fine to move on from here
     }
-    authorizationClient.grant(namespaceId, role_write, Collections.singleton(Action.WRITE));
+    authorizationClient.grant(namespaceId, roleWrite, Collections.singleton(Action.WRITE));
 
     //create a principal group nscreator which already exists in UNIX system and add role_write to the group
-    authorizationClient.addRoleToPrincipal(role_write, new Principal(NSCREATOR, GROUP));
+    authorizationClient.addRoleToPrincipal(roleWrite, new Principal(NSCREATOR, Principal.PrincipalType.GROUP));
 
     //1. using the user Alice to write message on the stream, should succeed
     //create user Alice
@@ -160,7 +148,8 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     StreamClient streamAliceClient = new StreamClient(aliceConfig, aliceClient);
     streamAliceClient.sendEvent(streamId, " a b ");
 
-    //calling a read method from admin client should generate expected result, since alice successfully write to the stream and admin can retrieve it
+    //calling a read method from admin client should generate expected result,
+    //since alice successfully write to the stream and admin can retrieve it
     List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
@@ -178,7 +167,8 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
     streamBobClient.sendEvent(streamId, " c d ");
 
-    //calling a read method from admin client should generate expected result, since carol successfully write to the stream and admin can retrieve it
+    //calling a read method from admin client should generate expected result,
+    //since carol successfully write to the stream and admin can retrieve it
     events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
@@ -197,7 +187,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       streamEveClient.sendEvent(streamId, " e f ");
       //fail if Eve has authorization to write
       Assert.fail();
-    }catch(UnauthorizedException ex){
+    } catch (UnauthorizedException ex) {
       //expected unauthorized Exception here
     }
 
@@ -219,7 +209,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_012() throws Exception {
+  public void sedAuth012() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -243,18 +233,17 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
 
     //now authorize WRITE access to role_write
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    //Create write role, grant write
-
-    Role role_read = new Role(ROLE_READ);
+    //Create read role, grant READ
+    Role roleRead = new Role(ROLE_READ);
     try {
-      authorizationClient.createRole(role_read);
-    }catch(RoleAlreadyExistsException ex){
+      authorizationClient.createRole(roleRead);
+    } catch (RoleAlreadyExistsException ex) {
       //user_role already exists, it's fine to move on from here
     }
-    authorizationClient.grant(namespaceId, role_read, Collections.singleton(Action.READ));
+    authorizationClient.grant(namespaceId, roleRead, Collections.singleton(Action.READ));
 
     //create a principal group nscreator which already exists in UNIX system and add role_read to the group
-    authorizationClient.addRoleToPrincipal(role_read, new Principal(NSCREATOR, GROUP));
+    authorizationClient.addRoleToPrincipal(roleRead, new Principal(NSCREATOR, Principal.PrincipalType.GROUP));
 
     //1. using the user Alice to read message on the stream, should succeed
     streamAdminClient.sendEvent(streamId, " a b ");
@@ -264,7 +253,8 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     aliceClient.addListener(createRestClientListener());
     //create alice client
     StreamClient streamAliceClient = new StreamClient(aliceConfig, aliceClient);
-    //calling a read method from Alice client should generate expected result, since Alice successfully write to the stream and admin can retrieve it
+    //calling a read method from Alice client should generate expected result,
+    //since Alice successfully write to the stream and admin can retrieve it
     List<StreamEvent> events = streamAliceClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
     //Asserting what Carol read from stream matches what Admin put inside stream.
@@ -280,7 +270,8 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     bobClient.addListener(createRestClientListener());
     //create bob client
     StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
-    //calling a read method from admin client should generate expected result, since carol successfully write to the stream and admin can retrieve it
+    //calling a read method from admin client should generate expected result,
+    //since carol successfully write to the stream and admin can retrieve it
     events = streamBobClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                          Lists.<StreamEvent>newArrayList());
     //Asserting what Carol read from stream matches what Admin put inside stream.
@@ -300,7 +291,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       streamEveClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                 Lists.<StreamEvent>newArrayList());
       Assert.fail();
-    }catch(IOException ex){
+    } catch (IOException ex) {
       //expected IOException 403 forbidden URL access here
     }
 
@@ -317,12 +308,13 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * Alice and Bob belong to group 'nscreator' and Eve doesn't belong to 'nscreator'.
    * Now we assign a role which has WRITE privileges to 'nscreator' group.
    * Then, we let Alice and Bob listen to the stream.
-   * Expected behavior would be that Alice and Bob cannot successfully READ from to stream with only WRITE privilege to the stream.
+   * Expected behavior would be that Alice and Bob cannot successfully READ from to stream
+   * with only WRITE privilege to the stream.
    *
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_009() throws Exception {
+  public void secAuth009() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -348,15 +340,15 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
 
     //Create write role, grant write
-    Role role_write = new Role(ROLE_WRITE);
+    Role roleWrite = new Role(ROLE_WRITE);
     try {
-      authorizationClient.createRole(role_write);
-    }catch(RoleAlreadyExistsException ex){
+      authorizationClient.createRole(roleWrite);
+    } catch (RoleAlreadyExistsException ex) {
       //user_role already exists, it's fine to move on from here
     }
-    authorizationClient.grant(namespaceId, role_write, Collections.singleton(Action.WRITE));
+    authorizationClient.grant(namespaceId, roleWrite, Collections.singleton(Action.WRITE));
     //create a principal group nscreator which already exists in UNIX system and add role_write to the group
-    authorizationClient.addRoleToPrincipal(role_write, new Principal(NSCREATOR, GROUP));
+    authorizationClient.addRoleToPrincipal(roleWrite, new Principal(NSCREATOR, Principal.PrincipalType.GROUP));
     streamAdminClient.sendEvent(streamId, " a b ");
     //1.calling a read method from Admin client should fail, since Admin has WRITE && READ privilege to the stream
     List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
@@ -379,7 +371,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       events = streamAliceClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                          Lists.<StreamEvent>newArrayList());
       Assert.fail();
-    }catch(IOException ex){
+    } catch (IOException ex) {
       //expected IOException 403 forbidden URL access here
     }
 
@@ -396,7 +388,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       events = streamBobClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                          Lists.<StreamEvent>newArrayList());
       Assert.fail();
-    }catch(IOException ex){
+    } catch (IOException ex) {
       //expected IOException 403 forbidden URL access here
     }
 
@@ -419,7 +411,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_008() throws Exception {
+  public void secAuth008() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -445,16 +437,16 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
     //Create write role, grant write
 
-    Role role_read = new Role(ROLE_READ);
+    Role roleRead = new Role(ROLE_READ);
     try {
-      authorizationClient.createRole(role_read);
-    }catch(RoleAlreadyExistsException ex){
+      authorizationClient.createRole(roleRead);
+    } catch (RoleAlreadyExistsException ex) {
       //user_role already exists, it's fine to move on from here
     }
-    authorizationClient.grant(namespaceId, role_read, Collections.singleton(Action.READ));
+    authorizationClient.grant(namespaceId, roleRead, Collections.singleton(Action.READ));
 
     //create a principal group nscreator which already exists in UNIX system and add role_read to the group
-    authorizationClient.addRoleToPrincipal(role_read, new Principal(NSCREATOR, GROUP));
+    authorizationClient.addRoleToPrincipal(roleRead, new Principal(NSCREATOR, Principal.PrincipalType.GROUP));
 
     //1. using the user Alice to write message on the stream, should fail
     //create user Alice
@@ -467,7 +459,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       streamAliceClient.sendEvent(streamId, " a b ");
       //fail if Alice has authorization to write
       Assert.fail();
-    }catch(UnauthorizedException ex){
+    } catch (UnauthorizedException ex) {
       //expected unauthorized Exception here
     }
 
@@ -483,7 +475,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       streamBobClient.sendEvent(streamId, " c d ");
       //fail if Bob has authorization to write
       Assert.fail();
-    }catch(UnauthorizedException ex){
+    } catch (UnauthorizedException ex) {
       //expected unauthorized Exception here
     }
 
@@ -498,7 +490,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       streamEveClient.sendEvent(streamId, " e f ");
       //fail if Eve has authorization to write
       Assert.fail();
-    }catch(UnauthorizedException ex){
+    } catch (UnauthorizedException ex) {
       //expected unauthorized Exception here
     }
 

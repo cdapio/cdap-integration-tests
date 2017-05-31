@@ -18,49 +18,36 @@ package co.cask.cdap.security;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
+import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
-import co.cask.cdap.common.BadRequestException;
-import co.cask.cdap.common.StreamNotFoundException;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.UnauthenticatedException;
-import java.util.concurrent.TimeoutException;
-import java.lang.InterruptedException;
-
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.proto.ConfigEntry;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamProperties;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
+import co.cask.cdap.proto.security.Action;
+import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.common.http.HttpMethod;
-import co.cask.common.http.HttpResponse;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.security.SecureRandom;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.lang.Exception;
+import java.util.concurrent.TimeoutException;
 
-import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.proto.NamespaceMeta;
-import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.client.ApplicationClient;
-import co.cask.cdap.client.AuthorizationClient;
-import java.util.Collections;
-import co.cask.cdap.proto.security.Action;
-import co.cask.cdap.proto.security.Principal;
-import co.cask.cdap.proto.security.Privilege;
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
 
 public class StreamSecurityTest extends AudiTestBase {
@@ -98,7 +85,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_008() throws Exception {
+  public void secAuth008() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -150,7 +137,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_009() throws Exception {
+  public void secAuth009() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -191,7 +178,7 @@ public class StreamSecurityTest extends AudiTestBase {
       List<StreamEvent> events = streamCarolClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                              Lists.<StreamEvent>newArrayList());
       Assert.fail();
-    }catch(IOException ex){
+    } catch (IOException ex) {
       //Expected
     }
 
@@ -206,7 +193,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_012() throws Exception {
+  public void secAuth012() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -261,7 +248,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void SEC_AUTH_013() throws Exception {
+  public void secAuth013() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -297,7 +284,8 @@ public class StreamSecurityTest extends AudiTestBase {
     //using the user carol to write message on the stream, should succeed
     streamCarolClient.sendEvent(STREAM_NAME, " a b ");
 
-    //calling a read method from admin client should generate expected result, since carol successfully write to the stream and admin can retrieve it
+    //calling a read method from admin client should generate expected result,
+    //since carol successfully write to the stream and admin can retrieve it
     List<StreamEvent> events = streamAdminClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
