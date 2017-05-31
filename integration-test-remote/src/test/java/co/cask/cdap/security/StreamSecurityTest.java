@@ -93,8 +93,8 @@ public class StreamSecurityTest extends AudiTestBase {
   }
 
   /**
-   * SEC-AUTH-019's version of SEC-AUTH-008
-   * Grant a user READ access on a dataset. Try to get the dataset from a program and call a WRITE method on it.
+   * SEC-AUTH-019(STREAM)'s version of SEC-AUTH-008
+   * Grant a user READ access on a stream. Try to get the stream from a program and call a WRITE method on it.
    * @throws Exception
    */
   @Test
@@ -145,8 +145,8 @@ public class StreamSecurityTest extends AudiTestBase {
   }
 
   /**
-   * SEC-AUTH-019's version of SEC-AUTH-009
-   * Grant a user WRITE access on a dataset. Try to get the dataset from a program and call a READ method on it.
+   * SEC-AUTH-019(STREAM)'s version of SEC-AUTH-009
+   * Grant a user WRITE access on a stream. Try to get the stream from a program and call a READ method on it.
    * @throws Exception
    */
   @Test
@@ -201,8 +201,8 @@ public class StreamSecurityTest extends AudiTestBase {
   }
 
   /**
-   * SEC-AUTH-019's version of SEC-AUTH-012
-   * Grant a user READ access on a dataset. Try to get the dataset from a program and call a READ method on it.
+   * SEC-AUTH-019(STREAM)'s version of SEC-AUTH-012
+   * Grant a user READ access on a stream. Try to get the stream from a program and call a READ method on it.
    * @throws Exception
    */
   @Test
@@ -256,8 +256,8 @@ public class StreamSecurityTest extends AudiTestBase {
   }
 
   /**
-   * SEC-AUTH-019's version of SEC-AUTH-013
-   * Grant a user WRITE access on a dataset. Try to get the dataset from a program and call a WRITE method on it.
+   * SEC-AUTH-019(STREAM)'s version of SEC-AUTH-013
+   * Grant a user WRITE access on a stream. Try to get the stream from a program and call a WRITE method on it.
    * @throws Exception
    */
   @Test
