@@ -98,7 +98,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth013() throws Exception {
+  public void testWriteGroupCanWriteOnStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -204,7 +204,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void sedAuth012() throws Exception {
+  public void testReadGroupCanReadFromStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -309,7 +309,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth009() throws Exception {
+  public void testWriteGroupCannotReadFromStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -405,7 +405,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth008() throws Exception {
+  public void testReadGroupCannotWriteOnStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
