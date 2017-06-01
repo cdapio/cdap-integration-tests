@@ -79,7 +79,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth008() throws Exception {
+  public void testReadUserCannotWriteOnStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -131,7 +131,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth009() throws Exception {
+  public void testWriteUserCannotReadOnStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -187,7 +187,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth012() throws Exception {
+  public void testReadUserCanReadFromStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -242,7 +242,7 @@ public class StreamSecurityTest extends AudiTestBase {
    * @throws Exception
    */
   @Test
-  public void secAuth013() throws Exception {
+  public void testWriteUserCanWriteOnStream() throws Exception {
 
     //creating an adminClient
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
