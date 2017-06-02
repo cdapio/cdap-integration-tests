@@ -36,7 +36,6 @@ import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.WorkerManager;
 import co.cask.cdap.test.WorkflowManager;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutionException;
