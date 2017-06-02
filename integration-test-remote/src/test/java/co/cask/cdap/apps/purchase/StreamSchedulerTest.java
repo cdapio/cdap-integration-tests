@@ -21,7 +21,6 @@ import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
-import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.proto.id.ProgramId;
