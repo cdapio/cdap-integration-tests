@@ -229,7 +229,8 @@ public class StreamSecurityTest extends AudiTestBase {
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
 
     //Carol need READ access to stream in order to read from the stream
-    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
+    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER),
+                              Collections.singleton(Action.READ));
     //Assign Carol with READ access to stream
     authorizationClient.grant(streamId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
 
@@ -293,7 +294,8 @@ public class StreamSecurityTest extends AudiTestBase {
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
 
     //grant READ access to Carol for namespaceId in order for Carol to READ/WRITE on the stream of that namespace.
-    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
+    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER),
+                              Collections.singleton(Action.READ));
     authorizationClient.grant(streamId, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
 
     //using the user carol to write message on the stream, should succeed
