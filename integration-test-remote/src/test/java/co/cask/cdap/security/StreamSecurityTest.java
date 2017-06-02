@@ -46,7 +46,6 @@ import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
@@ -280,20 +279,14 @@ public class StreamSecurityTest extends AudiTestBase {
 
     //now authorize carol WRITE access to the STREAM
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    authorizationClient.grant(STREAM_NAME, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
 
-    //Carol need READ access to stream in order to write to the stream
-    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
-    //Assign Carol with WRITE access to stream
-    authorizationClient.grant(streamId, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
-
-
-//    TimeUnit.SECONDS.sleep(65);
     //using the user carol to write message on the stream, should succeed
-    streamCarolClient.sendEvent(streamId, " a b ");
+    streamCarolClient.sendEvent(STREAM_NAME, " a b ");
 
     //calling a read method from admin client should generate expected result,
     //since carol successfully write to the stream and admin can retrieve it
-    List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+    List<StreamEvent> events = streamAdminClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
     //Asserting what Carol read from stream matches what Admin put inside stream.
