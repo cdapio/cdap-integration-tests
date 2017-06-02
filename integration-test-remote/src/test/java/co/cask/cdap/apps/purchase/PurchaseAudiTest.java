@@ -23,6 +23,7 @@ import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistory;
+import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ScheduledRuntime;
@@ -81,7 +82,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
     List<ScheduleSpecification> workflowSchedules = scheduleClient.list(PURCHASE_HISTORY_WORKFLOW);
     Assert.assertEquals(2, workflowSchedules.size());
-    checkScheduleState(scheduleClient, Scheduler.ScheduleState.SUSPENDED, workflowSchedules);
+    checkScheduleState(scheduleClient, ProgramScheduleStatus.SUSPENDED, workflowSchedules);
 
     // start PurchaseFlow and ingest an event
     FlowManager purchaseFlow = applicationManager.getFlowManager(PURCHASE_FLOW.getProgram()).start();
@@ -152,7 +153,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     purchaseHistoryWorkflowManager.getSchedule(SCHEDULE.getSchedule()).suspend();
   }
 
-  private void checkScheduleState(ScheduleClient scheduleClient, Scheduler.ScheduleState state,
+  private void checkScheduleState(ScheduleClient scheduleClient, ProgramScheduleStatus state,
                                   List<ScheduleSpecification> schedules) throws Exception {
     for (ScheduleSpecification schedule : schedules) {
       Assert.assertEquals(state.name(),
