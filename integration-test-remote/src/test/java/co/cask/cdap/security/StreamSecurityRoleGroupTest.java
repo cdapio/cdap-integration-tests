@@ -45,6 +45,7 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -186,6 +187,9 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       //expected unauthorized Exception here
     }
 
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
@@ -290,6 +294,9 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       //expected IOException 403 forbidden URL access here
     }
 
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
@@ -386,6 +393,9 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     } catch (IOException ex) {
       //expected IOException 403 forbidden URL access here
     }
+
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
 
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
@@ -488,6 +498,9 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
       //expected unauthorized Exception here
     }
 
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+    
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));

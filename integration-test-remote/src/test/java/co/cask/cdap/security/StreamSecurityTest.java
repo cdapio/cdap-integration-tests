@@ -46,6 +46,7 @@ import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
@@ -122,6 +123,10 @@ public class StreamSecurityTest extends AudiTestBase {
 
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
+
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
@@ -178,6 +183,10 @@ public class StreamSecurityTest extends AudiTestBase {
 
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
+
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
@@ -227,7 +236,6 @@ public class StreamSecurityTest extends AudiTestBase {
     //using admin to send message down the stream
     streamAdminClient.sendEvent(streamId, " a b ");
 
-//    TimeUnit.SECONDS.sleep(65);
     //calling a read method should success, since carol has READ privilege
     List<StreamEvent> events = streamCarolClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
@@ -238,6 +246,10 @@ public class StreamSecurityTest extends AudiTestBase {
 
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
+
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
@@ -279,22 +291,29 @@ public class StreamSecurityTest extends AudiTestBase {
 
     //now authorize carol WRITE access to the STREAM
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(STREAM_NAME, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
+
+    //grant READ access to Carol for namespaceId in order for Carol to READ/WRITE on the stream of that namespace.
+    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
+    authorizationClient.grant(streamId, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
 
     //using the user carol to write message on the stream, should succeed
-    streamCarolClient.sendEvent(STREAM_NAME, " a b ");
+    streamCarolClient.sendEvent(streamId, " a b ");
 
     //calling a read method from admin client should generate expected result,
     //since carol successfully write to the stream and admin can retrieve it
-    List<StreamEvent> events = streamAdminClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+    List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
-    //Asserting what Carol read from stream matches what Admin put inside stream.
+    //asserting what Carol read from stream matches what Admin put inside stream.
     Assert.assertEquals(1, events.size());
     Assert.assertEquals(" a b ", Bytes.toString(events.get(0).getBody()));
 
-    // Now delete the namespace and make sure that it is deleted
+    //now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
+
+    //resolve unresponsive bug by adding a delay
+    TimeUnit.SECONDS.sleep(1);
+
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
   }
 
