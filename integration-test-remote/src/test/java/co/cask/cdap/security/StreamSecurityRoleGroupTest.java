@@ -226,7 +226,7 @@ public class StreamSecurityRoleGroupTest extends AudiTestBase {
     StreamProperties config = streamAdminClient.getConfig(streamId);
     Assert.assertNotNull(config);
 
-    //now authorize WRITE access to role_write
+    //now authorize READ access to role_write
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
     //Create read role, grant READ
     Role roleRead = new Role(ROLE_READ);

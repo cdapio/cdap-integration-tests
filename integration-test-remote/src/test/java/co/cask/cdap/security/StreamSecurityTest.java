@@ -46,6 +46,7 @@ import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
@@ -199,6 +200,16 @@ public class StreamSecurityTest extends AudiTestBase {
     NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
     getTestManager(adminConfig, adminClient).createNamespace(meta);
 
+    //create namespaceId
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId(name);
+    //creating stream within the namespace created
+    StreamId streamId = namespaceId.stream("streamTest");
+    //creating a stream using admin client
+    streamAdminClient.create(streamId);
+    StreamProperties config = streamAdminClient.getConfig(streamId);
+    Assert.assertNotNull(config);
+
     //create user CAROL
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
     RESTClient carolClient = new RESTClient(carolConfig);
@@ -207,24 +218,19 @@ public class StreamSecurityTest extends AudiTestBase {
     //create carol client
     StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
 
-    //start of client code here:
-    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
-    NamespaceId namespaceId = new NamespaceId(name);
-
-    //creating a stream using admin client
-    streamAdminClient.create(STREAM_NAME);
-    StreamProperties config = streamAdminClient.getConfig(STREAM_NAME);
-    Assert.assertNotNull(config);
-
-    //now authorize the user READ access to the STREAM
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(STREAM_NAME, new Principal(CAROL, USER), Collections.singleton(Action.READ));
+
+    //Carol need READ access to stream in order to read from the stream
+    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
+    //Assign Carol with READ access to stream
+    authorizationClient.grant(streamId, new Principal(CAROL, USER), Collections.singleton(Action.READ));
 
     //using admin to send message down the stream
-    streamAdminClient.sendEvent(STREAM_NAME, " a b ");
+    streamAdminClient.sendEvent(streamId, " a b ");
 
+//    TimeUnit.SECONDS.sleep(65);
     //calling a read method should success, since carol has READ privilege
-    List<StreamEvent> events = streamCarolClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+    List<StreamEvent> events = streamCarolClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
     //Asserting what Carol read from stream matches what Admin put inside stream.
@@ -254,6 +260,16 @@ public class StreamSecurityTest extends AudiTestBase {
     NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
     getTestManager(adminConfig, adminClient).createNamespace(meta);
 
+    //create namespaceId
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId(name);
+    //creating stream within the namespace created
+    StreamId streamId = namespaceId.stream("streamTest");
+    //creating a stream using admin client
+    streamAdminClient.create(streamId);
+    StreamProperties config = streamAdminClient.getConfig(streamId);
+    Assert.assertNotNull(config);
+
     //create user CAROL
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
     RESTClient carolClient = new RESTClient(carolConfig);
@@ -262,25 +278,22 @@ public class StreamSecurityTest extends AudiTestBase {
     //create carol client
     StreamClient streamCarolClient = new StreamClient(carolConfig, carolClient);
 
-    //start of client code here:
-    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
-    NamespaceId namespaceId = new NamespaceId(name);
-
-    //creating a stream using admin client
-    streamAdminClient.create(STREAM_NAME);
-    StreamProperties config = streamAdminClient.getConfig(STREAM_NAME);
-    Assert.assertNotNull(config);
-
     //now authorize carol WRITE access to the STREAM
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(STREAM_NAME, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
 
+    //Carol need READ access to stream in order to write to the stream
+    authorizationClient.grant(streamId.getNamespaceId(), new Principal(CAROL, USER), Collections.singleton(Action.READ));
+    //Assign Carol with WRITE access to stream
+    authorizationClient.grant(streamId, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
+
+
+//    TimeUnit.SECONDS.sleep(65);
     //using the user carol to write message on the stream, should succeed
-    streamCarolClient.sendEvent(STREAM_NAME, " a b ");
+    streamCarolClient.sendEvent(streamId, " a b ");
 
     //calling a read method from admin client should generate expected result,
     //since carol successfully write to the stream and admin can retrieve it
-    List<StreamEvent> events = streamAdminClient.getEvents(STREAM_NAME, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
+    List<StreamEvent> events = streamAdminClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE,
                                                            Lists.<StreamEvent>newArrayList());
 
     //Asserting what Carol read from stream matches what Admin put inside stream.
