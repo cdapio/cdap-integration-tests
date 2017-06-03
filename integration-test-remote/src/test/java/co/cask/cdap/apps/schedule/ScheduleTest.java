@@ -22,7 +22,6 @@ import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.examples.datacleansing.DataCleansing;
 import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.ProgramStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ScheduleId;

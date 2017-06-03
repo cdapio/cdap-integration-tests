@@ -19,7 +19,7 @@ package co.cask.cdap.longrunning.schedule;
 import co.cask.cdap.test.TestState;
 
 /**
- * State for {@link ScheduleLRT}.
+ * State for {@link ScheduleLongRunningTest}.
  */
 public class DataPartitionScheduleTestState implements TestState {
   private final long triggerStartTimeSeconds;
