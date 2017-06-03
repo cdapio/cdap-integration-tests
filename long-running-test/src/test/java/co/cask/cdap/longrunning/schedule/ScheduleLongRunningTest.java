@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
  * Schedule long running test which creates new partitions in datasets and assert that
  * scheduled workflows complete successfully.
  */
-public class ScheduleLRT extends LongRunningTestBase<DataPartitionScheduleTestState> {
+public class ScheduleLongRunningTest extends LongRunningTestBase<DataPartitionScheduleTestState> {
 
   @Override
   public void deploy() throws Exception {
