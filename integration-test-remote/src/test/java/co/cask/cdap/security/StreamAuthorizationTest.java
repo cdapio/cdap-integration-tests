@@ -51,7 +51,7 @@ import java.util.concurrent.TimeoutException;
 
 import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
 
-public class StreamSecurityTest extends AudiTestBase {
+public class StreamAuthorizationTest extends AudiTestBase {
   private static final StreamId STREAM_NAME = TEST_NAMESPACE.stream("streamTest");
   private static final String ADMIN_USER = "cdapitn";
   private static final String CAROL = "carol";

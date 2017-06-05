@@ -58,7 +58,7 @@ import java.util.concurrent.TimeoutException;
  * uid=544(eve) gid=544(eve) groups=544(eve),2302(datausers),2303(deployers)
  */
 
-public class StreamSecurityRoleGroupTest extends AudiTestBase {
+public class StreamAuthorizationRoleGroupTest extends AudiTestBase {
 
   private static final String ADMIN_USER = "cdapitn";
   private static final String ALICE = "alice";
