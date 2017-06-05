@@ -2,7 +2,11 @@
   "config": {
     "hadoop": {
       "distribution": "cdh",
-      "distribution_version": "5.10.0"
+      "distribution_version": "5.10.0",
+      "mapred_site": {
+        "mapreduce.map.java.opts": "-Xmx300m",
+        "mapreduce.reduce.java.opts": "-Xmx300m"
+      }
     }
   },
   "services": "spark-historyserver"

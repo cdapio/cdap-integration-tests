@@ -20,6 +20,7 @@ import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
+import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
 import co.cask.cdap.internal.app.runtime.schedule.Scheduler;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.StreamProperties;
@@ -67,9 +68,9 @@ public class StreamSchedulerTest extends AudiTestBase {
     // schedule actions: Initially schedules are suspended so resume them
     ScheduleId dataSchedule = TEST_NAMESPACE.app(PurchaseApp.APP_NAME).schedule("DataSchedule");
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), getRestClient());
-    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
+    Assert.assertEquals(ProgramScheduleStatus.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
     scheduleClient.resume(dataSchedule);
-    Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
+    Assert.assertEquals(ProgramScheduleStatus.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
     String bigData = new String(new char[100000]);
     multipleStreamSend(streamClient, purchaseStream, bigData, 12);
@@ -85,12 +86,12 @@ public class StreamSchedulerTest extends AudiTestBase {
 
     // schedule actions suspend, send more data and resume the schedule
     scheduleClient.suspend(dataSchedule);
-    Assert.assertEquals(Scheduler.ScheduleState.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
+    Assert.assertEquals(ProgramScheduleStatus.SUSPENDED.name(), scheduleClient.getStatus(dataSchedule));
 
     multipleStreamSend(streamClient, purchaseStream, bigData, 12);
 
     scheduleClient.resume(dataSchedule);
-    Assert.assertEquals(Scheduler.ScheduleState.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
+    Assert.assertEquals(ProgramScheduleStatus.SCHEDULED.name(), scheduleClient.getStatus(dataSchedule));
 
     // wait 5 minutes for the mapreduce to execute
     purchaseHistoryWorkflow.waitForRuns(ProgramRunStatus.COMPLETED, 2, 5, TimeUnit.MINUTES);
