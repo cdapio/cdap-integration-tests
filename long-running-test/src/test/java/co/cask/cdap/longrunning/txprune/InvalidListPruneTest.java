@@ -38,6 +38,7 @@ import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.RemoteDatasetAdmin;
 import co.cask.chaosmonkey.ChaosMonkeyService;
+import co.cask.chaosmonkey.proto.ActionArguments;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
@@ -150,9 +151,10 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     manageEmptyDatasets(getLongRunningNamespace(), iteration);
 
     // flush and compact every other iteration
-    if (iteration % COMPACT_ITERATION == 0) {
-      flushAndCompactTables();
-    }
+//    if (iteration % COMPACT_ITERATION == 0) {
+//      flushAndCompactTables();
+//    }
+    flushAndCompactTables();
 
     List<String> events = generateStreamEvents(iteration);
 
@@ -207,7 +209,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   @SuppressWarnings("deprecation")
   private void flushAndCompactTables() throws Exception {
     ClusterDisruptor clusterDisruptor = getClusterDisruptor();
-    clusterDisruptor.disruptAndWait("hbase-master", "major-compact", null, 60, TimeUnit.SECONDS);
+    clusterDisruptor.disruptAndWait("hbase-master", "major-compact", new ActionArguments(), 60, TimeUnit.SECONDS);
 
 
 //    try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {

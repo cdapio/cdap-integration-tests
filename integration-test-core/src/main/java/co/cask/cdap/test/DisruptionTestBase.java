@@ -25,10 +25,12 @@ import co.cask.chaosmonkey.proto.ClusterInfoCollector;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import javax.annotation.Nullable;
+
 /**
  * Wrapper around AudiTestBase that includes ChaosMonkeyService
  */
-public class DisruptionTestBase extends IntegrationTestBase {
+public abstract class DisruptionTestBase extends IntegrationTestBase {
 
   private static ChaosMonkeyService clusterDisruptor;
   private static Configuration conf;
@@ -38,7 +40,7 @@ public class DisruptionTestBase extends IntegrationTestBase {
     conf = Configuration.create();
 
     String tenantId = System.getProperty("coopr.tenant.id", "cask-dev");
-    String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:8100");
+    String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:55054");
     String cooprClusterId = System.getProperty("coopr.cluster.id");
 
     conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.CLUSTER_ID, cooprClusterId);
@@ -46,6 +48,7 @@ public class DisruptionTestBase extends IntegrationTestBase {
     conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.SERVER_URI, cooprUrlAndPort);
 
     String sshUsername = System.getProperty("ssh.username", null);
+    @Nullable
     String sshKeyPassphrase = System.getProperty("ssh.key.passphrase", null);
     String privateKey = System.getProperty("ssh.private.key", null);
 
@@ -59,7 +62,10 @@ public class DisruptionTestBase extends IntegrationTestBase {
       conf.set("privateKey", privateKey);
     }
 
-    conf.set("hbase-master.disrptions", "co.cask.cdap.app.resiliency.plugins.MajorCompact," +
+//    if (sshUsername == null || privateKey == null) {
+//      return;
+//    }
+    conf.set("hbase-master.disruptions", "co.cask.cdap.app.resiliency.plugins.MajorCompact," +
       Constants.Plugins.DEFAULT_DISRUPTIONS);
 
     try {
@@ -77,6 +83,7 @@ public class DisruptionTestBase extends IntegrationTestBase {
     clusterDisruptor.stop();
   }
 
+  @Nullable
   protected ClusterDisruptor getClusterDisruptor() {
     return clusterDisruptor;
   }

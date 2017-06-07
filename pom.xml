@@ -173,6 +173,12 @@
       <version>${chaosmonkey.version}</version>
     </dependency>
     <dependency>
+      <!-- TODO: Move this dependency to chaos monkey pom -->
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>javax.ws.rs-api</artifactId>
+      <version>2.0</version>
+    </dependency>
+    <dependency>
       <groupId>co.cask.chaosmonkey</groupId>
       <artifactId>chaos-monkey-proto</artifactId>
       <version>${chaosmonkey.version}</version>
