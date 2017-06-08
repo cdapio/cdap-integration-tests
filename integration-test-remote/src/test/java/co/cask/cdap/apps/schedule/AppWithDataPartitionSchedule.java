@@ -17,6 +17,7 @@
 package co.cask.cdap.apps.schedule;
 
 import co.cask.cdap.AppWithMultipleWorkflows;
+import co.cask.cdap.api.Config;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.app.ProgramType;
 import co.cask.cdap.api.customaction.AbstractCustomAction;
@@ -25,33 +26,36 @@ import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 /**
  * App with a schedule triggered by new partition in the dataset with name "rawRecords"
  * in {@link co.cask.cdap.examples.datacleansing.DataCleansing}.
  */
-public class AppWithDataPartitionSchedule extends AbstractApplication {
+public class AppWithDataPartitionSchedule extends AbstractApplication<AppWithDataPartitionSchedule.AppConfig> {
   public static final String NAME = "AppWithDataPartitionSchedule";
   public static final String TWO_ACTIONS_WORKFLOW = "TwoActionsWorkflow";
   public static final String DELAY_WORKFLOW = "DelayWorkflow";
   public static final String TIME_TRIGGER_ONLY_WORKFLOW = "TimeTriggerOnlyWorkflow";
-  public static final String CONCURRENCY_SCHEDULE = "ConCurrencySchedule";
+  public static final String CONCURRENCY_SCHEDULE = "ConcurrencySchedule";
   public static final String DELAY_SCHEDULE = "DelaySchedule";
-  public static final String ALWAYS_FAIL_SCHEDULE = "AlwaysFailSchedule";
-  public static final String TEN_SECS_SCHEDULE = "TenSecSchedule";
+  public static final String CAN_FAIL_SCHEDULE = "CanFailSchedule";
+  public static final String TIME_SCHEDULE = "TimeSchedule";
+  public static final String FAIL_KEY = "fail_key";
+  public static final String FAIL_VALUE = "fail_value";
+  public static final Map<String, String> WORKFLOW_FAIL_PROPERTY = ImmutableMap.of(FAIL_KEY, FAIL_VALUE);
   public static final int TRIGGER_ON_NUM_PARTITIONS = 5;
-  public static final long WORKFLOW_RUNNING_SECONDS = 10;
-  public static final int DELAY_MILLIS = 5000;
+  public static final long ACTION_SLEEP_SECONDS = 10;
+  public static final int DELAY_MILLIS = 10000;
   public static final long MIN_SINCE_LAST_RUN = 10; // 10 minutes
-
-  private static final String FAIL_KEY = "fail_key";
-  private static final String FAIL_VALUE = "fail_value";
 
   @Override
   public void configure() {
     setName(NAME);
     setDescription("Sample application with data partition triggered schedule");
+    AppConfig config = getConfig();
     addWorkflow(new TwoActionsWorkflow());
     addWorkflow(new CanFailWorkflow(DELAY_WORKFLOW));
     addWorkflow(new CanFailWorkflow(TIME_TRIGGER_ONLY_WORKFLOW));
@@ -65,16 +69,52 @@ public class AppWithDataPartitionSchedule extends AbstractApplication {
     schedule(buildSchedule(DELAY_SCHEDULE, ProgramType.WORKFLOW, DELAY_WORKFLOW)
                .withDelay(DELAY_MILLIS, TimeUnit.MILLISECONDS)
                .triggerOnPartitions("rawRecords", TRIGGER_ON_NUM_PARTITIONS));
-    // Schedule TIME_TRIGGER_ONLY_WORKFLOW to wait for new partitions in rawRecords dataset
-    // but always fail to complete if it's launched
-    schedule(buildSchedule(ALWAYS_FAIL_SCHEDULE, ProgramType.WORKFLOW, TIME_TRIGGER_ONLY_WORKFLOW)
-               .setProperties(ImmutableMap.of(FAIL_KEY, FAIL_VALUE))
-               .triggerOnPartitions("rawRecords", TRIGGER_ON_NUM_PARTITIONS));
-    // Schedule TIME_TRIGGER_ONLY_WORKFLOW to run every 10 seconds but only after MIN_SINCE_LAST_RUN minutes
-    // since last workflow completion
-    schedule(buildSchedule(TEN_SECS_SCHEDULE, ProgramType.WORKFLOW, TIME_TRIGGER_ONLY_WORKFLOW)
-               .withDurationSinceLastRun(MIN_SINCE_LAST_RUN, TimeUnit.MINUTES)
-               .triggerByTime("* * * * *"));
+    if (config.timeTriggerOnly) {
+      // Schedule TIME_TRIGGER_ONLY_WORKFLOW to wait for new partitions in rawRecords dataset
+      // but always fail to complete if it's launched
+      schedule(buildSchedule(CAN_FAIL_SCHEDULE, ProgramType.WORKFLOW, TIME_TRIGGER_ONLY_WORKFLOW)
+                 .setProperties(WORKFLOW_FAIL_PROPERTY)
+                 .triggerOnPartitions("rawRecords", TRIGGER_ON_NUM_PARTITIONS));
+      // Schedule TIME_TRIGGER_ONLY_WORKFLOW to run every minute but only after MIN_SINCE_LAST_RUN minutes
+      // since last workflow completion
+      schedule(buildSchedule(TIME_SCHEDULE, ProgramType.WORKFLOW, TIME_TRIGGER_ONLY_WORKFLOW)
+                 .withDurationSinceLastRun(MIN_SINCE_LAST_RUN, TimeUnit.MINUTES)
+                 .triggerByTime("* * * * ?"));
+    } else {
+      // Schedule TIME_TRIGGER_ONLY_WORKFLOW to wait for new partitions in rawRecords dataset
+      schedule(buildSchedule(CAN_FAIL_SCHEDULE, ProgramType.WORKFLOW, TIME_TRIGGER_ONLY_WORKFLOW)
+                 .triggerOnPartitions("rawRecords", TRIGGER_ON_NUM_PARTITIONS));
+      // Schedule TIME_TRIGGER_ONLY_WORKFLOW to run every minute within the time window but always fail
+      schedule(buildSchedule(TIME_SCHEDULE, ProgramType.WORKFLOW, TIME_TRIGGER_ONLY_WORKFLOW)
+                 .withTimeWindow(config.startTime, config.endTime, TimeZone.getTimeZone(config.timeZone))
+                 .abortIfNotMet()
+                 .setProperties(WORKFLOW_FAIL_PROPERTY)
+                 .triggerByTime("* * * * ?"));
+    }
+  }
+
+  /**
+   * Application Config Class to control schedule creation
+   */
+  public static class AppConfig extends Config {
+    private final boolean timeTriggerOnly;
+    private final String startTime;
+    private final String endTime;
+    private final String timeZone;
+
+    public AppConfig() {
+      this.timeTriggerOnly = true;
+      this.startTime = null;
+      this.endTime = null;
+      this.timeZone = null;
+    }
+
+    public AppConfig(String startTime, String endTime, String timeZone) {
+      this.timeTriggerOnly = false;
+      this.startTime = startTime;
+      this.endTime = endTime;
+      this.timeZone = timeZone;
+    }
   }
 
   /**
@@ -133,7 +173,7 @@ public class AppWithDataPartitionSchedule extends AbstractApplication {
     public void run() {
       LOG.info("Running sleep dummy action");
       try {
-        TimeUnit.SECONDS.sleep(WORKFLOW_RUNNING_SECONDS);
+        TimeUnit.SECONDS.sleep(ACTION_SLEEP_SECONDS);
       } catch (InterruptedException e) {
         LOG.warn("Sleep interrupted.", e);
       }
