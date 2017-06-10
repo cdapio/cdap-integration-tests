@@ -14,11 +14,12 @@
  * the License.
  */
 
-package co.cask.cdap.app.resiliency.plugins;
+package co.cask.cdap.plugins;
 
 import co.cask.chaosmonkey.Disruption;
 import co.cask.chaosmonkey.RemoteProcess;
 import co.cask.chaosmonkey.ShellOutput;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,8 +71,10 @@ public class MajorCompact implements Disruption {
     }
     String commandsString = stringBuilder.toString();
 
-    remoteProcess.execAndGetOutput(String.format("%s echo \"%s\" | sudo -u %s hbase shell",
-                                                 authString, commandsString, user));
+//    remoteProcess.execAndGetOutput(String.format("%s echo \"%s\" | sudo -u %s hbase shell",
+//                                                 authString, commandsString, user));
+    Assert.assertTrue(remoteProcess.execAndReturnSucessful(String.format("%s echo \"%s\" | sudo -u %s hbase shell",
+                                                        authString, commandsString, user)));
   }
 
   @Override

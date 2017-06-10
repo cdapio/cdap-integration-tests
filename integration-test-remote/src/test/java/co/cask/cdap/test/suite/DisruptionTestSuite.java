@@ -16,12 +16,13 @@
 
 package co.cask.cdap.test.suite;
 
+import co.cask.cdap.test.Disruptor;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 /**
- * Suite to represent all integration tests that uses {@link co.cask.cdap.test.DisruptionTestBase}
+ * Suite to represent all integration tests that uses {@link Disruptor}
  */
 @RunWith(Categories.class)
 @Suite.SuiteClasses({

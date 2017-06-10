@@ -113,10 +113,10 @@ public class ScheduleLongRunningTest extends LongRunningTestBase<DataPartitionSc
   }
 
   @Override
-  public void verifyRuns(DataPartitionScheduleTestState state) throws Exception {
+  public DataPartitionScheduleTestState verifyRuns(DataPartitionScheduleTestState state) throws Exception {
     // Directly return if there's no previous run
     if (state.getExpectedCompletedRunsNum() == 0) {
-      return;
+      return state;
     }
     ApplicationManager appManager = getApplicationManager(DataPartitionApp.NAME);
 
@@ -125,6 +125,7 @@ public class ScheduleLongRunningTest extends LongRunningTestBase<DataPartitionSc
       WorkflowManager workflowManager = appManager.getWorkflowManager(DataPartitionApp.WORKFLOW_PREFIX + i);
       workflowManager.waitForRuns(ProgramRunStatus.COMPLETED, state.getExpectedCompletedRunsNum(), 5, TimeUnit.MINUTES);
     }
+    return state;
   }
 
   @Override
