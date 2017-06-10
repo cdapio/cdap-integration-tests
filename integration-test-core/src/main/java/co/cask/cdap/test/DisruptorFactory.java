@@ -22,62 +22,71 @@ import co.cask.chaosmonkey.common.Constants;
 import co.cask.chaosmonkey.common.conf.Configuration;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.chaosmonkey.proto.ClusterInfoCollector;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import com.esotericsoftware.minlog.Log;
+
+import javax.annotation.Nullable;
 
 /**
  * Wrapper around AudiTestBase that includes ChaosMonkeyService
  */
-public class DisruptionTestBase extends AudiTestBase {
+public class DisruptorFactory {
 
   private static ChaosMonkeyService clusterDisruptor;
-  private static Configuration conf;
+  private Configuration conf;
 
-  @BeforeClass
-  public static void confSetup() {
+  public DisruptorFactory() {
     conf = Configuration.create();
+  }
 
+  public void disruptorSetup() {
     String tenantId = System.getProperty("coopr.tenant.id", "cask-dev");
     String cooprUrlAndPort = System.getProperty("coopr.url.and.port", "http://coopr-dev.dev.continuuity.net:55054");
     String cooprClusterId = System.getProperty("coopr.cluster.id");
 
-    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.CLUSTER_ID, cooprClusterId);
-    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.TENANT_ID, tenantId);
-    conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.SERVER_URI, cooprUrlAndPort);
+    this.conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.CLUSTER_ID, cooprClusterId);
+    this.conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.TENANT_ID, tenantId);
+    this.conf.set(Constants.Plugins.CLUSTER_INFO_COLLECTOR_CONF_PREFIX + Constants.Coopr.SERVER_URI, cooprUrlAndPort);
 
     String sshUsername = System.getProperty("ssh.username", null);
+    @Nullable
     String sshKeyPassphrase = System.getProperty("ssh.key.passphrase", null);
     String privateKey = System.getProperty("ssh.private.key", null);
 
     if (sshUsername != null) {
-      conf.set("username", sshUsername);
+      this.conf.set("username", sshUsername);
     }
     if (sshKeyPassphrase != null) {
-      conf.set("keyPassphrase", sshKeyPassphrase);
+      this.conf.set("keyPassphrase", sshKeyPassphrase);
     }
     if (privateKey != null) {
-      conf.set("privateKey", privateKey);
+      this.conf.set("privateKey", privateKey);
     }
 
-    conf.set("hbase-master.disruptions", "co.cask.cdap.app.resiliency.plugins.MajorCompact," +
+    conf.set("hbase-master.disruptions", "co.cask.cdap.plugins.MajorCompact," +
       Constants.Plugins.DEFAULT_DISRUPTIONS);
+  }
 
+  public void disruptorStart() {
+    disruptorSetup();
     try {
-      ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(conf);
-      ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(conf, clusterInfoCollector);
-      chaosMonkeyService.start();
+      ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(this.conf);
+      ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(this.conf, clusterInfoCollector);
+      chaosMonkeyService.startAndWait();
       clusterDisruptor = chaosMonkeyService;
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      Log.error("Failed to setup Cluster Disruptor with conf: {}", conf.toString(), e);
+      throw new IllegalStateException(e);
     }
   }
 
-  @AfterClass
-  public static void chaosMonkeyTearDown() {
-    clusterDisruptor.stop();
+  public void disruptorStop() {
+    if (clusterDisruptor != null) {
+      clusterDisruptor.stop();
+    }
   }
 
-  protected ClusterDisruptor getClusterDisruptor() {
+  @Nullable
+  public ClusterDisruptor getClusterDisruptor() {
     return clusterDisruptor;
   }
 }

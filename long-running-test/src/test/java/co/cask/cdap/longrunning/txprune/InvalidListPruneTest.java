@@ -17,6 +17,7 @@
 package co.cask.cdap.longrunning.txprune;
 
 import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.api.dataset.DatasetAdmin;
 import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
@@ -35,6 +36,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.RemoteDatasetAdmin;
+import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
@@ -46,7 +48,6 @@ import com.google.common.reflect.TypeToken;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -133,8 +134,7 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     Assert.assertTrue("Expected the following invalid ids to be pruned: " + notRemovedIds, notRemovedIds.isEmpty());
     LOG.info("Pruned invalid ids: {}", removeIds);
 
-    // Does not work in secure clusters, move it to a service or a worker TODO
-    // verifyInvalidDataRemoval(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), removeIds);
+    verifyInvalidDataRemoval(getLongRunningNamespace().dataset(InvalidTxGeneratorApp.DATASET), removeIds);
 
     return new InvalidListPruneTestState(state.getIteration(), newIterationState);
   }
@@ -146,7 +146,14 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     manageEmptyDatasets(getLongRunningNamespace(), iteration);
 
+    //flush and compact every other iteration
+    if (iteration % COMPACT_ITERATION == 0) {
+      flushAndCompactTables();
+    }
+
     List<String> events = generateStreamEvents(iteration);
+
+    // TODO: Test split and merge table
 
     truncateAndSendEvents(getLongRunningNamespace().stream(InvalidTxGeneratorApp.STREAM), events);
 
@@ -192,19 +199,9 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
   }
 
   @SuppressWarnings("deprecation")
-  private void flushAndCompactTables() throws IOException, UnauthorizedException, UnauthenticatedException {
-    try (Connection connection = ConnectionFactory.createConnection(getHBaseConf())) {
-      LOG.info("Flushing and compacting using connection: {}",
-               connection.getConfiguration().get("hbase.zookeeper.quorum"));
-      HBaseAdmin admin = new HBaseAdmin(connection);
-      HTableDescriptor[] descriptors = admin.listTables();
-      for (HTableDescriptor descriptor : descriptors) {
-        LOG.info("Flushing table {}", descriptor.getTableName());
-        admin.flush(descriptor.getTableName());
-        LOG.info("Major compacting table {}", descriptor.getTableName());
-        admin.majorCompact(descriptor.getTableName());
-      }
-    }
+  private void flushAndCompactTables() throws Exception {
+    ClusterDisruptor clusterDisruptor = getClusterDisruptor();
+    clusterDisruptor.disruptAndWait("hbase-master", "major-compact", null, 2000, TimeUnit.SECONDS);
   }
 
   private Configuration getHBaseConf() throws UnauthorizedException, IOException, UnauthenticatedException {
@@ -265,22 +262,17 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
     String baseName = "invalid-tx-empty-table-";
     DatasetId datasetId = namespaceId.dataset(baseName + iteration);
     String typeName = co.cask.cdap.api.dataset.table.Table.class.getName();
-    DatasetInstanceConfiguration dsConf =
-      new DatasetInstanceConfiguration(typeName, DatasetProperties.EMPTY.getProperties());
-    try (RemoteDatasetAdmin remoteDatasetAdmin = new RemoteDatasetAdmin(getDatasetClient(), datasetId, dsConf)) {
-      if (!remoteDatasetAdmin.exists()) {
-        LOG.info("Creating empty dataset {}", datasetId);
-        remoteDatasetAdmin.create();
-        Assert.assertTrue("Cannot create empty dataset " + datasetId, remoteDatasetAdmin.exists());
-      } else {
-        LOG.info("Empty dataset {} already exists", datasetId);
-      }
-    }
+    LOG.info("Creating empty dataset {}", datasetId);
+    DatasetAdmin datasetAdmin =
+      addDatasetInstance(namespaceId, typeName, datasetId.getEntityName(), DatasetProperties.EMPTY);
+    Assert.assertTrue("Cannot create empty dataset " + datasetId, datasetAdmin.exists());
+    datasetAdmin.close();
 
     // Now cleanup empty datasets from earlier runs
     int startIteration = iteration - (MAX_EMPTY_TABLES * 5);
     startIteration = startIteration < 0 ? 0 : startIteration;
-    dsConf = new DatasetInstanceConfiguration(typeName, DatasetProperties.EMPTY.getProperties());
+    DatasetInstanceConfiguration dsConf =
+      new DatasetInstanceConfiguration(typeName, DatasetProperties.EMPTY.getProperties());
     for (int i = startIteration; i < iteration - MAX_EMPTY_TABLES; i++) {
       DatasetId instance = namespaceId.dataset(baseName + i);
       try (RemoteDatasetAdmin remoteDatasetAdmin = new RemoteDatasetAdmin(getDatasetClient(), instance, dsConf)) {

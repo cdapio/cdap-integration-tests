@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.app.resiliency.plugins;
+package co.cask.cdap.plugins;
 
 import co.cask.chaosmonkey.Disruption;
 import co.cask.chaosmonkey.RemoteProcess;

@@ -41,12 +41,14 @@ import co.cask.cdap.remote.dataset.kvtable.KVTableDatasetApp;
 import co.cask.cdap.remote.dataset.kvtable.RemoteKeyValueTable;
 import co.cask.cdap.remote.dataset.table.RemoteTable;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
+import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.InputSupplier;
+import org.junit.After;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,10 +80,20 @@ public class AudiTestBase extends IntegrationTestBase {
   // avoid logging of HttpRequest's body by default, to avoid verbose logging
   private static final int logBodyLimit = Integer.valueOf(System.getProperty("logRequestBodyLimit", "0"));
   private final RESTClient restClient;
+  protected DisruptorFactory disruptor;
+
+  @After
+  public void stopDisruptor() {
+    if (disruptor != null) {
+      disruptor.disruptorStop();
+    }
+  }
 
   public AudiTestBase() {
     restClient = new RESTClient(getClientConfig());
     restClient.addListener(createRestClientListener());
+
+    disruptor = new DisruptorFactory();
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
@@ -122,6 +134,13 @@ public class AudiTestBase extends IntegrationTestBase {
                  httpResponse.getResponseCode(), httpResponse.getResponseBodyAsString());
       }
     };
+  }
+
+  protected ClusterDisruptor getClusterDisruptor() {
+    if (disruptor.getClusterDisruptor() == null) {
+      disruptor.disruptorStart();
+    }
+    return disruptor.getClusterDisruptor();
   }
 
   protected void checkMetric(final Map<String, String> tags, final String metric,
