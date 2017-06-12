@@ -153,7 +153,7 @@ public class AudiTestBase extends IntegrationTestBase {
     }, timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
-  private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
+  private long getMetricValue(Map<String,  String> tags, String metric) throws Exception {
     MetricQueryResult metricQueryResult = getMetricsClient().query(tags, metric);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {
