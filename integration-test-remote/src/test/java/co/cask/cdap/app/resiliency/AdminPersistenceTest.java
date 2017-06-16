@@ -16,31 +16,23 @@
 
 package co.cask.cdap.app.resiliency;
 
-import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.reflect.Type;
 import java.util.concurrent.TimeUnit;
 
 /**
  *
  */
 public class AdminPersistenceTest extends AudiTestBase {
-  private static final Gson GSON = new Gson();
-  private static final Type RETURN_TYPE_DATASET_TYPE = new TypeToken<String>() { }.getType();
-  private static final Type RETURN_TYPE_DATASET_PROPERTIES = new TypeToken<DatasetProperties>() { }.getType();
 
   @Test
   public void test() throws Exception {
-//    RESTClient restClient = getRestClient();
     ClusterDisruptor clusterDisruptor = getClusterDisruptor();
     ApplicationManager applicationManager = deployApplication(AdminPersistenceApp.class);
 
@@ -51,29 +43,11 @@ public class AdminPersistenceTest extends AudiTestBase {
 
     Assert.assertTrue(applicationManager.getWorkerManager("AdminWorker").isRunning());
 
-//    URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-//    URL urlDatasetType = new URL(serviceURL, "ds/testDataset/type");
-//    URL urlDatasetProperties = new URL(serviceURL, "ds/testDataset/properties");
-//
-//    HttpResponse responseDatasetType = restClient.execute(HttpMethod.GET, urlDatasetType, getClientConfig().getAccessToken());
-//    HttpResponse responseDatasetProperties = restClient.execute(HttpMethod.GET, urlDatasetProperties, getClientConfig().getAccessToken());
-//    String oldType = GSON.fromJson(responseDatasetType.getResponseBodyAsString(), RETURN_TYPE_DATASET_TYPE);
-//    DatasetProperties oldProperties = GSON.fromJson(responseDatasetProperties.getResponseBodyAsString(), RETURN_TYPE_DATASET_PROPERTIES);
-
     clusterDisruptor.stopAndWait("cdap-master", null, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     clusterDisruptor.restartAndWait("cdap-master", null, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     checkSystemServices();
 
     Assert.assertTrue(applicationManager.getWorkerManager("AdminWorker").isRunning());
-
-//    responseDatasetType = restClient.execute(HttpMethod.GET, urlDatasetType, getClientConfig().getAccessToken());
-//    responseDatasetProperties = restClient.execute(HttpMethod.GET, urlDatasetProperties, getClientConfig().getAccessToken());
-//    String newType = GSON.fromJson(responseDatasetType.getResponseBodyAsString(), RETURN_TYPE_DATASET_TYPE);
-//    DatasetProperties newProperties = GSON.fromJson(responseDatasetProperties.getResponseBodyAsString(), RETURN_TYPE_DATASET_PROPERTIES);
-//
-//    Assert.assertEquals(oldType, newType);
-//    Assert.assertEquals(oldProperties.getDescription(), newProperties.getDescription());
-//    Assert.assertTrue(oldProperties.getProperties().equals(newProperties.getProperties()));
   }
 }
