@@ -51,6 +51,7 @@ import co.cask.cdap.apps.tracker.TrackerTest;
 import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
 import co.cask.cdap.apps.workflow.WorkflowTest;
+import co.cask.cdap.app.etl.wrangler.WranglerTest;
 import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
@@ -104,6 +105,7 @@ import org.junit.runners.Suite;
   ValueMapperTest.class,
   WordCountTest.class,
   WorkflowTest.class,
+  WranglerTest.class,
   XMLReaderTest.class
 })
 public class AllTests {
