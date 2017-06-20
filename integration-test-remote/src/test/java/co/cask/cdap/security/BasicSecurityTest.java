@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Cask Data, Inc.
+ * Copyright © 2017 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -32,6 +32,7 @@ import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
+import co.cask.cdap.test.AuthTestBase;
 import com.google.common.base.Preconditions;
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,7 +51,7 @@ import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
  * Integration tests for Authorization. The users here need to be same as in auth.json. The password for the users
  * is their user name suffixed by the word "password".
  */
-public class BasicSecurityTest extends AudiTestBase {
+public class BasicSecurityTest extends AuthTestBase {
 
   private static final String ADMIN_USER = "cdapitn";
   private static final String ALICE = "alice";
