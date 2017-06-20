@@ -2,7 +2,7 @@
   "config": {
     "hadoop": {
       "distribution": "hdp",
-      "distribution_version": "2.6.0.3"
+      "distribution_version": "2.6.1.0"
     },
     "hive": {
       "hive_site": {
