@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Cask Data, Inc.
+ * Copyright © 2017 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,10 +20,8 @@ import co.cask.cdap.proto.id.NamespaceId;
 import org.junit.Test;
 
 /**
- * Integration tests for Authorization. The users here need to be same as in auth.json. The password for the users
- * is their user name suffixed by the word "password".
- *
- * We create a namespace for most of the test cases since we want to make sure the privilege for each user is clean.
+ * Integration tests for basic authorization. The users here need to be same as in auth.json.
+ * The password for the users is their user name suffixed by the word "password".
  */
 public class BasicAuthorizationTest extends AuthorizationTestBase {
 
@@ -55,7 +53,8 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   @Test
   public void testDatasetInProgram() throws Exception {
     testDatasetInProgram(getNamespaceMeta(new NamespaceId("auth1"), null, null, null, null, null, null),
-                         getNamespaceMeta(new NamespaceId("auth2"), null, null, null, null, null, null));
+                         getNamespaceMeta(new NamespaceId("auth2"), null, null, null, null, null, null),
+                         null, null);
   }
 
   @Test
