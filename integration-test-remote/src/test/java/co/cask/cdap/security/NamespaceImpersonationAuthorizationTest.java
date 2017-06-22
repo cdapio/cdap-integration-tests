@@ -25,9 +25,10 @@ import org.junit.Test;
 public class NamespaceImpersonationAuthorizationTest extends AuthorizationTestBase {
   @Test
   public void testGrantAccess() throws Exception {
-    testBasicGrantOperations(getNamespaceMeta(TEST_NAMESPACE, ALICE, null,
-                                              SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
-                                              null, null, null));
+    testBasicGrantOperations(
+      getNamespaceMeta(TEST_NAMESPACE, ALICE, null,
+                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
+                       null, null, null));
   }
 
   @Test
