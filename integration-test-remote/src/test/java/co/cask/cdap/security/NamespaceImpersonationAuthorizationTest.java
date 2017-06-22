@@ -64,10 +64,10 @@ public class NamespaceImpersonationAuthorizationTest extends AuthorizationTestBa
   @Test
   public void testDatasetInProgram() throws Exception {
     testDatasetInProgram(
-      getNamespaceMeta(new NamespaceId("auth1"), ALICE, null,
+      getNamespaceMeta(new NamespaceId("authorization1"), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
                        null, null, null),
-      getNamespaceMeta(new NamespaceId("auth2"), EVE, null,
+      getNamespaceMeta(new NamespaceId("authorization2"), EVE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(EVE, getMetaClient().getCDAPConfig()),
                        null, null, null),
       null, null);

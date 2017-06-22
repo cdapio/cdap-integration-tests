@@ -60,6 +60,7 @@ import org.junit.Assert;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
@@ -274,6 +275,7 @@ public class AuthorizationTestBase extends AudiTestBase {
 
     NamespaceId testNs1 = createAndRegisterNamespace(namespaceMetaUser1, adminConfig, adminClient);
     NamespaceId testNs2 = createAndRegisterNamespace(namespaceMetaUser2, adminConfig, adminClient);
+    DatasetId datasetId =new  DatasetId(testNs1.getNamespace(), datasetName);
 
     // initialize clients and configs for users user1 and user2
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
@@ -309,8 +311,7 @@ public class AuthorizationTestBase extends AudiTestBase {
       setupAppStartAndGetService(testNs1, user1Config, user1Client, datasetName, app1Owner);
 
     // grant privilege on dataset to user2 after its created
-    authorizationClient.grant(new DatasetId(testNs1.getNamespace(), datasetName),
-                              new Principal(user2, USER), Collections.singleton(Action.READ));
+    authorizationClient.grant(datasetId, new Principal(user2, USER), Collections.singleton(Action.READ));
 
     try {
       // user1 writes an entry to the dataset
@@ -331,29 +332,35 @@ public class AuthorizationTestBase extends AudiTestBase {
       setupAppStartAndGetService(testNs2, user2Config, user2Client, datasetName, app2Owner);
 
     try {
+      URL serviceURL = user2ServiceManager.getServiceURL();
       // try to get the entry written by user2 for the dataset owned by user1
       // user2 has read access on it, so read should succeed
-      URL serviceURL = user2ServiceManager.getServiceURL();
       Get get = new Get(Bytes.toBytes("row"), Bytes.toBytes("col"));
-      String path = String.format("namespaces/%s/datasets/%s/get", testNs1.getNamespace(), datasetName);
-      HttpResponse httpResponse = user2Client.execute(HttpMethod.POST,
-                                                    serviceURL.toURI().resolve(path).toURL(),
-                                                    GSON.toJson(get), new HashMap<String, String>(),
-                                                    user2Config.getAccessToken());
-      Assert.assertEquals(200, httpResponse.getResponseCode());
-
-      // try a put, it should fail, as user2 doesn't have permission to write
       Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2"));
-      String putPath = String.format("namespaces/%s/datasets/%s/put", testNs1.getNamespace(), datasetName);
+      HttpResponse response = executeAndreadFromDataset(serviceURL, user2Client, user2Config,
+                                                        testNs1, datasetName, get);
+      Assert.assertEquals(200, response.getResponseCode());
+
       try {
-        user2Client.execute(HttpMethod.POST,
-                          serviceURL.toURI().resolve(putPath).toURL(),
-                          GSON.toJson(put), new HashMap<String, String>(),
-                          user2Config.getAccessToken());
+        executeAndWriteToDataset(serviceURL, user2Client, user2Config, testNs1, datasetName, put);
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
       }
+
+      authorizationClient.grant(datasetId, new Principal(user2, USER), Collections.singleton(Action.WRITE));
+      response = executeAndWriteToDataset(serviceURL, user2Client, user2Config,
+                                                       testNs1, datasetName, put);
+      Assert.assertEquals(200, response.getResponseCode());
+
+      authorizationClient.revoke(datasetId, new Principal(user2, USER), Collections.singleton(Action.READ));
+      try {
+        executeAndreadFromDataset(serviceURL, user2Client, user2Config, testNs1, datasetName, get);
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
     } finally {
       user2ServiceManager.stop();
       user2ServiceManager.waitForRun(ProgramRunStatus.KILLED,
@@ -466,5 +473,24 @@ public class AuthorizationTestBase extends AudiTestBase {
     serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS * 2, TimeUnit.SECONDS);
 
     return serviceManager;
+  }
+
+  private HttpResponse executeAndreadFromDataset(URL serviceURL, RESTClient client, ClientConfig config,
+                                                 NamespaceId namespaceId, String datasetName,
+                                                 Get get) throws Exception {
+    String path = String.format("namespaces/%s/datasets/%s/get", namespaceId.getNamespace(), datasetName);
+    return client.execute(HttpMethod.POST,
+                          serviceURL.toURI().resolve(path).toURL(),
+                          GSON.toJson(get), new HashMap<String, String>(),
+                          config.getAccessToken());
+  }
+
+  private HttpResponse executeAndWriteToDataset(URL serviceURL, RESTClient client, ClientConfig config,
+                                                NamespaceId namespaceId, String datasetName, Put put) throws Exception {
+    String putPath = String.format("namespaces/%s/datasets/%s/put", namespaceId.getNamespace(), datasetName);
+    return client.execute(HttpMethod.POST,
+                          serviceURL.toURI().resolve(putPath).toURL(),
+                          GSON.toJson(put), new HashMap<String, String>(),
+                          config.getAccessToken());
   }
 }
