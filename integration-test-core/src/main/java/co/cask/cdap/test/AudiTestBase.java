@@ -25,6 +25,7 @@ import co.cask.cdap.api.dataset.lib.cube.Cube;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.ProgramClient;
+import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.DatasetInstanceConfiguration;
@@ -192,8 +193,19 @@ public class AudiTestBase extends IntegrationTestBase {
   // TODO: improve the following getXDataset methods. Eventually, move them into IntegrationTestBase.
   // Consider whether they should should have behavior of createIfNotExists.
   protected DataSetManager<Table> getTableDataset(String datasetName) throws Exception {
-    return wrap(new RemoteTable(deployServiceForDataset(TEST_NAMESPACE, TableDatasetApp.class, datasetName),
-                                getRestClient(), getClientConfig()));
+    return getTableDataset(datasetName, getRestClient(), getClientConfig());
+  }
+
+  protected DataSetManager<Table> getTableDataset(String datasetName, RESTClient restClient,
+                                                  ClientConfig clientConfig) throws Exception {
+    return getTableDataset(TEST_NAMESPACE, datasetName, restClient, clientConfig);
+  }
+
+  protected DataSetManager<Table> getTableDataset(NamespaceId namespace, String datasetName, RESTClient restClient,
+                                                  ClientConfig clientConfig) throws Exception {
+    return wrap(new RemoteTable(deployServiceForDataset(namespace, TableDatasetApp.class,
+                                                        datasetName, getTestManager(clientConfig, restClient)),
+                                restClient, clientConfig));
   }
 
   protected DataSetManager<KeyValueTable> getKVTableDataset(String datasetName) throws Exception {
@@ -217,8 +229,15 @@ public class AudiTestBase extends IntegrationTestBase {
   // returns its baseURL
   private URL deployServiceForDataset(NamespaceId namespace, Class<? extends Application> applicationClz,
                                       String datasetName) throws Exception {
-    ApplicationManager appManager = getTestManager()
-      .deployApplication(namespace, applicationClz, new AbstractDatasetApp.DatasetConfig(datasetName));
+    return deployServiceForDataset(namespace, applicationClz, datasetName, getTestManager());
+  }
+
+  // ensures that the Service for the dataset is deployed and running
+  // returns its baseURL
+  private URL deployServiceForDataset(NamespaceId namespace, Class<? extends Application> applicationClz,
+                                      String datasetName, TestManager testManager) throws Exception {
+    ApplicationManager appManager =
+      testManager.deployApplication(namespace, applicationClz, new AbstractDatasetApp.DatasetConfig(datasetName));
     ServiceManager serviceManager =
       appManager.getServiceManager(AbstractDatasetApp.DatasetService.class.getSimpleName());
 

@@ -26,11 +26,16 @@ import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
+import co.cask.cdap.internal.guava.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import java.util.HashMap;
+import java.util.Map;
+import javax.jdo.annotations.Column;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 
 /**
  * HttpHandler to make API calls  the Table.
@@ -49,6 +54,32 @@ public abstract class AbstractTableHttpHandler extends AbstractHttpServiceHandle
     Get get = deser(request, Get.class);
     Row row = getTable().get(get);
     responder.sendJson(200, row, row.getClass(), GSON);
+  }
+
+  @Path("namespaces/{namespace}/datasets/{dataset}/get")
+  @POST
+  public void getOnDataset(HttpServiceRequest request, HttpServiceResponder responder,
+                           @PathParam("namespace") String namespace,
+                           @PathParam("dataset") String dataset) throws Exception {
+    Table table = getContext().getDataset(namespace, dataset);
+    Get get = deser(request, Get.class);
+    Row row = table.get(get);
+    Map<byte[], byte[]> result = new HashMap<>();
+    for (byte[] column : get.getColumns()) {
+      result.put(column, row.get(column));
+    }
+    responder.sendJson(200, result, new TypeToken<Map<byte[], byte[]>> () { }.getType(), GSON);
+  }
+
+  @Path("namespaces/{namespace}/datasets/{dataset}/put")
+  @POST
+  public void putOnDataset(HttpServiceRequest request, HttpServiceResponder responder,
+                           @PathParam("namespace") String namespace,
+                           @PathParam("dataset") String dataset) throws Exception {
+    Table table = getContext().getDataset(namespace, dataset);
+    Put put = deser(request, Put.class);
+    table.put(put);
+    responder.sendJson(200);
   }
 
   @Path("getWithRange")
