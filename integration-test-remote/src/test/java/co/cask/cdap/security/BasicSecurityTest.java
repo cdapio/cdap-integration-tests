@@ -24,17 +24,21 @@ import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.NamespaceClient;
+import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.NamespaceAlreadyExistsException;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
+import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
@@ -54,19 +58,20 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import org.junit.Assert;
+import org.junit.Before;
+
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.URL;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -75,14 +80,16 @@ import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
 /**
  * Integration tests for Authorization. The users here need to be same as in auth.json. The password for the users
  * is their user name suffixed by the word "password".
+ *
+ * We create a namespace for most of the test cases since we want to make sure the privilege for each user is clean.
  */
+
 public class BasicSecurityTest extends AuthTestBase {
   /**
    *  checking if namespace DEFAULT is accessible
    */
-
   @Test
-  public void defaultNamespaceAccess() throws Exception {
+  public void testDefaultNamespaceAccess() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
@@ -92,7 +99,7 @@ public class BasicSecurityTest extends AuthTestBase {
   }
 
   @Test
-  public void defaultNamespaceAccessUnauthorized() throws Exception {
+  public void testDefaultNamespaceAccessUnauthorized() throws Exception {
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(aliceConfig);
     aliceClient.addListener(createRestClientListener());
@@ -141,7 +148,7 @@ public class BasicSecurityTest extends AuthTestBase {
 
     ApplicationClient applicationClient = new ApplicationClient(carolConfig, carolClient);
     try {
-      applicationClient.list(namespaceId);
+      applicationClient.list(TEST_NAMESPACE);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG_ACCESS.toLowerCase()));
@@ -154,6 +161,7 @@ public class BasicSecurityTest extends AuthTestBase {
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+
   }
 
   /**
@@ -165,15 +173,43 @@ public class BasicSecurityTest extends AuthTestBase {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
+
+    createAndRegisterNamespace(TEST_NAMESPACE, adminConfig, adminClient);
+
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(NamespaceId.DEFAULT, new Principal(BOB, USER), Collections.singleton(Action.WRITE));
+    Principal bobPrincipal = new Principal(BOB, USER);
+    authorizationClient.grant(TEST_NAMESPACE, bobPrincipal, Collections.singleton(Action.WRITE));
 
     ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
 
-    // Can't create purchasing app will result in an exception
-    getTestManager(bobConfig, bobClient).deployApplication(NamespaceId.DEFAULT, PurchaseApp.class);
+    getTestManager(bobConfig, bobClient).deployApplication(TEST_NAMESPACE, PurchaseApp.class);
+
+    // List the privileges for bob and bob should have all privileges for the app he deployed.
+    AuthorizationClient bobAuthorizationClient = new AuthorizationClient(bobConfig, bobClient);
+    Set<Privilege> privileges = bobAuthorizationClient.listPrivileges(bobPrincipal);
+    Assert.assertTrue(privileges.size() > 1);
+
+    // Count the privileges for each entity
+    Map<EntityId, Integer> privilegeCount = new HashMap<>();
+    for (Privilege privilege : privileges) {
+      if (privilegeCount.containsKey(privilege.getEntity())) {
+        privilegeCount.put(privilege.getEntity(), privilegeCount.get(privilege.getEntity()) + 1);
+      } else {
+        privilegeCount.put(privilege.getEntity(), 1);
+      }
+    }
+
+    // Bob should have 4 privileges for each entity other than TEST_NAMESPACE
+    for (Map.Entry<EntityId, Integer> entry : privilegeCount.entrySet()) {
+      if (!entry.getKey().equals(TEST_NAMESPACE)) {
+        Assert.assertEquals(4, (int) entry.getValue());
+      } else {
+        Assert.assertEquals(1, (int) entry.getValue());
+      }
+    }
+
   }
 
   /**
@@ -202,13 +238,12 @@ public class BasicSecurityTest extends AuthTestBase {
       TimeUnit.SECONDS.sleep(1);
     }
 
-
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(aliceConfig);
     aliceClient.addListener(createRestClientListener());
 
     try {
-      getTestManager(aliceConfig, aliceClient).deployApplication(new NamespaceId(name), PurchaseApp.class);
+      getTestManager(aliceConfig, aliceClient).deployApplication(TEST_NAMESPACE, PurchaseApp.class);
       Assert.fail();
     } catch (Exception ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG_ACCESS.toLowerCase()));
@@ -225,6 +260,7 @@ public class BasicSecurityTest extends AuthTestBase {
    */
   @Test
   public void testCreatedDeletedPrivileges() throws Exception {
+
     // Create a namespace
     String name = "testCreatedDeletedPrivileges";
     NamespaceMeta meta = new NamespaceMeta.Builder().setName(name).build();
@@ -245,27 +281,28 @@ public class BasicSecurityTest extends AuthTestBase {
       TimeUnit.SECONDS.sleep(1);
     }
 
+
     // Verify that the user has all the privileges on the created namespace
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
     Principal adminPrincipal = new Principal(ADMIN_USER, USER);
     Set<Privilege> listPrivileges = authorizationClient.listPrivileges(adminPrincipal);
     int count = 0;
     for (Privilege listPrivilege : listPrivileges) {
-      if (listPrivilege.getEntity().getEntityName().equals(name)) {
+      if (listPrivilege.getEntity().getEntityName().equals(TEST_NAMESPACE.getEntityName())) {
         count++;
       }
     }
     Assert.assertEquals(4, count);
 
     // Now delete the namespace and make sure that it is deleted
-    getNamespaceClient().delete(new NamespaceId(name));
-    Assert.assertFalse(getNamespaceClient().exists(new NamespaceId(name)));
+    getNamespaceClient().delete(TEST_NAMESPACE);
+    Assert.assertFalse(getNamespaceClient().exists(TEST_NAMESPACE));
 
     // Check if the privileges are deleted
     listPrivileges = authorizationClient.listPrivileges(adminPrincipal);
     count = 0;
     for (Privilege listPrivilege : listPrivileges) {
-      if (listPrivilege.getEntity().getEntityName().equals(name)) {
+      if (listPrivilege.getEntity().getEntityName().equals(TEST_NAMESPACE.getEntityName())) {
         count++;
       }
     }
@@ -278,26 +315,29 @@ public class BasicSecurityTest extends AuthTestBase {
    */
   @Test
   public void testWriteWithReadAuth() throws Exception {
-      ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
-      RESTClient adminClient = new RESTClient(adminConfig);
-      adminClient.addListener(createRestClientListener());
 
-      DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
-      DatasetId testDatasetinstance = NamespaceId.DEFAULT.dataset("testWriteDataset");
-      datasetAdminClient.create(testDatasetinstance, "table");
-      AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-      authorizationClient.grant(NamespaceId.DEFAULT, new Principal(EVE, USER),
-                                Collections.singleton(Action.READ));
-      ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
-      RESTClient eveClient = new RESTClient(eveConfig);
-      eveClient.addListener(createRestClientListener());
-      DatasetClient datasetClient = new DatasetClient(eveConfig, eveClient);
-      try {
-        datasetClient.truncate(testDatasetinstance);
-        Assert.fail();
-      } catch (UnauthorizedException ex) {
-        // Expected
-      }
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    createAndRegisterNamespace(TEST_NAMESPACE, adminConfig, adminClient);
+
+    DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
+    DatasetId testDatasetinstance = TEST_NAMESPACE.dataset("testWriteDataset");
+    datasetAdminClient.create(testDatasetinstance, "table");
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    authorizationClient.grant(TEST_NAMESPACE, new Principal(EVE, USER),
+                              Collections.singleton(Action.READ));
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
+    DatasetClient datasetClient = new DatasetClient(eveConfig, eveClient);
+    try {
+      datasetClient.truncate(testDatasetinstance);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // Expected
+
     }
   }
 
@@ -357,7 +397,7 @@ public class BasicSecurityTest extends AuthTestBase {
       HttpResponse httpResponse = aliceClient.execute(HttpMethod.POST,
                                                       serviceURL.toURI().resolve("put").toURL(),
                                                       GSON.toJson(put), new HashMap<String, String>(),
-                                                      aliceConfig.getAccessToken(), new int[0]);
+                                                      aliceConfig.getAccessToken());
       Assert.assertEquals(200, httpResponse.getResponseCode());
     } finally {
       aliceServiceManager.stop();
@@ -377,7 +417,7 @@ public class BasicSecurityTest extends AuthTestBase {
       HttpResponse httpResponse = eveClient.execute(HttpMethod.POST,
                                                     serviceURL.toURI().resolve(path).toURL(),
                                                     GSON.toJson(get), new HashMap<String, String>(),
-                                                    eveConfig.getAccessToken(), new int[0]);
+                                                    eveConfig.getAccessToken());
       Assert.assertEquals(200, httpResponse.getResponseCode());
 
       // try a put, it should fail, as eve doesn't have permission to write
@@ -387,7 +427,7 @@ public class BasicSecurityTest extends AuthTestBase {
         eveClient.execute(HttpMethod.POST,
                           serviceURL.toURI().resolve(putPath).toURL(),
                           GSON.toJson(put), new HashMap<String, String>(),
-                          eveConfig.getAccessToken(), new int[0]);
+                          eveConfig.getAccessToken());
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
@@ -396,6 +436,59 @@ public class BasicSecurityTest extends AuthTestBase {
       eveServiceManager.stop();
       eveServiceManager.waitForRun(ProgramRunStatus.KILLED,
                                    PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    }
+  }
+
+  // This test will only work with list namespaces currently, since to list other entities, we need privileges
+  // on the corresponding namespace, and that will make the user be able to list any entity in the namespace.
+  @Test
+  public void testListEntities() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+    createAndRegisterNamespace(TEST_NAMESPACE, adminConfig, adminClient);
+
+    // Now authorize user bob to access the namespace
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    authorizationClient.grant(TEST_NAMESPACE, new Principal(BOB, USER), Collections.singleton(Action.WRITE));
+
+    ClientConfig bobConig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(bobConig);
+    bobClient.addListener(createRestClientListener());
+    NamespaceClient bobNamepsaceClient = new NamespaceClient(bobConig, bobClient);
+
+    // Bob should only be able to see TEST_NAMESPACE
+    List<NamespaceMeta> namespaces = bobNamepsaceClient.list();
+    Assert.assertEquals(1, namespaces.size());
+    Assert.assertEquals(TEST_NAMESPACE.getEntityName(), namespaces.iterator().next().getName());
+
+    // Create a stream with bob
+    StreamId streamId = TEST_NAMESPACE.stream("testStream");
+    StreamClient bobStreamClient = new StreamClient(bobConig, bobClient);
+    bobStreamClient.create(streamId);
+
+    // cdapitn should be able to list the stream since he has privileges on the namespace
+    StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
+    List<StreamDetail> streams = adminStreamClient.list(TEST_NAMESPACE);
+    Assert.assertEquals(1, namespaces.size());
+    Assert.assertEquals(streamId.getEntityName(), streams.iterator().next().getName());
+
+    AuthorizationClient bobAuthorizationClient = new AuthorizationClient(bobConig, bobClient);
+    // simply grant READ on eve will not let Eve list the stream since Eve does not have privilege on the namespace
+    bobAuthorizationClient.grant(streamId, new Principal(EVE, USER), Collections.singleton(Action.READ));
+
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
+
+    StreamClient eveStreamClient = new StreamClient(eveConfig, eveClient);
+    try {
+      // Eve should not be able to list the streams since Eve does not have privilege on the namespace
+      eveStreamClient.list(TEST_NAMESPACE);
+      Assert.fail();
+    } catch (Exception ex) {
+      // expected
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
   }
 
@@ -433,10 +526,20 @@ public class BasicSecurityTest extends AuthTestBase {
     for (NamespaceId namespaceId : namespaceIdList) {
       NamespaceMeta nsMeta1 = new NamespaceMeta.Builder()
         .setName(namespaceId.getNamespaceId())
-        .setDescription("Namespace for running app from alice")
+        .setDescription("Namespace for authorization test")
         .build();
       namespaceClient.create(nsMeta1);
     }
+  }
+
+  private void createAndRegisterNamespace(NamespaceId namespaceId, ClientConfig config,
+                                          RESTClient client) throws Exception {
+    NamespaceMeta meta = new NamespaceMeta.Builder()
+      .setName(namespaceId.getEntityName())
+      .setDescription("Namespace for authorization test")
+      .build();
+    new NamespaceClient(config, client).create(meta);
+    registerForDeletion(namespaceId);
   }
 
 }
