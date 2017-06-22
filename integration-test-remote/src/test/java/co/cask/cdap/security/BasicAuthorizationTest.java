@@ -16,7 +16,12 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.client.ApplicationClient;
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -26,8 +31,32 @@ import org.junit.Test;
 public class BasicAuthorizationTest extends AuthorizationTestBase {
 
   @Test
+  public void testDefaultNamespaceAccess() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+    ApplicationClient applicationClient = new ApplicationClient(adminConfig, adminClient);
+    applicationClient.list(NamespaceId.DEFAULT);
+  }
+
+  @Test
+  public void testDefaultNamespaceAccessUnauthorized() throws Exception {
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+
+    ApplicationClient applicationClient = new ApplicationClient(aliceConfig, aliceClient);
+    try {
+      applicationClient.list(NamespaceId.DEFAULT);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+    }
+  }
+
+  @Test
   public void testGrantAccess() throws Exception {
-    testGrantAccess(getNamespaceMeta(TEST_NAMESPACE, null, null, null, null, null, null));
+    testBasicGrantOperations(getNamespaceMeta(TEST_NAMESPACE, null, null, null, null, null, null));
   }
 
   @Test
@@ -48,13 +77,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   @Test
   public void testWriteWithReadAuth() throws Exception {
     testWriteWithReadAuth(getNamespaceMeta(TEST_NAMESPACE, null, null, null, null, null, null));
-  }
-
-  @Test
-  public void testDatasetInProgram() throws Exception {
-    testDatasetInProgram(getNamespaceMeta(new NamespaceId("auth1"), null, null, null, null, null, null),
-                         getNamespaceMeta(new NamespaceId("auth2"), null, null, null, null, null, null),
-                         null, null);
   }
 
   @Test

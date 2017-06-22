@@ -58,7 +58,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URL;
@@ -84,11 +83,10 @@ public class AuthorizationTestBase extends AudiTestBase {
   protected static final String BOB = "bob";
   protected static final String CAROL = "carol";
   protected static final String EVE = "eve";
-
-  private static final String VERSION = "1.0.0";
-  private static final String ADMIN_USER = "cdapitn";
-  private static final String PASSWORD_SUFFIX = "password";
-  private static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
+  protected static final String ADMIN_USER = "cdapitn";
+  protected static final String PASSWORD_SUFFIX = "password";
+  protected static final String VERSION = "1.0.0";
+  protected static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
 
   @Before
   public void setup() throws UnauthorizedException, IOException, UnauthenticatedException {
@@ -98,31 +96,10 @@ public class AuthorizationTestBase extends AudiTestBase {
     Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "Authorization not enabled.");
   }
 
-  @Test
-  public void testDefaultNamespaceAccess() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
-    RESTClient adminClient = new RESTClient(adminConfig);
-    adminClient.addListener(createRestClientListener());
-    ApplicationClient applicationClient = new ApplicationClient(adminConfig, adminClient);
-    applicationClient.list(NamespaceId.DEFAULT);
-  }
-
-  @Test
-  public void testDefaultNamespaceAccessUnauthorized() throws Exception {
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
-    RESTClient aliceClient = new RESTClient(aliceConfig);
-    aliceClient.addListener(createRestClientListener());
-
-    ApplicationClient applicationClient = new ApplicationClient(aliceConfig, aliceClient);
-    try {
-      applicationClient.list(NamespaceId.DEFAULT);
-      Assert.fail();
-    } catch (UnauthorizedException ex) {
-      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
-    }
-  }
-
-  protected void testGrantAccess(NamespaceMeta namespaceMeta) throws Exception {
+  /**
+   * Test the basic grant operations. User should be able to list once he has the privilege on the namespace.
+   */
+  protected void testBasicGrantOperations(NamespaceMeta namespaceMeta) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
@@ -135,6 +112,7 @@ public class AuthorizationTestBase extends AudiTestBase {
 
     ApplicationClient applicationClient = new ApplicationClient(carolConfig, carolClient);
     try {
+      // initially list should fail since carol does not have privilege on the namespace
       applicationClient.list(namespaceId);
       Assert.fail();
     } catch (UnauthorizedException ex) {
@@ -146,6 +124,9 @@ public class AuthorizationTestBase extends AudiTestBase {
     applicationClient.list(namespaceId);
   }
 
+  /**
+   * Test deploy app under authorization and user gets all privileges on the app after the deploy.
+   */
   protected void testDeployApp(NamespaceMeta namespaceMeta) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
@@ -154,18 +135,18 @@ public class AuthorizationTestBase extends AudiTestBase {
     NamespaceId namespaceId = createAndRegisterNamespace(namespaceMeta, adminConfig, adminClient);
 
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    Principal bobPrincipal = new Principal(BOB, USER);
-    authorizationClient.grant(namespaceId, bobPrincipal, Collections.singleton(Action.WRITE));
+    Principal carolPrincipal = new Principal(CAROL, USER);
+    authorizationClient.grant(namespaceId, carolPrincipal, Collections.singleton(Action.WRITE));
 
-    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
-    RESTClient bobClient = new RESTClient(bobConfig);
-    bobClient.addListener(createRestClientListener());
+    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+    RESTClient carolClient = new RESTClient(carolConfig);
+    carolClient.addListener(createRestClientListener());
 
-    getTestManager(bobConfig, bobClient).deployApplication(namespaceId, PurchaseApp.class);
+    getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
 
-    // List the privileges for bob and bob should have all privileges for the app he deployed.
-    AuthorizationClient bobAuthorizationClient = new AuthorizationClient(bobConfig, bobClient);
-    Set<Privilege> privileges = bobAuthorizationClient.listPrivileges(bobPrincipal);
+    // List the privileges for carol and carol should have all privileges for the app he deployed.
+    AuthorizationClient carolAuthorizationClient = new AuthorizationClient(carolConfig, carolClient);
+    Set<Privilege> privileges = carolAuthorizationClient.listPrivileges(carolPrincipal);
     Assert.assertTrue(privileges.size() > 1);
 
     // Count the privileges for each entity
@@ -188,6 +169,9 @@ public class AuthorizationTestBase extends AudiTestBase {
     }
   }
 
+  /**
+   * Test user cannot deploy app with insufficient privilege.
+   */
   protected void testDeployAppUnauthorized(NamespaceMeta namespaceMeta) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
@@ -195,18 +179,22 @@ public class AuthorizationTestBase extends AudiTestBase {
 
     NamespaceId namespaceId = createAndRegisterNamespace(namespaceMeta, adminConfig, adminClient);
 
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
-    RESTClient aliceClient = new RESTClient(aliceConfig);
-    aliceClient.addListener(createRestClientListener());
+    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+    RESTClient carolClient = new RESTClient(carolConfig);
+    carolClient.addListener(createRestClientListener());
 
     try {
-      getTestManager(aliceConfig, aliceClient).deployApplication(namespaceId, PurchaseApp.class);
+      getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
       Assert.fail();
     } catch (Exception ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
   }
 
+  /**
+   * Test after creation of an entity we get all privileges on it and make sure privileges are removed once the entity
+   * is deleted.
+   */
   public void testCreatedDeletedPrivileges(NamespaceMeta namespaceMeta) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
@@ -241,6 +229,9 @@ public class AuthorizationTestBase extends AudiTestBase {
     Assert.assertEquals(0, count);
   }
 
+  /**
+   * Test basic privileges for dataset.
+   */
   protected void testWriteWithReadAuth(NamespaceMeta namespaceMeta) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
@@ -266,9 +257,13 @@ public class AuthorizationTestBase extends AudiTestBase {
     }
   }
 
-  // todo : move this to impersonation test
-  // Grant a user WRITE access on a dataset.
-  // Try to get the dataset from a program and call a WRITE and READ method on it.
+  /**
+   * Grant a user WRITE access on a dataset.
+   * Try to get the dataset from a program and call a WRITE and READ method on it.
+   *
+   * Note that this test can ONLY be used when impersonation is enabled, since currently we do not have
+   * endpoint enforcement
+   */
   protected void testDatasetInProgram(NamespaceMeta namespaceMetaUser1, NamespaceMeta namespaceMetaUser2,
                                       @Nullable String app1Owner, @Nullable String app2Owner) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
@@ -280,87 +275,98 @@ public class AuthorizationTestBase extends AudiTestBase {
     NamespaceId testNs1 = createAndRegisterNamespace(namespaceMetaUser1, adminConfig, adminClient);
     NamespaceId testNs2 = createAndRegisterNamespace(namespaceMetaUser2, adminConfig, adminClient);
 
-    // initialize clients and configs for users alice and eve
+    // initialize clients and configs for users user1 and user2
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
 
-    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
-    RESTClient eveClient = new RESTClient(eveConfig);
+    // todo: remove this once we support endpoint enforcement
+    String user1 = app1Owner == null ? namespaceMetaUser1.getConfig().getPrincipal() : app1Owner;
+    String user2 = app2Owner == null ? namespaceMetaUser2.getConfig().getPrincipal() : app2Owner;
+    if (user1 == null || user2 == null) {
+      Assert.fail("This test can only be used when impersonation is enabled");
+    }
 
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
-    RESTClient aliceClient = new RESTClient(aliceConfig);
+    ClientConfig user1Config = getClientConfig(fetchAccessToken(user1, user1 + PASSWORD_SUFFIX));
+    RESTClient user1Client = new RESTClient(user1Config);
 
-    aliceClient.addListener(createRestClientListener());
-    eveClient.addListener(createRestClientListener());
+    ClientConfig user2Config = getClientConfig(fetchAccessToken(user2, user2 + PASSWORD_SUFFIX));
+    RESTClient user2Client = new RESTClient(user2Config);
+
+    user1Client.addListener(createRestClientListener());
+    user2Client.addListener(createRestClientListener());
 
     // set-up privileges
-    // alice has {admin, read, write, execute} on TEST_NS1, eve has read on TEST_NS1
-    // eve has {admin, read, write, execute} on TEST_NS2, alive has execute on TEST_NS2
-    authorizationClient.grant(testNs1, new Principal(ALICE, USER),
+    // user1 has {admin, read, write, execute} on TEST_NS1, user2 has read on TEST_NS1
+    // user2 has {admin, read, write, execute} on TEST_NS2, user1 has execute on TEST_NS2
+    authorizationClient.grant(testNs1, new Principal(user1, USER),
                               ImmutableSet.of(Action.WRITE, Action.READ, Action.EXECUTE, Action.ADMIN));
-    authorizationClient.grant(testNs2, new Principal(ALICE, USER), Collections.singleton(Action.READ));
+    authorizationClient.grant(testNs2, new Principal(user1, USER), Collections.singleton(Action.READ));
 
-    authorizationClient.grant(testNs2, new Principal(EVE, USER),
+    authorizationClient.grant(testNs2, new Principal(user2, USER),
                               ImmutableSet.of(Action.WRITE, Action.READ, Action.EXECUTE, Action.ADMIN));
-    authorizationClient.grant(testNs1, new Principal(EVE, USER), Collections.singleton(Action.EXECUTE));
+    authorizationClient.grant(testNs1, new Principal(user2, USER), Collections.singleton(Action.EXECUTE));
 
-    ServiceManager aliceServiceManager =
-      setupAppStartAndGetService(testNs1, aliceConfig, aliceClient, datasetName, app1Owner);
+    ServiceManager user1ServiceManager =
+      setupAppStartAndGetService(testNs1, user1Config, user1Client, datasetName, app1Owner);
 
-    // grant privilege on dataset to EVE after its created
+    // grant privilege on dataset to user2 after its created
     authorizationClient.grant(new DatasetId(testNs1.getNamespace(), datasetName),
-                              new Principal(EVE, USER), Collections.singleton(Action.READ));
+                              new Principal(user2, USER), Collections.singleton(Action.READ));
 
     try {
-      // alice user writes an entry to the dataset
-      URL serviceURL = aliceServiceManager.getServiceURL();
+      // user1 writes an entry to the dataset
+      URL serviceURL = user1ServiceManager.getServiceURL();
       Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), Bytes.toBytes("value"));
-      HttpResponse httpResponse = aliceClient.execute(HttpMethod.POST,
+      HttpResponse httpResponse = user1Client.execute(HttpMethod.POST,
                                                       serviceURL.toURI().resolve("put").toURL(),
                                                       GSON.toJson(put), new HashMap<String, String>(),
-                                                      aliceConfig.getAccessToken());
+                                                      user1Config.getAccessToken());
       Assert.assertEquals(200, httpResponse.getResponseCode());
     } finally {
-      aliceServiceManager.stop();
-      aliceServiceManager.waitForRun(ProgramRunStatus.KILLED,
+      user1ServiceManager.stop();
+      user1ServiceManager.waitForRun(ProgramRunStatus.KILLED,
                                      PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
-    ServiceManager eveServiceManager =
-      setupAppStartAndGetService(testNs2, eveConfig, eveClient, datasetName, app2Owner);
+    ServiceManager user2ServiceManager =
+      setupAppStartAndGetService(testNs2, user2Config, user2Client, datasetName, app2Owner);
 
     try {
-      // try to get the entry written by alice user for the dataset owned by alice
-      // eve has read access on it, so read should succeed
-      URL serviceURL = eveServiceManager.getServiceURL();
+      // try to get the entry written by user2 for the dataset owned by user1
+      // user2 has read access on it, so read should succeed
+      URL serviceURL = user2ServiceManager.getServiceURL();
       Get get = new Get(Bytes.toBytes("row"), Bytes.toBytes("col"));
       String path = String.format("namespaces/%s/datasets/%s/get", testNs1.getNamespace(), datasetName);
-      HttpResponse httpResponse = eveClient.execute(HttpMethod.POST,
+      HttpResponse httpResponse = user2Client.execute(HttpMethod.POST,
                                                     serviceURL.toURI().resolve(path).toURL(),
                                                     GSON.toJson(get), new HashMap<String, String>(),
-                                                    eveConfig.getAccessToken());
+                                                    user2Config.getAccessToken());
       Assert.assertEquals(200, httpResponse.getResponseCode());
 
-      // try a put, it should fail, as eve doesn't have permission to write
+      // try a put, it should fail, as user2 doesn't have permission to write
       Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2"));
       String putPath = String.format("namespaces/%s/datasets/%s/put", testNs1.getNamespace(), datasetName);
       try {
-        eveClient.execute(HttpMethod.POST,
+        user2Client.execute(HttpMethod.POST,
                           serviceURL.toURI().resolve(putPath).toURL(),
                           GSON.toJson(put), new HashMap<String, String>(),
-                          eveConfig.getAccessToken());
+                          user2Config.getAccessToken());
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
       }
     } finally {
-      eveServiceManager.stop();
-      eveServiceManager.waitForRun(ProgramRunStatus.KILLED,
+      user2ServiceManager.stop();
+      user2ServiceManager.waitForRun(ProgramRunStatus.KILLED,
                                    PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
   }
 
-  // This test will only work with list namespaces currently, since to list other entities, we need privileges
-  // on the corresponding namespace, and that will make the user be able to list any entity in the namespace.
+  /**
+   * Test list entities on an namespace.
+   *
+   * This test will only work with list namespaces currently, since to list other entities, we need privileges
+   * on the corresponding namespace, and that will make the user be able to list any entity in the namespace.
+   */
   protected void testListEntities(NamespaceMeta namespaceMeta) throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
@@ -368,24 +374,24 @@ public class AuthorizationTestBase extends AudiTestBase {
 
     NamespaceId namespaceId = createAndRegisterNamespace(namespaceMeta, adminConfig, adminClient);
 
-    // Now authorize user bob to access the namespace
+    // Now authorize user carol to access the namespace
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(namespaceId, new Principal(BOB, USER), Collections.singleton(Action.WRITE));
+    authorizationClient.grant(namespaceId, new Principal(CAROL, USER), Collections.singleton(Action.WRITE));
 
-    ClientConfig bobConig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
-    RESTClient bobClient = new RESTClient(bobConig);
-    bobClient.addListener(createRestClientListener());
-    NamespaceClient bobNamepsaceClient = new NamespaceClient(bobConig, bobClient);
+    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+    RESTClient carolClient = new RESTClient(carolConfig);
+    carolClient.addListener(createRestClientListener());
+    NamespaceClient carolNamespaceClient = new NamespaceClient(carolConfig, carolClient);
 
-    // Bob should only be able to see the given namespace
-    List<NamespaceMeta> namespaces = bobNamepsaceClient.list();
+    // Carol should only be able to see the given namespace
+    List<NamespaceMeta> namespaces = carolNamespaceClient.list();
     Assert.assertEquals(1, namespaces.size());
     Assert.assertEquals(namespaceId.getEntityName(), namespaces.iterator().next().getName());
 
-    // Create a stream with bob
+    // Create a stream with carol
     StreamId streamId = namespaceId.stream("testStream");
-    StreamClient bobStreamClient = new StreamClient(bobConig, bobClient);
-    bobStreamClient.create(streamId);
+    StreamClient carolStreamClient = new StreamClient(carolConfig, carolClient);
+    carolStreamClient.create(streamId);
 
     // cdapitn should be able to list the stream since he has privileges on the namespace
     StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
@@ -393,9 +399,9 @@ public class AuthorizationTestBase extends AudiTestBase {
     Assert.assertEquals(1, namespaces.size());
     Assert.assertEquals(streamId.getEntityName(), streams.iterator().next().getName());
 
-    AuthorizationClient bobAuthorizationClient = new AuthorizationClient(bobConig, bobClient);
+    AuthorizationClient carolAuthorizationClient = new AuthorizationClient(carolConfig, carolClient);
     // simply grant READ on eve will not let Eve list the stream since Eve does not have privilege on the namespace
-    bobAuthorizationClient.grant(streamId, new Principal(EVE, USER), Collections.singleton(Action.READ));
+    carolAuthorizationClient.grant(streamId, new Principal(EVE, USER), Collections.singleton(Action.READ));
 
     ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);

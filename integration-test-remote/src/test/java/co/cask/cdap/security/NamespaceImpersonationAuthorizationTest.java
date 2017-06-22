@@ -14,7 +14,6 @@
  * the License.
  */
 
-
 package co.cask.cdap.security;
 
 import co.cask.cdap.proto.id.NamespaceId;
@@ -26,9 +25,9 @@ import org.junit.Test;
 public class NamespaceImpersonationAuthorizationTest extends AuthorizationTestBase {
   @Test
   public void testGrantAccess() throws Exception {
-    testGrantAccess(getNamespaceMeta(TEST_NAMESPACE, ALICE, null,
-                                     SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
-                                     null, null, null));
+    testBasicGrantOperations(getNamespaceMeta(TEST_NAMESPACE, ALICE, null,
+                                              SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
+                                              null, null, null));
   }
 
   @Test
