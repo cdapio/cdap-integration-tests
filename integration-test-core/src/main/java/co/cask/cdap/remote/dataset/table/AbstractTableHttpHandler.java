@@ -82,6 +82,17 @@ public abstract class AbstractTableHttpHandler extends AbstractHttpServiceHandle
     responder.sendJson(200);
   }
 
+  @Path("namespaces/{namespace}/datasets/{dataset}/incrementAndGet")
+  @POST
+  public void incrementAndGetOnDataset(HttpServiceRequest request, HttpServiceResponder responder,
+                                       @PathParam("namespace") String namespace,
+                                       @PathParam("dataset") String dataset) throws Exception {
+    Table table = getContext().getDataset(namespace, dataset);
+    Increment increment = deser(request, Increment.class);
+    table.incrementAndGet(increment);
+    responder.sendJson(200);
+  }
+
   @Path("getWithRange")
   @POST
   public void getWithRange(HttpServiceRequest request, HttpServiceResponder responder) throws Exception {

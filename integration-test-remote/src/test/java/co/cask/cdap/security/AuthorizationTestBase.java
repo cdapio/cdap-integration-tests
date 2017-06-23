@@ -19,6 +19,7 @@ package co.cask.cdap.security;
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.table.Get;
+import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.AuthorizationClient;
@@ -335,27 +336,56 @@ public class AuthorizationTestBase extends AudiTestBase {
       URL serviceURL = user2ServiceManager.getServiceURL();
       // try to get the entry written by user2 for the dataset owned by user1
       // user2 has read access on it, so read should succeed
-      Get get = new Get(Bytes.toBytes("row"), Bytes.toBytes("col"));
-      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2"));
-      HttpResponse response = executeAndreadFromDataset(serviceURL, user2Client, user2Config,
-                                                        testNs1, datasetName, get);
+      String getJson = GSON.toJson(new Get(Bytes.toBytes("row"), Bytes.toBytes("col")));
+      String putJson = GSON.toJson(new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2")));
+      String incrementJson = GSON.toJson(new Increment(Bytes.toBytes("row"), Bytes.toBytes("col"), 1));
+      HttpResponse response = executeDatasetCommand(serviceURL, user2Client, user2Config,
+                                                    testNs1, datasetName, getJson, "get");
       Assert.assertEquals(200, response.getResponseCode());
 
       try {
-        executeAndWriteToDataset(serviceURL, user2Client, user2Config, testNs1, datasetName, put);
+        // put should fail since user2 does not have write privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
       }
 
+      try {
+        // incrementAndGet should fail since user2 does not have both READ and WRITE privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                              "incrementAndGet");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      // grant user WRITE privilege on the dataset
       authorizationClient.grant(datasetId, new Principal(user2, USER), Collections.singleton(Action.WRITE));
-      response = executeAndWriteToDataset(serviceURL, user2Client, user2Config,
-                                                       testNs1, datasetName, put);
+
+      // put should be successful this time
+      response = executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
       Assert.assertEquals(200, response.getResponseCode());
 
+      // incrementAndGet should be successful this time since user2 has both READ and WRITE privilege on the dataset
+      response = executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                                       "incrementAndGet");
+      Assert.assertEquals(200, response.getResponseCode());
+
+      // revoke READ from user2 on the dataset
       authorizationClient.revoke(datasetId, new Principal(user2, USER), Collections.singleton(Action.READ));
       try {
-        executeAndreadFromDataset(serviceURL, user2Client, user2Config, testNs1, datasetName, get);
+        // get should fail since user2 does not have READ privilege now
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, getJson, "get");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      try {
+        // increment should fail since user2 does not have both READ and WRITE privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                              "incrementAndGet");
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
@@ -475,22 +505,13 @@ public class AuthorizationTestBase extends AudiTestBase {
     return serviceManager;
   }
 
-  private HttpResponse executeAndreadFromDataset(URL serviceURL, RESTClient client, ClientConfig config,
-                                                 NamespaceId namespaceId, String datasetName,
-                                                 Get get) throws Exception {
-    String path = String.format("namespaces/%s/datasets/%s/get", namespaceId.getNamespace(), datasetName);
+  private HttpResponse executeDatasetCommand(URL serviceURL, RESTClient client, ClientConfig config,
+                                             NamespaceId namespaceId, String datasetName,
+                                             String jsonString, String method) throws Exception {
+    String path = String.format("namespaces/%s/datasets/%s/%s", namespaceId.getNamespace(), datasetName, method);
     return client.execute(HttpMethod.POST,
                           serviceURL.toURI().resolve(path).toURL(),
-                          GSON.toJson(get), new HashMap<String, String>(),
-                          config.getAccessToken());
-  }
-
-  private HttpResponse executeAndWriteToDataset(URL serviceURL, RESTClient client, ClientConfig config,
-                                                NamespaceId namespaceId, String datasetName, Put put) throws Exception {
-    String putPath = String.format("namespaces/%s/datasets/%s/put", namespaceId.getNamespace(), datasetName);
-    return client.execute(HttpMethod.POST,
-                          serviceURL.toURI().resolve(putPath).toURL(),
-                          GSON.toJson(put), new HashMap<String, String>(),
+                          jsonString, new HashMap<String, String>(),
                           config.getAccessToken());
   }
 }
