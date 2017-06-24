@@ -61,7 +61,6 @@ import org.junit.Assert;
 import org.junit.Before;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
@@ -276,7 +275,7 @@ public class AuthorizationTestBase extends AudiTestBase {
 
     NamespaceId testNs1 = createAndRegisterNamespace(namespaceMetaUser1, adminConfig, adminClient);
     NamespaceId testNs2 = createAndRegisterNamespace(namespaceMetaUser2, adminConfig, adminClient);
-    DatasetId datasetId =new  DatasetId(testNs1.getNamespace(), datasetName);
+    DatasetId datasetId = new DatasetId(testNs1.getNamespace(), datasetName);
 
     // initialize clients and configs for users user1 and user2
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
@@ -317,7 +316,7 @@ public class AuthorizationTestBase extends AudiTestBase {
     try {
       // user1 writes an entry to the dataset
       URL serviceURL = user1ServiceManager.getServiceURL();
-      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), Bytes.toBytes("value"));
+      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), Bytes.toBytes(100));
       HttpResponse httpResponse = user1Client.execute(HttpMethod.POST,
                                                       serviceURL.toURI().resolve("put").toURL(),
                                                       GSON.toJson(put), new HashMap<String, String>(),
