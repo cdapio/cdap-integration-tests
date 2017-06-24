@@ -23,6 +23,9 @@ import org.junit.Test;
  * Namespace level impersonation authorization test
  */
 public class NamespaceImpersonationAuthorizationTest extends AuthorizationTestBase {
+  // todo: remove this and use variable in test base until https://issues.cask.co/browse/CDAP-11985 is fixed.
+  private static final NamespaceId TEST_NAMESPACE = new NamespaceId("namespaceImp");
+
   @Test
   public void testGrantAccess() throws Exception {
     testBasicGrantOperations(
@@ -64,11 +67,12 @@ public class NamespaceImpersonationAuthorizationTest extends AuthorizationTestBa
 
   @Test
   public void testDatasetInProgram() throws Exception {
+    // todo: do not use various namespaces names until https://issues.cask.co/browse/CDAP-11985 is fixed.
     testDatasetInProgram(
-      getNamespaceMeta(new NamespaceId("auth1"), ALICE, null,
+      getNamespaceMeta(new NamespaceId("namespaceAuth1"), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
                        null, null, null),
-      getNamespaceMeta(new NamespaceId("auth2"), EVE, null,
+      getNamespaceMeta(new NamespaceId("namespaceAuth2"), EVE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(EVE, getMetaClient().getCDAPConfig()),
                        null, null, null),
       null, null);
