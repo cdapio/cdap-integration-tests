@@ -80,7 +80,7 @@ import static co.cask.cdap.proto.security.Principal.PrincipalType.USER;
  */
 public class AuthorizationTestBase extends AudiTestBase {
   protected static final Gson GSON = new GsonBuilder().enableComplexMapKeySerialization().create();
-  protected static final NamespaceId TEST_NAMESPACE = new NamespaceId("authorization");
+
   protected static final String ALICE = "alice";
   protected static final String BOB = "bob";
   protected static final String CAROL = "carol";

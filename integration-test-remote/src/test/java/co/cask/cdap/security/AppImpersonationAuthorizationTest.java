@@ -26,9 +26,10 @@ public class AppImpersonationAuthorizationTest extends AuthorizationTestBase {
 
   @Test
   public void testDatasetInProgram() throws Exception {
+    // todo: do not use various namespaces names until https://issues.cask.co/browse/CDAP-11985 is fixed.
     testDatasetInProgram(
-      getNamespaceMeta(new NamespaceId("auth1"), null, null, null, null, null, null),
-      getNamespaceMeta(new NamespaceId("auth2"), null, null, null, null, null, null),
+      getNamespaceMeta(new NamespaceId("appAuth1"), null, null, null, null, null, null),
+      getNamespaceMeta(new NamespaceId("appAuth2"), null, null, null, null, null, null),
       ALICE, EVE);
   }
 

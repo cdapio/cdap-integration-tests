@@ -29,6 +29,8 @@ import org.junit.Test;
  * The password for the users is their user name suffixed by the word "password".
  */
 public class BasicAuthorizationTest extends AuthorizationTestBase {
+  // todo: move this to test base until https://issues.cask.co/browse/CDAP-11985 is fixed.
+  private static final NamespaceId TEST_NAMESPACE = new NamespaceId("authorization");
 
   @Test
   public void testDefaultNamespaceAccess() throws Exception {
