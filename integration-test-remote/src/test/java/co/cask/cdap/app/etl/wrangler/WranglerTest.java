@@ -43,6 +43,7 @@ import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
@@ -106,12 +107,18 @@ public class WranglerTest extends ETLTestBase {
                                             Schema.Field.of("street", Schema.of(Schema.Type.STRING)),
                                             Schema.Field.of("zipcode", Schema.of(Schema.Type.STRING)),
                                             Schema.Field.of("number", Schema.of(Schema.Type.STRING)));
+
     //properties for the wranglerTransformStage
     ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder();
-    builder.put("field", "*").put("precondition", "false").put("threshold", "1")
+    Joiner directives = Joiner.on("\n");
+    String wranglerDirectives = directives.join("drop ts", "drop headers", "parse-as-csv body ,", "drop body",
+                                                "rename body_1 id", "rename body_2 name", "rename body_3 street",
+                                                "rename body_4 zipcode", "rename body_5 number");
+    builder.put("field", "*")
+      .put("precondition", "false")
+      .put("threshold", "1")
       .put("schema", wranglerSchema.toString())
-      .put("directives", "drop ts\ndrop headers\nparse-as-csv body ,\ndrop body\nrename body_1 id\nrename body_2 " +
-        "name\nrename body_3 street\nrename body_4 zipcode\nrename body_5 number");
+      .put("directives", wranglerDirectives);
 
     ETLStage wranglerTransformStage =
       new ETLStage("Wrangler",
@@ -132,8 +139,7 @@ public class WranglerTest extends ETLTestBase {
       new ETLStage("SnapshotAvro", new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
                                                  ImmutableMap.of("compressionCodec", "None",
                                                                  "schema", sinkSchema.toString(),
-                                                                 "name", "SnapshotAvro"),
-                                                 null));
+                                                                 "name", "SnapshotAvro"), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("0 * * * *")
       .addStage(streamSourceStage)
@@ -149,7 +155,7 @@ public class WranglerTest extends ETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("wrangler-test-3");
+    ApplicationId appId = TEST_NAMESPACE.app("wrangler-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
     // run the pipeline
@@ -200,8 +206,7 @@ public class WranglerTest extends ETLTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-      response, new TypeToken<Map<String, byte[]>>() {
-      }.getType()).getResponseObject();
+      response, new TypeToken<Map<String, byte[]>>() {}.getType()).getResponseObject();
 
     return parseOutput(map, schema);
   }
