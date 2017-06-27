@@ -46,6 +46,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.annotation.Nullable;
 
 /**
  * An abstract class for writing etl integration tests. Tests for etl should extend this class.
@@ -125,6 +126,18 @@ public abstract class ETLTestBase extends AudiTestBase {
 
   protected AppRequest<DataStreamsConfig> getStreamingAppRequest(DataStreamsConfig config) {
     return new AppRequest<>(new ArtifactSummary("cdap-data-streams", version, ArtifactScope.SYSTEM), config);
+  }
+
+  @Nullable
+  protected AppRequest getWranglerAppRequest(List<ArtifactSummary> list) {
+    //arbitrary AppRequest
+    AppRequest request = null;
+    for (ArtifactSummary summary : list) {
+      if (summary.getName().contains("wrangler-service")) {
+        request = new AppRequest<>(summary);
+      }
+    }
+    return request;
   }
 
   // make the above two methods use this method instead
