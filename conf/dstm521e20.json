@@ -1,11 +1,12 @@
 {
   "config": {
     "hadoop_mapr": {
-      "distribution_version": "5.2.0",
-      "mep_version": "1.1"
+      "distribution_version": "5.2.1",
+      "mep_version": "2.0"
     }
   },
   "provider-fields": {
     "google_data_disk_size_gb": "200,200"
-  }
+  },
+  "services": "mapr-spark-historyserver"
 }
