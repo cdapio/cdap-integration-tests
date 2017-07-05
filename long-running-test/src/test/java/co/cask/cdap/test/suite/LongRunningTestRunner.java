@@ -47,11 +47,11 @@ public class LongRunningTestRunner {
 
   @BeforeClass
   public static void deserialize() throws Exception {
-    String inputStateFile = System.getProperty(INPUT_STATE_PROP);
+    String inputStateFile = System.getProperty(INPUT_STATE_PROP, "long-running-test-in.state");
     Preconditions.checkNotNull(inputStateFile, "Input state file name cannot be null.");
     LOG.info("Input state file = {}", inputStateFile);
 
-    String outputStateFile = System.getProperty(OUTPUT_STATE_PROP);
+    String outputStateFile = System.getProperty(OUTPUT_STATE_PROP, "long-running-test-out.state");
     Preconditions.checkNotNull(outputStateFile, "Output state file name cannot be null.");
     LOG.info("Output state file = {}", outputStateFile);
 
@@ -69,7 +69,7 @@ public class LongRunningTestRunner {
 
   @AfterClass
   public static void serialize() throws Exception {
-    String outputStateFile = System.getProperty(OUTPUT_STATE_PROP);
+    String outputStateFile = System.getProperty(OUTPUT_STATE_PROP, "long-running-test-out.state");
     try (FileWriter writer = new FileWriter(outputStateFile)) {
       LOG.info("Serializing test state to output file = {}", outputStateFile);
       GSON.toJson(LongRunningTestBase.getInMemoryMap(), writer);
