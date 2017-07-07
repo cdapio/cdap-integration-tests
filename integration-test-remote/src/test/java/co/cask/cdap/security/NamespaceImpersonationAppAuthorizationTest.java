@@ -16,13 +16,8 @@
 
 package co.cask.cdap.security;
 
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.security.spi.authorization.UnauthorizedException;
-import org.junit.Assert;
 import org.junit.Before;
-
-import java.io.IOException;
 
 /**
  * App authorization tests for namespace level impersonation
@@ -30,25 +25,20 @@ import java.io.IOException;
 public class NamespaceImpersonationAppAuthorizationTest extends AppAuthorizationTestBase {
 
   @Before
-  public void setup() throws UnauthorizedException, IOException, UnauthenticatedException {
+  public void setup() throws Exception {
     super.setup();
-    try {
-      testNamespace =
-        getNamespaceMeta(new NamespaceId("authorization"), ALICE, null,
-                         SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
-                         null, null);
-      namespaceMeta1 =
-        getNamespaceMeta(new NamespaceId("authorization1"), ALICE, null,
-                         SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
-                         null, null);
-      namespaceMeta2 =
-        getNamespaceMeta(new NamespaceId("authorization2"), BOB, null,
-                         SecurityTestUtils.getKeytabURIforPrincipal(BOB, getMetaClient().getCDAPConfig()), null,
-                         null, null);
-    } catch (Exception e) {
-      // should not happen
-      Assert.fail("Failed to get keytab url");
-    }
+    testNamespace =
+      getNamespaceMeta(new NamespaceId("authorization"), ALICE, null,
+                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
+                       null, null);
+    namespaceMeta1 =
+      getNamespaceMeta(new NamespaceId("authorization1"), ALICE, null,
+                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
+                       null, null);
+    namespaceMeta2 =
+      getNamespaceMeta(new NamespaceId("authorization2"), BOB, null,
+                       SecurityTestUtils.getKeytabURIforPrincipal(BOB, getMetaClient().getCDAPConfig()), null,
+                       null, null);
     appOwner1 = null;
     appOwner2 = null;
   }

@@ -19,18 +19,15 @@ package co.cask.cdap.security;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Before;
 
-import java.io.IOException;
 import javax.annotation.Nullable;
 
 /**
@@ -52,7 +49,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
                                                            null, null, null, null);
 
   @Before
-  public void setup() throws UnauthorizedException, IOException, UnauthenticatedException {
+  public void setup() throws Exception {
     ConfigEntry configEntry = this.getMetaClient().getCDAPConfig().get("security.authorization.enabled");
     Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
                                "security.authorization.enabled");
