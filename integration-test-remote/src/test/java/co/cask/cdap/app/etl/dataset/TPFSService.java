@@ -30,9 +30,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import org.apache.avro.file.DataFileStream;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
+import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.twill.filesystem.Location;
 
 import java.io.IOException;
@@ -40,7 +42,6 @@ import java.net.HttpURLConnection;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -77,7 +78,8 @@ public class TPFSService extends AbstractService {
     @GET
     @Path(TPFS_PATH + "/{tpfsName}")
     public void readTPFS(HttpServiceRequest request, HttpServiceResponder responder,
-                         @PathParam("tpfsName") String tpfsName, @QueryParam("time") long time) throws IOException {
+                         @PathParam("tpfsName") String tpfsName, @QueryParam("startTime") long startTime,
+                         @QueryParam("endTime") long endTime) throws IOException {
 
       Set<TimePartitionDetail> timePartitionDetailSet;
       TimePartitionedFileSet tpfs;
@@ -87,24 +89,32 @@ public class TPFSService extends AbstractService {
         responder.sendError(HttpURLConnection.HTTP_BAD_REQUEST, String.format("Invalid file set name '%s'", tpfsName));
         return;
       }
-      timePartitionDetailSet = tpfs.getPartitionsByTime(time, System.currentTimeMillis()
-                                                                                        + TimeUnit.MINUTES.toMillis(1));
 
+      timePartitionDetailSet = tpfs.getPartitionsByTime(startTime, endTime);
       org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser()
         .parse(TPFSService.EVENT_SCHEMA.toString());
 
-      DatumReader<GenericData.Record> datumReader = new GenericDatumReader<>(avroSchema);
-      List<GenericData.Record> records = Lists.newArrayList();
+      List<GenericRecord> records = Lists.newArrayList();
       if (!timePartitionDetailSet.isEmpty()) {
         TimePartitionDetail tpd = (TimePartitionDetail) (timePartitionDetailSet.toArray())[0];
         for (Location dayLoc : tpd.getLocation().list()) {
           String locName = dayLoc.getName();
 
           if (locName.endsWith(".avro")) {
-            DataFileStream<GenericData.Record> fileStream =
+            DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(avroSchema);
+            DataFileStream<GenericRecord> fileStream =
               new DataFileStream<>(dayLoc.getInputStream(), datumReader);
             Iterables.addAll(records, fileStream);
             fileStream.close();
+          } else if (locName.endsWith(".parquet")) {
+            org.apache.hadoop.fs.Path parquetFile = new org.apache.hadoop.fs.Path(dayLoc.toString());
+            AvroParquetReader.Builder<GenericRecord> genericRecordBuilder = AvroParquetReader.builder(parquetFile);
+            ParquetReader<GenericRecord> reader = genericRecordBuilder.build();
+            GenericRecord result = reader.read();
+            while (result != null) {
+              records.add(result);
+              result = reader.read();
+            }
           }
         }
       }

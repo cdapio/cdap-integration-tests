@@ -25,6 +25,7 @@ import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
+import co.cask.cdap.app.etl.batch.TPFSSinkSourceTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
@@ -100,6 +101,7 @@ import org.junit.runners.Suite;
   StreamSchedulerTest.class,
   StreamTest.class,
   StreamTPFSWithProjectionTest.class,
+  TPFSSinkSourceTest.class,
   TrackerTest.class,
   TransactionTimeoutTest.class,
   ValueMapperTest.class,
