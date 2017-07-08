@@ -16,8 +16,12 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.client.config.ClientConfig;
+import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.id.NamespaceId;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 
 /**
  *  Basic authorization test for namespace level impersonation
@@ -31,5 +35,34 @@ public class NamespaceImpersonationBasicAuthorizationTest extends BasicAuthoriza
       getNamespaceMeta(new NamespaceId("authorization"), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
                        null, null);
+  }
+
+  /**
+   * Test creating the same namespace(create -> delete -> create) with different owners
+   *
+   * Note that this test requires alice has the corrospending privileges on creating namespace on hbase, hdfs and hive,
+   * eve does not have corresponding privileges on creating namespaces on hbase, hdfs or hive.
+   */
+  @Test
+  public void testCreateNamespaceWithDifferentOwners() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    // should success
+    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    Assert.assertTrue(getNamespaceClient().exists(namespaceId));
+    getNamespaceClient().delete(namespaceId);
+    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+
+    testNamespace = getNamespaceMeta(new NamespaceId("authorization"), EVE, null,
+                                     SecurityTestUtils.getKeytabURIforPrincipal(EVE, getMetaClient().getCDAPConfig()),
+                                     null, null, null);
+    try {
+      createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+      Assert.fail();
+    } catch (Exception e) {
+      // expected
+    }
   }
 }
