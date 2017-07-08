@@ -26,6 +26,8 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.EntityId;
+import co.cask.cdap.proto.id.InstanceId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
@@ -201,5 +203,46 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
       // expected
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
+  }
+
+  /**
+   * Test delete namespace with two different clients, deletion should work for both clients
+   */
+  @Test
+  public void testDeleteNamespaceWithDifferentClients() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+    EntityId instanceId = new InstanceId("cdap");
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+
+    try {
+      authorizationClient.grant(instanceId, new Principal(ALICE, USER), Collections.singleton(Action.ADMIN));
+      authorizationClient.grant(instanceId, new Principal(BOB, USER), Collections.singleton(Action.ADMIN));
+
+      createAndDeleteNamespace(testNamespace, ALICE);
+      createAndDeleteNamespace(testNamespace, BOB);
+    } finally {
+      authorizationClient.revoke(instanceId, new Principal(ALICE, USER), Collections.singleton(Action.ADMIN));
+      authorizationClient.revoke(instanceId, new Principal(BOB, USER), Collections.singleton(Action.ADMIN));
+    }
+  }
+
+  private void createAndDeleteNamespace(NamespaceMeta namespaceMeta, String user) throws Exception {
+    ClientConfig clientConfig = getClientConfig(fetchAccessToken(user, user + PASSWORD_SUFFIX));
+    RESTClient client = new RESTClient(clientConfig);
+    client.addListener(createRestClientListener());
+
+    // create namespace with client
+    createAndRegisterNamespace(namespaceMeta, clientConfig, client);
+
+    // verify namespace exists
+    NamespaceClient namespaceClient = new NamespaceClient(clientConfig, client);
+    Assert.assertTrue(namespaceClient.exists(namespaceMeta.getNamespaceId()));
+
+    // delete it and verify it is gone
+    namespaceClient.delete(namespaceMeta.getNamespaceId());
+    Assert.assertFalse(namespaceClient.exists(namespaceMeta.getNamespaceId()));
+
   }
 }

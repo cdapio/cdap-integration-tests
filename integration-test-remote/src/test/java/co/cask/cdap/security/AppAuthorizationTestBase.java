@@ -297,7 +297,6 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
       }
     } finally {
-      System.out.println(runs);
       user2ServiceManager.stop();
       user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs,
                                       PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
