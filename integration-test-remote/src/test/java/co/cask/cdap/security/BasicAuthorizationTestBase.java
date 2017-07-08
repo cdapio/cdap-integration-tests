@@ -218,14 +218,18 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
 
     try {
-      authorizationClient.grant(instanceId, new Principal(ALICE, USER), Collections.singleton(Action.ADMIN));
-      authorizationClient.grant(instanceId, new Principal(BOB, USER), Collections.singleton(Action.ADMIN));
+      authorizationClient.grant(instanceId, new Principal(ALICE, Principal.PrincipalType.USER),
+                                Collections.singleton(Action.ADMIN));
+      authorizationClient.grant(instanceId, new Principal(BOB, Principal.PrincipalType.USER),
+                                Collections.singleton(Action.ADMIN));
 
       createAndDeleteNamespace(testNamespace, ALICE);
       createAndDeleteNamespace(testNamespace, BOB);
     } finally {
-      authorizationClient.revoke(instanceId, new Principal(ALICE, USER), Collections.singleton(Action.ADMIN));
-      authorizationClient.revoke(instanceId, new Principal(BOB, USER), Collections.singleton(Action.ADMIN));
+      authorizationClient.revoke(instanceId, new Principal(ALICE, Principal.PrincipalType.USER),
+                                 Collections.singleton(Action.ADMIN));
+      authorizationClient.revoke(instanceId, new Principal(BOB, Principal.PrincipalType.USER),
+                                 Collections.singleton(Action.ADMIN));
     }
   }
 
@@ -244,6 +248,5 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
     // delete it and verify it is gone
     namespaceClient.delete(namespaceMeta.getNamespaceId());
     Assert.assertFalse(namespaceClient.exists(namespaceMeta.getNamespaceId()));
-
   }
 }
