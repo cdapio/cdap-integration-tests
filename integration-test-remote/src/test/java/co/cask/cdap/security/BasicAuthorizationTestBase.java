@@ -243,6 +243,5 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
     // delete it and verify it is gone
     namespaceClient.delete(namespaceMeta.getNamespaceId());
     Assert.assertFalse(namespaceClient.exists(namespaceMeta.getNamespaceId()));
-
   }
 }
