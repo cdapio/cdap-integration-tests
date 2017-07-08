@@ -19,6 +19,7 @@ package co.cask.cdap.security;
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.table.Get;
+import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.config.ClientConfig;
@@ -66,6 +67,8 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
                                                             null, null, null, null);
   protected NamespaceMeta namespaceMeta2 = getNamespaceMeta(new NamespaceId("authorization2"), null, null,
                                                             null, null, null, null);
+  protected String appOwner = null;
+  // todo: this should be null once we support endpoint enforcement
   protected String appOwner1 = ALICE;
   protected String appOwner2 = BOB;
 
@@ -89,7 +92,14 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     RESTClient carolClient = new RESTClient(carolConfig);
     carolClient.addListener(createRestClientListener());
 
-    getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
+    String appName = PurchaseApp.class.getSimpleName();
+    ArtifactId artifactId = namespaceId.artifact(appName, VERSION);
+    TestManager manager = getTestManager(carolConfig, carolClient);
+    manager.addAppArtifact(artifactId, PurchaseApp.class);
+
+    ArtifactSummary appSummary = new ArtifactSummary(appName, VERSION);
+    getTestManager(carolConfig, carolClient).deployApplication(namespaceId.app(appName),
+                                                               new AppRequest<>(appSummary, null, appOwner));
 
     // List the privileges for carol and carol should have all privileges for the app he deployed.
     AuthorizationClient carolAuthorizationClient = new AuthorizationClient(carolConfig, carolClient);
@@ -106,7 +116,7 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
       }
     }
 
-    // Bob should have 4 privileges for each entity other than the given namespace
+    // Carol should have 4 privileges for each entity other than the given namespace
     for (Map.Entry<EntityId, Integer> entry : privilegeCount.entrySet()) {
       if (!entry.getKey().equals(namespaceId)) {
         Assert.assertEquals(4, (int) entry.getValue());
@@ -156,6 +166,7 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
 
     NamespaceId testNs1 = createAndRegisterNamespace(namespaceMeta1, adminConfig, adminClient);
     NamespaceId testNs2 = createAndRegisterNamespace(namespaceMeta2, adminConfig, adminClient);
+    DatasetId datasetId = new DatasetId(testNs1.getNamespace(), datasetName);
 
     // initialize clients and configs for users user1 and user2
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
@@ -191,13 +202,12 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
       setupAppStartAndGetService(testNs1, user1Config, user1Client, datasetName, appOwner1);
 
     // grant privilege on dataset to user2 after its created
-    authorizationClient.grant(new DatasetId(testNs1.getNamespace(), datasetName),
-                              new Principal(user2, USER), Collections.singleton(Action.READ));
+    authorizationClient.grant(datasetId, new Principal(user2, USER), Collections.singleton(Action.READ));
 
     try {
       // user1 writes an entry to the dataset
       URL serviceURL = user1ServiceManager.getServiceURL();
-      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), Bytes.toBytes("value"));
+      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), 100L);
       HttpResponse httpResponse = user1Client.execute(HttpMethod.POST,
                                                       serviceURL.toURI().resolve("put").toURL(),
                                                       GSON.toJson(put), new HashMap<String, String>(),
@@ -212,34 +222,85 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     ServiceManager user2ServiceManager =
       setupAppStartAndGetService(testNs2, user2Config, user2Client, datasetName, appOwner2);
 
+    int runs = 0;
     try {
+      URL serviceURL = user2ServiceManager.getServiceURL();
       // try to get the entry written by user2 for the dataset owned by user1
       // user2 has read access on it, so read should succeed
-      URL serviceURL = user2ServiceManager.getServiceURL();
-      Get get = new Get(Bytes.toBytes("row"), Bytes.toBytes("col"));
-      String path = String.format("namespaces/%s/datasets/%s/get", testNs1.getNamespace(), datasetName);
-      HttpResponse httpResponse = user2Client.execute(HttpMethod.POST,
-                                                      serviceURL.toURI().resolve(path).toURL(),
-                                                      GSON.toJson(get), new HashMap<String, String>(),
-                                                      user2Config.getAccessToken());
-      Assert.assertEquals(200, httpResponse.getResponseCode());
+      String getJson = GSON.toJson(new Get(Bytes.toBytes("row"), Bytes.toBytes("col")));
+      String putJson = GSON.toJson(new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2")));
+      String incrementJson = GSON.toJson(new Increment(Bytes.toBytes("row"), Bytes.toBytes("col"), 1));
+      HttpResponse response = executeDatasetCommand(serviceURL, user2Client, user2Config,
+                                                    testNs1, datasetName, getJson, "get");
+      Assert.assertEquals(200, response.getResponseCode());
 
-      // try a put, it should fail, as user2 doesn't have permission to write
-      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2"));
-      String putPath = String.format("namespaces/%s/datasets/%s/put", testNs1.getNamespace(), datasetName);
       try {
-        user2Client.execute(HttpMethod.POST,
-                            serviceURL.toURI().resolve(putPath).toURL(),
-                            GSON.toJson(put), new HashMap<String, String>(),
-                            user2Config.getAccessToken());
+        // put should fail since user2 does not have write privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      try {
+        // incrementAndGet should fail since user2 does not have both READ and WRITE privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                              "incrementAndGet");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      // grant user WRITE privilege on the dataset
+      authorizationClient.grant(datasetId, new Principal(user2, USER), Collections.singleton(Action.WRITE));
+
+      user2ServiceManager.stop();
+      user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs, PROGRAM_START_STOP_TIMEOUT_SECONDS,
+                                      TimeUnit.SECONDS);
+      user2ServiceManager.start();
+      user2ServiceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      serviceURL = user2ServiceManager.getServiceURL();
+
+      // put should be successful this time
+      response = executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
+      Assert.assertEquals(200, response.getResponseCode());
+
+      // incrementAndGet should be successful this time since user2 has both READ and WRITE privilege on the dataset
+      response = executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                                       "incrementAndGet");
+      Assert.assertEquals(200, response.getResponseCode());
+
+      // revoke READ from user2 on the dataset
+      authorizationClient.revoke(datasetId, new Principal(user2, USER), Collections.singleton(Action.READ));
+
+      user2ServiceManager.stop();
+      user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs,
+                                      PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      user2ServiceManager.start();
+      user2ServiceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      serviceURL = user2ServiceManager.getServiceURL();
+
+      try {
+        // get should fail since user2 does not have READ privilege now
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, getJson, "get");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      try {
+        // increment should fail since user2 does not have both READ and WRITE privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                              "incrementAndGet");
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
       }
     } finally {
+      System.out.println(runs);
       user2ServiceManager.stop();
-      user2ServiceManager.waitForRun(ProgramRunStatus.KILLED,
-                                     PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs,
+                                      PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
   }
 
@@ -268,5 +329,15 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS * 2, TimeUnit.SECONDS);
 
     return serviceManager;
+  }
+
+  private HttpResponse executeDatasetCommand(URL serviceURL, RESTClient client, ClientConfig config,
+                                             NamespaceId namespaceId, String datasetName,
+                                             String jsonString, String method) throws Exception {
+    String path = String.format("namespaces/%s/datasets/%s/%s", namespaceId.getNamespace(), datasetName, method);
+    return client.execute(HttpMethod.POST,
+                          serviceURL.toURI().resolve(path).toURL(),
+                          jsonString, new HashMap<String, String>(),
+                          config.getAccessToken());
   }
 }
