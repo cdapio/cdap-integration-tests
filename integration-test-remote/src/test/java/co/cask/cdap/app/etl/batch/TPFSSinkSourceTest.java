@@ -62,6 +62,10 @@ import java.util.concurrent.TimeUnit;
 public class TPFSSinkSourceTest extends ETLTestBase {
   private static final String SOURCE_STREAM = "sourceStream";
 
+  @Category({
+  //incompatible for HDP 2.0, see CDAP-12089
+    HDP20Incompatible.class
+  })
   @Test
   public void testMR() throws Exception {
     testStreamTPFSWithProjection(Engine.MAPREDUCE);
