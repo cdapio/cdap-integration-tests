@@ -20,6 +20,7 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
 import co.cask.cdap.test.AudiTestBase;
+import co.cask.cdap.test.suite.category.CMIncompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.cdap.test.suite.category.SDKIncompatible;
 import co.cask.common.http.HttpMethod;
@@ -49,7 +50,9 @@ public class OperationalStatsTest extends AudiTestBase {
     // incompatible with MapR right now because a lot of these stats are currently unavailable for MapRFS
     MapR5Incompatible.class,
     // HDFS is not run in SDK
-    SDKIncompatible.class
+    SDKIncompatible.class,
+    // HDFS WebURL is not available on Secure, HA cluster. CDAP-7887
+    CMIncompatible.class
   })
   public void testHDFSStats() throws Exception {
     Map<String, String> hdfsInfo = getInfoStats("hdfs");
