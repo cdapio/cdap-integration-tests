@@ -41,12 +41,12 @@ public class ETLSystemMetadataTest extends ETLTestBase {
   public void testSearchETLArtifactsWithSystemMetadata() throws Exception {
     MetadataClient metadataClient = new MetadataClient(getClientConfig(), getRestClient());
     String version = getMetaClient().getVersion().getVersion();
-    ArtifactId batchId = NamespaceId.SYSTEM.artifact("cdap-etl-batch", version);
+    ArtifactId batchId = NamespaceId.SYSTEM.artifact("cdap-data-pipeline", version);
     Set<MetadataSearchResultRecord> expected = ImmutableSet.of(new MetadataSearchResultRecord(batchId));
     Set<MetadataSearchResultRecord> result =
-      searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-etl-batch", null);
+      searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-data-pipeline", null);
     Assert.assertEquals(expected, result);
-    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-etl-b*", EntityTypeSimpleName.ARTIFACT);
+    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-data-p*", EntityTypeSimpleName.ARTIFACT);
     Assert.assertEquals(expected, result);
     ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
     List<ArtifactSummary> allCorePlugins = artifactClient.listVersions(TEST_NAMESPACE, "core-plugins",
@@ -59,12 +59,8 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     Assert.assertEquals(expected, result);
     // Searching in some user namespace should also surface entities from the system namespace
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
-      NamespaceId.SYSTEM.artifact("cdap-etl-batch", getMetaClient().getVersion().getVersion())));
-    result = searchMetadata(metadataClient, TEST_NAMESPACE, "batch", null);
-    Assert.assertEquals(expected, result);
-    expected = ImmutableSet.of(new MetadataSearchResultRecord(
-      NamespaceId.SYSTEM.artifact("cdap-etl-realtime", getMetaClient().getVersion().getVersion())));
-    result = searchMetadata(metadataClient, TEST_NAMESPACE, "realtime", null);
+      NamespaceId.SYSTEM.artifact("cdap-data-pipeline", getMetaClient().getVersion().getVersion())));
+    result = searchMetadata(metadataClient, TEST_NAMESPACE, "cdap-data-pipeline", null);
     Assert.assertEquals(expected, result);
   }
   
