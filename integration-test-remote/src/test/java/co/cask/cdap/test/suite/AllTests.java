@@ -29,7 +29,6 @@ import co.cask.cdap.app.etl.batch.TPFSSinkSourceTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
-import co.cask.cdap.app.etl.realtime.RealtimeCubeSinkTest;
 import co.cask.cdap.app.etl.wrangler.WranglerTest;
 import co.cask.cdap.app.fileset.PermissionTest;
 import co.cask.cdap.app.mapreduce.readless.ReadlessIncrementTest;
@@ -91,7 +90,6 @@ import org.junit.runners.Suite;
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
   ReadlessIncrementTest.class,
-  RealtimeCubeSinkTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
   RemoteTableTest.class,
