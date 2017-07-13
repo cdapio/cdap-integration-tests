@@ -21,7 +21,7 @@ import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.security.authentication.client.AccessToken;
 import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.DisruptionTestBase;
+import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 /**
  *
  */
-public class ContinuousCounterTest extends DisruptionTestBase {
+public class ContinuousCounterTest extends AudiTestBase {
   private static final Gson GSON = new Gson();
   private static final Type RETURN_TYPE = new TypeToken<List<Integer>>() { }.getType();
 

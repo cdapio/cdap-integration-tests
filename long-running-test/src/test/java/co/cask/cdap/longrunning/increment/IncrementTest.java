@@ -29,6 +29,7 @@ import co.cask.cdap.test.LongRunningTestBase;
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import org.junit.Assert;
+import org.junit.Ignore;
 
 import java.io.StringWriter;
 import java.util.concurrent.Callable;
@@ -81,7 +82,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
   }
 
   @Override
-  public void verifyRuns(IncrementTestState state) throws Exception {
+  public IncrementTestState verifyRuns(IncrementTestState state) throws Exception {
     DatasetId readlessTableId = getLongRunningNamespace().dataset(IncrementApp.READLESS_TABLE);
     KeyValueTable readlessTable = getKVTableDataset(readlessTableId).get();
     long readlessSum = readLong(readlessTable.read(IncrementApp.SUM_KEY));
@@ -95,6 +96,7 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
     long regularNum = readLong(regularTable.read(IncrementApp.NUM_KEY));
     Assert.assertEquals(state.getSumEvents(), regularSum);
     Assert.assertEquals(state.getNumEvents(), regularNum);
+    return state;
   }
 
   @Override
