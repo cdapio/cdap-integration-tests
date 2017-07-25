@@ -20,5 +20,6 @@
     "bootstrap_interface": "bind_v4",
     "zone_name": "us-central1-c"
   },
+  "services": "mysql-server,ranger-database",
   "initial-lease-duration": 82800000
 }
