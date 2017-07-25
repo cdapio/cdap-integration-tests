@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -339,14 +340,15 @@ public class ScheduleTest extends AudiTestBase {
 
     final Date realRangeEndTime = rangeEnd.getTime();
     long waitTime = rangeEnd.getTimeInMillis() - Calendar.getInstance().getTimeInMillis();
-    // Make end of range 5 seconds earlier to ensure that CAN_FAIL_SCHEDULE is triggered within the time range
-    rangeEnd.add(Calendar.SECOND, -5);
+    // Make end of range 10 seconds earlier to ensure that CAN_FAIL_SCHEDULE is triggered within the time range
+    rangeEnd.add(Calendar.SECOND, -10);
     final Date preRangeEndTime = rangeEnd.getTime();
     // Create enough new partitions to satisfy CAN_FAIL_SCHEDULE's trigger and record the number of times that
     // CAN_FAIL_SCHEDULE's trigger is satisfied within the time range
     final AtomicInteger numFailedRuns = new AtomicInteger();
-    final int sleepSeconds = 15;
+    final int sleepSeconds = 20;
 
+    final List<Long> triggerTime = new ArrayList<>();
     Tasks.waitFor(true, new Callable<Boolean>() {
       @Override
       public Boolean call() throws Exception {
@@ -359,6 +361,7 @@ public class ScheduleTest extends AudiTestBase {
           if (nowTime.after(rangeStartTime)) {
             // increment the count of failed runs if the time now is within the time range
             numFailedRuns.incrementAndGet();
+            triggerTime.add(nowTime.getTime());
           }
         }
         // prevent timeout happen between the sleep
@@ -371,8 +374,14 @@ public class ScheduleTest extends AudiTestBase {
                                     AppWithDataPartitionSchedule.TIME_TRIGGER_ONLY_WORKFLOW), num > 0);
     // Wait for the runs of TIME_TRIGGER_ONLY_WORKFLOW launched by CAN_FAIL_SCHEDULE during the time range,
     // which are all expected to fail
-    waitForRunsWithStatus(timeWorkflowManager, ProgramRunStatus.FAILED, num,
-                          PROGRAM_START_STOP_TIMEOUT_SECONDS * num);
+    try {
+      waitForRunsWithStatus(timeWorkflowManager, ProgramRunStatus.FAILED, num,
+                            PROGRAM_START_STOP_TIMEOUT_SECONDS * num);
+    } catch (TimeoutException e) {
+      LOG.error("Triggers sent at time: {}, but received failed run records: {}",
+                triggerTime, timeWorkflowManager.getHistory(ProgramRunStatus.FAILED));
+      throw e;
+    }
   }
 
   private String startAndSuspendWorkflow(WorkflowManager workflowManager, WorkflowId workflowId) throws Exception {
