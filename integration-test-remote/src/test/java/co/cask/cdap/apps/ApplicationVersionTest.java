@@ -36,6 +36,8 @@ import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -47,6 +49,7 @@ import java.util.concurrent.TimeUnit;
  * Tests creating Application with version
  */
 public class ApplicationVersionTest extends AudiTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(ApplicationVersionTest.class);
   private static final ArtifactId artifactId = TEST_NAMESPACE.artifact("cfg-app", "1.0.0");
   private static final int MAX_NUM_CALLS = 50;
 
@@ -205,21 +208,29 @@ public class ApplicationVersionTest extends AudiTestBase {
 
     // Route all traffic to v1
     serviceClient.storeRouteConfig(serviceId, ImmutableMap.of(version1, 100, version2, 0));
-    for (int i = 0; i < 20; i++) {
-      response = serviceClient.callServiceMethod(serviceId, pingMethod);
-      if ("tV2".equals(response.getResponseBodyAsString())) {
-        Assert.fail("All traffic should be routed to service v1 but service v2 is also reached.");
+    try {
+      for (int i = 0; i < 20; i++) {
+        response = serviceClient.callServiceMethod(serviceId, pingMethod);
+        if ("tV2".equals(response.getResponseBodyAsString())) {
+          Assert.fail("All traffic should be routed to service v1 but service v2 is also reached at i = " + i);
+        }
       }
+    } catch (AssertionError e) {
+      LOG.info("Expected v1:v2 = 100:0, actual RouteConfig = {}", serviceClient.getRouteConfig(serviceId), e);
     }
 
     // Route all traffic to v2
     serviceClient.storeRouteConfig(serviceId, ImmutableMap.of(version1, 0, version2, 100));
-    for (int i = 0; i < 20; i++) {
-      response = serviceClient.callServiceMethod(serviceId, pingMethod);
-      if ("tV1".equals(response.getResponseBodyAsString())) {
-        Assert.fail("All traffic should be routed to service v2 but service v1 is also reached.");
+    try {
+      for (int i = 0; i < 20; i++) {
+        response = serviceClient.callServiceMethod(serviceId, pingMethod);
+        if ("tV1".equals(response.getResponseBodyAsString())) {
+          Assert.fail("All traffic should be routed to service v2 but service v1 is also reached at i = " + i);
+        }
       }
-    }
+    } catch (AssertionError e) {
+        LOG.info("Expected v1:v2 = 0:100, actual RouteConfig = {}", serviceClient.getRouteConfig(serviceId), e);
+      }
 
     // Storing and getting RouteConfig with total percentage equal to 100 will succeed
     storeAndGetValidRouteConfig(ImmutableMap.of(version1, 10, version2, 90));
