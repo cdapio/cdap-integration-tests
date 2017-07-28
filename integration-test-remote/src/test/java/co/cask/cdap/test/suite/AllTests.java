@@ -29,6 +29,7 @@ import co.cask.cdap.app.etl.batch.TPFSSinkSourceTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
+import co.cask.cdap.app.etl.wrangler.WranglerServiceTest;
 import co.cask.cdap.app.etl.wrangler.WranglerTest;
 import co.cask.cdap.app.fileset.PermissionTest;
 import co.cask.cdap.app.mapreduce.readless.ReadlessIncrementTest;
@@ -105,6 +106,7 @@ import org.junit.runners.Suite;
   ValueMapperTest.class,
   WordCountTest.class,
   WorkflowTest.class,
+  WranglerServiceTest.class,
   WranglerTest.class,
   XMLReaderTest.class
 })
