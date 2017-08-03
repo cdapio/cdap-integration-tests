@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Cask Data, Inc.
+ * Copyright © 2017 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,10 +18,11 @@ package co.cask.cdap.app.etl.realtime;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
+import co.cask.cdap.app.etl.batch.UploadFile;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.etl.api.batch.BatchAggregator;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.streaming.StreamingSource;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
@@ -30,53 +31,42 @@ import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.security.authentication.client.AccessToken;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
+import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.suite.category.CDH51Incompatible;
 import co.cask.cdap.test.suite.category.CDH52Incompatible;
 import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.CDH54Incompatible;
-import co.cask.cdap.test.suite.category.EMRIncompatible;
 import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
-import co.cask.cdap.test.suite.category.SDKIncompatible;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.junit.Ignore;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpRequest;
+import co.cask.common.http.HttpResponse;
+import com.google.common.collect.ImmutableMap;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
+import java.io.File;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Tests for DataStreams app.
  */
-@Ignore
-// Enable this test once CDAP-9337 is fixed
 public class DataStreamsTest extends ETLTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(DataStreamsTest.class);
 
   // DataStreams are based on Spark runtime, so marking incompatible for all Hadoop versions that don't support Spark
   @Category({
-    // we don't run kafka in SDK
-    SDKIncompatible.class,
-    // the kafka server is not reachable from outside of the cluster on EMR clusters
-    EMRIncompatible.class,
     // We don't support spark on these distros
     HDP20Incompatible.class,
     HDP21Incompatible.class,
@@ -92,93 +82,103 @@ public class DataStreamsTest extends ETLTestBase {
     // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
     MapR5Incompatible.class // MapR5x category is used for all MapR version
   })
+
   @Test
-  public void testKafkaAggregatorTable() throws Exception {
-    String brokers = getMetaClient().getCDAPConfig().get("kafka.seed.brokers").getValue();
-    String topic = UUID.randomUUID().toString();
+  public void testDataStreams() throws Exception {
 
-    Schema purchaseSchema = Schema.recordOf(
-      "purchase",
-      Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("num", Schema.of(Schema.Type.LONG)));
+    ApplicationManager applicationManager = deployApplication(UploadFile.class);
+    String fileSetName = UploadFile.FileSetService.class.getSimpleName();
+    ServiceManager serviceManager = applicationManager.getServiceManager(fileSetName);
+    serviceManager.start();
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    Map<String, String> sourceProperties = new HashMap<>();
-    sourceProperties.put("referenceName", topic);
-    sourceProperties.put("brokers", brokers);
-    sourceProperties.put("topic", topic);
-    sourceProperties.put("defaultInitialOffset", "-2");
-    sourceProperties.put("schema", purchaseSchema.toString());
-    sourceProperties.put("format", "csv");
+    URL url = new URL(serviceURL, "testFileSet/create");
+    //POST request to create a new file set with name testFileSet.
+    HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
-    Schema userStatsSchema = Schema.recordOf(
-      "purchase",
-      Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("itemsPurchased", Schema.of(Schema.Type.LONG)));
+    URL pathServiceUrl = new URL(serviceURL, "testFileSet?path");
+    AccessToken accessToken = getClientConfig().getAccessToken();
+    HttpResponse sourceResponse = getRestClient().execute(HttpMethod.GET, pathServiceUrl, accessToken);
+    Assert.assertEquals(HttpURLConnection.HTTP_OK, sourceResponse.getResponseCode());
+    String sourcePath = sourceResponse.getResponseBodyAsString();
 
-    String outputTableName = "streamingUserStats";
-    Map<String, String> sinkProperties = new HashMap<>();
-    sinkProperties.put("name", outputTableName);
-    sinkProperties.put("schema", userStatsSchema.toString());
-    sinkProperties.put("schema.row.field", "user");
+    final String tableName = "rappers";
 
-    Map<String, String> aggProperties = new HashMap<>();
-    aggProperties.put("aggregates", "itemsPurchased:sum(num)");
-    aggProperties.put("groupByFields", "user");
+    Schema fileSchema = Schema.recordOf("etlSchemaBody",
+                                        Schema.Field.of("id", Schema.of(Schema.Type.STRING)),
+                                        Schema.Field.of("fname", Schema.of(Schema.Type.STRING)),
+                                        Schema.Field.of("lname", Schema.of(Schema.Type.STRING)));
+    ETLStage source =
+      new ETLStage("File",
+                   new ETLPlugin("File", StreamingSource.PLUGIN_TYPE,
+                                 ImmutableMap.of("schema", fileSchema.toString(),
+                                                 "format", "csv",
+                                                 "referenceName", "File",
+                                                 "path", sourcePath), null));
+
+    Schema sinkSchema = Schema.recordOf("etlSchemaBody",
+                                        Schema.Field.of("id", Schema.of(Schema.Type.STRING)),
+                                        Schema.Field.of("fname", Schema.of(Schema.Type.STRING)),
+                                        Schema.Field.of("lname", Schema.of(Schema.Type.STRING)));
+    ETLStage sink =
+      new ETLStage("TableSink", new ETLPlugin("Table",
+                                              BatchSink.PLUGIN_TYPE,
+                                              ImmutableMap.of(
+                                                "schema", sinkSchema.toString(),
+                                                "schema.row.field", "id",
+                                                "name", tableName), null));
 
     DataStreamsConfig config = DataStreamsConfig.builder()
-      .addStage(new ETLStage("source", new ETLPlugin("Kafka", StreamingSource.PLUGIN_TYPE, sourceProperties, null)))
-      .addStage(new ETLStage("sink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE, sinkProperties, null)))
-      .addStage(new ETLStage("agg", new ETLPlugin("GroupByAggregate", BatchAggregator.PLUGIN_TYPE,
-                                                  aggProperties, null)))
-      .addConnection("source", "agg")
-      .addConnection("agg", "sink")
-      .setBatchInterval("60s")
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .setBatchInterval("10s")
       // stop gracefully to false so it shuts down on time
       .setStopGracefully(false)
       .build();
 
-    ApplicationId appId = TEST_NAMESPACE.app("kafkaStreaming");
-    AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
+    ApplicationId appId = TEST_NAMESPACE.app("DataStreams-Test");
+    AppRequest appRequest = getStreamingAppRequest(config);
     ApplicationManager appManager = deployApplication(appId, appRequest);
-
-    try (KafkaProducer<String, String> kafkaProducer = getKafkaProducer()) {
-      List<Future<RecordMetadata>> futures = new ArrayList<>();
-      futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,wallet,1")));
-      futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,shirt,2")));
-      futures.add(kafkaProducer.send(new ProducerRecord<String, String>(topic, "samuel,egg,4")));
-      for (Future<RecordMetadata> future : futures) {
-        future.get(1, TimeUnit.MINUTES);
-      }
-      LOG.info("Done sending events to kafka.");
-    }
-
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
     sparkManager.start();
     sparkManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    final DataSetManager<Table> tableManager = getTableDataset(outputTableName);
-    Tasks.waitFor(true, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        tableManager.flush();
-        Table table = tableManager.get();
-        byte[] val = table.get(Bytes.toBytes("samuel"), Bytes.toBytes("itemsPurchased"));
-        return val != null && Bytes.toLong(val) == 7L;
-      }
-    }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
+    url = new URL(serviceURL, "testFileSet?path=test1.csv");
+    //PUT request to upload the test1.csv file, sent in the request body
+    getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/test1.csv"))
+                              .build(), getClientConfig().getAccessToken());
+
+    url = new URL(serviceURL, "testFileSet?path=test2.csv");
+    //PUT request to upload the test2.csv file, sent in the request body
+    getRestClient().execute(HttpRequest.put(url).withBody(new File("src/test/resources/test2.csv"))
+                              .build(), getClientConfig().getAccessToken());
+
+    DataSetManager<Table> tableManager = getTableDataset(tableName);
+    Table table = tableManager.get();
+
+    verifyOutput(table, "1", "Kodak", "Black");
+    verifyOutput(table, "2", "Marshall", "Mathers");
 
     sparkManager.stop();
     sparkManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 
-  private KafkaProducer<String, String> getKafkaProducer() {
-    String hostname = getClientConfig().getConnectionConfig().getHostname();
-    Properties props = new Properties();
-    props.put("bootstrap.servers", hostname + ":9092");
-    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-    props.put("request.required.acks", "1");
-    return new KafkaProducer<>(props);
+  private void verifyOutput(final Table table, final String id, String firstName, String lastName)
+    throws InterruptedException, ExecutionException, TimeoutException {
+
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        Row row = table.get(Bytes.toBytes(id));
+        return row.getString("fname") != null;
+      }
+    }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
+
+    Row row = table.get(Bytes.toBytes(id));
+    Assert.assertEquals(firstName, row.getString("fname"));
+    Assert.assertEquals(lastName, row.getString("lname"));
   }
 }
