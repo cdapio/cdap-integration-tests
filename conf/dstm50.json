@@ -5,6 +5,9 @@
     },
     "hbase": {
       "version": "0.98.12.201606022139-1"
+    },
+    "hive": {
+      "version": "1.2.201706270939-1"
     }
   },
   "provider-fields": {
