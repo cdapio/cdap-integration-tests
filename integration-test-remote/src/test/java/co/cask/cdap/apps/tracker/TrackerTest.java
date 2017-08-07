@@ -17,7 +17,9 @@
 package co.cask.cdap.apps.tracker;
 
 import co.cask.cdap.api.dataset.lib.cube.TimeValue;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.audit.AuditMessage;
+import co.cask.cdap.test.ProgramManager;
 import co.cask.tracker.entity.AuditHistogramResult;
 import co.cask.tracker.entity.AuditLogResponse;
 import co.cask.tracker.entity.TopApplicationsResult;
@@ -29,6 +31,7 @@ import org.junit.Test;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Test various methods of preferred Tags.
@@ -108,6 +111,12 @@ public class TrackerTest extends TrackerTestBase {
 
     List<TopProgramsResult> programsFilter = getProgramFilter();
     Assert.assertEquals(0, programsFilter.size());
+
+    // stop the active applications
+    for (ProgramManager manager : getProgramManagers()) {
+      manager.stop();
+      manager.waitForRun(ProgramRunStatus.KILLED, 10, TimeUnit.SECONDS);
+    }
 
     /*** //TODO: TRACKER-270
      * Disabling tag tests

@@ -37,6 +37,7 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
+import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.common.http.HttpRequest;
@@ -89,6 +90,7 @@ public class TrackerTestBase extends AudiTestBase {
   private static final Type TIME_SINCE_MAP_TYPE = new TypeToken<Map<String, Long>>() { }.getRawType();
 
   private FlowManager trackerFlow;
+  private ServiceManager trackerService;
   private StreamManager trackerStream;
   private URL serviceURL;
   private RESTClient restClient = getRestClient();
@@ -102,12 +104,16 @@ public class TrackerTestBase extends AudiTestBase {
       new TrackerAppConfig(new AuditLogConfig(zookeeperQuorum, null, null, null, null));
     ApplicationManager applicationManager = getTestManager().deployApplication(
       TEST_NAMESPACE, TestTrackerApp.class, appConfig);
-    ServiceManager trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
+    trackerService = applicationManager.getServiceManager(TrackerService.SERVICE_NAME).start();
     trackerService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     trackerFlow = applicationManager.getFlowManager(StreamToAuditLogFlow.FLOW_NAME).start();
     trackerFlow.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     trackerStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("testStream"));
     serviceURL = trackerService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+  }
+
+  protected List<? extends ProgramManager> getProgramManagers() {
+    return ImmutableList.of(trackerFlow, trackerService);
   }
 
   protected void waitforProcessed(long count) throws TimeoutException, InterruptedException {
