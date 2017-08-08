@@ -25,6 +25,7 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
+import com.amazonaws.util.Throwables;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -64,14 +65,15 @@ public class ServiceWorkerTest extends AudiTestBase {
     Assert.assertEquals("\"" + DatasetWorker.WORKER_DATASET_TEST_VALUE + "\"",
                         Bytes.toString(response.getResponseBody()));
 
-    // try starting the service , while its running, should throw IllegalArgumentException
-    boolean alreadyRunning = false;
+    // try starting the service, while its running, should throw exception
     try {
       serviceManager.start();
-    } catch (Exception e) {
-      alreadyRunning = (e instanceof IllegalStateException);
+      Assert.fail();
+    } catch (Throwable expected) {
+      expected = Throwables.getRootCause(expected);
+      Assert.assertTrue(expected.getMessage().startsWith("409: "));
+      Assert.assertTrue(expected.getMessage().contains(ServiceApplication.SERVICE_NAME + " is already running"));
     }
-    Assert.assertTrue(alreadyRunning);
 
     serviceManager.stop();
     serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
