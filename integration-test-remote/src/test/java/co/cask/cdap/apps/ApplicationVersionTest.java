@@ -32,6 +32,7 @@ import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
+import com.amazonaws.util.Throwables;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Before;
@@ -91,8 +92,10 @@ public class ApplicationVersionTest extends AudiTestBase {
     try {
       serviceManagerV1.start();
       Assert.fail();
-    } catch (IllegalStateException expected) {
-      Assert.assertTrue(expected.getMessage().contains("simpleService is already running"));
+    } catch (Throwable expected) {
+      expected = Throwables.getRootCause(expected);
+      Assert.assertTrue(expected.getMessage().startsWith("409: "));
+      Assert.assertTrue(expected.getMessage().contains(ConfigTestApp.SERVICE_NAME + " is already running"));
     }
 
     // Start the service after stopping the original service and verify that updated response is returned
