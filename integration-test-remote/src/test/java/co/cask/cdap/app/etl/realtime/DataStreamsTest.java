@@ -116,7 +116,8 @@ public class DataStreamsTest extends ETLTestBase {
                                  ImmutableMap.of("schema", fileSchema.toString(),
                                                  "format", "csv",
                                                  "referenceName", "File",
-                                                 "path", sourcePath), null));
+                                                 "path", sourcePath,
+                                                 "ignoreThreshold", "600"), null));
 
     Schema sinkSchema = Schema.recordOf("etlSchemaBody",
                                         Schema.Field.of("id", Schema.of(Schema.Type.STRING)),
@@ -134,7 +135,7 @@ public class DataStreamsTest extends ETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setBatchInterval("10s")
+      .setBatchInterval("30s")
       // stop gracefully to false so it shuts down on time
       .setStopGracefully(false)
       .build();
