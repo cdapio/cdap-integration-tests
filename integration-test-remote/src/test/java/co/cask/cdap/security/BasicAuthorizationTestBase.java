@@ -16,6 +16,7 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.DatasetClient;
@@ -26,15 +27,19 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.EntityId;
+import co.cask.cdap.proto.id.InstanceId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
+import co.cask.cdap.proto.security.Role;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -202,5 +207,197 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
       // expected
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
+  }
+
+  /**
+   * Test delete namespace with two different clients, deletion should work for both clients
+   */
+  @Test
+  public void testDeleteNamespaceWithDifferentClients() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+    EntityId instanceId = new InstanceId("cdap");
+    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+
+    try {
+      authorizationClient.grant(instanceId, new Principal(ALICE, Principal.PrincipalType.USER),
+                                Collections.singleton(Action.ADMIN));
+      authorizationClient.grant(instanceId, new Principal(BOB, Principal.PrincipalType.USER),
+                                Collections.singleton(Action.ADMIN));
+
+      createAndDeleteNamespace(testNamespace, ALICE);
+      createAndDeleteNamespace(testNamespace, BOB);
+    } finally {
+      authorizationClient.revoke(instanceId, new Principal(ALICE, Principal.PrincipalType.USER),
+                                 Collections.singleton(Action.ADMIN));
+      authorizationClient.revoke(instanceId, new Principal(BOB, Principal.PrincipalType.USER),
+                                 Collections.singleton(Action.ADMIN));
+    }
+  }
+
+  @Test
+  public void testStreamReadWrite() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+
+    AuthorizationClient adminAuthClient = new AuthorizationClient(adminConfig, adminClient);
+    // todo: remove when we have the new authorization policy
+    adminAuthClient.grant(namespaceId, new Principal(EVE, Principal.PrincipalType.USER),
+                          Collections.singleton(Action.EXECUTE));
+
+    String streamName = "testStream";
+    // We need to create different streams to avoid the cache
+    int streamCount = 0;
+    StreamId streamId = namespaceId.stream(streamName + streamCount++);
+
+    StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
+    adminStreamClient.create(streamId);
+    adminStreamClient.sendEvent(streamId, "adminTest");
+
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
+    StreamClient eveStreamClient = new StreamClient(eveConfig, eveClient);
+
+    // read and write should fail since eve does not have corresponding privilege
+    verifyStreamPrivilege(eveStreamClient, streamId, Collections.<Action>emptySet());
+
+    // create a new stream to avoid the cache
+    streamId = namespaceId.stream(streamName + streamCount++);
+    adminStreamClient.create(streamId);
+    adminStreamClient.sendEvent(streamId, "adminTest");
+
+    // read should success but write should fail
+    adminAuthClient.grant(streamId, new Principal(EVE, Principal.PrincipalType.USER),
+                          Collections.singleton(Action.READ));
+    verifyStreamPrivilege(eveStreamClient, streamId, Collections.singleton(Action.READ));
+
+    // create a new stream to avoid the cache
+    streamId = namespaceId.stream(streamName + streamCount);
+    adminStreamClient.create(streamId);
+    adminStreamClient.sendEvent(streamId, "adminTest");
+
+    // write should success but read should fail
+    adminAuthClient.grant(streamId, new Principal(EVE, Principal.PrincipalType.USER),
+                          Collections.singleton(Action.WRITE));
+    verifyStreamPrivilege(eveStreamClient, streamId, Collections.singleton(Action.WRITE));
+  }
+
+  @Test
+  public void testRoleBasedStreamPrivilege() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+
+    String streamName = "testStream";
+    String roleName = "streamReadWrite";
+    // We need to create different streams to avoid the cache
+    int streamCount = 0;
+    StreamId streamId = namespaceId.stream(streamName + streamCount++);
+    Role role = new Role(roleName);
+    // alice and bob are in group nscreator, eve and carol are not
+    Principal groupPrincipal = new Principal("nscreator", Principal.PrincipalType.GROUP);
+
+    StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
+    adminStreamClient.create(streamId);
+    adminStreamClient.sendEvent(streamId, "adminTest");
+
+    AuthorizationClient adminAuthClient = new AuthorizationClient(adminConfig, adminClient);
+    adminAuthClient.createRole(role);
+    // todo: remove when we have the new authorization policy
+    adminAuthClient.grant(namespaceId, new Principal(roleName, Principal.PrincipalType.ROLE),
+                          Collections.singleton(Action.EXECUTE));
+    adminAuthClient.addRoleToPrincipal(role, groupPrincipal);
+
+    try {
+      // verify namespace list
+      ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+      RESTClient eveClient = new RESTClient(eveConfig);
+      eveClient.addListener(createRestClientListener());
+
+      NamespaceClient eveNamespaceClient = new NamespaceClient(eveConfig, eveClient);
+      Assert.assertTrue(eveNamespaceClient.list().isEmpty());
+
+      ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+      RESTClient bobClient = new RESTClient(bobConfig);
+      bobClient.addListener(createRestClientListener());
+
+      NamespaceClient bobNamespaceClient = new NamespaceClient(bobConfig, bobClient);
+      Assert.assertEquals(1, bobNamespaceClient.list().size());
+
+      StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
+
+      // read and write should fail since bob does not have corresponding privilege
+      verifyStreamPrivilege(bobStreamClient, streamId, Collections.<Action>emptySet());
+
+      // create a new stream to avoid the cache
+      streamId = namespaceId.stream(streamName + streamCount++);
+      adminStreamClient.create(streamId);
+      adminStreamClient.sendEvent(streamId, "adminTest");
+
+      // read should success but write should fail
+      adminAuthClient.grant(streamId, new Principal(roleName, Principal.PrincipalType.ROLE),
+                            Collections.singleton(Action.READ));
+      verifyStreamPrivilege(bobStreamClient, streamId, Collections.singleton(Action.READ));
+
+      // create a new stream to avoid the cache
+      streamId = namespaceId.stream(streamName + streamCount);
+      adminStreamClient.create(streamId);
+      adminStreamClient.sendEvent(streamId, "adminTest");
+
+      // write should success but read should fail
+      adminAuthClient.grant(streamId, new Principal(roleName, Principal.PrincipalType.ROLE),
+                            Collections.singleton(Action.WRITE));
+      verifyStreamPrivilege(bobStreamClient, streamId, Collections.singleton(Action.WRITE));
+    } finally {
+      adminAuthClient.removeRoleFromPrincipal(role, groupPrincipal);
+      adminAuthClient.dropRole(role);
+    }
+  }
+
+  private void verifyStreamPrivilege(StreamClient streamClient, StreamId streamId,
+                                     Set<Action> privileges) throws Exception {
+    try {
+      List<StreamEvent> events =
+        streamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+      Assert.assertTrue(!events.isEmpty());
+    } catch (Exception ex) {
+      if (privileges.contains(Action.READ)) {
+        Assert.fail("Stream read should be successful.");
+      }
+      // otherwise it is expected
+    }
+
+    try {
+      streamClient.sendEvent(streamId, "eveTest");
+    } catch (Exception ex) {
+      if (privileges.contains(Action.WRITE)) {
+        Assert.fail("Stream read should be successful.");
+      }
+      // otherwise it is expected
+    }
+  }
+
+  private void createAndDeleteNamespace(NamespaceMeta namespaceMeta, String user) throws Exception {
+    ClientConfig clientConfig = getClientConfig(fetchAccessToken(user, user + PASSWORD_SUFFIX));
+    RESTClient client = new RESTClient(clientConfig);
+    client.addListener(createRestClientListener());
+
+    // create namespace with client
+    createAndRegisterNamespace(namespaceMeta, clientConfig, client);
+
+    // verify namespace exists
+    NamespaceClient namespaceClient = new NamespaceClient(clientConfig, client);
+    Assert.assertTrue(namespaceClient.exists(namespaceMeta.getNamespaceId()));
+
+    // delete it and verify it is gone
+    namespaceClient.delete(namespaceMeta.getNamespaceId());
+    Assert.assertFalse(namespaceClient.exists(namespaceMeta.getNamespaceId()));
   }
 }
