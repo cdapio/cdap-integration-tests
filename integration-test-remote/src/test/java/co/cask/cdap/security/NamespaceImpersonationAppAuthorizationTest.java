@@ -22,7 +22,7 @@ import org.junit.Before;
 /**
  * App authorization tests for namespace level impersonation
  */
-public class NamespaceImpersonationAppAuthorizationTest extends AppAuthorizationTestBase {
+public class NamespaceImpersonationAppAuthorizationTest extends BasicAppAuthorizationTest {
 
   @Before
   public void setup() throws Exception {
