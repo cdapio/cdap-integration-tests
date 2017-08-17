@@ -16,16 +16,16 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.DatasetClient;
-import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.id.DatasetId;
+import co.cask.cdap.proto.id.DatasetTypeId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
@@ -35,7 +35,9 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Collections;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -46,39 +48,88 @@ import java.util.Set;
  */
 public class BasicAuthorizationTestBase extends AuthorizationTestBase {
 
+  private StreamId streamId = testNamespace.getNamespaceId().stream("testStream");
+  private DatasetId testDatasetinstance = testNamespace.getNamespaceId().dataset("testWriteDataset");
+  private DatasetTypeId testDatasetTypeId = testNamespace.getNamespaceId().datasetType("table");
+
+  @Override
+  public void tearDown() throws Exception {
+    // we have to grant ADMIN privileges to all entites such that these entities can be deleted
+    userGrant(ADMIN_USER, streamId, Action.ADMIN);
+    userGrant(ADMIN_USER, testDatasetinstance, Action.ADMIN);
+    userGrant(ADMIN_USER, testDatasetTypeId, Action.ADMIN);
+    super.tearDown();
+  }
+
   /**
    * Test the basic grant operations. User should be able to list once he has the privilege on the namespace.
    */
   @Test
-  public void testBasicGrantOperations() throws Exception {
+  public void testNamespacePrivileges() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
+    NamespaceId namespaceId;
 
-    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
-
-    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
-    RESTClient carolClient = new RESTClient(carolConfig);
-    carolClient.addListener(createRestClientListener());
-
-    ApplicationClient applicationClient = new ApplicationClient(carolConfig, carolClient);
+    // ADMIN_USER can't create namespace without having ADMIN privilege on the namespace
     try {
-      // initially list should fail since carol does not have privilege on the namespace
+      createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+    }
+
+    // ADMIN_USER can create namespace after granted privilege on the namespace
+    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+
+    ApplicationClient applicationClient = new ApplicationClient(aliceConfig, aliceClient);
+    try {
+      // list should fail initially since ALICE does not have privilege on the namespace
       applicationClient.list(namespaceId);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
-    // Now authorize the user to access the namespace
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(namespaceId, new Principal(CAROL, Principal.PrincipalType.USER),
-                              Collections.singleton(Action.READ));
-    applicationClient.list(namespaceId);
+
+    // TODO: stream creating with alice is weird
+    // Now authorize alice to access the namespace
+    /*userGrant(ALICE, testNamespace.getNamespaceId(), Action.READ);
+    applicationClient.list(namespaceId);*/
+
+    // Now authorize ALICE to create a stream
+    userGrant(ALICE, streamId, Action.ADMIN);
+    StreamClient aliceStreamClient = new StreamClient(aliceConfig, aliceClient);
+    aliceStreamClient.create(streamId);
+
+    // cdapitn shouldn't be able to list the stream since he doesn't have privilege on the stream
+    StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
+    List<StreamDetail> streams = adminStreamClient.list(namespaceId);
+    Assert.assertEquals(0, streams.size());
+
+    // ADMIN cannot delete the namespace because he doesn't have privileges on the stream
+    try{
+      getNamespaceClient().delete(namespaceId);
+      Assert.fail();
+    } catch (IOException ex) {
+      // expected
+      // TOdO: change the error message on cdap platform such that this contains NO_PRIVILEGE_MSG
+      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+    }
+
+    // ADMIN can delete namespace only after ADMIN gets permission to every entity in the namespace
+    userGrant(ADMIN_USER, streamId, Action.ADMIN);
+    Assert.assertEquals(1, adminStreamClient.list(namespaceId).size());
+    getNamespaceClient().delete(namespaceId);
   }
 
   /**
-   * Test after creation of an entity we get all privileges on it and make sure privileges are removed once the entity
-   * is deleted.
+   * Test after creation of an entity we get all privileges on it and make sure privileges are not removed once the
+   * entity is deleted.
    */
   @Test
   public void testCreatedDeletedPrivileges() throws Exception {
@@ -86,6 +137,7 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
+    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
     NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     // Verify that the user has all the privileges on the created namespace
@@ -98,13 +150,13 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
         count++;
       }
     }
-    Assert.assertEquals(4, count);
+    Assert.assertEquals(1, count);
 
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
     Assert.assertFalse(getNamespaceClient().exists(namespaceId));
 
-    // Check if the privileges are deleted
+    // Privileges should stay the same
     listPrivileges = authorizationClient.listPrivileges(adminPrincipal);
     count = 0;
     for (Privilege listPrivilege : listPrivileges) {
@@ -112,36 +164,81 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
         count++;
       }
     }
-    Assert.assertEquals(0, count);
+    Assert.assertEquals(1, count);
   }
 
   /**
    * Test basic privileges for dataset.
    */
   @Test
-  public void testWriteWithReadAuth() throws Exception {
+  public void testDatasetPrivileges() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
-    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
-
+    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
-    DatasetId testDatasetinstance = namespaceId.dataset("testWriteDataset");
+
+    // ADMIN_USER creates a dataset that has type "table"
+    userGrant(ADMIN_USER, testDatasetinstance, Action.ADMIN);
+    userGrant(ADMIN_USER, testDatasetTypeId, Action.ADMIN);
+
+    // Create, truncate, update should all succeed
     datasetAdminClient.create(testDatasetinstance, "table");
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(namespaceId, new Principal(EVE, Principal.PrincipalType.USER),
-                              Collections.singleton(Action.READ));
+    datasetAdminClient.truncate(testDatasetinstance);
+    datasetAdminClient.update(testDatasetinstance, new HashMap<String, String>());
+    Assert.assertEquals(true, datasetAdminClient.exists(testDatasetinstance));
+    Assert.assertEquals(1, datasetAdminClient.list(testDatasetinstance.getNamespaceId()).size());
+    Assert.assertNotNull(datasetAdminClient.get(testDatasetinstance));
+
     ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);
     eveClient.addListener(createRestClientListener());
     DatasetClient datasetClient = new DatasetClient(eveConfig, eveClient);
+
+    // EVE can't see the dataset yet
+    try {
+      datasetClient.exists(testDatasetinstance);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // Expected
+    }
+
+    // Now we grant EVE READ privilege on the dataset
+    userGrant(EVE, testDatasetinstance, Action.READ);
+
+    // Listing the dataset should succeed
+    Assert.assertEquals(true, datasetClient.exists(testDatasetinstance));
+    Assert.assertEquals(1, datasetClient.list(testDatasetinstance.getNamespaceId()).size());
+    Assert.assertNotNull(datasetClient.get(testDatasetinstance));
+
+    // truncating the dataset should fail
     try {
       datasetClient.truncate(testDatasetinstance);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       // Expected
     }
+
+    // updating the dataset should fail
+    try {
+      datasetClient.update(testDatasetinstance, new HashMap<String, String>());
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // Expected
+    }
+
+    // deleting the dataset should fail
+    try {
+      datasetClient.delete(testDatasetinstance);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // Expected
+    }
+
+    // ADMIN_USER should be able to delete the dataset
+    datasetAdminClient.delete(testDatasetinstance);
   }
 
   /**
@@ -151,56 +248,86 @@ public class BasicAuthorizationTestBase extends AuthorizationTestBase {
    * on the corresponding namespace, and that will make the user be able to list any entity in the namespace.
    */
   @Test
-  public void testListEntities() throws Exception {
+  public void testStreamPrivileges() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
-    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
-    // Now authorize user carol to access the namespace
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    authorizationClient.grant(namespaceId, new Principal(CAROL, Principal.PrincipalType.USER),
-                              Collections.singleton(Action.WRITE));
-
-    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
-    RESTClient carolClient = new RESTClient(carolConfig);
-    carolClient.addListener(createRestClientListener());
-    NamespaceClient carolNamespaceClient = new NamespaceClient(carolConfig, carolClient);
-
-    // Carol should only be able to see the given namespace
-    List<NamespaceMeta> namespaces = carolNamespaceClient.list();
-    Assert.assertEquals(1, namespaces.size());
-    Assert.assertEquals(namespaceId.getEntityName(), namespaces.iterator().next().getName());
-
-    // Create a stream with carol
-    StreamId streamId = namespaceId.stream("testStream");
-    StreamClient carolStreamClient = new StreamClient(carolConfig, carolClient);
-    carolStreamClient.create(streamId);
-
-    // cdapitn should be able to list the stream since he has privileges on the namespace
+    // Create a stream with Admin
     StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
-    List<StreamDetail> streams = adminStreamClient.list(namespaceId);
-    Assert.assertEquals(1, namespaces.size());
-    Assert.assertEquals(streamId.getEntityName(), streams.iterator().next().getName());
+    userGrant(ADMIN_USER, streamId, Action.ADMIN);
+    adminStreamClient.create(streamId);
+    adminStreamClient.truncate(streamId);
+    Assert.assertEquals(1, adminStreamClient.list(testDatasetinstance.getNamespaceId()).size());
+    Assert.assertNotNull(adminStreamClient.getConfig(streamId));
 
-    AuthorizationClient carolAuthorizationClient = new AuthorizationClient(carolConfig, carolClient);
-    // simply grant READ on eve will not let Eve list the stream since Eve does not have privilege on the namespace
-    carolAuthorizationClient.grant(streamId, new Principal(EVE, Principal.PrincipalType.USER),
-                                   Collections.singleton(Action.READ));
-
-    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
-    RESTClient eveClient = new RESTClient(eveConfig);
-    eveClient.addListener(createRestClientListener());
-
-    StreamClient eveStreamClient = new StreamClient(eveConfig, eveClient);
+    // admin doesn't have WRITE privilege on the stream, so the following actions will fail
     try {
-      // Eve should not be able to list the streams since Eve does not have privilege on the namespace
-      eveStreamClient.list(namespaceId);
+      adminStreamClient.sendEvent(streamId, "an event");
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // expected
+    }
+
+    try {
+      adminStreamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
       Assert.fail();
     } catch (Exception ex) {
-      // expected
-      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      // TODO: verify that this contains message from UnauthorizedException
+      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
+
+    // Now authorize user Bob to access the stream
+    userGrant(BOB, streamId, Action.READ);
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(bobConfig);
+    bobClient.addListener(createRestClientListener());
+    StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
+
+    // Bob can read from but not write to the stream
+    bobStreamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+    try {
+      bobStreamClient.sendEvent(streamId, "an event");
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // expected
+    }
+
+    // Now authorize user Alice to access the stream
+    userGrant(ALICE, streamId, Action.WRITE);
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(bobConfig);
+    bobClient.addListener(createRestClientListener());
+    StreamClient aliceStreamClient = new StreamClient(aliceConfig, aliceClient);
+
+    // Alice can write to but not read from the stream
+    aliceStreamClient.sendEvent(streamId, "an event");
+    try {
+      aliceStreamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+      Assert.fail();
+    } catch (Exception ex) {
+      // TODO: verify that this contains message from UnauthorizedException
+      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+    }
+
+    // neither Bob nor Alice can drop the stream
+    try {
+      bobStreamClient.delete(streamId);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // expected
+    }
+    try {
+      aliceStreamClient.delete(streamId);
+      Assert.fail();
+    } catch (UnauthorizedException ex) {
+      // expected
+    }
+
+    // only admin can drop the stream
+    adminStreamClient.delete(streamId);
   }
 }

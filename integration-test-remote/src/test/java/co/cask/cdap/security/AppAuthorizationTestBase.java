@@ -85,21 +85,20 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
+    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
     NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    Principal carolPrincipal = new Principal(CAROL, Principal.PrincipalType.USER);
-    authorizationClient.grant(namespaceId, carolPrincipal, Collections.singleton(Action.WRITE));
+    userGrant(BOB, namespaceId, Action.WRITE);
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(bobConfig);
+    bobClient.addListener(createRestClientListener());
 
-    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
-    RESTClient carolClient = new RESTClient(carolConfig);
-    carolClient.addListener(createRestClientListener());
+    getTestManager(bobConfig, bobClient).deployApplication(namespaceId, PurchaseApp.class);
 
-    getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
-
-    // List the privileges for carol and carol should have all privileges for the app he deployed.
-    AuthorizationClient carolAuthorizationClient = new AuthorizationClient(carolConfig, carolClient);
-    Set<Privilege> privileges = carolAuthorizationClient.listPrivileges(carolPrincipal);
+    // List the privileges for BOB and BOB should have all privileges for the app he deployed.
+    Principal bobPrincipal = new Principal(BOB, Principal.PrincipalType.USER);
+    AuthorizationClient bobAuthorizationClient = new AuthorizationClient(bobConfig, bobClient);
+    Set<Privilege> privileges = bobAuthorizationClient.listPrivileges(bobPrincipal);
     Assert.assertTrue(privileges.size() > 1);
 
     // Count the privileges for each entity
