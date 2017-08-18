@@ -25,6 +25,7 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
 public class ServiceApplication extends AbstractApplication {
   public static final String WORKER_DATASET_NAME = "ServiceWorkerDataset";
   public static final String SERVICE_NAME = "HttpService";
+  public static final String ARTIFACT_SERVICE_NAME = "ArtifactHttpService";
   public static final String WORKER_NAME = "DatasetWorker";
 
   @Override
@@ -33,6 +34,7 @@ public class ServiceApplication extends AbstractApplication {
     setDescription("Example Application with Services and Workers");
     createDataset(WORKER_DATASET_NAME, KeyValueTable.class);
     addService(new HttpService());
+    addService(new ArtifactHttpService());
     addWorker(new DatasetWorker());
   }
 }
