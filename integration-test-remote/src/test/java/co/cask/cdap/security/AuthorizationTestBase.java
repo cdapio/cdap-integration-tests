@@ -60,6 +60,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.ranger.plugin.audit.RangerDefaultAuditHandler;
+import org.apache.ranger.plugin.service.RangerBasePlugin;
 import org.apache.sentry.SentryUserException;
 import org.apache.sentry.provider.db.SentryNoSuchObjectException;
 import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClient;
@@ -100,11 +102,22 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String VERSION = "1.0.0";
   protected static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
 
+  // ranger constants
+  private static final String KEY_INSTANCE = "instance";
+  private static final String KEY_NAMESPACE = "namespace";
+  private static final String ACCESS_TYPE_READ = "read";
+  private static final String ACCESS_TYPE_WRITE = "write";
+  private static final String ACCESS_TYPE_EXECUTE = "execute";
+  private static final String ACCESS_TYPE_ADMIN = "admin";
+
+
   private static String COMPONENT = "cdap";
   private static String INSTANCE_NAME = "cdap";
   private static Role DUMMY_ROLE = new Role("dummy");
 
-  private SentryGenericServiceClient sentryClient;
+  private static SentryGenericServiceClient sentryClient;
+  private static RangerBasePlugin rangerPlugin;
+
   private AuthorizationClient authorizationClient;
 
   // General test namespace
@@ -123,6 +136,28 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     authorizationClient = new AuthorizationClient(adminConfig, adminClient);
   }
+
+  /*private void initAuthClients() throws Exception {
+    // initialize sentry
+    //sentryClient = SentryGenericServiceClientFactory.create(getSentryConfig());
+
+    // intitialize ranger
+    rangerPlugin = new RangerBasePlugin("cdap", "cdap");
+    rangerPlugin.init();
+    RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
+    rangerPlugin.setResultProcessor(auditHandler);
+  }
+
+  @Override
+  protected void checkSystemServices() throws TimeoutException, InterruptedException {
+    try {
+      initAuthClients();
+      userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.READ);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    super.checkSystemServices();
+  }*/
 
   @Override
   public void tearDown() throws Exception {
@@ -179,6 +214,38 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     authorizationClient.dropRole(DUMMY_ROLE);
   }
 
+  /* // grant method for ranger
+  protected void userGrant(String user, EntityId entityId, Action action)
+    throws Exception {
+    RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
+    GrantRevokeRequest request = new GrantRevokeRequest();
+    request.setDelegateAdmin(Boolean.FALSE);
+    request.setEnableAudit(Boolean.TRUE);
+    request.setReplaceExistingPermissions(Boolean.FALSE);
+    request.setGrantor(user);
+
+    String instance = null;
+    String namespace = null;
+    if (entityId.getEntityType() == EntityType.INSTANCE) {
+      instance = ((InstanceId) entityId).getInstance();
+      namespace = "*";
+    } else if (entityId.getEntityType() == EntityType.NAMESPACE) {
+      instance = "cdap";
+      namespace = ((NamespaceId) entityId).getNamespace();
+    } else {
+      // shouldn't happen
+    }
+
+    Map<String, String> mapResource = new HashMap<>();
+    mapResource.put(KEY_INSTANCE, instance);
+    mapResource.put(KEY_NAMESPACE, namespace);
+    request.setResource(mapResource);
+    request.getUsers().add(user);
+    request.getAccessTypes().add(mapToRangerAccessType(action));
+    rangerPlugin.grantAccess(request, auditHandler);
+  }
+  */
+
   /**
    * Revokes all privileges from user. Deletes the user role through sentry.
    *
@@ -218,6 +285,21 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
       .setHBaseNamespace(hbaseNamespace)
       .setHiveDatabase(hiveDatabase)
       .build();
+  }
+
+  private String mapToRangerAccessType(Action action) {
+    switch (action) {
+      case READ:
+        return ACCESS_TYPE_READ;
+      case WRITE:
+        return ACCESS_TYPE_WRITE;
+      case EXECUTE:
+        return ACCESS_TYPE_EXECUTE;
+      case ADMIN:
+        return ACCESS_TYPE_ADMIN;
+      default:
+        return null;
+    }
   }
 
   private Configuration getSentryConfig() throws IOException, LoginException, URISyntaxException {
