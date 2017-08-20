@@ -58,7 +58,7 @@ import javax.annotation.Nullable;
 /**
  * Basic authorization test base for apps
  */
-public class AppAuthorizationTestBase extends AuthorizationTestBase {
+public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
   // namespace for app1 for cross namespace test. For tests without cross namespace, use testNamespace in
   // AuthorizationTestBase instead.
