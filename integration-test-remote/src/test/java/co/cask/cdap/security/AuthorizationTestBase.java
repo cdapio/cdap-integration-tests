@@ -95,9 +95,9 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String VERSION = "1.0.0";
   protected static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
 
-  private static String COMPONENT = "cdap";
-  private static String INSTANCE_NAME = "cdap";
-  private static Role DUMMY_ROLE = new Role("dummy");
+  private static final String COMPONENT = "cdap";
+  private static final String INSTANCE_NAME = "cdap";
+  private static final Role DUMMY_ROLE = new Role("dummy");
 
   private SentryGenericServiceClient sentryClient;
   private AuthorizationClient authorizationClient;
@@ -223,11 +223,13 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   private static LoginContext kinit() throws LoginException {
     LoginContext lc = new LoginContext(BasicAuthorizationTest.class.getSimpleName(), new CallbackHandler() {
       public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-        for(Callback c : callbacks){
-          if(c instanceof NameCallback)
+        for (Callback c : callbacks) {
+          if (c instanceof NameCallback) {
             ((NameCallback) c).setName(ADMIN_USER);
-          if(c instanceof PasswordCallback)
+          }
+          if (c instanceof PasswordCallback) {
             ((PasswordCallback) c).setPassword(ADMIN_USER.toCharArray());
+          }
         }
       }
     });

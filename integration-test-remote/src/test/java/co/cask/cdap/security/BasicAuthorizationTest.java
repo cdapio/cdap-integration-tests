@@ -110,7 +110,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     Assert.assertEquals(0, streams.size());
 
     // ADMIN cannot delete the namespace because he doesn't have privileges on the stream
-    try{
+    try {
       getNamespaceClient().delete(namespaceId);
       Assert.fail();
     } catch (IOException ex) {
