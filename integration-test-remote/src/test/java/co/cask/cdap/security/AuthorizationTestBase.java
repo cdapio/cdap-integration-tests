@@ -69,8 +69,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.annotation.Nullable;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -99,6 +102,8 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   private static final String INSTANCE_NAME = "cdap";
   private static final Role DUMMY_ROLE = new Role("dummy");
 
+  // TODO: Remove this when we migrate to wildcard privilege
+  protected Set<EntityId> cleanUpEntities;
   private SentryGenericServiceClient sentryClient;
   private AuthorizationClient authorizationClient;
 
@@ -106,22 +111,37 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
                                                            null, null, null, null);
 
+  @Override
+  public void setUp() throws Exception {
+    sentryClient = SentryGenericServiceClientFactory.create(getSentryConfig());
+    // TODO: remove this once caching in sentry is fixed
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.ADMIN);
+    invalidateCache();
+    super.setUp();
+    userRevoke(ADMIN_USER);
+    cleanUpEntities = new HashSet<>();
+  }
+
   @Before
   public void setup() throws Exception {
     ConfigEntry configEntry = this.getMetaClient().getCDAPConfig().get("security.authorization.enabled");
     Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
                                "security.authorization.enabled");
     Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "Authorization not enabled.");
-    sentryClient = SentryGenericServiceClientFactory.create(getSentryConfig());
-    // TODO: remove this once caching in sentry is fixed
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
-    RESTClient adminClient = new RESTClient(adminConfig);
-    authorizationClient = new AuthorizationClient(adminConfig, adminClient);
   }
 
   @Override
   public void tearDown() throws Exception {
+    // we have to grant ADMIN privileges to all clean up entites such that these entities can be deleted
+    for (EntityId entityId : cleanUpEntities) {
+      userGrant(ADMIN_USER, entityId, Action.ADMIN);
+    }
     userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.ADMIN);
+    invalidateCache();
     // teardown in parent deletes all entities
     super.tearDown();
     // reset the test by revoking privileges from all users.
@@ -137,6 +157,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
                                                    RESTClient client) throws Exception {
     try {
       new NamespaceClient(config, client).create(namespaceMeta);
+      cleanUpEntities.add(namespaceMeta.getNamespaceId());
     } finally {
       registerForDeletion(namespaceMeta.getNamespaceId());
     }
@@ -146,8 +167,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   /**
    * Grants action privilege to user on entityId. Creates a role for the user. Grant action privilege
    * on that role, and add the role to the group the user belongs to. All done through sentry.
-   *
-   * @param user The user we want to grant privilege to.
+   *  @param user The user we want to grant privilege to.
    * @param entityId The entity we want to grant privilege on.
    * @param action The privilege we want to grant.
    */
@@ -162,6 +182,9 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     TSentryPrivilege privilege = new TSentryPrivilege(COMPONENT, INSTANCE_NAME, authorizables, action.name());
     privilege.setGrantOption(TSentryGrantOption.TRUE);
     sentryClient.grantPrivilege(ADMIN_USER, user, COMPONENT, privilege);
+  }
+
+  protected void invalidateCache() throws Exception {
     // TODO: Hack to invalidate cache in sentry authorizer. Remove once cache problem is solved.
     authorizationClient.dropRole(DUMMY_ROLE);
   }
@@ -178,8 +201,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
       // skip a role that hasn't been added to the user
     } finally {
       sentryClient.dropRoleIfExists(ADMIN_USER, user, COMPONENT);
-      // TODO: Hack to invalidate cache in sentry authorizer. Remove once cache problem is solved.
-      authorizationClient.dropRole(DUMMY_ROLE);
+      invalidateCache();
     }
   }
 
@@ -253,7 +275,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     return authorizables;
   }
 
-  void toAuthorizables(EntityId entityId, List<? super Authorizable> authorizables) {
+  private void toAuthorizables(EntityId entityId, List<? super Authorizable> authorizables) {
     EntityType entityType = entityId.getEntityType();
     switch (entityType) {
       case INSTANCE:
@@ -310,6 +332,17 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
         break;
       default:
         throw new IllegalArgumentException(String.format("The entity %s is of unknown type %s", entityId, entityType));
+    }
+  }
+
+  // TODO: Remove this when we migrate to wildcard privilege
+  protected void setUpPrivilegeAndRegisterForDeletion(String user,
+                                                      Map<EntityId, Set<Action>> neededPrivileges) throws Exception {
+    for (Map.Entry<EntityId, Set<Action>> privilege : neededPrivileges.entrySet()) {
+      for (Action action : privilege.getValue()) {
+        userGrant(user, privilege.getKey(), action);
+        cleanUpEntities.add(privilege.getKey());
+      }
     }
   }
 }

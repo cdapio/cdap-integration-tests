@@ -26,7 +26,6 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.id.DatasetId;
-import co.cask.cdap.proto.id.DatasetTypeId;
 import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.StreamId;
@@ -51,58 +50,64 @@ import java.util.Set;
  */
 public class BasicAuthorizationTest extends AuthorizationTestBase {
 
-  private StreamId streamId = testNamespace.getNamespaceId().stream("testStream");
-  private DatasetId testDatasetinstance = testNamespace.getNamespaceId().dataset("testWriteDataset");
-  private DatasetTypeId testDatasetTypeId = testNamespace.getNamespaceId().datasetType("table");
-
-  @Override
-  public void tearDown() throws Exception {
-    // we have to grant ADMIN privileges to all entites such that these entities can be deleted
-    userGrant(ADMIN_USER, streamId, Action.ADMIN);
-    userGrant(ADMIN_USER, testDatasetinstance, Action.ADMIN);
-    userGrant(ADMIN_USER, testDatasetTypeId, Action.ADMIN);
-    super.tearDown();
-  }
-
   /**
    * Test the basic grant operations. User should be able to list once he has the privilege on the namespace.
    */
   @Test
   public void testNamespacePrivileges() throws Exception {
+    // set up all client
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
-    NamespaceId namespaceId;
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(bobConfig);
+    bobClient.addListener(createRestClientListener());
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
 
-    // ADMIN_USER can't create namespace without having ADMIN privilege on the namespace
+    NamespaceId namespaceId = testNamespace.getNamespaceId();
+    StreamId streamId = namespaceId.stream("testNamespacePrivileges");
+
+    // pre-grant all required privileges
+    // admin user only has privilges to the namespace
+    userGrant(ADMIN_USER, namespaceId, Action.ADMIN);
+    String principal = testNamespace.getConfig().getPrincipal();
+    if (principal != null) {
+      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+    }
+    // alice has access to all entities
+    userGrant(ALICE, namespaceId, Action.ADMIN);
+    userGrant(ALICE, streamId, Action.ADMIN);
+    // eve only has access to the stream
+    userGrant(EVE, streamId, Action.ADMIN);
+
+    // bob can't create namespace without having ADMIN privilege on the namespace
     try {
-      createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+      createAndRegisterNamespace(testNamespace, bobConfig, bobClient);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
 
-    // ADMIN_USER can create namespace after granted privilege on the namespace
-    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    // ADMIN_USER can create namespace with ADMIN privilege on the namespace
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
-    RESTClient aliceClient = new RESTClient(aliceConfig);
-    aliceClient.addListener(createRestClientListener());
-
-    ApplicationClient applicationClient = new ApplicationClient(aliceConfig, aliceClient);
+    ApplicationClient applicationClient = new ApplicationClient(bobConfig, bobClient);
     try {
-      // list should fail initially since ALICE does not have privilege on the namespace
+      // list should fail initially since BOB does not have privilege on the namespace
       applicationClient.list(namespaceId);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
 
-    // Now authorize ALICE to create a stream
-    userGrant(ALICE, streamId, Action.ADMIN);
     StreamClient aliceStreamClient = new StreamClient(aliceConfig, aliceClient);
     aliceStreamClient.create(streamId);
+    cleanUpEntities.add(streamId);
 
     // cdapitn shouldn't be able to list the stream since he doesn't have privilege on the stream
     StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
@@ -122,15 +127,14 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     // Alice will not able to delete the namespace since she does not have admin on the namespace,
     // even though she has admin on all the entities in the namespace
     try {
-      new NamespaceClient(aliceConfig, aliceClient).delete(namespaceId);
+      new NamespaceClient(eveConfig, eveClient).delete(namespaceId);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       // expected
     }
-    // ADMIN can delete namespace only after ADMIN gets permission to every entity in the namespace
-    userGrant(ADMIN_USER, streamId, Action.ADMIN);
-    Assert.assertEquals(1, adminStreamClient.list(namespaceId).size());
-    getNamespaceClient().delete(namespaceId);
+
+    // Alice will be able to delete the namespace
+    new NamespaceClient(aliceConfig, aliceClient).delete(namespaceId);
   }
 
   /**
@@ -142,24 +146,31 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
+    NamespaceId namespaceId = testNamespace.getNamespaceId();
+    Set<Privilege> expected = new HashSet<>();
 
     userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
-    Set<Privilege> expected = new HashSet<>();
     expected.add(new Privilege(namespaceId, Action.ADMIN));
+    String principal = testNamespace.getConfig().getPrincipal();
+    if (principal != null) {
+      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+      expected.add(new Privilege(new KerberosPrincipalId(principal), Action.ADMIN));
+    }
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
-    // Verify that the user has all the privileges on the created namespace
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
     Principal adminPrincipal = new Principal(ADMIN_USER, Principal.PrincipalType.USER);
     Assert.assertEquals(expected, authorizationClient.listPrivileges(adminPrincipal));
 
     // add some more privileges
     StreamId streamId = namespaceId.stream("testListPrivilegeStream");
+    // invalidate the cache since we have created the namespace, otherwise the cache is there for 5 mins.
     userGrant(ADMIN_USER, streamId, Action.WRITE);
+    invalidateCache();
     expected.add(new Privilege(streamId, Action.WRITE));
 
     DatasetId datasetId = namespaceId.dataset("testListPrivilegeDataset");
-    userGrant(ADMIN_USER, streamId, Action.READ);
+    userGrant(ADMIN_USER, datasetId, Action.READ);
     expected.add(new Privilege(datasetId, Action.READ));
 
     KerberosPrincipalId kerberosPrincipalId = new KerberosPrincipalId("testListPrivilegePrincipal");
@@ -167,7 +178,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     expected.add(new Privilege(kerberosPrincipalId, Action.ADMIN));
 
     Assert.assertEquals(expected, authorizationClient.listPrivileges(adminPrincipal));
-
 
     // Now delete the namespace and make sure that it is deleted
     getNamespaceClient().delete(namespaceId);
@@ -186,15 +196,25 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
+    DatasetId testDatasetinstance = testNamespace.getNamespaceId().dataset("testDatasetPrivileges");
+
+    // pre-grant all required privileges
+    // admin user can create ns and dataset
     userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    userGrant(ADMIN_USER, testDatasetinstance, Action.ADMIN);
+    String principal = testNamespace.getConfig().getPrincipal();
+    if (principal != null) {
+      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+    }
+    // eve can read from the dataset
+    userGrant(EVE, testDatasetinstance, Action.READ);
+
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
 
-    // ADMIN_USER creates a dataset that has type "table"
-    userGrant(ADMIN_USER, testDatasetinstance, Action.ADMIN);
-
     // Create, truncate, update should all succeed
     datasetAdminClient.create(testDatasetinstance, "table");
+    cleanUpEntities.add(testDatasetinstance);
     Assert.assertTrue(datasetAdminClient.exists(testDatasetinstance));
     Assert.assertEquals(1, datasetAdminClient.list(testDatasetinstance.getNamespaceId()).size());
     Assert.assertNotNull(datasetAdminClient.get(testDatasetinstance));
@@ -202,21 +222,22 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     datasetAdminClient.truncate(testDatasetinstance);
     datasetAdminClient.update(testDatasetinstance, new HashMap<String, String>());
 
-    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
-    RESTClient eveClient = new RESTClient(eveConfig);
-    eveClient.addListener(createRestClientListener());
-    DatasetClient datasetClient = new DatasetClient(eveConfig, eveClient);
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClinet = new RESTClient(aliceConfig);
+    aliceClinet.addListener(createRestClientListener());
 
-    // EVE can't see the dataset yet
+    // alice can't see the dataset yet
     try {
-      datasetClient.exists(testDatasetinstance);
+      new DatasetClient(aliceConfig, aliceClinet).exists(testDatasetinstance);
       Assert.fail();
     } catch (UnauthorizedException ex) {
       // Expected
     }
 
-    // Now we grant EVE READ privilege on the dataset
-    userGrant(EVE, testDatasetinstance, Action.READ);
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
+    DatasetClient datasetClient = new DatasetClient(eveConfig, eveClient);
 
     // Listing the dataset should succeed
     Assert.assertEquals(true, datasetClient.exists(testDatasetinstance));
@@ -252,27 +273,38 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   }
 
   /**
-   * Test list entities on an namespace.
-   *
-   * This test will only work with list namespaces currently, since to list other entities, we need privileges
-   * on the corresponding namespace, and that will make the user be able to list any entity in the namespace.
+   * Test stream privileges.
    */
   @Test
   public void testStreamPrivileges() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
+    StreamId streamId = testNamespace.getNamespaceId().stream("testStreamPrivileges");
 
+    // pre-grant all required privileges
+    // admin can create all entities
     userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    userGrant(ADMIN_USER, streamId, Action.ADMIN);
+    String principal = testNamespace.getConfig().getPrincipal();
+    if (principal != null) {
+      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+    }
+    // Alice can write to the stream
+    userGrant(ALICE, streamId, Action.WRITE);
+    // Bob can read the stream
+    userGrant(BOB, streamId, Action.READ);
+
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     // Create a stream with Admin
     StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
-    userGrant(ADMIN_USER, streamId, Action.ADMIN);
     adminStreamClient.create(streamId);
-    adminStreamClient.truncate(streamId);
-    Assert.assertEquals(1, adminStreamClient.list(testDatasetinstance.getNamespaceId()).size());
+    cleanUpEntities.add(streamId);
+    Assert.assertEquals(1, adminStreamClient.list(testNamespace.getNamespaceId()).size());
     Assert.assertNotNull(adminStreamClient.getConfig(streamId));
+
+    adminStreamClient.truncate(streamId);
 
     // admin doesn't have WRITE privilege on the stream, so the following actions will fail
     try {
@@ -290,8 +322,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
 
-    // Now authorize user Bob to access the stream
-    userGrant(BOB, streamId, Action.READ);
     ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
@@ -306,8 +336,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       // expected
     }
 
-    // Now authorize user Alice to access the stream
-    userGrant(ALICE, streamId, Action.WRITE);
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
