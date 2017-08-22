@@ -32,7 +32,6 @@ import com.google.gson.GsonBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
-import javax.jdo.annotations.Column;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -79,6 +78,17 @@ public abstract class AbstractTableHttpHandler extends AbstractHttpServiceHandle
     Table table = getContext().getDataset(namespace, dataset);
     Put put = deser(request, Put.class);
     table.put(put);
+    responder.sendJson(200);
+  }
+
+  @Path("namespaces/{namespace}/datasets/{dataset}/incrementAndGet")
+  @POST
+  public void incrementAndGetOnDataset(HttpServiceRequest request, HttpServiceResponder responder,
+                                       @PathParam("namespace") String namespace,
+                                       @PathParam("dataset") String dataset) throws Exception {
+    Table table = getContext().getDataset(namespace, dataset);
+    Increment increment = deser(request, Increment.class);
+    table.incrementAndGet(increment);
     responder.sendJson(200);
   }
 

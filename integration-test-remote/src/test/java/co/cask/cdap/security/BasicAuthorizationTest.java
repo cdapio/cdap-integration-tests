@@ -24,6 +24,7 @@ import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.KerberosPrincipalId;
@@ -38,6 +39,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -367,5 +369,157 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // only admin can drop the stream
     adminStreamClient.delete(streamId);
+  }
+
+  /**
+   * Test delete namespace with two different clients, deletion should work for both clients
+   */
+  @Test
+  public void testDeleteNamespaceWithDifferentClients() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    String namespacePrincipal = testNamespace.getConfig().getPrincipal();
+    userGrant(ALICE, testNamespace.getNamespaceId(), Action.ADMIN);
+    userGrant(EVE, testNamespace.getNamespaceId(), Action.ADMIN);
+    if (namespacePrincipal != null) {
+      userGrant(ALICE, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
+      userGrant(EVE, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
+    }
+
+    createAndDeleteNamespace(testNamespace, ALICE);
+    createAndDeleteNamespace(testNamespace, EVE);
+  }
+
+  /**
+   * Test role based privileges, note that this test can only be run with sentry extension
+   */
+  @Test
+  public void testRoleBasedStreamPrivileges() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+    NamespaceId namespaceId = testNamespace.getNamespaceId();
+
+    String streamName = "testStream";
+    String roleName = "streamReadWrite";
+    // alice and bob are in group nscreator, eve and carol are not
+    String groupName = "nscreator";
+    // We need to create different streams to avoid the cache
+    List<StreamId> streamLists = new ArrayList<>();
+    streamLists.add(namespaceId.stream(streamName + 1));
+    streamLists.add(namespaceId.stream(streamName + 2));
+    streamLists.add(namespaceId.stream(streamName + 3));
+
+    // pre-grant all the required privileges
+    // admin can create the streams and write event to streams
+    userGrant(ADMIN_USER, namespaceId, Action.ADMIN);
+    for (StreamId streamId : streamLists) {
+      userGrant(ADMIN_USER, streamId, Action.ADMIN);
+      userGrant(ADMIN_USER, streamId, Action.WRITE);
+    }
+    String namespacePrincipal = testNamespace.getConfig().getPrincipal();
+    if (namespacePrincipal != null) {
+      userGrant(ADMIN_USER, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
+    }
+    // streamId1 is only used to test visibility so only grant EXECUTE
+    roleGrant(roleName, streamLists.get(0), Action.EXECUTE, groupName);
+    // streamId2 is only allowed to read
+    roleGrant(roleName, streamLists.get(1), Action.READ, groupName);
+    // streamId3 is only allowed to write
+    roleGrant(roleName, streamLists.get(2), Action.WRITE, groupName);
+
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+
+    StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
+    adminStreamClient.create(streamLists.get(0));
+    adminStreamClient.sendEvent(streamLists.get(0), "adminTest");
+
+    try {
+      // verify namespace list
+      ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+      RESTClient eveClient = new RESTClient(eveConfig);
+      eveClient.addListener(createRestClientListener());
+
+      NamespaceClient eveNamespaceClient = new NamespaceClient(eveConfig, eveClient);
+      Assert.assertTrue(eveNamespaceClient.list().isEmpty());
+
+      ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+      RESTClient bobClient = new RESTClient(bobConfig);
+      bobClient.addListener(createRestClientListener());
+
+      NamespaceClient bobNamespaceClient = new NamespaceClient(bobConfig, bobClient);
+      Assert.assertEquals(1, bobNamespaceClient.list().size());
+
+      StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
+
+      // read and write should fail since bob does not have corresponding privilege
+      verifyStreamPrivilege(bobStreamClient, streamLists.get(0), Collections.<Action>emptySet());
+
+      // create a new stream to avoid the cache
+      adminStreamClient.create(streamLists.get(1));
+      adminStreamClient.sendEvent(streamLists.get(1), "adminTest");
+
+      // read should success but write should fail
+      verifyStreamPrivilege(bobStreamClient, streamLists.get(1), Collections.singleton(Action.READ));
+
+      // create a new stream to avoid the cache
+      adminStreamClient.create(streamLists.get(2));
+      adminStreamClient.sendEvent(streamLists.get(2), "adminTest");
+
+      // write should success but read should fail
+      verifyStreamPrivilege(bobStreamClient, streamLists.get(2), Collections.singleton(Action.WRITE));
+    } finally {
+      roleRevoke(roleName, groupName);
+    }
+  }
+
+  private void verifyStreamPrivilege(StreamClient streamClient, StreamId streamId,
+                                     Set<Action> privileges) throws Exception {
+    boolean hasRead = privileges.contains(Action.READ);
+    boolean hasWrite = privileges.contains(Action.WRITE);
+    try {
+      List<StreamEvent> events =
+        streamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+      if (!hasRead) {
+        Assert.fail("Stream read should fail since user does not have read privilege");
+      }
+      Assert.assertTrue(!events.isEmpty());
+    } catch (Exception ex) {
+      if (hasRead) {
+        Assert.fail("Stream read should be successful since user has read privilege");
+      }
+      // otherwise it is expected
+    }
+
+    try {
+      streamClient.sendEvent(streamId, "eveTest");
+      if (!hasWrite) {
+        Assert.fail("Stream write should fail since user does not have write privilege");
+      }
+    } catch (Exception ex) {
+      if (hasWrite) {
+        Assert.fail("Stream write should be successful since user has write privilege");
+      }
+      // otherwise it is expected
+    }
+  }
+
+  private void createAndDeleteNamespace(NamespaceMeta namespaceMeta, String user) throws Exception {
+    ClientConfig clientConfig = getClientConfig(fetchAccessToken(user, user + PASSWORD_SUFFIX));
+    RESTClient client = new RESTClient(clientConfig);
+    client.addListener(createRestClientListener());
+
+    // create namespace with client
+    createAndRegisterNamespace(namespaceMeta, clientConfig, client);
+
+    // verify namespace exists
+    NamespaceClient namespaceClient = new NamespaceClient(clientConfig, client);
+    Assert.assertTrue(namespaceClient.exists(namespaceMeta.getNamespaceId()));
+
+    // delete it and verify it is gone
+    namespaceClient.delete(namespaceMeta.getNamespaceId());
+    Assert.assertFalse(namespaceClient.exists(namespaceMeta.getNamespaceId()));
   }
 }
