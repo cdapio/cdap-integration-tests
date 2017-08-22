@@ -19,6 +19,7 @@ package co.cask.cdap.security;
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.table.Get;
+import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
@@ -66,6 +67,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
   // namespace for app2 for cross namespace test
   protected NamespaceMeta namespaceMeta2 = getNamespaceMeta(new NamespaceId("authorization2"), null, null,
                                                             null, null, null, null);
+
+  // app owner for general apps
+  protected String appOwner = null;
+
   // owner of app1 deployed in namespace1
   // Ideally this should be null but since any app without impersonation will be run as user cdap,
   // the privileges on other user will be useless in the test, app impersonation is required.
@@ -86,6 +91,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
     NamespaceId namespaceId = testNamespace.getNamespaceId();
     ApplicationId appId = namespaceId.app(PurchaseApp.APP_NAME);
+    ArtifactId artifactId = namespaceId.artifact(PurchaseApp.class.getSimpleName(), "1.0.0");
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
@@ -114,14 +120,18 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(appId, EnumSet.of(Action.ADMIN))
       // TODO: remove the artifact version when we have the pr merged
-      .put(namespaceId.artifact(PurchaseApp.class.getSimpleName(), "1.0.0-SNAPSHOT"), EnumSet.of(Action.ADMIN));
+      .put(artifactId, EnumSet.of(Action.ADMIN));
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
+    String appEffectiveOwner = appOwner == null ? namespacePrincipal : appOwner;
     if (namespacePrincipal != null) {
+      // this is needed to create an impersonated namespace
       adminPrivileges.put(new KerberosPrincipalId(namespacePrincipal), EnumSet.of(Action.ADMIN));
-      appDeployPrivileges.put(new KerberosPrincipalId(namespacePrincipal),
-                              EnumSet.of(Action.ADMIN));
+    }
+    if (appEffectiveOwner != null) {
+      // this is needed to create an impersonated app
+      appDeployPrivileges.put(new KerberosPrincipalId(appEffectiveOwner), EnumSet.of(Action.ADMIN));
       // if impersonation is involved, impersonated user will be responsible to create the dataset
-      setUpPrivilegeAndRegisterForDeletion(namespacePrincipal, dsStreamCreationPrivileges);
+      setUpPrivilegeAndRegisterForDeletion(appEffectiveOwner, dsStreamCreationPrivileges);
     } else {
       // else the requesting user will need the privileges
       appDeployPrivileges.putAll(dsStreamCreationPrivileges);
@@ -135,8 +145,11 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     RESTClient carolClient = new RESTClient(carolConfig);
     carolClient.addListener(createRestClientListener());
 
+    TestManager testManager = getTestManager(carolConfig, carolClient);
+    testManager.addAppArtifact(artifactId, PurchaseApp.class);
+    ArtifactSummary appArtifactSummary = new ArtifactSummary(PurchaseApp.class.getSimpleName(), "1.0.0");
     ApplicationManager appManager =
-      getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
+      testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
 
     // carol should not able to start the program since he does not have execute privilege on program
     try {
@@ -180,8 +193,12 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
   /**
    * Test dataset read/write in a program. Two apps are deployed in different namespaces owned by user1 and user2
-   * user1 will have write on its dataset, and user2 will have read on user1's dataset,
-   * test user1 is able to write to the dataset and user2 is able to read when program is running.
+   * user1 will have write on its dataset, and user2 will have read on user1's dataset(dataset1),
+   * In the first program run, test user1 is able to write to the dataset and user2 is able to read when program is
+   * running. So for user2 only Read operation should succeed. In the second program run, user2 is able to read and
+   * write on dataset1, so Read, Write, IncrementAndGet should work. In last run, user2 is only able to write, so
+   * Read and IncrementAndGet will not work.
+   *
    *
    * Note that this test can ONLY be used when impersonation is enabled, since currently we do not have
    * endpoint enforcement
@@ -200,15 +217,17 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     ApplicationId appId2 = testNs2.app(TableDatasetApp.class.getSimpleName());
 
     // todo: remove this once we support endpoint enforcement
-    String user1 = appOwner1 == null ? namespaceMeta1.getConfig().getPrincipal() : appOwner1;
-    String user2 = appOwner2 == null ? namespaceMeta2.getConfig().getPrincipal() : appOwner2;
+    String nsPrincipal1 = namespaceMeta1.getConfig().getPrincipal();
+    String nsPrincipal2 = namespaceMeta2.getConfig().getPrincipal();
+    String user1 = appOwner1 == null ? nsPrincipal1 : appOwner1;
+    String user2 = appOwner2 == null ? nsPrincipal2 : appOwner2;
     if (user1 == null || user2 == null) {
       Assert.fail("This test can only be used when impersonation is enabled");
     }
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
-    Map<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+    ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       // privilege to create namespace
       .put(testNs1, EnumSet.of(Action.ADMIN))
       .put(testNs2, EnumSet.of(Action.ADMIN))
@@ -225,9 +244,15 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       .put(appId2, EnumSet.of(Action.ADMIN))
       // TODO: remove the artifact version when we have the pr merged
       .put(testNs2.artifact(TableDatasetApp.class.getSimpleName(), "1.0.0"), EnumSet.of(Action.ADMIN))
-      .put(new KerberosPrincipalId(user2), EnumSet.of(Action.ADMIN))
-      .build();
-    setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges);
+      .put(new KerberosPrincipalId(user2), EnumSet.of(Action.ADMIN));
+    // this is to create impersonated ns
+    if (nsPrincipal1 != null) {
+      adminPrivileges.put(new KerberosPrincipalId(nsPrincipal1), EnumSet.of(Action.ADMIN));
+    }
+    if (nsPrincipal2 != null) {
+      adminPrivileges.put(new KerberosPrincipalId(nsPrincipal2), EnumSet.of(Action.ADMIN));
+    }
+    setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges.build());
     // since impersonation is involved, grant privileges to create the dataset and also let user1 be able to
     // write the dataset
     DatasetId dataset1 = testNs1.dataset(datasetName);
@@ -259,7 +284,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     try {
       // user1 writes an entry to the dataset
       URL serviceURL = user1ServiceManager.getServiceURL();
-      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), Bytes.toBytes("value"));
+      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), 100L);
       HttpResponse httpResponse = user1Client.execute(HttpMethod.POST,
                                                       serviceURL.toURI().resolve("put").toURL(),
                                                       GSON.toJson(put), new HashMap<String, String>(),
@@ -274,34 +299,89 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     ServiceManager user2ServiceManager =
       setupAppStartAndGetService(testNs2, adminConfig, adminClient, datasetName, appOwner2);
 
+    int runs = 0;
     try {
+      URL serviceURL = user2ServiceManager.getServiceURL();
+
       // try to get the entry written by user2 for the dataset owned by user1
       // user2 has read access on it, so read should succeed
-      URL serviceURL = user2ServiceManager.getServiceURL();
-      Get get = new Get(Bytes.toBytes("row"), Bytes.toBytes("col"));
-      String path = String.format("namespaces/%s/datasets/%s/get", testNs1.getNamespace(), datasetName);
-      HttpResponse httpResponse = user2Client.execute(HttpMethod.POST,
-                                                      serviceURL.toURI().resolve(path).toURL(),
-                                                      GSON.toJson(get), new HashMap<String, String>(),
-                                                      user2Config.getAccessToken());
-      Assert.assertEquals(200, httpResponse.getResponseCode());
+      String getJson = GSON.toJson(new Get(Bytes.toBytes("row"), Bytes.toBytes("col")));
+      String putJson = GSON.toJson(new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2")));
+      String incrementJson = GSON.toJson(new Increment(Bytes.toBytes("row"), Bytes.toBytes("col"), 1));
+      HttpResponse response = executeDatasetCommand(serviceURL, user2Client, user2Config,
+                                                    testNs1, datasetName, getJson, "get");
+      Assert.assertEquals(200, response.getResponseCode());
 
-      // try a put, it should fail, as user2 doesn't have permission to write
-      Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col2"), Bytes.toBytes("val2"));
-      String putPath = String.format("namespaces/%s/datasets/%s/put", testNs1.getNamespace(), datasetName);
       try {
-        user2Client.execute(HttpMethod.POST,
-                            serviceURL.toURI().resolve(putPath).toURL(),
-                            GSON.toJson(put), new HashMap<String, String>(),
-                            user2Config.getAccessToken());
+        // put should fail since user2 does not have write privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      try {
+        // incrementAndGet should fail since user2 does not have both READ and WRITE privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                              "incrementAndGet");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      // grant user WRITE privilege on the dataset
+      userGrant(user2, dataset1, Action.WRITE);
+      invalidateCache();
+
+      user2ServiceManager.stop();
+      user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs, PROGRAM_START_STOP_TIMEOUT_SECONDS,
+                                      TimeUnit.SECONDS);
+      user2ServiceManager.start();
+      user2ServiceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      serviceURL = user2ServiceManager.getServiceURL();
+
+      // put should be successful this time
+      response = executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
+      Assert.assertEquals(200, response.getResponseCode());
+
+      // incrementAndGet should be successful this time since user2 has both READ and WRITE privilege on the dataset
+      response = executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                                       "incrementAndGet");
+      Assert.assertEquals(200, response.getResponseCode());
+
+      // revoke privileges from user2
+      userRevoke(user2);
+      // grant him WRITE privilege on the dataset
+      userGrant(user2, dataset1, Action.WRITE);
+      invalidateCache();
+
+      user2ServiceManager.stop();
+      user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs,
+                                      PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      user2ServiceManager.start();
+      user2ServiceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      serviceURL = user2ServiceManager.getServiceURL();
+
+      try {
+        // get should fail since user2 does not have READ privilege now
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, getJson, "get");
+        Assert.fail();
+      } catch (IOException e) {
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      }
+
+      try {
+        // increment should fail since user2 does not have both READ and WRITE privilege on the dataset
+        executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, incrementJson,
+                              "incrementAndGet");
         Assert.fail();
       } catch (IOException e) {
         Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
       }
     } finally {
       user2ServiceManager.stop();
-      user2ServiceManager.waitForRun(ProgramRunStatus.KILLED,
-                                     PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs,
+                                      PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
   }
 
@@ -330,5 +410,13 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS * 2, TimeUnit.SECONDS);
 
     return serviceManager;
+  }
+
+  private HttpResponse executeDatasetCommand(URL serviceURL, RESTClient client, ClientConfig config,
+                                             NamespaceId namespaceId, String datasetName,
+                                             String jsonString, String method) throws Exception {
+    String path = String.format("namespaces/%s/datasets/%s/%s", namespaceId.getNamespace(), datasetName, method);
+    return client.execute(HttpMethod.POST, serviceURL.toURI().resolve(path).toURL(),
+                          jsonString, new HashMap<String, String>(), config.getAccessToken());
   }
 }

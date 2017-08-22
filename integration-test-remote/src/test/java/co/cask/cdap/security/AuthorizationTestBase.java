@@ -104,7 +104,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
 
   // TODO: Remove this when we migrate to wildcard privilege
   protected Set<EntityId> cleanUpEntities;
-  private SentryGenericServiceClient sentryClient;
+  protected SentryGenericServiceClient sentryClient;
   private AuthorizationClient authorizationClient;
 
   // General test namespace
@@ -122,6 +122,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     invalidateCache();
     super.setUp();
     userRevoke(ADMIN_USER);
+    invalidateCache();
     cleanUpEntities = new HashSet<>();
   }
 
@@ -150,6 +151,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     userRevoke(BOB);
     userRevoke(CAROL);
     userRevoke(EVE);
+    invalidateCache();
     sentryClient.close();
   }
 
@@ -167,21 +169,27 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   /**
    * Grants action privilege to user on entityId. Creates a role for the user. Grant action privilege
    * on that role, and add the role to the group the user belongs to. All done through sentry.
-   *  @param user The user we want to grant privilege to.
+   * @param user The user we want to grant privilege to.
    * @param entityId The entity we want to grant privilege on.
    * @param action The privilege we want to grant.
    */
   protected void userGrant(String user, EntityId entityId, Action action) throws Exception {
+    roleGrant(user, entityId, action, null);
+  }
+
+  protected void roleGrant(String role, EntityId entityId, Action action,
+                           @Nullable String groupName) throws Exception {
     // create role and add to group
     // TODO: use a different user as Sentry Admin (neither CDAP, nor an user used in our tests)
-    sentryClient.createRoleIfNotExist(ADMIN_USER, user, COMPONENT);
-    sentryClient.addRoleToGroups(ADMIN_USER, user, COMPONENT, Sets.newHashSet(user));
+    sentryClient.createRoleIfNotExist(ADMIN_USER, role, COMPONENT);
+    sentryClient.addRoleToGroups(ADMIN_USER, role, COMPONENT,
+                                 groupName == null ? Sets.newHashSet(role) : Sets.newHashSet(groupName));
 
     // create authorizable list
     List<TAuthorizable> authorizables = toTAuthorizable(entityId);
     TSentryPrivilege privilege = new TSentryPrivilege(COMPONENT, INSTANCE_NAME, authorizables, action.name());
     privilege.setGrantOption(TSentryGrantOption.TRUE);
-    sentryClient.grantPrivilege(ADMIN_USER, user, COMPONENT, privilege);
+    sentryClient.grantPrivilege(ADMIN_USER, role, COMPONENT, privilege);
   }
 
   protected void invalidateCache() throws Exception {
@@ -195,20 +203,24 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
    * @param user The user we want to revoke privilege from.
    */
   protected void userRevoke(String user) throws Exception {
+    roleRevoke(user, null);
+  }
+
+  protected void roleRevoke(String role, @Nullable String groupName) throws Exception {
     try {
-      sentryClient.deleteRoleToGroups(ADMIN_USER, user, COMPONENT, Sets.newHashSet(user));
+      sentryClient.deleteRoleToGroups(ADMIN_USER, role, COMPONENT,
+                                      groupName == null ? Sets.newHashSet(role) : Sets.newHashSet(groupName));
     } catch (SentryNoSuchObjectException e) {
       // skip a role that hasn't been added to the user
     } finally {
-      sentryClient.dropRoleIfExists(ADMIN_USER, user, COMPONENT);
-      invalidateCache();
+      sentryClient.dropRoleIfExists(ADMIN_USER, role, COMPONENT);
     }
   }
 
   protected NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
-                                                  @Nullable String groupName, @Nullable String keytabURI,
-                                                  @Nullable String rootDirectory, @Nullable String hbaseNamespace,
-                                                  @Nullable String hiveDatabase) {
+                                           @Nullable String groupName, @Nullable String keytabURI,
+                                           @Nullable String rootDirectory, @Nullable String hbaseNamespace,
+                                           @Nullable String hiveDatabase) {
     return new NamespaceMeta.Builder()
       .setName(namespaceId)
       .setDescription("Namespace for authorization test")
