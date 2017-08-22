@@ -19,25 +19,25 @@ package co.cask.cdap.security;
 import org.junit.Before;
 
 /**
- * App authorization tests for namespace level impersonation
+ * App Authorization test in namespace with custom mapping
  */
-public class NamespaceImpersonationAppAuthorizationTest extends BasicAppAuthorizationTest {
+public class CustomMappingAppAuthorizationTest extends BasicAppAuthorizationTest {
 
   @Before
   public void setup() throws Exception {
     super.setup();
     testNamespace =
       getNamespaceMeta(testNamespace.getNamespaceId(), ALICE, null,
-                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
-                       null, null);
+                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
+                       "/cdap/authorization", "authorization", "authz");
     crossNsTest1 =
       getNamespaceMeta(crossNsTest1.getNamespaceId(), ALICE, null,
-                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
-                       null, null);
+                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
+                       "/cdap/authorization1", "authorization1", "authz1");
     crossNsTest2 =
       getNamespaceMeta(crossNsTest2.getNamespaceId(), BOB, null,
-                       SecurityTestUtils.getKeytabURIforPrincipal(BOB, getMetaClient().getCDAPConfig()), null,
-                       null, null);
+                       SecurityTestUtils.getKeytabURIforPrincipal(BOB, getMetaClient().getCDAPConfig()),
+                       "/cdap/authorization2", "authorization2", "authz2");
     appOwner1 = null;
     appOwner2 = null;
   }

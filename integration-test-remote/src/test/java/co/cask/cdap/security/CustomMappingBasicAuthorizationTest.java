@@ -19,26 +19,18 @@ package co.cask.cdap.security;
 import org.junit.Before;
 
 /**
- * App authorization tests for namespace level impersonation
+ * Basic Authorization test for custom mapping
+ *
+ * Note the user should have corresponding privilege on hdfs diretory, hbase namespace and hive database
  */
-public class NamespaceImpersonationAppAuthorizationTest extends BasicAppAuthorizationTest {
+public class CustomMappingBasicAuthorizationTest extends BasicAuthorizationTest {
 
   @Before
   public void setup() throws Exception {
     super.setup();
     testNamespace =
       getNamespaceMeta(testNamespace.getNamespaceId(), ALICE, null,
-                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
-                       null, null);
-    crossNsTest1 =
-      getNamespaceMeta(crossNsTest1.getNamespaceId(), ALICE, null,
-                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
-                       null, null);
-    crossNsTest2 =
-      getNamespaceMeta(crossNsTest2.getNamespaceId(), BOB, null,
-                       SecurityTestUtils.getKeytabURIforPrincipal(BOB, getMetaClient().getCDAPConfig()), null,
-                       null, null);
-    appOwner1 = null;
-    appOwner2 = null;
+                       SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
+                       "/cdap/authorization", "authorization", "authz");
   }
 }
