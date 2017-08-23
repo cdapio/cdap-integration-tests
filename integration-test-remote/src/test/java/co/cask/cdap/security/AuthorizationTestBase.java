@@ -96,7 +96,8 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String ADMIN_USER = "cdapitn";
   protected static final String PASSWORD_SUFFIX = "password";
   protected static final String VERSION = "1.0.0";
-  protected static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
+  protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
+  protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform actions";
 
   private static final String COMPONENT = "cdap";
   private static final String INSTANCE_NAME = "cdap";
@@ -204,6 +205,14 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
    */
   protected void userRevoke(String user) throws Exception {
     roleRevoke(user, null);
+  }
+
+  protected void userRevoke(String user, EntityId entityId, Action action) throws Exception {
+    // create authorizable list
+    List<TAuthorizable> authorizables = toTAuthorizable(entityId);
+    TSentryPrivilege privilege = new TSentryPrivilege(COMPONENT, INSTANCE_NAME, authorizables, action.name());
+    privilege.setGrantOption(TSentryGrantOption.TRUE);
+    sentryClient.revokePrivilege(ADMIN_USER, user, COMPONENT, privilege);
   }
 
   protected void roleRevoke(String role, @Nullable String groupName) throws Exception {

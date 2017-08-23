@@ -62,10 +62,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
   // namespace for app1 for cross namespace test. For tests without cross namespace, use testNamespace in
   // AuthorizationTestBase instead.
-  protected NamespaceMeta namespaceMeta1 = getNamespaceMeta(new NamespaceId("authorization1"), null, null,
+  protected NamespaceMeta namespaceMeta1 = getNamespaceMeta(new NamespaceId("authorization11"), null, null,
                                                             null, null, null, null);
   // namespace for app2 for cross namespace test
-  protected NamespaceMeta namespaceMeta2 = getNamespaceMeta(new NamespaceId("authorization2"), null, null,
+  protected NamespaceMeta namespaceMeta2 = getNamespaceMeta(new NamespaceId("authorization22"), null, null,
                                                             null, null, null, null);
 
   // app owner for general apps
@@ -187,7 +187,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       Assert.fail();
     } catch (Exception ex) {
       // expected
-      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
   }
 
@@ -317,7 +317,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
         executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, putJson, "put");
         Assert.fail();
       } catch (IOException e) {
-        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
       }
 
       try {
@@ -326,7 +326,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
                               "incrementAndGet");
         Assert.fail();
       } catch (IOException e) {
-        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
       }
 
       // grant user WRITE privilege on the dataset
@@ -367,7 +367,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
         executeDatasetCommand(serviceURL, user2Client, user2Config, testNs1, datasetName, getJson, "get");
         Assert.fail();
       } catch (IOException e) {
-        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
       }
 
       try {
@@ -376,7 +376,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
                               "incrementAndGet");
         Assert.fail();
       } catch (IOException e) {
-        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+        Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
       }
     } finally {
       user2ServiceManager.stop();

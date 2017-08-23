@@ -24,6 +24,7 @@ import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.proto.DatasetSpecificationSummary;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
 import co.cask.cdap.proto.id.DatasetId;
@@ -34,6 +35,9 @@ import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,6 +48,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Basic test base for authorization, this test base contains tests without impersonation
@@ -92,7 +97,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       createAndRegisterNamespace(testNamespace, bobConfig, bobClient);
       Assert.fail();
     } catch (UnauthorizedException ex) {
-      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
 
     // ADMIN_USER can create namespace with ADMIN privilege on the namespace
@@ -104,7 +109,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       applicationClient.list(namespaceId);
       Assert.fail();
     } catch (UnauthorizedException ex) {
-      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
 
     StreamClient aliceStreamClient = new StreamClient(aliceConfig, aliceClient);
@@ -122,8 +127,8 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       Assert.fail();
     } catch (IOException ex) {
       // expected
-      // TODO: change the error message on cdap platform such that this contains NO_PRIVILEGE_MSG
-      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      // TODO: change the error message on cdap platform such that this contains NO_ACCESS_MSG
+      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
 
     // Alice will not able to delete the namespace since she does not have admin on the namespace,
@@ -140,53 +145,214 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   }
 
   /**
-   * Test list privileges, after creation and deletion, the privilege should remain the same
+   * Test list privileges, enforce, and revoke privileges, this test needs cache invalidation inside
    */
   @Test
-  public void testListPrivileges() throws Exception {
+  public void testPrivilegesAndVisibility() throws Exception {
+    // set up all client
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(bobConfig);
+    bobClient.addListener(createRestClientListener());
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    RESTClient eveClient = new RESTClient(eveConfig);
+    eveClient.addListener(createRestClientListener());
+    Principal adminPrincipal = new Principal(ADMIN_USER, Principal.PrincipalType.USER);
+    Principal alicePrincipal = new Principal(ALICE, Principal.PrincipalType.USER);
+    Principal bobPrincipal = new Principal(BOB, Principal.PrincipalType.USER);
+    Principal evePrincipal = new Principal(EVE, Principal.PrincipalType.USER);
 
-    NamespaceId namespaceId = testNamespace.getNamespaceId();
-    Set<Privilege> expected = new HashSet<>();
 
-    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    expected.add(new Privilege(namespaceId, Action.ADMIN));
-    String principal = testNamespace.getConfig().getPrincipal();
-    if (principal != null) {
-      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
-      expected.add(new Privilege(new KerberosPrincipalId(principal), Action.ADMIN));
+    // set up entities
+    String namespacePrefix = "testPrivilegesAndVisibility";
+    final NamespaceId namespaceId1 = new NamespaceId(namespacePrefix + 1);
+    NamespaceId namespaceId2 = new NamespaceId(namespacePrefix + 2);
+
+    DatasetId ds11 = namespaceId1.dataset("ds");
+    DatasetId ds12 = namespaceId1.dataset("ds1");
+    DatasetId ds13 = namespaceId1.dataset("ds2");
+    DatasetId ds21 = namespaceId2.dataset("ds");
+    Set<DatasetId> datasetSet = Sets.newHashSet(ds11, ds12, ds13, ds21);
+
+    StreamId stream11 = namespaceId1.stream("stream");
+    StreamId stream12 = namespaceId1.stream("stream1");
+    StreamId stream13 = namespaceId1.stream("stream2");
+    StreamId stream21 = namespaceId2.stream("stream");
+    StreamId stream22 = namespaceId2.stream("stream1");
+    StreamId stream23 = namespaceId2.stream("stream2");
+    Set<StreamId> streamSet = Sets.newHashSet(stream11, stream12, stream13, stream21, stream22, stream23);
+
+    Set<Privilege> adminExpected = new HashSet<>();
+    Set<Privilege> aliceExpected = new HashSet<>();
+    Set<Privilege> bobExpected = new HashSet<>();
+    Set<Privilege> eveExpected = new HashSet<>();
+
+    // admin user will have admin on all these entities
+    userGrant(ADMIN_USER, namespaceId1, Action.ADMIN);
+    userGrant(ADMIN_USER, namespaceId2, Action.ADMIN);
+    adminExpected.add(new Privilege(namespaceId1, Action.ADMIN));
+    adminExpected.add(new Privilege(namespaceId2, Action.ADMIN));
+    for (DatasetId datasetId : datasetSet) {
+      userGrant(ADMIN_USER, datasetId, Action.ADMIN);
+      adminExpected.add(new Privilege(datasetId, Action.ADMIN));
     }
-    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    for (StreamId streamId : streamSet) {
+      userGrant(ADMIN_USER, streamId, Action.ADMIN);
+      adminExpected.add(new Privilege(streamId, Action.ADMIN));
+    }
+
+    // Grant privileges on non-numbered entities to ALICE
+    userGrant(ALICE, ds11, Action.EXECUTE);
+    aliceExpected.add(new Privilege(ds11, Action.EXECUTE));
+    userGrant(ALICE, ds21, Action.WRITE);
+    aliceExpected.add(new Privilege(ds21, Action.WRITE));
+    userGrant(ALICE, stream11, Action.READ);
+    aliceExpected.add(new Privilege(stream11, Action.READ));
+    userGrant(ALICE, stream21, Action.WRITE);
+    aliceExpected.add(new Privilege(stream21, Action.WRITE));
+
+    // Grant privileges on entities ending with 2 to BOB
+    userGrant(BOB, ds13, Action.ADMIN);
+    bobExpected.add(new Privilege(ds13, Action.ADMIN));
+    userGrant(BOB, stream13, Action.EXECUTE);
+    bobExpected.add(new Privilege(stream13, Action.EXECUTE));
+    userGrant(BOB, stream23, Action.READ);
+    bobExpected.add(new Privilege(stream23, Action.READ));
+    userGrant(BOB, stream23, Action.WRITE);
+    bobExpected.add(new Privilege(stream23, Action.WRITE));
+
+    // Grant privileges on entity stream22 to eve
+    userGrant(EVE, stream22, Action.EXECUTE);
+    eveExpected.add(new Privilege(stream22, Action.EXECUTE));
 
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    Principal adminPrincipal = new Principal(ADMIN_USER, Principal.PrincipalType.USER);
-    Assert.assertEquals(expected, authorizationClient.listPrivileges(adminPrincipal));
+    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
+    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
+    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
+    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
 
-    // add some more privileges
-    StreamId streamId = namespaceId.stream("testListPrivilegeStream");
-    // invalidate the cache since we have created the namespace, otherwise the cache is there for 5 mins.
-    userGrant(ADMIN_USER, streamId, Action.WRITE);
-    invalidateCache();
-    expected.add(new Privilege(streamId, Action.WRITE));
+    // create these entities
+    NamespaceMeta nsMeta1 = new NamespaceMeta.Builder().setName(namespaceId1).build();
+    NamespaceMeta nsMeta2 = new NamespaceMeta.Builder().setName(namespaceId2).build();
+    createAndRegisterNamespace(nsMeta1, adminConfig, adminClient);
+    createAndRegisterNamespace(nsMeta2, adminConfig, adminClient);
+    DatasetClient dsAdminClient = new DatasetClient(adminConfig, adminClient);
+    for (DatasetId datasetId : datasetSet) {
+      dsAdminClient.create(datasetId, "table");
+    }
+    StreamClient streamAdminClient = new StreamClient(adminConfig, adminClient);
+    for (StreamId streamId : streamSet) {
+      streamAdminClient.create(streamId);
+    }
 
-    DatasetId datasetId = namespaceId.dataset("testListPrivilegeDataset");
-    userGrant(ADMIN_USER, datasetId, Action.READ);
-    expected.add(new Privilege(datasetId, Action.READ));
+    // test visibility
+    // admin should see all entities
+    Assert.assertEquals(Sets.newHashSet(nsMeta1, nsMeta2),
+                        Sets.newHashSet(new NamespaceClient(adminConfig, adminClient).list()));
+    Assert.assertEquals(Sets.newHashSet(ds11, ds12, ds13),
+                        toDatasetId(namespaceId1, dsAdminClient.list(namespaceId1)));
+    Assert.assertEquals(Sets.newHashSet(ds21), toDatasetId(namespaceId2, dsAdminClient.list(namespaceId2)));
+    Assert.assertEquals(Sets.newHashSet(stream11, stream12, stream13),
+                        toStreamId(namespaceId1, streamAdminClient.list(namespaceId1)));
+    Assert.assertEquals(Sets.newHashSet(stream21, stream22, stream23),
+                        toStreamId(namespaceId2, streamAdminClient.list(namespaceId2)));
 
-    KerberosPrincipalId kerberosPrincipalId = new KerberosPrincipalId("testListPrivilegePrincipal");
-    userGrant(ADMIN_USER, kerberosPrincipalId, Action.ADMIN);
-    expected.add(new Privilege(kerberosPrincipalId, Action.ADMIN));
+    // test alice visibility should only see the namespace and the entities she has privileges on
+    Assert.assertEquals(Sets.newHashSet(nsMeta1, nsMeta2),
+                        Sets.newHashSet(new NamespaceClient(aliceConfig, aliceClient).list()));
+    DatasetClient datasetAliceClient = new DatasetClient(aliceConfig, aliceClient);
+    Assert.assertEquals(Sets.newHashSet(ds11),
+                        toDatasetId(namespaceId1, datasetAliceClient.list(namespaceId1)));
+    Assert.assertEquals(Sets.newHashSet(ds21),
+                        toDatasetId(namespaceId2, datasetAliceClient.list(namespaceId2)));
+    StreamClient streamAliceClient = new StreamClient(aliceConfig, aliceClient);
+    Assert.assertEquals(Sets.newHashSet(stream11),
+                        toStreamId(namespaceId1, streamAliceClient.list(namespaceId1)));
+    Assert.assertEquals(Sets.newHashSet(stream21),
+                        toStreamId(namespaceId2, streamAliceClient.list(namespaceId2)));
 
-    Assert.assertEquals(expected, authorizationClient.listPrivileges(adminPrincipal));
+    // test bob visibility should only see the namespace and the entities he has privileges on
+    Assert.assertEquals(Sets.newHashSet(nsMeta1, nsMeta2),
+                        Sets.newHashSet(new NamespaceClient(bobConfig, bobClient).list()));
+    DatasetClient datasetBobClient = new DatasetClient(bobConfig, bobClient);
+    Assert.assertEquals(Sets.newHashSet(ds13),
+                        toDatasetId(namespaceId1, datasetBobClient.list(namespaceId1)));
+    Assert.assertEquals(Sets.newHashSet(),
+                        toDatasetId(namespaceId2, datasetBobClient.list(namespaceId2)));
+    StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
+    Assert.assertEquals(Sets.newHashSet(stream13),
+                        toStreamId(namespaceId1, streamBobClient.list(namespaceId1)));
+    Assert.assertEquals(Sets.newHashSet(stream23),
+                        toStreamId(namespaceId2, streamBobClient.list(namespaceId2)));
 
-    // Now delete the namespace and make sure that it is deleted
-    getNamespaceClient().delete(namespaceId);
-    Assert.assertFalse(getNamespaceClient().exists(namespaceId));
+    // test eve visibility should only see the namespace2 and the entities he has privileges on
+    Assert.assertEquals(Sets.newHashSet(nsMeta2),
+                        Sets.newHashSet(new NamespaceClient(eveConfig, eveClient).list()));
+    DatasetClient datasetEveClient = new DatasetClient(eveConfig, eveClient);
+    try {
+      datasetEveClient.list(namespaceId1);
+      Assert.fail();
+    } catch (UnauthorizedException e) {
+      Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
+    }
+    Assert.assertEquals(Sets.newHashSet(),
+                        toDatasetId(namespaceId2, datasetEveClient.list(namespaceId2)));
+    StreamClient streamEveClient = new StreamClient(eveConfig, eveClient);
+    try {
+      streamEveClient.list(namespaceId1);
+      Assert.fail();
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
+    }
+    Assert.assertEquals(Sets.newHashSet(stream22),
+                        toStreamId(namespaceId2, streamEveClient.list(namespaceId2)));
 
-    // Privileges should stay the same
-    Assert.assertEquals(expected, authorizationClient.listPrivileges(adminPrincipal));
+    // test some auth enforce operations
+    try {
+      // update needs ADMIN but alice only has EXECUTE
+      datasetAliceClient.update(ds11, Collections.<String, String>emptyMap());
+      Assert.fail();
+    } catch (UnauthorizedException e) {
+      Assert.assertTrue(e.getMessage().contains(NO_PRIVILEGE_MESG));
+    }
+    verifyStreamReadWritePrivilege(streamAliceClient, stream11, Sets.newHashSet(Action.READ));
+    verifyStreamReadWritePrivilege(streamAliceClient, stream21, Sets.newHashSet(Action.WRITE));
+
+    // update should succeed for bob on ds13 since bob has ADMIN
+    datasetBobClient.update(ds13, Collections.<String, String>emptyMap());
+    verifyStreamReadWritePrivilege(streamBobClient, stream13, Collections.<Action>emptySet());
+    verifyStreamReadWritePrivilege(streamBobClient, stream23, Sets.<Action>newHashSet(Action.READ, Action.WRITE));
+
+
+    // revoke privileges from BOB and grant them to alice
+    userRevoke(BOB);
+    for (Privilege privilege : bobExpected) {
+      userGrant(ALICE, privilege.getEntity(), privilege.getAction());
+    }
+    aliceExpected.addAll(bobExpected);
+    bobExpected.clear();
+    userRevoke(EVE, stream22, Action.EXECUTE);
+    eveExpected.remove(new Privilege(stream22, Action.EXECUTE));
+
+    // TODO: remove the sleep to invalidate cache method
+    TimeUnit.SECONDS.sleep(61);
+    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
+    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
+    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
+    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
+    try {
+      datasetBobClient.update(ds13, Collections.<String, String>emptyMap());
+      Assert.fail();
+    } catch (UnauthorizedException e) {
+      // expected
+    }
+    verifyStreamReadWritePrivilege(streamBobClient, stream13, Collections.<Action>emptySet());
+    verifyStreamReadWritePrivilege(streamBobClient, stream23, Collections.<Action>emptySet());
   }
 
   /**
@@ -321,7 +487,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       Assert.fail();
     } catch (Exception ex) {
       // TODO: verify that this contains message from UnauthorizedException
-      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
 
     ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
@@ -350,7 +516,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       Assert.fail();
     } catch (Exception ex) {
       // TODO: verify that this contains message from UnauthorizedException
-      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
+      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
 
     // neither Bob nor Alice can drop the stream
@@ -455,37 +621,35 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
 
       // read and write should fail since bob does not have corresponding privilege
-      verifyStreamPrivilege(bobStreamClient, streamLists.get(0), Collections.<Action>emptySet());
+      verifyStreamReadWritePrivilege(bobStreamClient, streamLists.get(0), Collections.<Action>emptySet());
 
       // create a new stream to avoid the cache
       adminStreamClient.create(streamLists.get(1));
       adminStreamClient.sendEvent(streamLists.get(1), "adminTest");
 
       // read should success but write should fail
-      verifyStreamPrivilege(bobStreamClient, streamLists.get(1), Collections.singleton(Action.READ));
+      verifyStreamReadWritePrivilege(bobStreamClient, streamLists.get(1), Collections.singleton(Action.READ));
 
       // create a new stream to avoid the cache
       adminStreamClient.create(streamLists.get(2));
       adminStreamClient.sendEvent(streamLists.get(2), "adminTest");
 
       // write should success but read should fail
-      verifyStreamPrivilege(bobStreamClient, streamLists.get(2), Collections.singleton(Action.WRITE));
+      verifyStreamReadWritePrivilege(bobStreamClient, streamLists.get(2), Collections.singleton(Action.WRITE));
     } finally {
       roleRevoke(roleName, groupName);
     }
   }
 
-  private void verifyStreamPrivilege(StreamClient streamClient, StreamId streamId,
-                                     Set<Action> privileges) throws Exception {
+  private void verifyStreamReadWritePrivilege(StreamClient streamClient, StreamId streamId,
+                                              Set<Action> privileges) throws Exception {
     boolean hasRead = privileges.contains(Action.READ);
     boolean hasWrite = privileges.contains(Action.WRITE);
     try {
-      List<StreamEvent> events =
-        streamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+      streamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
       if (!hasRead) {
         Assert.fail("Stream read should fail since user does not have read privilege");
       }
-      Assert.assertTrue(!events.isEmpty());
     } catch (Exception ex) {
       if (hasRead) {
         Assert.fail("Stream read should be successful since user has read privilege");
@@ -521,5 +685,24 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     // delete it and verify it is gone
     namespaceClient.delete(namespaceMeta.getNamespaceId());
     Assert.assertFalse(namespaceClient.exists(namespaceMeta.getNamespaceId()));
+  }
+
+  private Set<DatasetId> toDatasetId(final NamespaceId namespaceId, List<DatasetSpecificationSummary> list) {
+    return Sets.newHashSet(Lists.transform(list, new Function<DatasetSpecificationSummary, DatasetId>() {
+      @Override
+      public DatasetId apply(DatasetSpecificationSummary input) {
+        return namespaceId.dataset(input.getName());
+      }
+    }));
+  }
+
+  private Set<StreamId> toStreamId(final NamespaceId namespaceId, List<StreamDetail> list) {
+    return Sets.newHashSet(Lists.transform(list, new Function<StreamDetail,
+      StreamId>() {
+      @Override
+      public StreamId apply(StreamDetail input) {
+        return namespaceId.stream(input.getName());
+      }
+    }));
   }
 }
