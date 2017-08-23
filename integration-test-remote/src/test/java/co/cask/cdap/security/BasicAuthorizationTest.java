@@ -24,6 +24,7 @@ import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.proto.DatasetSpecificationSummary;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.StreamDetail;
@@ -48,6 +49,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -127,8 +129,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       Assert.fail();
     } catch (IOException ex) {
       // expected
-      // TODO: change the error message on cdap platform such that this contains NO_ACCESS_MSG
-      // Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
+       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
     }
 
     // Alice will not able to delete the namespace since she does not have admin on the namespace,
@@ -184,7 +185,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     StreamId stream13 = namespaceId1.stream("stream2");
     StreamId stream21 = namespaceId2.stream("stream");
     StreamId stream22 = namespaceId2.stream("stream1");
-    StreamId stream23 = namespaceId2.stream("stream2");
+    final StreamId stream23 = namespaceId2.stream("stream2");
     Set<StreamId> streamSet = Sets.newHashSet(stream11, stream12, stream13, stream21, stream22, stream23);
 
     Set<Privilege> adminExpected = new HashSet<>();
@@ -284,7 +285,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
                         toDatasetId(namespaceId1, datasetBobClient.list(namespaceId1)));
     Assert.assertEquals(Sets.newHashSet(),
                         toDatasetId(namespaceId2, datasetBobClient.list(namespaceId2)));
-    StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
+    final StreamClient streamBobClient = new StreamClient(bobConfig, bobClient);
     Assert.assertEquals(Sets.newHashSet(stream13),
                         toStreamId(namespaceId1, streamBobClient.list(namespaceId1)));
     Assert.assertEquals(Sets.newHashSet(stream23),
@@ -326,7 +327,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     // update should succeed for bob on ds13 since bob has ADMIN
     datasetBobClient.update(ds13, Collections.<String, String>emptyMap());
     verifyStreamReadWritePrivilege(streamBobClient, stream13, Collections.<Action>emptySet());
-    verifyStreamReadWritePrivilege(streamBobClient, stream23, Sets.<Action>newHashSet(Action.READ, Action.WRITE));
+    verifyStreamReadWritePrivilege(streamBobClient, stream23, Sets.newHashSet(Action.READ, Action.WRITE));
 
 
     // revoke privileges from BOB and grant them to alice
@@ -340,7 +341,17 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     eveExpected.remove(new Privilege(stream22, Action.EXECUTE));
 
     // TODO: remove the sleep to invalidate cache method
-    TimeUnit.SECONDS.sleep(61);
+    Tasks.waitFor(true, new Callable<Boolean>() {
+      @Override
+      public Boolean call() throws Exception {
+        try {
+          verifyStreamReadWritePrivilege(streamBobClient, stream23, Collections.<Action>emptySet());
+          return true;
+        } catch (Throwable t) {
+          return false;
+        }
+      }
+    }, 61, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
     Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
     Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
     Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
