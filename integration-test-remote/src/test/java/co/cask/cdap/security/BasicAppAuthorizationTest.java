@@ -41,6 +41,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.TestManager;
 import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
@@ -285,10 +286,9 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       // user1 writes an entry to the dataset
       URL serviceURL = user1ServiceManager.getServiceURL();
       Put put = new Put(Bytes.toBytes("row"), Bytes.toBytes("col"), 100L);
-      HttpResponse httpResponse = user1Client.execute(HttpMethod.POST,
-                                                      serviceURL.toURI().resolve("put").toURL(),
-                                                      GSON.toJson(put), new HashMap<String, String>(),
-                                                      user1Config.getAccessToken());
+      HttpResponse httpResponse = user1Client.execute(
+        HttpRequest.post(serviceURL.toURI().resolve("put").toURL()).withBody(GSON.toJson(put)).build(),
+        user1Config.getAccessToken());
       Assert.assertEquals(200, httpResponse.getResponseCode());
     } finally {
       user1ServiceManager.stop();
@@ -416,7 +416,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
                                              NamespaceId namespaceId, String datasetName,
                                              String jsonString, String method) throws Exception {
     String path = String.format("namespaces/%s/datasets/%s/%s", namespaceId.getNamespace(), datasetName, method);
-    return client.execute(HttpMethod.POST, serviceURL.toURI().resolve(path).toURL(),
-                          jsonString, new HashMap<String, String>(), config.getAccessToken());
+    return client.execute(
+      HttpRequest.post(serviceURL.toURI().resolve(path).toURL()).withBody(jsonString).build(),
+      config.getAccessToken());
   }
 }
