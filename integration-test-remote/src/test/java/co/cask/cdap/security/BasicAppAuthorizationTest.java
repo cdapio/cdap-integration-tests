@@ -115,7 +115,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       .put(appId, EnumSet.of(Action.ADMIN))
       // TODO: remove the artifact version when we have the pr merged
       .put(artifactId, EnumSet.of(Action.ADMIN));
-    
+
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
     String appEffectiveOwner = appOwner == null ? namespacePrincipal : appOwner;
     if (namespacePrincipal != null) {
@@ -152,7 +152,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     ApplicationManager appManager =
       testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
     FlowManager flowAliceManager = appManager.getFlowManager("WhoFlow");
-    startAndKillProgram(flowAliceManager);
+    startAndKillProgram(flowAliceManager, 1);
 
     ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
@@ -160,7 +160,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
     FlowManager flowBobManager =
       getTestManager(bobConfig, bobClient).getApplicationManager(appId).getFlowManager("WhoFlow");
-    startAndKillProgram(flowBobManager);
+    startAndKillProgram(flowBobManager, 2);
   }
 
   /**
@@ -504,10 +504,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       config.getAccessToken());
   }
 
-  private void startAndKillProgram(ProgramManager programManager) throws Exception {
+  private void startAndKillProgram(ProgramManager programManager, int runs) throws Exception {
     programManager.start();
     programManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     programManager.stop();
-    programManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    programManager.waitForRuns(ProgramRunStatus.KILLED, runs, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 }
