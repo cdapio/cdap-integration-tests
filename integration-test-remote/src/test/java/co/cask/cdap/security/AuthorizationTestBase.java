@@ -288,7 +288,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
       case ARTIFACT:
         ArtifactId artifactId = (ArtifactId) entityId;
         toAuthorizables(artifactId.getParent(), authorizables);
-        authorizables.add(new Artifact(artifactId.getArtifact(), artifactId.getVersion()));
+        authorizables.add(new Artifact(artifactId.getArtifact()));
         break;
       case APPLICATION:
         ApplicationId applicationId = (ApplicationId) entityId;
