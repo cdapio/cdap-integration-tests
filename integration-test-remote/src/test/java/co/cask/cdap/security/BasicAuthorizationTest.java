@@ -125,7 +125,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // ADMIN cannot delete the namespace because he doesn't have privileges on the stream
     try {
-      getNamespaceClient().delete(namespaceId);
+      new NamespaceClient(adminConfig, adminClient).delete(namespaceId);
       Assert.fail();
     } catch (IOException ex) {
       // expected
@@ -307,7 +307,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     try {
       streamEveClient.list(namespaceId1);
       Assert.fail();
-    } catch (IOException e) {
+    } catch (UnauthorizedException e) {
       Assert.assertTrue(e.getMessage().toLowerCase().contains(NO_ACCESS_MSG.toLowerCase()));
     }
     Assert.assertEquals(Sets.newHashSet(stream22),
@@ -333,7 +333,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     // revoke privileges from BOB and grant them to alice
     userRevoke(BOB);
     for (Privilege privilege : bobExpected) {
-      userGrant(ALICE, privilege.getEntity(), privilege.getAction());
+      wildCardGrant(ALICE, privilege.getAuthorizable(), privilege.getAction());
     }
     aliceExpected.addAll(bobExpected);
     bobExpected.clear();
