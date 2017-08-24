@@ -51,21 +51,25 @@ import co.cask.cdap.security.authorization.sentry.model.SecureKey;
 import co.cask.cdap.security.authorization.sentry.model.Stream;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.ranger.admin.client.RangerAdminClient;
 import org.apache.ranger.audit.provider.MiscUtil;
 import org.apache.ranger.plugin.audit.RangerDefaultAuditHandler;
+import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
 import org.apache.ranger.plugin.util.GrantRevokeRequest;
+import org.apache.ranger.plugin.util.ServicePolicies;
 import org.apache.sentry.provider.db.SentryNoSuchObjectException;
 import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClient;
-import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClientFactory;
 import org.apache.sentry.provider.db.generic.service.thrift.TAuthorizable;
 import org.apache.sentry.provider.db.generic.service.thrift.TSentryGrantOption;
 import org.apache.sentry.provider.db.generic.service.thrift.TSentryPrivilege;
@@ -78,6 +82,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -118,7 +123,8 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   // TODO: Remove this when we migrate to wildcard privilege
   protected Set<EntityId> cleanUpEntities;
   protected SentryGenericServiceClient sentryClient;
-  private RangerBasePlugin rangerPlugin;
+  public RangerBasePlugin rangerPlugin;
+  RangerAdminClient rangerAdminClient;
   private AuthorizationClient authorizationClient;
 
   // General test namespace
@@ -133,7 +139,10 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+
     userGrant("cdap", NamespaceId.DEFAULT, Action.ADMIN);
+//    userGrant("cdap", new NamespaceId("authorization"), Action.ADMIN);
+
     userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.ADMIN);
     invalidateCache();
     super.setUp();
@@ -236,18 +245,47 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
    * @param user The user we want to revoke privilege from.
    */
   protected void userRevoke(String user) throws Exception {
-    //roleRevoke(user, null);
-    RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
-    rangerPlugin.setResultProcessor(auditHandler);
+    ServicePolicies servicePolicies = rangerAdminClient.getServicePoliciesIfUpdated(-1, -1);
 
-    GrantRevokeRequest request = new GrantRevokeRequest();
-    request.setGrantor(ADMIN_USER);
-    request.setUsers(ImmutableSet.of(user));
-    request.setIsRecursive(true);
-    request.setReplaceExistingPermissions(true);
-    request.setResource(ImmutableMap.of(RangerCommon.KEY_INSTANCE, "cdap"));
+    Map<RangerPolicy, Set<String>> userPolicies = new HashMap<>();
+    for (RangerPolicy policy : servicePolicies.getPolicies()) {
+      for (RangerPolicy.RangerPolicyItem policyItem : policy.getPolicyItems()) {
+        if (Sets.newHashSet(policyItem.getUsers()).contains(user)) {
+          policyItem.setUsers(Collections.singletonList(user));
+          userPolicies.put(policy,
+                           Sets.newHashSet(
+                             Iterables.transform(policyItem.getAccesses(),
+                                                 new Function<RangerPolicy.RangerPolicyItemAccess, String>() {
+                                                   @Override
+                                                   public String apply(RangerPolicy.RangerPolicyItemAccess input) {
+                                                     return input.getType();
+                                                   }
+                                                 })));
+        }
+      }
+    }
 
-    rangerPlugin.revokeAccess(request, auditHandler);
+    for (Map.Entry<RangerPolicy, Set<String>> entry : userPolicies.entrySet()) {
+      RangerPolicy userPolicy = entry.getKey();
+      GrantRevokeRequest request = new GrantRevokeRequest();
+      request.setGrantor(ADMIN_USER);
+      request.setUsers(ImmutableSet.of(user));
+
+      Map<String, String> resource =
+        Maps.transformEntries(userPolicy.getResources(),
+                              new Maps.EntryTransformer<String, RangerPolicy.RangerPolicyResource, String>() {
+                                @Override
+                                public String transformEntry(String key, RangerPolicy.RangerPolicyResource value) {
+                                  return value.getValues().iterator().next();
+                                }
+                              });
+      request.setResource(resource);
+      request.setAccessTypes(entry.getValue());
+
+      RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
+      rangerPlugin.setResultProcessor(auditHandler);
+      rangerPlugin.revokeAccess(request, auditHandler);
+    }
   }
 
   protected void userRevoke(String user, EntityId entityId, Action action) throws Exception {
@@ -418,27 +456,27 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
     rangerPlugin.setResultProcessor(auditHandler);
 
-//    GrantRevokeRequest request = new GrantRevokeRequest();
-//    request.setGrantor("cdapitn");
-//    request.setAccessTypes(ImmutableSet.of("read"));
-//    request.setUsers(ImmutableSet.of("alice"));
+    String propertyPrefix    = "ranger.plugin." + "cdap";
+    rangerAdminClient = RangerBasePlugin.createAdminClient("cdapdev",
+                                                                             "cdap", propertyPrefix);
+
+
+//    ServicePolicies servicePolicies = rangerAdminClient.getServicePoliciesIfUpdated(-1, -1);
 //
-//    Map<String, String> resource = new HashMap<>();
-//    resource.put("instance", "cdap");
-//    resource.put("namespace", "default");
-//    request.setResource(resource);
 //
-//    rangerPlugin.grantAccess(request, auditHandler);
+//    RangerServiceDefHelper serviceDefHelper = new RangerServiceDefHelper(servicePolicies.getServiceDef(), false);
+//    Set<List<RangerServiceDef.RangerResourceDef>> validResourceHierarchies = serviceDefHelper.getResourceHierarchies(RangerPolicy.POLICY_TYPE_ACCESS);
+//    System.out.println(validResourceHierarchies);
   }
 
   /**
    * Sets the Ranger resource appropriately depending on the given entityId
    */
-  private void setRangerResource(EntityId entityId, Map<String, String> resource) {
+  public void setRangerResource(EntityId entityId, Map<String, String> resource) {
     EntityType entityType = entityId.getEntityType();
     switch (entityType) {
       case INSTANCE:
-        resource.put(RangerCommon.KEY_INSTANCE, ((InstanceId) entityId).getInstance());
+        resource.put(RangerCommon.KEY_INSTANCE, "cdap");
         break;
       case NAMESPACE:
         setRangerResource(new InstanceId(INSTANCE_NAME), resource);

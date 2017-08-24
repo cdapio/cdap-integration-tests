@@ -39,15 +39,22 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.ranger.plugin.policyengine.RangerAccessRequest;
+import org.apache.ranger.plugin.policyengine.RangerAccessRequestImpl;
+import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
+import org.apache.ranger.plugin.policyengine.RangerAccessResult;
+import org.apache.ranger.plugin.util.ServicePolicies;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -74,6 +81,9 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
+    ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
+    RESTClient carolClient = new RESTClient(carolConfig);
+    carolClient.addListener(createRestClientListener());
     ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);
     eveClient.addListener(createRestClientListener());
@@ -84,6 +94,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     // pre-grant all required privileges
     // admin user only has privilges to the namespace
     userGrant(ADMIN_USER, namespaceId, Action.ADMIN);
+    userGrant(CAROL, namespaceId, Action.ADMIN);
     String principal = testNamespace.getConfig().getPrincipal();
     if (principal != null) {
       userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
@@ -93,6 +104,29 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     userGrant(ALICE, streamId, Action.ADMIN);
     // eve only has access to the stream
     userGrant(EVE, streamId, Action.ADMIN);
+
+    TimeUnit.SECONDS.sleep(10);
+
+//    userGrant(ADMIN_USER, streamId, Action.READ);
+//
+    Date eventTime = new Date();
+    RangerAccessRequestImpl rangerRequest = new RangerAccessRequestImpl();
+    rangerRequest.setUser(CAROL);
+    rangerRequest.setUserGroups(Collections.singleton(CAROL));
+    rangerRequest.setClientIPAddress("127.0.0.1");
+    rangerRequest.setAccessTime(eventTime);
+    rangerRequest.setResourceMatchingScope(RangerAccessRequest.ResourceMatchingScope.SELF);
+
+    Map<String, String> resource = new HashMap<>();
+    setRangerResource(streamId, resource);
+    RangerAccessResourceImpl rangerResource = new RangerAccessResourceImpl(resource);
+    rangerRequest.setResource(rangerResource);
+    rangerRequest.setAccessType("admin");
+    rangerRequest.setAction("admin");
+    rangerRequest.setRequestData(streamId.toString());
+
+    RangerAccessResult result = rangerPlugin.isAccessAllowed(rangerRequest);
+    result.getIsAllowed();
 
     // bob can't create namespace without having ADMIN privilege on the namespace
     try {
@@ -119,19 +153,22 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     cleanUpEntities.add(streamId);
 
     // cdapitn shouldn't be able to list the stream since he doesn't have privilege on the stream
-    StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
-    List<StreamDetail> streams = adminStreamClient.list(namespaceId);
+    StreamClient carolStreamClient = new StreamClient(carolConfig, carolClient);
+    List<StreamDetail> streams = carolStreamClient.list(namespaceId);
+    Assert.assertEquals(Collections.EMPTY_LIST, streams);
+
     try {
-      adminStreamClient.delete(streamId);
+      carolStreamClient.delete(streamId);
       Assert.fail("user should not be able to delete the stream");
     } catch (Exception e) {
       // expected
     }
-    Assert.assertEquals(0, streams.size());
 
-    // ADMIN cannot delete the namespace because he doesn't have privileges on the stream
+    ServicePolicies servicePolicies = rangerAdminClient.getServicePoliciesIfUpdated(-1, -1);
+
+    // CAROL cannot delete the namespace because she doesn't have privileges on the stream
     try {
-      getNamespaceClient().delete(namespaceId);
+      new NamespaceClient(carolConfig, carolClient).delete(namespaceId);
       Assert.fail();
     } catch (IOException ex) {
       // expected

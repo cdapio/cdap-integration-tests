@@ -16,7 +16,7 @@
   limitations under the License.
 -->
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
-<configuration xmlns:xi="http://www.w3.org/2001/XInclude">
+<configuration>
   <property>
     <name>ranger.plugin.cdap.service.name</name>
     <value>cdapdev</value>
@@ -51,7 +51,7 @@
 
   <property>
     <name>ranger.plugin.cdap.policy.pollIntervalMs</name>
-    <value>60000</value>
+    <value>5000</value>
     <description>
       How often to poll for changes in policies?
     </description>
