@@ -23,6 +23,7 @@ import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
+import co.cask.cdap.examples.helloworld.HelloWorld;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryStore;
 import co.cask.cdap.proto.NamespaceMeta;
@@ -32,15 +33,17 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.EntityId;
+import co.cask.cdap.proto.id.FlowId;
 import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.FlowManager;
+import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.TestManager;
-import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
@@ -50,7 +53,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.URL;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -79,6 +81,87 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
   protected String appOwner1 = ALICE;
   // owner of app2 deployed in namespace2
   protected String appOwner2 = BOB;
+
+  /**
+   * Test anyone has EXECUTE privilege will be able to start the flow
+   */
+  @Test
+  public void testRunningFlow() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    NamespaceId namespaceId = testNamespace.getNamespaceId();
+    ApplicationId appId = namespaceId.app(HelloWorld.class.getSimpleName());
+    ArtifactId artifactId = namespaceId.artifact(HelloWorld.class.getSimpleName(), "1.0.0");
+    FlowId whoFlow = appId.flow("WhoFlow");
+
+    // pre-grant all required privileges
+    // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
+    ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      .put(namespaceId, EnumSet.of(Action.ADMIN))
+      // TODO: these can be put into teardown when we migrate to wildcard privilege
+      .put(appId.service("Greeting"), EnumSet.of(Action.ADMIN))
+      .put(whoFlow, EnumSet.of(Action.ADMIN));
+
+    // Privileges needed to create datasets and streams
+    Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      .put(namespaceId.dataset("whom"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.stream("who"), EnumSet.of(Action.ADMIN))
+      .build();
+
+    // alice will be able to create the purchase app
+    ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      .put(appId, EnumSet.of(Action.ADMIN))
+      // TODO: remove the artifact version when we have the pr merged
+      .put(artifactId, EnumSet.of(Action.ADMIN));
+    
+    String namespacePrincipal = testNamespace.getConfig().getPrincipal();
+    String appEffectiveOwner = appOwner == null ? namespacePrincipal : appOwner;
+    if (namespacePrincipal != null) {
+      // this is needed to create an impersonated namespace
+      adminPrivileges.put(new KerberosPrincipalId(namespacePrincipal), EnumSet.of(Action.ADMIN));
+    }
+    if (appEffectiveOwner != null) {
+      // this is needed to create an impersonated app
+      appDeployPrivileges.put(new KerberosPrincipalId(appEffectiveOwner), EnumSet.of(Action.ADMIN));
+      // if impersonation is involved, impersonated user will be responsible to create the dataset
+      setUpPrivilegeAndRegisterForDeletion(appEffectiveOwner, dsStreamCreationPrivileges);
+    } else {
+      // else the requesting user will need the privileges
+      appDeployPrivileges.putAll(dsStreamCreationPrivileges);
+    }
+    setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges.build());
+    setUpPrivilegeAndRegisterForDeletion(ALICE, appDeployPrivileges.build());
+
+    // grant alice and bob execute privilege to run the flow
+    userGrant(ALICE, whoFlow, Action.EXECUTE);
+    userGrant(BOB, whoFlow, Action.EXECUTE);
+    // let bob be able to get the app and program info
+    userGrant(BOB, appId, Action.ADMIN);
+    userGrant(BOB, whoFlow, Action.ADMIN);
+
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+
+    TestManager testManager = getTestManager(aliceConfig, aliceClient);
+    testManager.addAppArtifact(artifactId, HelloWorld.class);
+    ArtifactSummary appArtifactSummary = new ArtifactSummary(HelloWorld.class.getSimpleName(), "1.0.0");
+    ApplicationManager appManager =
+      testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
+    FlowManager flowAliceManager = appManager.getFlowManager("WhoFlow");
+    startAndKillProgram(flowAliceManager);
+
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    RESTClient bobClient = new RESTClient(bobConfig);
+    bobClient.addListener(createRestClientListener());
+
+    FlowManager flowBobManager =
+      getTestManager(bobConfig, bobClient).getApplicationManager(appId).getFlowManager("WhoFlow");
+    startAndKillProgram(flowBobManager);
+  }
 
   /**
    * Test deploy app under authorization.
@@ -419,5 +502,12 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     return client.execute(
       HttpRequest.post(serviceURL.toURI().resolve(path).toURL()).withBody(jsonString).build(),
       config.getAccessToken());
+  }
+
+  private void startAndKillProgram(ProgramManager programManager) throws Exception {
+    programManager.start();
+    programManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    programManager.stop();
+    programManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 }
