@@ -37,6 +37,7 @@ import co.cask.cdap.proto.id.SecureKeyId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Role;
+import co.cask.cdap.security.authorization.ranger.commons.RangerCommon;
 import co.cask.cdap.security.authorization.sentry.model.Application;
 import co.cask.cdap.security.authorization.sentry.model.Artifact;
 import co.cask.cdap.security.authorization.sentry.model.Authorizable;
@@ -51,11 +52,17 @@ import co.cask.cdap.security.authorization.sentry.model.Stream;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.ranger.audit.provider.MiscUtil;
+import org.apache.ranger.plugin.audit.RangerDefaultAuditHandler;
+import org.apache.ranger.plugin.service.RangerBasePlugin;
+import org.apache.ranger.plugin.util.GrantRevokeRequest;
 import org.apache.sentry.provider.db.SentryNoSuchObjectException;
 import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClient;
 import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClientFactory;
@@ -64,16 +71,20 @@ import org.apache.sentry.provider.db.generic.service.thrift.TSentryGrantOption;
 import org.apache.sentry.provider.db.generic.service.thrift.TSentryPrivilege;
 import org.apache.sentry.service.thrift.ServiceConstants;
 import org.junit.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -87,6 +98,7 @@ import javax.security.auth.login.LoginException;
  * Authorization test base for all authorization tests
  */
 public abstract class AuthorizationTestBase extends AudiTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(AuthorizationTestBase.class);
   protected static final Gson GSON = new GsonBuilder().enableComplexMapKeySerialization().create();
 
   protected static final String ALICE = "alice";
@@ -97,7 +109,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String PASSWORD_SUFFIX = "password";
   protected static final String VERSION = "1.0.0";
   protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
-  protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform actions";
+  protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform action";
 
   private static final String COMPONENT = "cdap";
   private static final String INSTANCE_NAME = "cdap";
@@ -106,6 +118,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   // TODO: Remove this when we migrate to wildcard privilege
   protected Set<EntityId> cleanUpEntities;
   protected SentryGenericServiceClient sentryClient;
+  private RangerBasePlugin rangerPlugin;
   private AuthorizationClient authorizationClient;
 
   // General test namespace
@@ -114,11 +127,13 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
 
   @Override
   public void setUp() throws Exception {
-    sentryClient = SentryGenericServiceClientFactory.create(getSentryConfig());
+   // sentryClient = SentryGenericServiceClientFactory.create(getSentryConfig());
+    initRangerPlugin();
     // TODO: remove this once caching in sentry is fixed
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    userGrant("cdap", NamespaceId.DEFAULT, Action.ADMIN);
     userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.ADMIN);
     invalidateCache();
     super.setUp();
@@ -147,13 +162,16 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     // teardown in parent deletes all entities
     super.tearDown();
     // reset the test by revoking privileges from all users.
+    LOG.error("Yaojie - start revoking");
     userRevoke(ADMIN_USER);
     userRevoke(ALICE);
     userRevoke(BOB);
     userRevoke(CAROL);
     userRevoke(EVE);
+    LOG.error("Yaojie - finished revoking");
     invalidateCache();
-    sentryClient.close();
+//    sentryClient.close();
+    rangerPlugin.cleanup();
   }
 
   protected NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
@@ -175,7 +193,20 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
    * @param action The privilege we want to grant.
    */
   protected void userGrant(String user, EntityId entityId, Action action) throws Exception {
-    roleGrant(user, entityId, action, null);
+   // roleGrant(user, entityId, action, null);
+    RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
+    rangerPlugin.setResultProcessor(auditHandler);
+
+    GrantRevokeRequest request = new GrantRevokeRequest();
+    request.setGrantor(ADMIN_USER);
+    request.setAccessTypes(ImmutableSet.of(action.name().toLowerCase()));
+    request.setUsers(ImmutableSet.of(user));
+    request.setIsRecursive(false);
+
+    Map<String, String> resource = new HashMap<>();
+    setRangerResource(entityId, resource);
+    request.setResource(resource);
+    rangerPlugin.grantAccess(request, auditHandler);
   }
 
   protected void roleGrant(String role, EntityId entityId, Action action,
@@ -195,7 +226,8 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
 
   protected void invalidateCache() throws Exception {
     // TODO: Hack to invalidate cache in sentry authorizer. Remove once cache problem is solved.
-    authorizationClient.dropRole(DUMMY_ROLE);
+  //  authorizationClient.dropRole(DUMMY_ROLE);
+    TimeUnit.SECONDS.sleep(5);
   }
 
   /**
@@ -204,7 +236,18 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
    * @param user The user we want to revoke privilege from.
    */
   protected void userRevoke(String user) throws Exception {
-    roleRevoke(user, null);
+    //roleRevoke(user, null);
+    RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
+    rangerPlugin.setResultProcessor(auditHandler);
+
+    GrantRevokeRequest request = new GrantRevokeRequest();
+    request.setGrantor(ADMIN_USER);
+    request.setUsers(ImmutableSet.of(user));
+    request.setIsRecursive(true);
+    request.setReplaceExistingPermissions(true);
+    request.setResource(ImmutableMap.of(RangerCommon.KEY_INSTANCE, "cdap"));
+
+    rangerPlugin.revokeAccess(request, auditHandler);
   }
 
   protected void userRevoke(String user, EntityId entityId, Action action) throws Exception {
@@ -350,6 +393,103 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
         KerberosPrincipalId principalId = (KerberosPrincipalId) entityId;
         toAuthorizables(new InstanceId(INSTANCE_NAME), authorizables);
         authorizables.add(new co.cask.cdap.security.authorization.sentry.model.Principal(principalId.getPrincipal()));
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("The entity %s is of unknown type %s", entityId, entityType));
+    }
+  }
+
+  private void initRangerPlugin() throws Exception {
+    Configuration conf = new Configuration(false);
+    conf.clear();
+    conf.set("hadoop.security.authentication", "kerberos");
+
+    UserGroupInformation.setConfiguration(conf);
+    LoginContext lc = kinit();
+    UserGroupInformation.loginUserFromSubject(lc.getSubject());
+
+    UserGroupInformation ugi = UserGroupInformation.getLoginUser();
+    Preconditions.checkNotNull(ugi, "Kerberos login information is not available. UserGroupInformation is null");
+    MiscUtil.setUGILoginUser(null, lc.getSubject());
+
+    // the string name here should not be changed as this uniquely identifies the plugin in ranger
+    rangerPlugin = new RangerBasePlugin("cdap", "cdap");
+    rangerPlugin.init();
+    RangerDefaultAuditHandler auditHandler = new RangerDefaultAuditHandler();
+    rangerPlugin.setResultProcessor(auditHandler);
+
+//    GrantRevokeRequest request = new GrantRevokeRequest();
+//    request.setGrantor("cdapitn");
+//    request.setAccessTypes(ImmutableSet.of("read"));
+//    request.setUsers(ImmutableSet.of("alice"));
+//
+//    Map<String, String> resource = new HashMap<>();
+//    resource.put("instance", "cdap");
+//    resource.put("namespace", "default");
+//    request.setResource(resource);
+//
+//    rangerPlugin.grantAccess(request, auditHandler);
+  }
+
+  /**
+   * Sets the Ranger resource appropriately depending on the given entityId
+   */
+  private void setRangerResource(EntityId entityId, Map<String, String> resource) {
+    EntityType entityType = entityId.getEntityType();
+    switch (entityType) {
+      case INSTANCE:
+        resource.put(RangerCommon.KEY_INSTANCE, ((InstanceId) entityId).getInstance());
+        break;
+      case NAMESPACE:
+        setRangerResource(new InstanceId(INSTANCE_NAME), resource);
+        resource.put(RangerCommon.KEY_NAMESPACE, ((NamespaceId) entityId).getNamespace());
+        break;
+      case ARTIFACT:
+        ArtifactId artifactId = (ArtifactId) entityId;
+        setRangerResource(artifactId.getParent(), resource);
+        resource.put(RangerCommon.KEY_ARTIFACT, artifactId.getArtifact());
+        break;
+      case APPLICATION:
+        ApplicationId applicationId = (ApplicationId) entityId;
+        setRangerResource(applicationId.getParent(), resource);
+        resource.put(RangerCommon.KEY_APPLICATION, applicationId.getApplication());
+        break;
+      case DATASET:
+        DatasetId dataset = (DatasetId) entityId;
+        setRangerResource(dataset.getParent(), resource);
+        resource.put(RangerCommon.KEY_DATASET, dataset.getDataset());
+        break;
+      case DATASET_MODULE:
+        DatasetModuleId datasetModuleId = (DatasetModuleId) entityId;
+        setRangerResource(datasetModuleId.getParent(), resource);
+        resource.put(RangerCommon.KEY_DATASET_MODULE, datasetModuleId.getModule());
+        break;
+      case DATASET_TYPE:
+        DatasetTypeId datasetTypeId = (DatasetTypeId) entityId;
+        setRangerResource(datasetTypeId.getParent(), resource);
+        resource.put(RangerCommon.KEY_DATASET_TYPE, datasetTypeId.getType());
+        break;
+      case STREAM:
+        StreamId streamId = (StreamId) entityId;
+        setRangerResource(streamId.getParent(), resource);
+        resource.put(RangerCommon.KEY_STREAM, streamId.getStream());
+        break;
+      case PROGRAM:
+        ProgramId programId = (ProgramId) entityId;
+        setRangerResource(programId.getParent(), resource);
+        resource.put(RangerCommon.KEY_PROGRAM, programId.getType() +
+          RangerCommon.RESOURCE_SEPARATOR + programId.getProgram());
+        break;
+      case SECUREKEY:
+        SecureKeyId secureKeyId = (SecureKeyId) entityId;
+        setRangerResource(secureKeyId.getParent(), resource);
+        resource.put(RangerCommon.KEY_SECUREKEY, secureKeyId.getName());
+        break;
+      case KERBEROSPRINCIPAL:
+        setRangerResource(new InstanceId(INSTANCE_NAME), resource);
+        // TODO: use KEY_PRINCIPAL after BA build is done
+        resource.put(RangerCommon.KEY_PRINCIPAL,
+                     ((KerberosPrincipalId) entityId).getPrincipal());
         break;
       default:
         throw new IllegalArgumentException(String.format("The entity %s is of unknown type %s", entityId, entityType));
