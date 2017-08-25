@@ -35,6 +35,7 @@ import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Privilege;
+import co.cask.cdap.proto.security.Role;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
@@ -58,20 +59,6 @@ import java.util.concurrent.TimeUnit;
  * We create a namespace for most of the test cases since we want to make sure the privilege for each user is clean.
  */
 public class BasicAuthorizationTest extends AuthorizationTestBase {
-
-  @Test
-  public void createLotOfEntities() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
-    RESTClient adminClient = new RESTClient(adminConfig);
-    adminClient.addListener(createRestClientListener());
-
-    StreamClient streamClient = new StreamClient(adminConfig, adminClient);
-    NamespaceId namespaceId = new NamespaceId("performance");
-    String streamName = "perf";
-    for (int i = 0; i < 1000; i++) {
-      streamClient.create(namespaceId.stream(streamName + i));
-    }
-  }
 
   /**
    * Test the basic grant operations. User should be able to list once he has the privilege on the namespace.
@@ -344,8 +331,8 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
 
     // revoke privileges from BOB and grant them to alice
-    userRevoke(BOB);
     for (Privilege privilege : bobExpected) {
+      wildCardRevoke(BOB, privilege.getAuthorizable(), privilege.getAction());
       wildCardGrant(ALICE, privilege.getAuthorizable(), privilege.getAction());
     }
     aliceExpected.addAll(bobExpected);
@@ -611,6 +598,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     if (namespacePrincipal != null) {
       userGrant(ADMIN_USER, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
     }
+    authorizationClient.createRole(new Role(roleName));
     // streamId1 is only used to test visibility so only grant EXECUTE
     roleGrant(roleName, streamLists.get(0), Action.EXECUTE, groupName);
     // streamId2 is only allowed to read

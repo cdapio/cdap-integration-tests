@@ -463,9 +463,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       Assert.assertEquals(200, response.getResponseCode());
 
       // revoke privileges from user2
-      userRevoke(user2);
-      // grant him WRITE privilege on the dataset
-      userGrant(user2, dataset1, Action.WRITE);
+      userRevoke(user2, dataset1, Action.READ);
       invalidateCache();
 
       user2ServiceManager.stop();
