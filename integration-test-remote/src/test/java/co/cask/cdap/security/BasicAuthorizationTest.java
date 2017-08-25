@@ -59,6 +59,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class BasicAuthorizationTest extends AuthorizationTestBase {
 
+  @Test
+  public void createLotOfEntities() throws Exception {
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
+    RESTClient adminClient = new RESTClient(adminConfig);
+    adminClient.addListener(createRestClientListener());
+
+    StreamClient streamClient = new StreamClient(adminConfig, adminClient);
+    NamespaceId namespaceId = new NamespaceId("performance");
+    String streamName = "perf";
+    for (int i = 0; i < 1000; i++) {
+      streamClient.create(namespaceId.stream(streamName + i));
+    }
+  }
+
   /**
    * Test the basic grant operations. User should be able to list once he has the privilege on the namespace.
    */

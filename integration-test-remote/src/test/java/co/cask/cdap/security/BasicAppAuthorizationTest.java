@@ -362,10 +362,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       .put(testNs2.artifact(TableDatasetApp.class.getSimpleName(), "1.0.0"), EnumSet.of(Action.ADMIN))
       .put(new KerberosPrincipalId(user2), EnumSet.of(Action.ADMIN));
     // this is to create impersonated ns
-    if (nsPrincipal1 != null) {
+    if (nsPrincipal1 != null && !nsPrincipal1.equals(user1)) {
       adminPrivileges.put(new KerberosPrincipalId(nsPrincipal1), EnumSet.of(Action.ADMIN));
     }
-    if (nsPrincipal2 != null) {
+    if (nsPrincipal2 != null && !nsPrincipal2.equals(user2)) {
       adminPrivileges.put(new KerberosPrincipalId(nsPrincipal2), EnumSet.of(Action.ADMIN));
     }
     setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges.build());
