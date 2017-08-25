@@ -71,11 +71,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -101,15 +101,13 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String VERSION = "1.0.0";
   protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
   protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform actions";
+  protected static final String INSTANCE_NAME = "cdap";
 
   private static final String COMPONENT = "cdap";
-  private static final String INSTANCE_NAME = "cdap";
-  private static final Role DUMMY_ROLE = new Role("dummy");
 
   // TODO: Remove this when we migrate to wildcard privilege
-  protected Set<EntityId> cleanUpEntities;
   protected SentryGenericServiceClient sentryClient;
-  private AuthorizationClient authorizationClient;
+  protected AuthorizationClient authorizationClient;
 
   // General test namespace
   protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
@@ -126,7 +124,6 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     grantAllWildCardPolicies();
     invalidateCache();
     super.setUp();
-    cleanUpEntities = new HashSet<>();
   }
 
   @Before
@@ -154,6 +151,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     userRevoke(BOB);
     userRevoke(CAROL);
     userRevoke(EVE);
+    userRevoke(INSTANCE_NAME);
     invalidateCache();
     sentryClient.close();
   }
@@ -162,7 +160,6 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
                                                    RESTClient client) throws Exception {
     try {
       new NamespaceClient(config, client).create(namespaceMeta);
-      cleanUpEntities.add(namespaceMeta.getNamespaceId());
     } finally {
       registerForDeletion(namespaceMeta.getNamespaceId());
     }
@@ -209,9 +206,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   }
 
   protected void invalidateCache() throws Exception {
-    sentryClient.createRoleIfNotExist(ITN_ADMIN, DUMMY_ROLE.getName(), COMPONENT);
-    // TODO: Hack to invalidate cache in sentry authorizer. Remove once cache problem is solved.
-    authorizationClient.dropRole(DUMMY_ROLE);
+    TimeUnit.SECONDS.sleep(7);
   }
 
   /**
@@ -424,7 +419,6 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     for (Map.Entry<EntityId, Set<Action>> privilege : neededPrivileges.entrySet()) {
       for (Action action : privilege.getValue()) {
         userGrant(user, privilege.getKey(), action);
-        cleanUpEntities.add(privilege.getKey());
       }
     }
   }

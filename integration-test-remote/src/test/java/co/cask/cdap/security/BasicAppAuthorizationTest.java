@@ -21,6 +21,9 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.table.Get;
 import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
+import co.cask.cdap.api.schedule.SchedulableProgramType;
+import co.cask.cdap.api.workflow.ScheduleProgramInfo;
+import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.examples.helloworld.HelloWorld;
@@ -28,6 +31,9 @@ import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryStore;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
+import co.cask.cdap.proto.ProtoConstraint;
+import co.cask.cdap.proto.ProtoTrigger;
+import co.cask.cdap.proto.ScheduleDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
@@ -36,6 +42,7 @@ import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.FlowId;
 import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
@@ -44,8 +51,10 @@ import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.TestManager;
+import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
@@ -179,6 +188,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
+    String workflowName = "PurchaseHistoryWorkflow";
     ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(namespaceId, EnumSet.of(Action.ADMIN))
       // TODO: these can be put into teardown when we migrate to wildcard privilege
@@ -186,7 +196,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       .put(appId.service("UserProfileService"), EnumSet.of(Action.ADMIN))
       .put(appId.service("CatalogLookup"), EnumSet.of(Action.ADMIN))
       .put(appId.flow("PurchaseFlow"), EnumSet.of(Action.ADMIN))
-      .put(appId.workflow("PurchaseHistoryWorkflow"), EnumSet.of(Action.ADMIN))
+      .put(appId.workflow(workflowName), EnumSet.of(Action.ADMIN))
       .put(appId.mr("PurchaseHistoryBuilder"), EnumSet.of(Action.ADMIN));
 
     // Privileges needed to create datasets and streams
@@ -194,8 +204,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       .put(namespaceId.dataset("frequentCustomers"), EnumSet.of(Action.ADMIN))
       .put(namespaceId.stream("purchaseStream"), EnumSet.of(Action.ADMIN))
       .put(namespaceId.dataset("userProfiles"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.dataset("history"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.dataset("purchases"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset("history"), EnumSet.of(Action.ADMIN, Action.WRITE))
+      .put(namespaceId.dataset("purchases"), EnumSet.of(Action.ADMIN, Action.READ))
       .put(namespaceId.datasetModule(PurchaseHistoryStore.class.getName()), EnumSet.of(Action.ADMIN))
       .put(namespaceId.datasetType(PurchaseHistoryStore.class.getName()), EnumSet.of(Action.ADMIN))
       .build();
@@ -219,10 +229,13 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     } else {
       // else the requesting user will need the privileges
       appDeployPrivileges.putAll(dsStreamCreationPrivileges);
+      setUpPrivilegeAndRegisterForDeletion(INSTANCE_NAME, dsStreamCreationPrivileges);
     }
     setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges.build());
     setUpPrivilegeAndRegisterForDeletion(CAROL, appDeployPrivileges.build());
+    userGrant(ALICE, appId.workflow(workflowName), Action.EXECUTE);
 
+    invalidateCache();
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
@@ -243,6 +256,25 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       // expected
       // TODO: change to Unauthorized exception
     }
+
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    RESTClient aliceClient = new RESTClient(aliceConfig);
+    aliceClient.addListener(createRestClientListener());
+
+    ScheduleClient scheduleClient = new ScheduleClient(aliceConfig, aliceClient);
+    ScheduleId scheduleId = new ScheduleId(appId.getNamespace(), appId.getApplication(), "testSchedule");
+    scheduleClient.add(scheduleId, new ScheduleDetail(
+      scheduleId.getSchedule(), null,
+      new ScheduleProgramInfo(SchedulableProgramType.WORKFLOW, workflowName), null,
+      new ProtoTrigger.TimeTrigger("0/1 * * * *"), ImmutableList.of(new ProtoConstraint.ConcurrencyConstraint(1)),
+      null));
+    scheduleClient.resume(scheduleId);
+
+    WorkflowManager workflowAliceManager =
+      getTestManager(aliceConfig, aliceClient).getApplicationManager(appId).getWorkflowManager(workflowName);
+    workflowAliceManager.waitForRun(ProgramRunStatus.RUNNING, 90, TimeUnit.SECONDS);
+    scheduleClient.suspend(scheduleId);
+    workflowAliceManager.waitForRun(ProgramRunStatus.COMPLETED, 120, TimeUnit.SECONDS);
   }
 
   /**
@@ -343,11 +375,9 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     DatasetId dataset2 = testNs2.dataset(datasetName);
     userGrant(user1, dataset1, Action.ADMIN);
     userGrant(user1, dataset1, Action.WRITE);
-    cleanUpEntities.add(dataset1);
     // grant user2 the read access to dataset in ns1
     userGrant(user2, dataset2, Action.ADMIN);
     userGrant(user2, dataset1, Action.READ);
-    cleanUpEntities.add(dataset2);
 
     createAndRegisterNamespace(namespaceMeta1, adminConfig, adminClient);
     createAndRegisterNamespace(namespaceMeta2, adminConfig, adminClient);
