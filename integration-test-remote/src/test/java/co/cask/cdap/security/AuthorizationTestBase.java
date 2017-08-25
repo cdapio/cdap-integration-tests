@@ -56,6 +56,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.sun.security.auth.module.Krb5LoginModule;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.sentry.provider.db.SentryNoSuchObjectException;
@@ -65,11 +66,16 @@ import org.apache.sentry.provider.db.generic.service.thrift.TAuthorizable;
 import org.apache.sentry.provider.db.generic.service.thrift.TSentryGrantOption;
 import org.apache.sentry.provider.db.generic.service.thrift.TSentryPrivilege;
 import org.apache.sentry.service.thrift.ServiceConstants;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -89,6 +95,7 @@ import javax.security.auth.login.LoginException;
  * Authorization test base for all authorization tests
  */
 public abstract class AuthorizationTestBase extends AudiTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(AuthorizationTestBase.class);
   protected static final Gson GSON = new GsonBuilder().enableComplexMapKeySerialization().create();
 
   protected static final String ALICE = "alice";
@@ -112,6 +119,18 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   // General test namespace
   protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
                                                            null, null, null, null);
+
+  @BeforeClass
+  public static void setupLoginConf() throws Exception {
+    URL krbUrl = AuthorizationTestBase.class.getClassLoader().getResource("krb5.conf");
+    URL jaasUrl = AuthorizationTestBase.class.getClassLoader().getResource("jaas.conf");
+    Assert.assertNotNull(krbUrl);
+    Assert.assertNotNull(jaasUrl);
+    LOG.error("Yaojie - {}", krbUrl.getFile());
+    LOG.error(jaasUrl.getFile());
+    System.setProperty("java.security.krb5.conf", krbUrl.getFile());
+    System.setProperty("java.security.auth.login.config", jaasUrl.getFile());
+  }
 
   @Override
   public void setUp() throws Exception {
@@ -291,7 +310,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
       case STREAM:
         return prefix + "*.*";
       case PROGRAM:
-        return prefix + "*.*." + programType.toString() +".*";
+        return prefix + "*.*." + programType.toString() + ".*";
       case KERBEROSPRINCIPAL:
         return prefix + "*";
       default:
