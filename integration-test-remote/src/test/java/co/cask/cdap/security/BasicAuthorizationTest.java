@@ -116,7 +116,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     StreamClient aliceStreamClient = new StreamClient(aliceConfig, aliceClient);
     aliceStreamClient.create(streamId);
-    cleanUpEntities.add(streamId);
 
     // cdapitn shouldn't be able to list the stream since he doesn't have privilege on the stream
     StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
@@ -393,7 +392,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // Create, truncate, update should all succeed
     datasetAdminClient.create(testDatasetinstance, "table");
-    cleanUpEntities.add(testDatasetinstance);
     Assert.assertTrue(datasetAdminClient.exists(testDatasetinstance));
     Assert.assertEquals(1, datasetAdminClient.list(testDatasetinstance.getNamespaceId()).size());
     Assert.assertNotNull(datasetAdminClient.get(testDatasetinstance));
@@ -479,7 +477,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     // Create a stream with Admin
     StreamClient adminStreamClient = new StreamClient(adminConfig, adminClient);
     adminStreamClient.create(streamId);
-    cleanUpEntities.add(streamId);
     Assert.assertEquals(1, adminStreamClient.list(testNamespace.getNamespaceId()).size());
     Assert.assertNotNull(adminStreamClient.getConfig(streamId));
 
