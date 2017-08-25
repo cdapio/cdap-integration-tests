@@ -239,7 +239,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   }
 
   protected void invalidateCache() throws Exception {
-    TimeUnit.SECONDS.sleep(7);
+    TimeUnit.SECONDS.sleep(10);
   }
 
   private void createAllUserRoles() throws Exception {
