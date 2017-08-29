@@ -20,10 +20,10 @@ import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.table.Get;
 import co.cask.cdap.api.dataset.table.Put;
-import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.examples.purchase.PurchaseApp;
+import co.cask.cdap.examples.purchase.PurchaseHistoryStore;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
@@ -31,10 +31,9 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.EntityId;
+import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.security.Action;
-import co.cask.cdap.proto.security.Principal;
-import co.cask.cdap.proto.security.Privilege;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
 import co.cask.cdap.test.ApplicationManager;
@@ -42,13 +41,13 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.TestManager;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -58,7 +57,7 @@ import javax.annotation.Nullable;
 /**
  * Basic authorization test base for apps
  */
-public class AppAuthorizationTestBase extends AuthorizationTestBase {
+public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
   // namespace for app1 for cross namespace test. For tests without cross namespace, use testNamespace in
   // AuthorizationTestBase instead.
@@ -76,7 +75,7 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
   protected String appOwner2 = BOB;
 
   /**
-   * Test deploy app under authorization and user gets all privileges on the app after the deploy.
+   * Test deploy app under authorization.
    */
   @Test
   public void testDeployApp() throws Exception {
@@ -85,40 +84,67 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
-    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    NamespaceId namespaceId = testNamespace.getNamespaceId();
+    ApplicationId appId = namespaceId.app(PurchaseApp.APP_NAME);
 
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    Principal carolPrincipal = new Principal(CAROL, Principal.PrincipalType.USER);
-    authorizationClient.grant(namespaceId, carolPrincipal, Collections.singleton(Action.WRITE));
+    // pre-grant all required privileges
+    // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
+    ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      .put(namespaceId, EnumSet.of(Action.ADMIN))
+      // TODO: these can be put into teardown when we migrate to wildcard privilege
+      .put(appId.service("PurchaseHistoryService"), EnumSet.of(Action.ADMIN))
+      .put(appId.service("UserProfileService"), EnumSet.of(Action.ADMIN))
+      .put(appId.service("CatalogLookup"), EnumSet.of(Action.ADMIN))
+      .put(appId.flow("PurchaseFlow"), EnumSet.of(Action.ADMIN))
+      .put(appId.workflow("PurchaseHistoryWorkflow"), EnumSet.of(Action.ADMIN))
+      .put(appId.mr("PurchaseHistoryBuilder"), EnumSet.of(Action.ADMIN));
+
+    // Privileges needed to create datasets and streams
+    Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      .put(namespaceId.dataset("frequentCustomers"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.stream("purchaseStream"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset("userProfiles"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset("history"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset("purchases"), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.datasetModule(PurchaseHistoryStore.class.getName()), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.datasetType(PurchaseHistoryStore.class.getName()), EnumSet.of(Action.ADMIN))
+      .build();
+
+    // carol will be able to create the purchase app
+    ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      .put(appId, EnumSet.of(Action.ADMIN))
+      // TODO: remove the artifact version when we have the pr merged
+      .put(namespaceId.artifact(PurchaseApp.class.getSimpleName(), "1.0.0-SNAPSHOT"), EnumSet.of(Action.ADMIN));
+    String namespacePrincipal = testNamespace.getConfig().getPrincipal();
+    if (namespacePrincipal != null) {
+      adminPrivileges.put(new KerberosPrincipalId(namespacePrincipal), EnumSet.of(Action.ADMIN));
+      appDeployPrivileges.put(new KerberosPrincipalId(namespacePrincipal),
+                              EnumSet.of(Action.ADMIN));
+      // if impersonation is involved, impersonated user will be responsible to create the dataset
+      setUpPrivilegeAndRegisterForDeletion(namespacePrincipal, dsStreamCreationPrivileges);
+    } else {
+      // else the requesting user will need the privileges
+      appDeployPrivileges.putAll(dsStreamCreationPrivileges);
+    }
+    setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges.build());
+    setUpPrivilegeAndRegisterForDeletion(CAROL, appDeployPrivileges.build());
+
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
     RESTClient carolClient = new RESTClient(carolConfig);
     carolClient.addListener(createRestClientListener());
 
-    getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
+    ApplicationManager appManager =
+      getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
 
-    // List the privileges for carol and carol should have all privileges for the app he deployed.
-    AuthorizationClient carolAuthorizationClient = new AuthorizationClient(carolConfig, carolClient);
-    Set<Privilege> privileges = carolAuthorizationClient.listPrivileges(carolPrincipal);
-    Assert.assertTrue(privileges.size() > 1);
-
-    // Count the privileges for each entity
-    Map<EntityId, Integer> privilegeCount = new HashMap<>();
-    for (Privilege privilege : privileges) {
-      if (privilegeCount.containsKey(privilege.getEntity())) {
-        privilegeCount.put(privilege.getEntity(), privilegeCount.get(privilege.getEntity()) + 1);
-      } else {
-        privilegeCount.put(privilege.getEntity(), 1);
-      }
-    }
-
-    // Bob should have 4 privileges for each entity other than the given namespace
-    for (Map.Entry<EntityId, Integer> entry : privilegeCount.entrySet()) {
-      if (!entry.getKey().equals(namespaceId)) {
-        Assert.assertEquals(4, (int) entry.getValue());
-      } else {
-        Assert.assertEquals(1, (int) entry.getValue());
-      }
+    // carol should not able to start the program since he does not have execute privilege on program
+    try {
+      appManager.startProgram(appId.flow("PurchaseFlow"));
+      Assert.fail();
+    } catch (Exception e) {
+      // expected
+      // TODO: change to Unauthorized exception
     }
   }
 
@@ -130,8 +156,14 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
+    NamespaceId namespaceId = testNamespace.getNamespaceId();
 
-    NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
+    userGrant(ADMIN_USER, namespaceId, Action.ADMIN);
+    String principal = testNamespace.getConfig().getPrincipal();
+    if (principal != null) {
+      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+    }
+    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
     RESTClient carolClient = new RESTClient(carolConfig);
@@ -141,13 +173,15 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
       getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
       Assert.fail();
     } catch (Exception ex) {
+      // expected
       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MSG.toLowerCase()));
     }
   }
 
   /**
-   * Grant a user WRITE access on a dataset.
-   * Try to get the dataset from a program and call a WRITE and READ method on it.
+   * Test dataset read/write in a program. Two apps are deployed in different namespaces owned by user1 and user2
+   * user1 will have write on its dataset, and user2 will have read on user1's dataset,
+   * test user1 is able to write to the dataset and user2 is able to read when program is running.
    *
    * Note that this test can ONLY be used when impersonation is enabled, since currently we do not have
    * endpoint enforcement
@@ -160,11 +194,10 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
 
     String datasetName = "testReadDataset";
 
-    NamespaceId testNs1 = createAndRegisterNamespace(namespaceMeta1, adminConfig, adminClient);
-    NamespaceId testNs2 = createAndRegisterNamespace(namespaceMeta2, adminConfig, adminClient);
-
-    // initialize clients and configs for users user1 and user2
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    NamespaceId testNs1 = namespaceMeta1.getNamespaceId();
+    NamespaceId testNs2 = namespaceMeta2.getNamespaceId();
+    ApplicationId appId1 = testNs1.app(TableDatasetApp.class.getSimpleName());
+    ApplicationId appId2 = testNs2.app(TableDatasetApp.class.getSimpleName());
 
     // todo: remove this once we support endpoint enforcement
     String user1 = appOwner1 == null ? namespaceMeta1.getConfig().getPrincipal() : appOwner1;
@@ -173,6 +206,44 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
       Assert.fail("This test can only be used when impersonation is enabled");
     }
 
+    // pre-grant all required privileges
+    // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
+    Map<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
+      // privilege to create namespace
+      .put(testNs1, EnumSet.of(Action.ADMIN))
+      .put(testNs2, EnumSet.of(Action.ADMIN))
+      // privilege to run the program, admin is needed to retrieve the service url
+      // TODO: remove the admin privilege when we migrate to wildcard privilege
+      .put(appId1.service("DatasetService"), EnumSet.of(Action.EXECUTE, Action.ADMIN))
+      .put(appId2.service("DatasetService"), EnumSet.of(Action.EXECUTE, Action.ADMIN))
+      // privilege to deploy app1
+      .put(appId1, EnumSet.of(Action.ADMIN))
+      // TODO: remove the artifact version when we have the pr merged
+      .put(testNs1.artifact(TableDatasetApp.class.getSimpleName(), "1.0.0"), EnumSet.of(Action.ADMIN))
+      .put(new KerberosPrincipalId(user1), EnumSet.of(Action.ADMIN))
+      // privilege to deploy app2
+      .put(appId2, EnumSet.of(Action.ADMIN))
+      // TODO: remove the artifact version when we have the pr merged
+      .put(testNs2.artifact(TableDatasetApp.class.getSimpleName(), "1.0.0"), EnumSet.of(Action.ADMIN))
+      .put(new KerberosPrincipalId(user2), EnumSet.of(Action.ADMIN))
+      .build();
+    setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges);
+    // since impersonation is involved, grant privileges to create the dataset and also let user1 be able to
+    // write the dataset
+    DatasetId dataset1 = testNs1.dataset(datasetName);
+    DatasetId dataset2 = testNs2.dataset(datasetName);
+    userGrant(user1, dataset1, Action.ADMIN);
+    userGrant(user1, dataset1, Action.WRITE);
+    cleanUpEntities.add(dataset1);
+    // grant user2 the read access to dataset in ns1
+    userGrant(user2, dataset2, Action.ADMIN);
+    userGrant(user2, dataset1, Action.READ);
+    cleanUpEntities.add(dataset2);
+
+    createAndRegisterNamespace(namespaceMeta1, adminConfig, adminClient);
+    createAndRegisterNamespace(namespaceMeta2, adminConfig, adminClient);
+
+    // initialize clients and configs for users user1 and user2
     ClientConfig user1Config = getClientConfig(fetchAccessToken(user1, user1 + PASSWORD_SUFFIX));
     RESTClient user1Client = new RESTClient(user1Config);
 
@@ -182,25 +253,8 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     user1Client.addListener(createRestClientListener());
     user2Client.addListener(createRestClientListener());
 
-    // set-up privileges
-    // user1 has {admin, read, write, execute} on TEST_NS1, user2 has read on TEST_NS1
-    // user2 has {admin, read, write, execute} on TEST_NS2, user1 has execute on TEST_NS2
-    authorizationClient.grant(testNs1, new Principal(user1, Principal.PrincipalType.USER),
-                              ImmutableSet.of(Action.WRITE, Action.READ, Action.EXECUTE, Action.ADMIN));
-    authorizationClient.grant(testNs2, new Principal(user1, Principal.PrincipalType.USER),
-                              Collections.singleton(Action.READ));
-
-    authorizationClient.grant(testNs2, new Principal(user2, Principal.PrincipalType.USER),
-                              ImmutableSet.of(Action.WRITE, Action.READ, Action.EXECUTE, Action.ADMIN));
-    authorizationClient.grant(testNs1, new Principal(user2, Principal.PrincipalType.USER),
-                              Collections.singleton(Action.EXECUTE));
-
     ServiceManager user1ServiceManager =
-      setupAppStartAndGetService(testNs1, user1Config, user1Client, datasetName, appOwner1);
-
-    // grant privilege on dataset to user2 after its created
-    authorizationClient.grant(new DatasetId(testNs1.getNamespace(), datasetName),
-                              new Principal(user2, Principal.PrincipalType.USER), Collections.singleton(Action.READ));
+      setupAppStartAndGetService(testNs1, adminConfig, adminClient, datasetName, appOwner1);
 
     try {
       // user1 writes an entry to the dataset
@@ -218,7 +272,7 @@ public class AppAuthorizationTestBase extends AuthorizationTestBase {
     }
 
     ServiceManager user2ServiceManager =
-      setupAppStartAndGetService(testNs2, user2Config, user2Client, datasetName, appOwner2);
+      setupAppStartAndGetService(testNs2, adminConfig, adminClient, datasetName, appOwner2);
 
     try {
       // try to get the entry written by user2 for the dataset owned by user1

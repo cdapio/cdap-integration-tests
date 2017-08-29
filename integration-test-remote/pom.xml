@@ -27,7 +27,28 @@
 
   <artifactId>integration-test-remote</artifactId>
 
+  <properties>
+    <hadoop.version>2.3.0</hadoop.version>
+    <sentry.version>1.7.0</sentry.version>
+    <cdap.sentry.extn.version>0.6.0</cdap.sentry.extn.version>
+  </properties>
+
   <dependencies>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-sentry-model</artifactId>
+      <version>${cdap.sentry.extn.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-sentry-binding</artifactId>
+      <version>${cdap.sentry.extn.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-sentry-policy</artifactId>
+      <version>${cdap.sentry.extn.version}</version>
+    </dependency>
     <dependency>
       <groupId>co.cask.cdap.test</groupId>
       <artifactId>integration-test-core</artifactId>
