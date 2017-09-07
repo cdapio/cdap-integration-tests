@@ -46,6 +46,7 @@ import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ProgramManager;
@@ -102,16 +103,12 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
     NamespaceId namespaceId = testNamespace.getNamespaceId();
     ApplicationId appId = namespaceId.app(HelloWorld.class.getSimpleName());
-    ArtifactId artifactId = namespaceId.artifact(HelloWorld.class.getSimpleName(), "1.0.0");
     FlowId whoFlow = appId.flow("WhoFlow");
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
     ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(namespaceId, EnumSet.of(Action.ADMIN))
-      // TODO: these can be put into teardown when we migrate to wildcard privilege
-      .put(appId.service("Greeting"), EnumSet.of(Action.ADMIN))
-      .put(whoFlow, EnumSet.of(Action.ADMIN));
+      .put(namespaceId, EnumSet.of(Action.ADMIN));
 
     // Privileges needed to create datasets and streams
     Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
@@ -119,11 +116,13 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       .put(namespaceId.stream("who"), EnumSet.of(Action.ADMIN))
       .build();
 
-    // alice will be able to create the purchase app
+    // alice will be able to create the HelloWorld app
     ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(appId, EnumSet.of(Action.ADMIN))
-      // TODO: remove the artifact version when we have the pr merged
-      .put(artifactId, EnumSet.of(Action.ADMIN));
+      // use some random artifact version
+      .put(namespaceId.artifact(HelloWorld.class.getSimpleName(),
+                                String.format("1.0.0-SNAPSHOT-%d", System.currentTimeMillis())),
+           EnumSet.of(Action.ADMIN));
 
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
     String appEffectiveOwner = appOwner == null ? namespacePrincipal : appOwner;
@@ -144,11 +143,11 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     setUpPrivilegeAndRegisterForDeletion(ALICE, appDeployPrivileges.build());
 
     // grant alice and bob execute privilege to run the flow
-    userGrant(ALICE, whoFlow, Action.EXECUTE);
-    userGrant(BOB, whoFlow, Action.EXECUTE);
+    grant(ALICE, whoFlow, Action.EXECUTE);
+    grant(BOB, whoFlow, Action.EXECUTE);
     // let bob be able to get the app and program info
-    userGrant(BOB, appId, Action.ADMIN);
-    userGrant(BOB, whoFlow, Action.ADMIN);
+    grant(BOB, appId, Action.ADMIN);
+    grant(BOB, whoFlow, Action.ADMIN);
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
@@ -156,7 +155,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     aliceClient.addListener(createRestClientListener());
 
     TestManager testManager = getTestManager(aliceConfig, aliceClient);
-    testManager.addAppArtifact(artifactId, HelloWorld.class);
+    testManager.addAppArtifact(namespaceId.artifact(HelloWorld.class.getSimpleName(), "1.0.0"), HelloWorld.class);
     ArtifactSummary appArtifactSummary = new ArtifactSummary(HelloWorld.class.getSimpleName(), "1.0.0");
     ApplicationManager appManager =
       testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
@@ -184,20 +183,12 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
     NamespaceId namespaceId = testNamespace.getNamespaceId();
     ApplicationId appId = namespaceId.app(PurchaseApp.APP_NAME);
-    ArtifactId artifactId = namespaceId.artifact(PurchaseApp.class.getSimpleName(), "1.0.0");
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
     String workflowName = "PurchaseHistoryWorkflow";
     ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(namespaceId, EnumSet.of(Action.ADMIN))
-      // TODO: these can be put into teardown when we migrate to wildcard privilege
-      .put(appId.service("PurchaseHistoryService"), EnumSet.of(Action.ADMIN))
-      .put(appId.service("UserProfileService"), EnumSet.of(Action.ADMIN))
-      .put(appId.service("CatalogLookup"), EnumSet.of(Action.ADMIN))
-      .put(appId.flow("PurchaseFlow"), EnumSet.of(Action.ADMIN))
-      .put(appId.workflow(workflowName), EnumSet.of(Action.ADMIN))
-      .put(appId.mr("PurchaseHistoryBuilder"), EnumSet.of(Action.ADMIN));
+      .put(namespaceId, EnumSet.of(Action.ADMIN));
 
     // Privileges needed to create datasets and streams
     Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
@@ -213,8 +204,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // carol will be able to create the purchase app
     ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(appId, EnumSet.of(Action.ADMIN))
-      // TODO: remove the artifact version when we have the pr merged
-      .put(artifactId, EnumSet.of(Action.ADMIN));
+      // use some random artifact version
+      .put(namespaceId.artifact(PurchaseApp.class.getSimpleName(),
+                                String.format("1.0.0-SNAPSHOT-%d", System.currentTimeMillis())),
+           EnumSet.of(Action.ADMIN));
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
     String appEffectiveOwner = appOwner == null ? namespacePrincipal : appOwner;
     if (namespacePrincipal != null) {
@@ -233,7 +226,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     }
     setUpPrivilegeAndRegisterForDeletion(ADMIN_USER, adminPrivileges.build());
     setUpPrivilegeAndRegisterForDeletion(CAROL, appDeployPrivileges.build());
-    userGrant(ALICE, appId.workflow(workflowName), Action.EXECUTE);
+    grant(ALICE, appId.workflow(workflowName), Action.EXECUTE);
 
     invalidateCache();
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
@@ -243,7 +236,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     carolClient.addListener(createRestClientListener());
 
     TestManager testManager = getTestManager(carolConfig, carolClient);
-    testManager.addAppArtifact(artifactId, PurchaseApp.class);
+    testManager.addAppArtifact(namespaceId.artifact(PurchaseApp.class.getSimpleName(), "1.0.0"), PurchaseApp.class);
     ArtifactSummary appArtifactSummary = new ArtifactSummary(PurchaseApp.class.getSimpleName(), "1.0.0");
     ApplicationManager appManager =
       testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
@@ -252,9 +245,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     try {
       appManager.startProgram(appId.flow("PurchaseFlow"));
       Assert.fail();
-    } catch (Exception e) {
+    } catch (UnauthorizedException e) {
       // expected
-      // TODO: change to Unauthorized exception
     }
 
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
@@ -287,10 +279,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     adminClient.addListener(createRestClientListener());
     NamespaceId namespaceId = testNamespace.getNamespaceId();
 
-    userGrant(ADMIN_USER, namespaceId, Action.ADMIN);
+    grant(ADMIN_USER, namespaceId, Action.ADMIN);
     String principal = testNamespace.getConfig().getPrincipal();
     if (principal != null) {
-      userGrant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+      grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
     }
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
@@ -347,19 +339,20 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       // privilege to create namespace
       .put(testNs1, EnumSet.of(Action.ADMIN))
       .put(testNs2, EnumSet.of(Action.ADMIN))
-      // privilege to run the program, admin is needed to retrieve the service url
-      // TODO: remove the admin privilege when we migrate to wildcard privilege
+      // these privileges are for program running and retrieve service url, not for deploying the app
       .put(appId1.service("DatasetService"), EnumSet.of(Action.EXECUTE, Action.ADMIN))
       .put(appId2.service("DatasetService"), EnumSet.of(Action.EXECUTE, Action.ADMIN))
       // privilege to deploy app1
       .put(appId1, EnumSet.of(Action.ADMIN))
-      // TODO: remove the artifact version when we have the pr merged
-      .put(testNs1.artifact(TableDatasetApp.class.getSimpleName(), "1.0.0"), EnumSet.of(Action.ADMIN))
+      // use some random artifact version
+      .put(testNs1.artifact(TableDatasetApp.class.getSimpleName(),
+                            String.format("1.0.0-SNAPSHOT-%d", System.currentTimeMillis())), EnumSet.of(Action.ADMIN))
       .put(new KerberosPrincipalId(user1), EnumSet.of(Action.ADMIN))
       // privilege to deploy app2
       .put(appId2, EnumSet.of(Action.ADMIN))
-      // TODO: remove the artifact version when we have the pr merged
-      .put(testNs2.artifact(TableDatasetApp.class.getSimpleName(), "1.0.0"), EnumSet.of(Action.ADMIN))
+      // use some random artifact version
+      .put(testNs2.artifact(TableDatasetApp.class.getSimpleName(),
+                            String.format("1.0.0-SNAPSHOT-%d", System.currentTimeMillis())), EnumSet.of(Action.ADMIN))
       .put(new KerberosPrincipalId(user2), EnumSet.of(Action.ADMIN));
     // this is to create impersonated ns
     if (nsPrincipal1 != null && !nsPrincipal1.equals(user1)) {
@@ -373,11 +366,11 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // write the dataset
     DatasetId dataset1 = testNs1.dataset(datasetName);
     DatasetId dataset2 = testNs2.dataset(datasetName);
-    userGrant(user1, dataset1, Action.ADMIN);
-    userGrant(user1, dataset1, Action.WRITE);
+    grant(user1, dataset1, Action.ADMIN);
+    grant(user1, dataset1, Action.WRITE);
     // grant user2 the read access to dataset in ns1
-    userGrant(user2, dataset2, Action.ADMIN);
-    userGrant(user2, dataset1, Action.READ);
+    grant(user2, dataset2, Action.ADMIN);
+    grant(user2, dataset1, Action.READ);
 
     createAndRegisterNamespace(namespaceMeta1, adminConfig, adminClient);
     createAndRegisterNamespace(namespaceMeta2, adminConfig, adminClient);
@@ -443,7 +436,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       }
 
       // grant user WRITE privilege on the dataset
-      userGrant(user2, dataset1, Action.WRITE);
+      grant(user2, dataset1, Action.WRITE);
       invalidateCache();
 
       user2ServiceManager.stop();
@@ -463,7 +456,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       Assert.assertEquals(200, response.getResponseCode());
 
       // revoke privileges from user2
-      userRevoke(user2, dataset1, Action.READ);
+      revoke(user2, dataset1, Action.READ);
       invalidateCache();
 
       user2ServiceManager.stop();

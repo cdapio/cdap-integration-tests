@@ -26,6 +26,7 @@ import co.cask.cdap.proto.element.EntityType;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.security.Action;
+import co.cask.cdap.proto.security.Authorizable;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Role;
 import co.cask.cdap.test.AudiTestBase;
@@ -34,8 +35,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Before;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.EnumSet;
 import java.util.Map;
@@ -47,7 +46,6 @@ import javax.annotation.Nullable;
  * Authorization test base for all authorization tests
  */
 public abstract class AuthorizationTestBase extends AudiTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(AuthorizationTestBase.class);
   protected static final Gson GSON = new GsonBuilder().enableComplexMapKeySerialization().create();
 
   protected static final String ALICE = "alice";
@@ -55,14 +53,15 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String CAROL = "carol";
   protected static final String EVE = "eve";
   protected static final String ADMIN_USER = "systemadmin";
-  protected static final String ITN_ADMIN = "cdapitn";
   protected static final String PASSWORD_SUFFIX = "password";
   protected static final String VERSION = "1.0.0";
   protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
-  protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform actions";
+  protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform action";
   protected static final String INSTANCE_NAME = "cdap";
 
-  // this client is using
+  private static final String ITN_ADMIN = "cdapitn";
+
+  // this client is loggin as cdapitn, and cdapitn should be the sentry admin
   protected AuthorizationClient authorizationClient;
 
   // General test namespace
@@ -70,7 +69,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
                                                            null, null, null, null);
 
   // this is the cache time out for the authorizer
-  private int cacheTimeout;
+  protected int cacheTimeout;
 
   @Override
   public void setUp() throws Exception {
@@ -78,7 +77,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     RESTClient systemClient = new RESTClient(systemConfig);
     authorizationClient = new AuthorizationClient(systemConfig, systemClient);
     createAllUserRoles();
-    userGrant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
+    grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
     grantAllWildCardPolicies();
     invalidateCache();
     super.setUp();
@@ -99,13 +98,13 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     // teardown in parent deletes all entities
     super.tearDown();
     // reset the test by revoking privileges from all users.
-    userRevoke(ADMIN_USER);
-    userRevoke(ALICE);
-    userRevoke(BOB);
-    userRevoke(CAROL);
-    userRevoke(EVE);
-    userRevoke(INSTANCE_NAME);
-    userRevoke(ITN_ADMIN);
+    revoke(ADMIN_USER);
+    revoke(ALICE);
+    revoke(BOB);
+    revoke(CAROL);
+    revoke(EVE);
+    revoke(INSTANCE_NAME);
+    revoke(ITN_ADMIN);
     invalidateCache();
   }
 
@@ -121,33 +120,48 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
 
   /**
    * Grants action privilege to user on entityId. Creates a role for the user. Grant action privilege
-   * on that role, and add the role to the group the user belongs to. All done through sentry.
-   * @param user The user we want to grant privilege to.
+   * on that role, and add the role to the group whose name is same as the user name.
+   *
+   * @param principal The principal we want to grant privilege to.
    * @param entityId The entity we want to grant privilege on.
    * @param action The privilege we want to grant.
    */
-  protected void userGrant(String user, EntityId entityId, Action action) throws Exception {
-    roleGrant(user, entityId, action, null);
+  protected void grant(String principal, EntityId entityId, Action action) throws Exception {
+    grant(principal, entityId, action, null);
   }
 
-  protected void wildCardGrant(String user, co.cask.cdap.proto.security.Authorizable authorizable,
-                               Action action) throws Exception {
-    authorizationClient.grant(authorizable, new Principal(user, Principal.PrincipalType.ROLE), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(new Role(user), new Principal(user, Principal.PrincipalType.GROUP));
-  }
-
-  protected void wildCardRevoke(String user, co.cask.cdap.proto.security.Authorizable authorizable,
-                                Action action) throws Exception {
-    authorizationClient.revoke(authorizable, new Role(user), EnumSet.of(action));
-  }
-
-  protected void roleGrant(String role, EntityId entityId, Action action,
-                           @Nullable String groupName) throws Exception {
+  protected void grant(String principal, EntityId entityId, Action action,
+                       @Nullable String groupName) throws Exception {
     // grant to role and add to group
-    authorizationClient.grant(entityId, new Role(role), EnumSet.of(action));
+    authorizationClient.grant(entityId, new Role(principal), EnumSet.of(action));
     authorizationClient.addRoleToPrincipal(
-      new Role(role), groupName == null ? new Principal(role, Principal.PrincipalType.GROUP) :
+      new Role(principal), groupName == null ? new Principal(principal, Principal.PrincipalType.GROUP) :
         new Principal(groupName, Principal.PrincipalType.GROUP));
+  }
+
+  protected void wildCardGrant(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
+                               Action action) throws Exception {
+    authorizationClient.grant(authorizable, new Principal(principal, Principal.PrincipalType.ROLE), EnumSet.of(action));
+    authorizationClient.addRoleToPrincipal(new Role(principal),
+                                           new Principal(principal, Principal.PrincipalType.GROUP));
+  }
+
+  protected void wildCardRevoke(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
+                                Action action) throws Exception {
+    authorizationClient.revoke(authorizable, new Role(principal), EnumSet.of(action));
+  }
+
+  protected void revoke(String principal, EntityId entityId, Action action) throws Exception {
+    wildCardRevoke(principal, Authorizable.fromEntityId(entityId), action);
+  }
+
+  /**
+   * Revokes all privileges from the principal.
+   *
+   * @param principal The principal we want to revoke privilege from.
+   */
+  protected void revoke(String principal) throws Exception {
+    authorizationClient.dropRole(new Role(principal));
   }
 
   protected void invalidateCache() throws Exception {
@@ -163,23 +177,6 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     authorizationClient.createRole(new Role(EVE));
     authorizationClient.createRole(new Role(INSTANCE_NAME));
     authorizationClient.createRole(new Role(ITN_ADMIN));
-  }
-
-  /**
-   * Revokes all privileges from user. Deletes the user role through sentry.
-   *
-   * @param user The user we want to revoke privilege from.
-   */
-  private void userRevoke(String user) throws Exception {
-    authorizationClient.dropRole(new Role(user));
-  }
-
-  protected void userRevoke(String user, EntityId entityId, Action action) throws Exception {
-    authorizationClient.revoke(entityId, new Principal(user, Principal.PrincipalType.ROLE), EnumSet.of(action));
-  }
-
-  protected void roleRevoke(String role, @Nullable String groupName) throws Exception {
-    authorizationClient.dropRole(new Role(role));
   }
 
   protected NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
@@ -239,7 +236,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
                                                       Map<EntityId, Set<Action>> neededPrivileges) throws Exception {
     for (Map.Entry<EntityId, Set<Action>> privilege : neededPrivileges.entrySet()) {
       for (Action action : privilege.getValue()) {
-        userGrant(user, privilege.getKey(), action);
+        grant(user, privilege.getKey(), action);
       }
     }
   }

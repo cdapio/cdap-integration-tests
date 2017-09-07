@@ -52,9 +52,9 @@ public class NamespaceImpersonationBasicAuthorizationTest extends BasicAuthoriza
     adminClient.addListener(createRestClientListener());
 
     // pre-grant required privileges
-    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    userGrant(ADMIN_USER, new KerberosPrincipalId(ALICE), Action.ADMIN);
-    userGrant(ADMIN_USER, new KerberosPrincipalId(EVE), Action.ADMIN);
+    grant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    grant(ADMIN_USER, new KerberosPrincipalId(ALICE), Action.ADMIN);
+    grant(ADMIN_USER, new KerberosPrincipalId(EVE), Action.ADMIN);
 
     // should success
     NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
