@@ -37,6 +37,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 
 import java.io.IOException;
 import java.net.URL;
@@ -93,13 +94,14 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   @Override
-  public void verifyRuns(DataCleansingTestState state) throws Exception {
+  public DataCleansingTestState verifyRuns(DataCleansingTestState state) throws Exception {
     LOG.info("verifying runs for data cleaning");
     // For now, check total number of clean records and invalid records
     Assert.assertEquals(state.getEndInvalidRecordPid(), getTotalRecords(true) + getTotalRecords(false));
 
     // verify segregated records
     Assert.assertTrue(verifyRecordsWithExplore(state));
+    return state;
   }
 
   private ApplicationManager getApplicationManager() throws Exception {

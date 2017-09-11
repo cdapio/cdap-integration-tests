@@ -64,15 +64,18 @@ public class LongRunningTestRunner {
       LOG.warn("Input state file not found, creating new instance of in memory map");
       inMemoryMap = new HashMap<>();
     }
+    LOG.info("Deserialized test input state = {}", inMemoryMap);
     LongRunningTestBase.initializeInMemoryMap(inMemoryMap);
   }
 
   @AfterClass
   public static void serialize() throws Exception {
+    Map<String, String> inMemoryMap = LongRunningTestBase.getInMemoryMap();
+    LOG.info("Test output state to serialize = {}", inMemoryMap);
     String outputStateFile = System.getProperty(OUTPUT_STATE_PROP);
     try (FileWriter writer = new FileWriter(outputStateFile)) {
       LOG.info("Serializing test state to output file = {}", outputStateFile);
-      GSON.toJson(LongRunningTestBase.getInMemoryMap(), writer);
+      GSON.toJson(inMemoryMap, writer);
     }
   }
 }

@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.app.resiliency.plugins;
+package co.cask.cdap.plugins;
 
 import co.cask.chaosmonkey.Disruption;
 import co.cask.chaosmonkey.RemoteProcess;
@@ -36,6 +36,7 @@ public class MajorCompact implements Disruption {
 
   @Override
   public void disrupt(Collection<RemoteProcess> processes, Map<String, String> serviceArguments) throws Exception {
+    LOG.info("Major compaction invoked...");
     RemoteProcess remoteProcess = processes.iterator().next();
 
     String user = serviceArguments.get("user");
@@ -53,8 +54,13 @@ public class MajorCompact implements Disruption {
     if (authEnabled != null && authEnabled.equals("false")) {
       authString = "";
     }
-    ShellOutput output = remoteProcess.execAndGetOutput(String.format("%s echo \"list\" | sudo -u %s hbase " +
-                                                                        "shell | fgrep '['", authString, user));
+    String command = String.format("%s echo \"list\" | sudo -u %s hbase " +
+                                    "shell | fgrep '['", authString, user);
+    LOG.info("Running Command = " + command);
+    ShellOutput output = remoteProcess.execAndGetOutput(command);
+    LOG.info("Return code = " + output.returnCode);
+    LOG.info("Standard Output = " + output.standardOutput);
+    LOG.info("Error Output = " + output.errorOutput);
 
     // stdout is in the format of ["tableName1" "tableName2" "tableName3"....] and needs to be changed to
     // flush '\''tableName1'\''\n major_compact '\''table1'\''\n ...
@@ -70,8 +76,15 @@ public class MajorCompact implements Disruption {
     }
     String commandsString = stringBuilder.toString();
 
-    remoteProcess.execAndGetOutput(String.format("%s echo \"%s\" | sudo -u %s hbase shell",
-                                                 authString, commandsString, user));
+    String commandToExec = String.format("%s echo \"%s\" | sudo -u %s hbase shell",
+                                         authString, commandsString, user);
+    LOG.info("Running Command = " + commandToExec);
+    ShellOutput shellOutput = remoteProcess.execAndGetOutput(commandToExec);
+    LOG.info("Return code = " + shellOutput.returnCode);
+    LOG.info("Standard Output = " + shellOutput.standardOutput);
+    LOG.info("Error Output = " + shellOutput.errorOutput);
+
+    LOG.info("Major compaction done.");
   }
 
   @Override

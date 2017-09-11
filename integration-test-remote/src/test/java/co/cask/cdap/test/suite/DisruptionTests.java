@@ -21,7 +21,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 /**
- * Suite to represent all integration tests that uses {@link co.cask.cdap.test.DisruptionTestBase}
+ * Suite to represent all integration tests that uses {@link co.cask.cdap.test.DisruptorFactory}
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
