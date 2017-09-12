@@ -1,7 +1,7 @@
 {
   "config": {
     "hadoop_mapr": {
-      "distribution_version": "5.2.0",
+      "distribution_version": "5.2.1",
       "mep_version": "1.1"
     }
   },
