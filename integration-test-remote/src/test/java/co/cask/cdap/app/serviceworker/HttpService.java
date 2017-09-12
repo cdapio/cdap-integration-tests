@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.apps.serviceworker;
+package co.cask.cdap.app.serviceworker;
 
 import co.cask.cdap.api.annotation.UseDataSet;
 import co.cask.cdap.api.common.Bytes;
