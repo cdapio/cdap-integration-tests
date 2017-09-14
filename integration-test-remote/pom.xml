@@ -25,6 +25,11 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
+  <properties>
+    <ranger.version>0.7.0</ranger.version>
+    <cdap.ranger.version>0.1.0</cdap.ranger.version>
+  </properties>
+
   <artifactId>integration-test-remote</artifactId>
 
   <dependencies>
@@ -32,6 +37,30 @@
       <groupId>co.cask.cdap.test</groupId>
       <artifactId>integration-test-core</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-ranger-common</artifactId>
+      <version>${cdap.ranger.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.ranger</groupId>
+      <artifactId>ranger-plugins-common</artifactId>
+      <version>${ranger.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
