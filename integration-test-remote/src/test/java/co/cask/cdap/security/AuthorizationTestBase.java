@@ -76,6 +76,18 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     setUpSentry();
   }
 
+  private void setupRanger() throws Exception {
+    ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN.getName(), ITN_ADMIN.getName()));
+    RESTClient systemClient = new RESTClient(systemConfig);
+    authorizer = new RangerAuthorizationClient(new AuthorizationClient(systemConfig, systemClient), getInstanceURI());
+    authorizer.grant(NamespaceId.DEFAULT, ITN_ADMIN, EnumSet.of(Action.ADMIN));
+    grantAllWildCardPolicies();
+//    ((RBACAuthorizationClient) authorizer).invalidateCache();
+    super.setUp();
+//    authorizerCacheTimeout = Integer.valueOf(this.getMetaClient().getCDAPConfig().get("security.authorization" +
+//                                                                                        ".cache.ttl.secs").getValue());
+  }
+
   private void setUpSentry() throws Exception {
     ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN.getName(), ITN_ADMIN.getName()));
     RESTClient systemClient = new RESTClient(systemConfig);
@@ -92,6 +104,20 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   @Override
   public void tearDown() throws Exception {
     tearDownSentry();
+  }
+
+  private void tearDownRanger() throws Exception {
+    // teardown in parent deletes all entities
+    super.tearDown();
+    // reset the test by revoking privileges from all users.
+//    authorizer.dropRole(new Role(ADMIN_USER.getName()));
+//    authorizer.dropRole(new Role(ALICE.getName()));
+//    authorizer.dropRole(new Role(BOB.getName()));
+//    authorizer.dropRole(new Role(CAROL.getName()));
+//    authorizer.dropRole(new Role(EVE.getName()));
+//    authorizer.dropRole(new Role(CDAP_USER.getName()));
+//    authorizer.dropRole(new Role(ITN_ADMIN.getName()));
+//    ((RBACAuthorizationClient) authorizer).invalidateCache();
   }
 
   private void tearDownSentry() throws Exception {
