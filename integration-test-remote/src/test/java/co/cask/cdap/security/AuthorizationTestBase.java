@@ -23,12 +23,11 @@ import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.element.EntityType;
-import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.security.Action;
-import co.cask.cdap.proto.security.Authorizable;
 import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Role;
+import co.cask.cdap.security.spi.authorization.Authorizer;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
@@ -39,7 +38,6 @@ import org.junit.Before;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 /**
@@ -48,39 +46,66 @@ import javax.annotation.Nullable;
 public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final Gson GSON = new GsonBuilder().enableComplexMapKeySerialization().create();
 
-  protected static final String ALICE = "alice";
-  protected static final String BOB = "bob";
-  protected static final String CAROL = "carol";
-  protected static final String EVE = "eve";
-  protected static final String ADMIN_USER = "systemadmin";
+  protected static final Principal ALICE = new Principal("alice", Principal.PrincipalType.USER);
+  protected static final Principal BOB = new Principal("bob", Principal.PrincipalType.USER);
+  protected static final Principal CAROL = new Principal("carol", Principal.PrincipalType.USER);
+  protected static final Principal EVE = new Principal("eve", Principal.PrincipalType.USER);
+  protected static final Principal ADMIN_USER = new Principal("systemadmin", Principal.PrincipalType.USER);
   protected static final String PASSWORD_SUFFIX = "password";
   protected static final String VERSION = "1.0.0";
   protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
   protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform action";
   protected static final String INSTANCE_NAME = "cdap";
-
-  private static final String ITN_ADMIN = "cdapitn";
+  protected static final Principal CDAP_USER = new Principal("cdap", Principal.PrincipalType.USER);
+  ;
+  protected static final Principal ITN_ADMIN = new Principal("cdapitn", Principal.PrincipalType.USER);
 
   // this client is loggin as cdapitn, and cdapitn should be the sentry admin
-  protected AuthorizationClient authorizationClient;
+//  protected AuthorizationClient authorizationClient;
+  protected Authorizer authorizer;
+
 
   // General test namespace
   protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
                                                            null, null, null, null);
 
-  // this is the cache time out for the authorizer
-  protected int cacheTimeout;
+  Integer authorizerCacheTimeout;
 
   @Override
   public void setUp() throws Exception {
-    ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
+    setUpSentry();
+  }
+
+  private void setUpSentry() throws Exception {
+    ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN.getName(), ITN_ADMIN.getName()));
     RESTClient systemClient = new RESTClient(systemConfig);
-    authorizationClient = new AuthorizationClient(systemConfig, systemClient);
+    authorizer = new RBACAuthorizationClient(new AuthorizationClient(systemConfig, systemClient), 10);
     createAllUserRoles();
-    grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
+    authorizer.grant(NamespaceId.DEFAULT, ITN_ADMIN, EnumSet.of(Action.ADMIN));
     grantAllWildCardPolicies();
-    invalidateCache();
+    ((RBACAuthorizationClient) authorizer).invalidateCache();
     super.setUp();
+    authorizerCacheTimeout = Integer.valueOf(this.getMetaClient().getCDAPConfig().get("security.authorization" +
+                                                                                        ".cache.ttl.secs").getValue());
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    tearDownSentry();
+  }
+
+  private void tearDownSentry() throws Exception {
+    // teardown in parent deletes all entities
+    super.tearDown();
+    // reset the test by revoking privileges from all users.
+    authorizer.dropRole(new Role(ADMIN_USER.getName()));
+    authorizer.dropRole(new Role(ALICE.getName()));
+    authorizer.dropRole(new Role(BOB.getName()));
+    authorizer.dropRole(new Role(CAROL.getName()));
+    authorizer.dropRole(new Role(EVE.getName()));
+    authorizer.dropRole(new Role(CDAP_USER.getName()));
+    authorizer.dropRole(new Role(ITN_ADMIN.getName()));
+    ((RBACAuthorizationClient) authorizer).invalidateCache();
   }
 
   @Before
@@ -90,23 +115,9 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
                                "security.authorization.enabled");
     Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "Authorization not enabled.");
-    this.cacheTimeout = Integer.valueOf(configs.get("security.authorization.cache.ttl.secs").getValue());
+//    this.cacheTimeout = Integer.valueOf(configs.get("security.authorization.cache.ttl.secs").getValue());
   }
 
-  @Override
-  public void tearDown() throws Exception {
-    // teardown in parent deletes all entities
-    super.tearDown();
-    // reset the test by revoking privileges from all users.
-    revoke(ADMIN_USER);
-    revoke(ALICE);
-    revoke(BOB);
-    revoke(CAROL);
-    revoke(EVE);
-    revoke(INSTANCE_NAME);
-    revoke(ITN_ADMIN);
-    invalidateCache();
-  }
 
   protected NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
                                                    RESTClient client) throws Exception {
@@ -118,66 +129,6 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     return namespaceMeta.getNamespaceId();
   }
 
-  /**
-   * Grants action privilege to user on entityId. Creates a role for the user. Grant action privilege
-   * on that role, and add the role to the group whose name is same as the user name.
-   *
-   * @param principal The principal we want to grant privilege to.
-   * @param entityId The entity we want to grant privilege on.
-   * @param action The privilege we want to grant.
-   */
-  protected void grant(String principal, EntityId entityId, Action action) throws Exception {
-    grant(principal, entityId, action, null);
-  }
-
-  protected void grant(String principal, EntityId entityId, Action action,
-                       @Nullable String groupName) throws Exception {
-    // grant to role and add to group
-    authorizationClient.grant(entityId, new Role(principal), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(
-      new Role(principal), groupName == null ? new Principal(principal, Principal.PrincipalType.GROUP) :
-        new Principal(groupName, Principal.PrincipalType.GROUP));
-  }
-
-  protected void wildCardGrant(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
-                               Action action) throws Exception {
-    authorizationClient.grant(authorizable, new Principal(principal, Principal.PrincipalType.ROLE), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(new Role(principal),
-                                           new Principal(principal, Principal.PrincipalType.GROUP));
-  }
-
-  protected void wildCardRevoke(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
-                                Action action) throws Exception {
-    authorizationClient.revoke(authorizable, new Role(principal), EnumSet.of(action));
-  }
-
-  protected void revoke(String principal, EntityId entityId, Action action) throws Exception {
-    wildCardRevoke(principal, Authorizable.fromEntityId(entityId), action);
-  }
-
-  /**
-   * Revokes all privileges from the principal.
-   *
-   * @param principal The principal we want to revoke privilege from.
-   */
-  protected void revoke(String principal) throws Exception {
-    authorizationClient.dropRole(new Role(principal));
-  }
-
-  protected void invalidateCache() throws Exception {
-    // this is to make sure the cache times out in both master and remote side
-    TimeUnit.SECONDS.sleep(2 * cacheTimeout + 5);
-  }
-
-  private void createAllUserRoles() throws Exception {
-    authorizationClient.createRole(new Role(ADMIN_USER));
-    authorizationClient.createRole(new Role(ALICE));
-    authorizationClient.createRole(new Role(BOB));
-    authorizationClient.createRole(new Role(CAROL));
-    authorizationClient.createRole(new Role(EVE));
-    authorizationClient.createRole(new Role(INSTANCE_NAME));
-    authorizationClient.createRole(new Role(ITN_ADMIN));
-  }
 
   protected NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
                                            @Nullable String groupName, @Nullable String keytabURI,
@@ -195,18 +146,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
       .build();
   }
 
-  private void grantAllWildCardPolicies() throws Exception {
-    Set<EntityType> entityTypes = ImmutableSet.<EntityType>builder()
-      .add(EntityType.NAMESPACE, EntityType.APPLICATION, EntityType.PROGRAM, EntityType.ARTIFACT,
-           EntityType.DATASET, EntityType.STREAM, EntityType.DATASET_MODULE, EntityType.DATASET_TYPE,
-           EntityType.KERBEROSPRINCIPAL).build();
-    for (EntityType entityType : entityTypes) {
-      String authorizable = getWildCardString(entityType);
-      wildCardGrant(ITN_ADMIN, co.cask.cdap.proto.security.Authorizable.fromString(authorizable), Action.ADMIN);
-    }
-  }
-
-  private String getWildCardString(EntityType entityType) throws Exception {
+  String getWildCardString(EntityType entityType) throws Exception {
     String prefix = entityType.toString().toLowerCase() + ":";
     switch (entityType) {
       case NAMESPACE:
@@ -232,12 +172,25 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     }
   }
 
-  protected void setUpPrivilegeAndRegisterForDeletion(String user,
-                                                      Map<EntityId, Set<Action>> neededPrivileges) throws Exception {
-    for (Map.Entry<EntityId, Set<Action>> privilege : neededPrivileges.entrySet()) {
-      for (Action action : privilege.getValue()) {
-        grant(user, privilege.getKey(), action);
-      }
+  void grantAllWildCardPolicies() throws Exception {
+    Set<EntityType> entityTypes = ImmutableSet.<EntityType>builder()
+      .add(EntityType.NAMESPACE, EntityType.APPLICATION, EntityType.PROGRAM, EntityType.ARTIFACT,
+           EntityType.DATASET, EntityType.STREAM, EntityType.DATASET_MODULE, EntityType.DATASET_TYPE,
+           EntityType.KERBEROSPRINCIPAL).build();
+    for (EntityType entityType : entityTypes) {
+      String authorizable = getWildCardString(entityType);
+      authorizer.grant(co.cask.cdap.proto.security.Authorizable.fromString(authorizable), ITN_ADMIN,
+                       EnumSet.of(Action.ADMIN));
     }
+  }
+
+  void createAllUserRoles() throws Exception {
+    authorizer.createRole(new Role(CDAP_USER.getName()));
+    authorizer.createRole(new Role(ALICE.getName()));
+    authorizer.createRole(new Role(BOB.getName()));
+    authorizer.createRole(new Role(CAROL.getName()));
+    authorizer.createRole(new Role(EVE.getName()));
+    authorizer.createRole(new Role(ADMIN_USER.getName()));
+    authorizer.createRole(new Role(ITN_ADMIN.getName()));
   }
 }

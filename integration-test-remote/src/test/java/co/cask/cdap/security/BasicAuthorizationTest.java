@@ -18,7 +18,6 @@ package co.cask.cdap.security;
 
 import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.ApplicationClient;
-import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.NamespaceClient;
 import co.cask.cdap.client.StreamClient;
@@ -46,6 +45,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,7 +55,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Basic test base for authorization, this test base contains tests without impersonation
- *
+ * <p>
  * We create a namespace for most of the test cases since we want to make sure the privilege for each user is clean.
  */
 public class BasicAuthorizationTest extends AuthorizationTestBase {
@@ -66,16 +66,16 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   @Test
   public void testNamespacePrivileges() throws Exception {
     // set up all client
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER.getName(), ADMIN_USER.getName()));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE.getName(), ALICE.getName() + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(aliceConfig);
     aliceClient.addListener(createRestClientListener());
-    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB.getName(), BOB.getName() + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
-    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE.getName(), EVE.getName() + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);
     eveClient.addListener(createRestClientListener());
 
@@ -84,16 +84,16 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // pre-grant all required privileges
     // admin user only has privilges to the namespace
-    grant(ADMIN_USER, namespaceId, Action.ADMIN);
+    authorizer.grant(namespaceId, ADMIN_USER, EnumSet.of(Action.ADMIN));
     String principal = testNamespace.getConfig().getPrincipal();
     if (principal != null) {
-      grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+      authorizer.grant(new KerberosPrincipalId(principal), ADMIN_USER, EnumSet.of(Action.ADMIN));
     }
     // alice has access to all entities
-    grant(ALICE, namespaceId, Action.ADMIN);
-    grant(ALICE, streamId, Action.ADMIN);
+    authorizer.grant(namespaceId, ALICE, EnumSet.of(Action.ADMIN));
+    authorizer.grant(streamId, ALICE, EnumSet.of(Action.ADMIN));
     // eve only has access to the stream
-    grant(EVE, streamId, Action.ADMIN);
+    authorizer.grant(streamId, EVE, EnumSet.of(Action.ADMIN));
 
     // bob can't create namespace without having ADMIN privilege on the namespace
     try {
@@ -129,7 +129,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       Assert.fail();
     } catch (IOException ex) {
       // expected
-       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
     }
 
     // Alice will not able to delete the namespace since she does not have admin on the namespace,
@@ -151,22 +151,18 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   @Test
   public void testPrivilegesAndVisibility() throws Exception {
     // set up all client
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER.getName(), ADMIN_USER.getName()));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE.getName(), ALICE.getName() + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(aliceConfig);
     aliceClient.addListener(createRestClientListener());
-    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB.getName(), BOB.getName() + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
-    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE.getName(), EVE.getName() + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);
     eveClient.addListener(createRestClientListener());
-    Principal adminPrincipal = new Principal(ADMIN_USER, Principal.PrincipalType.USER);
-    Principal alicePrincipal = new Principal(ALICE, Principal.PrincipalType.USER);
-    Principal bobPrincipal = new Principal(BOB, Principal.PrincipalType.USER);
-    Principal evePrincipal = new Principal(EVE, Principal.PrincipalType.USER);
 
 
     // set up entities
@@ -180,12 +176,12 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     DatasetId ds21 = namespaceId2.dataset("ds");
     Set<DatasetId> datasetSet = Sets.newHashSet(ds11, ds12, ds13, ds21);
 
-    StreamId stream11 = namespaceId1.stream("stream");
-    StreamId stream12 = namespaceId1.stream("stream1");
-    StreamId stream13 = namespaceId1.stream("stream2");
-    StreamId stream21 = namespaceId2.stream("stream");
-    StreamId stream22 = namespaceId2.stream("stream1");
-    final StreamId stream23 = namespaceId2.stream("stream2");
+    StreamId stream11 = namespaceId1.stream("stream11");
+    StreamId stream12 = namespaceId1.stream("stream12");
+    StreamId stream13 = namespaceId1.stream("stream13");
+    StreamId stream21 = namespaceId2.stream("stream21");
+    StreamId stream22 = namespaceId2.stream("stream22");
+    final StreamId stream23 = namespaceId2.stream("stream23");
     Set<StreamId> streamSet = Sets.newHashSet(stream11, stream12, stream13, stream21, stream22, stream23);
 
     Set<Privilege> adminExpected = new HashSet<>();
@@ -194,48 +190,48 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     Set<Privilege> eveExpected = new HashSet<>();
 
     // admin user will have admin on all these entities
-    grant(ADMIN_USER, namespaceId1, Action.ADMIN);
-    grant(ADMIN_USER, namespaceId2, Action.ADMIN);
+    authorizer.grant(namespaceId1, ADMIN_USER, EnumSet.of(Action.ADMIN));
+    authorizer.grant(namespaceId2, ADMIN_USER, EnumSet.of(Action.ADMIN));
     adminExpected.add(new Privilege(namespaceId1, Action.ADMIN));
     adminExpected.add(new Privilege(namespaceId2, Action.ADMIN));
     for (DatasetId datasetId : datasetSet) {
-      grant(ADMIN_USER, datasetId, Action.ADMIN);
+      authorizer.grant(datasetId, ADMIN_USER, EnumSet.of(Action.ADMIN));
       adminExpected.add(new Privilege(datasetId, Action.ADMIN));
     }
     for (StreamId streamId : streamSet) {
-      grant(ADMIN_USER, streamId, Action.ADMIN);
+      authorizer.grant(streamId, ADMIN_USER, EnumSet.of(Action.ADMIN));
       adminExpected.add(new Privilege(streamId, Action.ADMIN));
     }
 
     // Grant privileges on non-numbered entities to ALICE
-    grant(ALICE, ds11, Action.EXECUTE);
+    authorizer.grant(ds11, ALICE, EnumSet.of(Action.EXECUTE));
     aliceExpected.add(new Privilege(ds11, Action.EXECUTE));
-    grant(ALICE, ds21, Action.WRITE);
+    authorizer.grant(ds21, ALICE, EnumSet.of(Action.WRITE));
     aliceExpected.add(new Privilege(ds21, Action.WRITE));
-    grant(ALICE, stream11, Action.READ);
+    authorizer.grant(stream11, ALICE, EnumSet.of(Action.READ));
     aliceExpected.add(new Privilege(stream11, Action.READ));
-    grant(ALICE, stream21, Action.WRITE);
+    authorizer.grant(stream21, ALICE, EnumSet.of(Action.WRITE));
     aliceExpected.add(new Privilege(stream21, Action.WRITE));
 
     // Grant privileges on entities ending with 2 to BOB
-    grant(BOB, ds13, Action.ADMIN);
+    authorizer.grant(ds13, BOB, EnumSet.of(Action.ADMIN));
     bobExpected.add(new Privilege(ds13, Action.ADMIN));
-    grant(BOB, stream13, Action.EXECUTE);
+    authorizer.grant(stream13, BOB, EnumSet.of(Action.EXECUTE));
     bobExpected.add(new Privilege(stream13, Action.EXECUTE));
-    grant(BOB, stream23, Action.READ);
+    authorizer.grant(stream23, BOB, EnumSet.of(Action.READ));
     bobExpected.add(new Privilege(stream23, Action.READ));
-    grant(BOB, stream23, Action.WRITE);
+    authorizer.grant(stream23, BOB, EnumSet.of(Action.WRITE));
     bobExpected.add(new Privilege(stream23, Action.WRITE));
 
     // Grant privileges on entity stream22 to eve
-    grant(EVE, stream22, Action.EXECUTE);
+    authorizer.grant(stream22, EVE, EnumSet.of(Action.EXECUTE));
     eveExpected.add(new Privilege(stream22, Action.EXECUTE));
 
-    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
-    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
-    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
-    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
+//    AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
+    Assert.assertEquals(adminExpected, authorizer.listPrivileges(ADMIN_USER));
+    Assert.assertEquals(aliceExpected, authorizer.listPrivileges(ALICE));
+    Assert.assertEquals(bobExpected, authorizer.listPrivileges(BOB));
+    Assert.assertEquals(eveExpected, authorizer.listPrivileges(EVE));
 
     // create these entities
     NamespaceMeta nsMeta1 = new NamespaceMeta.Builder().setName(namespaceId1).build();
@@ -332,12 +328,12 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // revoke privileges from BOB and grant them to alice
     for (Privilege privilege : bobExpected) {
-      wildCardRevoke(BOB, privilege.getAuthorizable(), privilege.getAction());
-      wildCardGrant(ALICE, privilege.getAuthorizable(), privilege.getAction());
+      authorizer.revoke(privilege.getAuthorizable(), BOB, EnumSet.of(privilege.getAction()));
+      authorizer.revoke(privilege.getAuthorizable(), ALICE, EnumSet.of(privilege.getAction()));
     }
     aliceExpected.addAll(bobExpected);
     bobExpected.clear();
-    revoke(EVE, stream22, Action.EXECUTE);
+    authorizer.revoke(stream22, EVE, EnumSet.of(Action.EXECUTE));
     eveExpected.remove(new Privilege(stream22, Action.EXECUTE));
 
     Tasks.waitFor(true, new Callable<Boolean>() {
@@ -350,11 +346,11 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
           return false;
         }
       }
-    }, 2 * cacheTimeout + 5, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
-    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
-    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
-    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
-    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
+    }, 2 * authorizerCacheTimeout + 5, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+    Assert.assertEquals(adminExpected, authorizer.listPrivileges(ADMIN_USER));
+    Assert.assertEquals(aliceExpected, authorizer.listPrivileges(ALICE));
+    Assert.assertEquals(bobExpected, authorizer.listPrivileges(BOB));
+    Assert.assertEquals(eveExpected, authorizer.listPrivileges(EVE));
     try {
       datasetBobClient.update(ds13, Collections.<String, String>emptyMap());
       Assert.fail();
@@ -370,7 +366,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
    */
   @Test
   public void testDatasetPrivileges() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER.getName(), ADMIN_USER.getName()));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
@@ -378,14 +374,14 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // pre-grant all required privileges
     // admin user can create ns and dataset
-    grant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    grant(ADMIN_USER, testDatasetinstance, Action.ADMIN);
+    authorizer.grant(testNamespace.getNamespaceId(), ADMIN_USER, EnumSet.of(Action.ADMIN));
+    authorizer.grant(testDatasetinstance, ADMIN_USER, EnumSet.of(Action.ADMIN));
     String principal = testNamespace.getConfig().getPrincipal();
     if (principal != null) {
-      grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+      authorizer.grant(new KerberosPrincipalId(principal), ADMIN_USER, EnumSet.of(Action.ADMIN));
     }
     // eve can read from the dataset
-    grant(EVE, testDatasetinstance, Action.READ);
+    authorizer.grant(testDatasetinstance, EVE, EnumSet.of(Action.READ));
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
@@ -399,7 +395,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     datasetAdminClient.truncate(testDatasetinstance);
     datasetAdminClient.update(testDatasetinstance, new HashMap<String, String>());
 
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE.getName(), ALICE.getName() + PASSWORD_SUFFIX));
     RESTClient aliceClinet = new RESTClient(aliceConfig);
     aliceClinet.addListener(createRestClientListener());
 
@@ -411,7 +407,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       // Expected
     }
 
-    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+    ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE.getName(), EVE.getName() + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);
     eveClient.addListener(createRestClientListener());
     DatasetClient datasetClient = new DatasetClient(eveConfig, eveClient);
@@ -454,23 +450,23 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
    */
   @Test
   public void testStreamPrivileges() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER.getName(), ADMIN_USER.getName()));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
     StreamId streamId = testNamespace.getNamespaceId().stream("testStreamPrivileges");
 
     // pre-grant all required privileges
     // admin can create all entities
-    grant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    grant(ADMIN_USER, streamId, Action.ADMIN);
+    authorizer.grant(testNamespace.getNamespaceId(), ADMIN_USER, EnumSet.of(Action.ADMIN));
+    authorizer.grant(streamId, ADMIN_USER, EnumSet.of(Action.ADMIN));
     String principal = testNamespace.getConfig().getPrincipal();
     if (principal != null) {
-      grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+      authorizer.grant(new KerberosPrincipalId(principal), ADMIN_USER, EnumSet.of(Action.ADMIN));
     }
     // Alice can write to the stream
-    grant(ALICE, streamId, Action.WRITE);
+    authorizer.grant(streamId, ALICE, EnumSet.of(Action.WRITE));
     // Bob can read the stream
-    grant(BOB, streamId, Action.READ);
+    authorizer.grant(streamId, BOB, EnumSet.of(Action.READ));
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
@@ -494,10 +490,10 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       adminStreamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
       Assert.fail();
     } catch (UnauthorizedException ex) {
-       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
     }
 
-    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB.getName(), BOB.getName() + PASSWORD_SUFFIX));
     RESTClient bobClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
     StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
@@ -511,7 +507,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       // expected
     }
 
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
+    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE.getName(), ALICE.getName() + PASSWORD_SUFFIX));
     RESTClient aliceClient = new RESTClient(bobConfig);
     bobClient.addListener(createRestClientListener());
     StreamClient aliceStreamClient = new StreamClient(aliceConfig, aliceClient);
@@ -522,7 +518,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       aliceStreamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
       Assert.fail();
     } catch (UnauthorizedException ex) {
-       Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
+      Assert.assertTrue(ex.getMessage().toLowerCase().contains(NO_PRIVILEGE_MESG.toLowerCase()));
     }
 
     // neither Bob nor Alice can drop the stream
@@ -548,20 +544,20 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
    */
   @Test
   public void testDeleteNamespaceWithDifferentClients() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER.getName(), ADMIN_USER.getName()));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
-    grant(ALICE, testNamespace.getNamespaceId(), Action.ADMIN);
-    grant(EVE, testNamespace.getNamespaceId(), Action.ADMIN);
+    authorizer.grant(testNamespace.getNamespaceId(), ALICE, EnumSet.of(Action.ADMIN));
+    authorizer.grant(testNamespace.getNamespaceId(), EVE, EnumSet.of(Action.ADMIN));
     if (namespacePrincipal != null) {
-      grant(ALICE, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
-      grant(EVE, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
+      authorizer.grant(new KerberosPrincipalId(namespacePrincipal), ALICE, EnumSet.of(Action.ADMIN));
+      authorizer.grant(new KerberosPrincipalId(namespacePrincipal), EVE, EnumSet.of(Action.ADMIN));
     }
 
-    createAndDeleteNamespace(testNamespace, ALICE);
-    createAndDeleteNamespace(testNamespace, EVE);
+    createAndDeleteNamespace(testNamespace, ALICE.getName());
+    createAndDeleteNamespace(testNamespace, EVE.getName());
   }
 
   /**
@@ -569,7 +565,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
    */
   @Test
   public void testRoleBasedStreamPrivileges() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
+    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER.getName(), ADMIN_USER.getName()));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
     NamespaceId namespaceId = testNamespace.getNamespaceId();
@@ -586,22 +582,26 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // pre-grant all the required privileges
     // admin can create the streams and write event to streams
-    grant(ADMIN_USER, namespaceId, Action.ADMIN);
+    authorizer.grant(namespaceId, ADMIN_USER, EnumSet.of(Action.ADMIN));
     for (StreamId streamId : streamLists) {
-      grant(ADMIN_USER, streamId, Action.ADMIN);
-      grant(ADMIN_USER, streamId, Action.WRITE);
+      authorizer.grant(streamId, ADMIN_USER, EnumSet.of(Action.ADMIN));
+      authorizer.grant(streamId, ADMIN_USER, EnumSet.of(Action.WRITE));
     }
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
     if (namespacePrincipal != null) {
-      grant(ADMIN_USER, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
+      authorizer.grant(new KerberosPrincipalId(namespacePrincipal), ADMIN_USER, EnumSet.of(Action.ADMIN));
     }
-    authorizationClient.createRole(new Role(roleName));
+    authorizer.createRole(new Role(roleName));
+    authorizer.addRoleToPrincipal(new Role(roleName), new Principal(groupName, Principal.PrincipalType.GROUP));
     // streamId1 is only used to test visibility so only grant EXECUTE
-    grant(roleName, streamLists.get(0), Action.EXECUTE, groupName);
+    authorizer.grant(streamLists.get(0), new Principal(roleName, Principal.PrincipalType.ROLE),
+                     EnumSet.of(Action.EXECUTE));
     // streamId2 is only allowed to read
-    grant(roleName, streamLists.get(1), Action.READ, groupName);
+    authorizer.grant(streamLists.get(1), new Principal(roleName, Principal.PrincipalType.ROLE),
+                     EnumSet.of(Action.READ));
     // streamId3 is only allowed to write
-    grant(roleName, streamLists.get(2), Action.WRITE, groupName);
+    authorizer.grant(streamLists.get(2), new Principal(roleName, Principal.PrincipalType.ROLE),
+                     EnumSet.of(Action.WRITE));
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
@@ -611,14 +611,14 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     try {
       // verify namespace list
-      ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
+      ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE.getName(), EVE.getName() + PASSWORD_SUFFIX));
       RESTClient eveClient = new RESTClient(eveConfig);
       eveClient.addListener(createRestClientListener());
 
       NamespaceClient eveNamespaceClient = new NamespaceClient(eveConfig, eveClient);
       Assert.assertTrue(eveNamespaceClient.list().isEmpty());
 
-      ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
+      ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB.getName(), BOB.getName() + PASSWORD_SUFFIX));
       RESTClient bobClient = new RESTClient(bobConfig);
       bobClient.addListener(createRestClientListener());
 
@@ -644,7 +644,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       // write should success but read should fail
       verifyStreamReadWritePrivilege(bobStreamClient, streamLists.get(2), Collections.singleton(Action.WRITE));
     } finally {
-      revoke(roleName);
+      authorizer.dropRole(new Role(roleName));
     }
   }
 
