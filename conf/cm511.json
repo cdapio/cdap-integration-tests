@@ -1,14 +1,7 @@
 {
   "config": {
     "cloudera_manager": {
-      "distribution_version": "5.11",
-      "services": {
-        "yarn": {
-          "serviceConfigs": {
-            "yarn_service_mapred_safety_valve": "<property><name>yarn.app.mapreduce.am.staging-dir</name><value>/user</value></property>"
-          }
-        }
-      }
+      "distribution_version": "5.11"
     }
   }
 }
