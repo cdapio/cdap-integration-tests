@@ -194,6 +194,28 @@ public class ScheduleTest extends AudiTestBase {
   }
 
   @Test
+  public void testProgramStatusCompositeTrigger() throws Exception {
+    NamespaceId namespaceId = getConfiguredNamespace();
+    ApplicationId appId = namespaceId.app(AppWithProgramStatusSchedule.NAME);
+    deployApplication(AppWithProgramStatusSchedule.class);
+    ApplicationManager appWithSchedule = getApplicationManager(appId);
+    WorkflowManager triggeredWorkflow =
+      appWithSchedule.getWorkflowManager(AppWithProgramStatusSchedule.TRIGGERED_WORKFLOW);
+    WorkflowManager triggeringWorkflow =
+      appWithSchedule.getWorkflowManager(AppWithProgramStatusSchedule.TRIGGERING_WORKFLOW);
+    // Enable schedule
+    triggeredWorkflow.getSchedule(AppWithProgramStatusSchedule.COMPOSITE_SCHEDULE).resume();
+    // Assert that there's no run record of both workflows
+    Assert.assertEquals(0, triggeredWorkflow.getHistory().size());
+    Assert.assertEquals(0, triggeringWorkflow.getHistory().size());
+    // Wait for the triggering workflow to run and complete
+    triggeringWorkflow.start();
+    triggeringWorkflow.waitForRuns(ProgramRunStatus.COMPLETED, 1, 60L, TimeUnit.SECONDS);
+    // Wait for the triggered workflow to complete
+    triggeredWorkflow.waitForRuns(ProgramRunStatus.COMPLETED, 1, 60L, TimeUnit.SECONDS);
+  }
+
+  @Test
   public void testScheduleRestApi() throws Exception {
     NamespaceId namespaceId = getConfiguredNamespace();
     ApplicationId appId = namespaceId.app(AppWithDataPartitionSchedule.NAME);
