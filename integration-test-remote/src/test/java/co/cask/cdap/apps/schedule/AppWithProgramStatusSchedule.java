@@ -41,7 +41,7 @@ public class AppWithProgramStatusSchedule extends AbstractApplication {
     // TRIGGERING_WORKFLOW completes
     Trigger andTrigger = getTriggerFactory().and(
       // Time trigger which is satisfied every 1 second
-      getTriggerFactory().byTime("*/1 * * * * ?"),
+      getTriggerFactory().byTime("* * * * * ?"),
       getTriggerFactory().onProgramStatus(ProgramType.WORKFLOW, TRIGGERING_WORKFLOW, ProgramStatus.COMPLETED));
     schedule(buildSchedule(COMPOSITE_SCHEDULE, ProgramType.WORKFLOW, TRIGGERED_WORKFLOW)
                .triggerOn(andTrigger));
