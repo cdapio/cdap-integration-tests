@@ -37,7 +37,10 @@ public class AppWithProgramStatusSchedule extends AbstractApplication {
     setDescription("Application with program status schedule");
     addWorkflow(new AppWithMultipleWorkflows.SomeWorkflow());
     addWorkflow(new AppWithMultipleWorkflows.AnotherWorkflow());
+    // AND trigger is satisfied when time notification generated every 1 second is received and
+    // TRIGGERING_WORKFLOW completes
     Trigger andTrigger = getTriggerFactory().and(
+      // Time trigger which is satisfied every 1 second
       getTriggerFactory().byTime("*/1 * * * * ?"),
       getTriggerFactory().onProgramStatus(ProgramType.WORKFLOW, TRIGGERING_WORKFLOW, ProgramStatus.COMPLETED));
     schedule(buildSchedule(COMPOSITE_SCHEDULE, ProgramType.WORKFLOW, TRIGGERED_WORKFLOW)
