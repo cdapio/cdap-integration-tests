@@ -63,6 +63,7 @@ import org.junit.experimental.categories.Category;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -149,7 +150,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(
       RANKS_COUNTER_PROGRAM.getEntityName());
-    ranksCounterManager.start();
+    ranksCounterManager.start(Collections.singletonMap("system.resources.memory", "1024"));
     // wait 10 minutes for the mapreduce to execute
     ranksCounterManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
