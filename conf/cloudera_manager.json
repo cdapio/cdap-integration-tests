@@ -1,4 +1,20 @@
 {
+  "config": {
+    "cloudera_manager": {
+      "services": {
+        "hdfs": {
+          "serviceConfigs": {
+            "hdfs_service_config_safety_valve": "<property><name>dfs.namenode.delegation.token.renew-interval</name><value>600000</value></property><property><name>dfs.namenode.delegation.token.max-lifetime</name><value>1200000</value></property>"
+          }
+        },
+        "hbase": {
+          "serviceConfigs": {
+            "hbase_service_config_safety_valve": "<property><name>hbase.auth.key.update.interval</name><value>600000</value></property>"
+          }
+        }
+      }
+    }
+  },
   "provider-fields": {
     "bootstrap_interface": "bind_v4",
     "zone_name": "us-central1-c"
