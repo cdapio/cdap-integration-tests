@@ -14,6 +14,10 @@
       "hdfs_site": {
         "dfs.namenode.delegation.token.renew-interval": "600000",
         "dfs.namenode.delegation.token.max-lifetime": "1200000"
+      },
+      "yarn_site": {
+        "yarn.resourcemanager.delegation.token.renew-interval": "600000",
+        "yarn.resourcemanager.delegation.token.max-lifetime": "1200000"
       }
     },
     "hbase": {
