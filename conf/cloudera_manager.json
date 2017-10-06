@@ -6,8 +6,8 @@
           "serviceConfigs": {
             "hdfs_service_config_safety_valve": "<property><name>dfs.namenode.delegation.token.renew-interval</name><value>600000</value></property><property><name>dfs.namenode.delegation.token.max-lifetime</name><value>1200000</value></property>"
           },
-          "roles": {
-            "gateway": {
+          "roleConfigGroups": {
+            "gateway-base": {
               "configs": {
                 "hdfs_client_config_safety_valve": "<property><name>dfs.namenode.delegation.token.renew-interval</name><value>600000</value></property><property><name>dfs.namenode.delegation.token.max-lifetime</name><value>1200000</value></property>"
               }
@@ -18,8 +18,8 @@
           "serviceConfigs": {
             "hbase_service_config_safety_valve": "<property><name>hbase.auth.key.update.interval</name><value>600000</value></property>"
           },
-          "roles": {
-            "gateway": {
+          "roleConfigGroups": {
+            "gateway-base": {
               "configs": {
                 "hbase_client_config_safety_valve": "<property><name>hbase.auth.key.update.interval</name><value>600000</value></property>"
               }
@@ -30,8 +30,8 @@
           "serviceConfigs": {
             "yarn_service_config_safety_valve": "<property><name>yarn.resourcemanager.delegation.token.renew-interval</name><value>600000</value></property><property><name>yarn.resourcemanager.delegation.token.max-lifetime</name><value>1200000</value></property>"
           },
-          "roles": {
-            "gateway": {
+          "roleConfigGroups": {
+            "gateway-base": {
               "configs": {
                 "yarn_client_config_safety_valve": "<property><name>yarn.resourcemanager.delegation.token.renew-interval</name><value>600000</value></property><property><name>yarn.resourcemanager.delegation.token.max-lifetime</name><value>1200000</value></property>"
               }
