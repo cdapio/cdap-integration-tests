@@ -2,6 +2,11 @@
   "config": {
     "cloudera_manager": {
       "services": {
+        "cdap": {
+          "serviceConfigs": {
+            "security.authorization.admin.users": "cdapitn"
+          }
+        },
         "hdfs": {
           "serviceConfigs": {
             "hdfs_service_config_safety_valve": "<property><name>dfs.namenode.delegation.token.renew-interval</name><value>600000</value></property><property><name>dfs.namenode.delegation.token.max-lifetime</name><value>1200000</value></property>"
