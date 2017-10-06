@@ -264,9 +264,9 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
 
     WorkflowManager workflowAliceManager =
       getTestManager(aliceConfig, aliceClient).getApplicationManager(appId).getWorkflowManager(workflowName);
-    workflowAliceManager.waitForRun(ProgramRunStatus.RUNNING, 90, TimeUnit.SECONDS);
+    workflowAliceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.MINUTES);
     scheduleClient.suspend(scheduleId);
-    workflowAliceManager.waitForRun(ProgramRunStatus.COMPLETED, 120, TimeUnit.SECONDS);
+    workflowAliceManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
   }
 
   /**
@@ -306,8 +306,6 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
    * running. So for user2 only Read operation should succeed. In the second program run, user2 is able to read and
    * write on dataset1, so Read, Write, IncrementAndGet should work. In last run, user2 is only able to write, so
    * Read and IncrementAndGet will not work.
-   *
-   *
    * Note that this test can ONLY be used when impersonation is enabled, since currently we do not have
    * endpoint enforcement
    */

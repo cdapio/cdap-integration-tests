@@ -232,10 +232,11 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     eveExpected.add(new Privilege(stream22, Action.EXECUTE));
 
     AuthorizationClient authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
-    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
-    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
-    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
+    // NOTE: listing privileges are not supported through CDAP user should not be doing it.
+//    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
+//    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
+//    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
+//    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
 
     // create these entities
     NamespaceMeta nsMeta1 = new NamespaceMeta.Builder().setName(namespaceId1).build();
@@ -351,10 +352,10 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
         }
       }
     }, 2 * cacheTimeout + 5, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
-    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
-    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
-    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
-    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
+//    Assert.assertEquals(adminExpected, authorizationClient.listPrivileges(adminPrincipal));
+//    Assert.assertEquals(aliceExpected, authorizationClient.listPrivileges(alicePrincipal));
+//    Assert.assertEquals(bobExpected, authorizationClient.listPrivileges(bobPrincipal));
+//    Assert.assertEquals(eveExpected, authorizationClient.listPrivileges(evePrincipal));
     try {
       datasetBobClient.update(ds13, Collections.<String, String>emptyMap());
       Assert.fail();
@@ -567,7 +568,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
   /**
    * Test role based privileges, note that this test can only be run with sentry extension
    */
-  @Test
+  // Role based operations are not supported in ranger
   public void testRoleBasedStreamPrivileges() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
@@ -595,7 +596,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     if (namespacePrincipal != null) {
       grant(ADMIN_USER, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
     }
-    authorizationClient.createRole(new Role(roleName));
+//    authorizationClient.createRole(new Role(roleName));
     // streamId1 is only used to test visibility so only grant EXECUTE
     grant(roleName, streamLists.get(0), Action.EXECUTE, groupName);
     // streamId2 is only allowed to read

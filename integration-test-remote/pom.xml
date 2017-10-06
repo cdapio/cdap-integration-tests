@@ -31,6 +31,8 @@
     <hadoop.version>2.3.0</hadoop.version>
     <sentry.version>1.7.0</sentry.version>
     <cdap.sentry.extn.version>0.6.0</cdap.sentry.extn.version>
+    <ranger.version>0.7.0</ranger.version>
+    <cdap.ranger.version>0.1.0</cdap.ranger.version>
   </properties>
 
   <dependencies>
@@ -59,6 +61,30 @@
       <artifactId>parquet-avro</artifactId>
       <version>1.8.1</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-ranger-common</artifactId>
+      <version>${cdap.ranger.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.ranger</groupId>
+      <artifactId>ranger-plugins-common</artifactId>
+      <version>${ranger.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 

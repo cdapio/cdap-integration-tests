@@ -28,9 +28,10 @@ public class CustomMappingBasicAuthorizationTest extends BasicAuthorizationTest 
   @Before
   public void setup() throws Exception {
     super.setup();
+    // Note: authorization is a reserve keyword in hive so a dataset with that name cannot be created hence authz
     testNamespace =
       getNamespaceMeta(testNamespace.getNamespaceId(), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
-                       "/cdap/authorization", "authorization", "authorization");
+                       "/cdap/authorization", "authorization", "authz");
   }
 }

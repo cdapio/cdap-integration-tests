@@ -28,7 +28,6 @@ import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Authorizable;
 import co.cask.cdap.proto.security.Principal;
-import co.cask.cdap.proto.security.Role;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
@@ -55,17 +54,18 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String ADMIN_USER = "systemadmin";
   protected static final String PASSWORD_SUFFIX = "password";
   protected static final String VERSION = "1.0.0";
-  protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
+  protected static final String NO_ACCESS_MSG = "does not have";
   protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform action";
   protected static final String INSTANCE_NAME = "cdap";
 
   private static final String ITN_ADMIN = "cdapitn";
 
   // this client is loggin as cdapitn, and cdapitn should be the sentry admin
-  protected AuthorizationClient authorizationClient;
+//  protected AuthorizationClient authorizationClient;
+  protected RangerAuthorizationClient rangerAuthorizationClient;
 
   // General test namespace
-  protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
+  protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization_imp1"), null, null,
                                                            null, null, null, null);
 
   // this is the cache time out for the authorizer
@@ -75,8 +75,8 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   public void setUp() throws Exception {
     ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
     RESTClient systemClient = new RESTClient(systemConfig);
-    authorizationClient = new AuthorizationClient(systemConfig, systemClient);
-    createAllUserRoles();
+    rangerAuthorizationClient = new RangerAuthorizationClient(new AuthorizationClient(systemConfig, systemClient),
+                                                              getInstanceURI());
     grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
     grantAllWildCardPolicies();
     invalidateCache();
@@ -105,7 +105,6 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     revoke(EVE);
     revoke(INSTANCE_NAME);
     revoke(ITN_ADMIN);
-    invalidateCache();
   }
 
   protected NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
@@ -133,22 +132,24 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected void grant(String principal, EntityId entityId, Action action,
                        @Nullable String groupName) throws Exception {
     // grant to role and add to group
-    authorizationClient.grant(entityId, new Role(principal), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(
-      new Role(principal), groupName == null ? new Principal(principal, Principal.PrincipalType.GROUP) :
-        new Principal(groupName, Principal.PrincipalType.GROUP));
+    rangerAuthorizationClient.grant(entityId, groupName == null ? new Principal(principal, Principal.PrincipalType
+                                      .USER) : new Principal(principal, Principal.PrincipalType.GROUP),
+                                    EnumSet.of(action));
+    invalidateCache();
   }
 
   protected void wildCardGrant(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
                                Action action) throws Exception {
-    authorizationClient.grant(authorizable, new Principal(principal, Principal.PrincipalType.ROLE), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(new Role(principal),
-                                           new Principal(principal, Principal.PrincipalType.GROUP));
+    rangerAuthorizationClient.grant(authorizable, new Principal(principal, Principal.PrincipalType.USER),
+                                    EnumSet.of(action));
+    invalidateCache();
   }
 
   protected void wildCardRevoke(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
                                 Action action) throws Exception {
-    authorizationClient.revoke(authorizable, new Role(principal), EnumSet.of(action));
+    rangerAuthorizationClient.revoke(authorizable, new Principal(principal, Principal.PrincipalType.USER),
+                                     EnumSet.of(action));
+    invalidateCache();
   }
 
   protected void revoke(String principal, EntityId entityId, Action action) throws Exception {
@@ -161,22 +162,13 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
    * @param principal The principal we want to revoke privilege from.
    */
   protected void revoke(String principal) throws Exception {
-    authorizationClient.dropRole(new Role(principal));
+    rangerAuthorizationClient.revokeAll(principal);
+    invalidateCache();
   }
 
   protected void invalidateCache() throws Exception {
     // this is to make sure the cache times out in both master and remote side
-    TimeUnit.SECONDS.sleep(2 * cacheTimeout + 5);
-  }
-
-  private void createAllUserRoles() throws Exception {
-    authorizationClient.createRole(new Role(ADMIN_USER));
-    authorizationClient.createRole(new Role(ALICE));
-    authorizationClient.createRole(new Role(BOB));
-    authorizationClient.createRole(new Role(CAROL));
-    authorizationClient.createRole(new Role(EVE));
-    authorizationClient.createRole(new Role(INSTANCE_NAME));
-    authorizationClient.createRole(new Role(ITN_ADMIN));
+    TimeUnit.SECONDS.sleep(4);
   }
 
   protected NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
