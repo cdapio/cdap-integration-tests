@@ -2,13 +2,13 @@
   "config": {
     "cdap": {
       "repo": {
-        "apt_repo_url": "file:///tmp/cdap-apt-repo/4.3",
-        "yum_repo_url": "file:///tmp/cdap-yum-repo/4.3",
-        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/4.3/pubkey.gpg"
+        "apt_repo_url": "file:///tmp/cdap-apt-repo/5.0",
+        "yum_repo_url": "file:///tmp/cdap-yum-repo/5.0",
+        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/5.0/pubkey.gpg"
       },
-      "version": "4.3.0-1",
+      "version": "5.0.0-1",
       "ambari": {
-        "version": "4.3.0-1"
+        "version": "5.0.0-1"
       },
       "cdap_site": {
         "explore.executor.container.memory.mb": "2048",
