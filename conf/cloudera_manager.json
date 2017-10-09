@@ -31,6 +31,11 @@
             }
           }
         },
+        "sentry": {
+          "serviceConfigs": {
+            "sentry.service.admin.group": "hive,impala,hue,solr,cdap,cdapitn"
+          }
+        },
         "yarn": {
           "serviceConfigs": {
             "yarn_service_config_safety_valve": "<property><name>yarn.resourcemanager.delegation.token.renew-interval</name><value>600000</value></property><property><name>yarn.resourcemanager.delegation.token.max-lifetime</name><value>1200000</value></property>"
