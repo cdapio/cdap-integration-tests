@@ -32,7 +32,6 @@ public class NamespaceImpersonationBasicAuthorizationTest extends BasicAuthoriza
 
   @Before
   public void setup() throws Exception {
-    super.setup();
     testNamespace =
       getNamespaceMeta(testNamespace.getNamespaceId(), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
@@ -55,9 +54,9 @@ public class NamespaceImpersonationBasicAuthorizationTest extends BasicAuthoriza
     adminClient.addListener(createRestClientListener());
 
     // pre-grant required privileges
-    grant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    grant(ADMIN_USER, new KerberosPrincipalId(ALICE), Action.ADMIN);
-    grant(ADMIN_USER, new KerberosPrincipalId(EVE), Action.ADMIN);
+    authorizationTestClient.grant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
+    authorizationTestClient.grant(ADMIN_USER, new KerberosPrincipalId(ALICE), Action.ADMIN);
+    authorizationTestClient.grant(ADMIN_USER, new KerberosPrincipalId(EVE), Action.ADMIN);
 
     // initially the namespace owner is ALICE, which is in nscreator group, creation should success
     NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);

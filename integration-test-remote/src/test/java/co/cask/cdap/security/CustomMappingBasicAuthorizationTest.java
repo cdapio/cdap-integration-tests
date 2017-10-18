@@ -27,7 +27,6 @@ public class CustomMappingBasicAuthorizationTest extends BasicAuthorizationTest 
 
   @Before
   public void setup() throws Exception {
-    super.setup();
     testNamespace =
       getNamespaceMeta(testNamespace.getNamespaceId(), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()),
