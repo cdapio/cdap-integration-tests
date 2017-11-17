@@ -2,9 +2,6 @@
   "config": {
     "hadoop_mapr": {
       "distribution_version": "5.1.0"
-    },
-    "hive": {
-      "version": "1.2.201706270939-1"
     }
   },
   "provider-fields": {
