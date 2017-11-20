@@ -16,8 +16,11 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.AuthorizationClient;
+import co.cask.cdap.client.MetaClient;
 import co.cask.cdap.client.NamespaceClient;
+import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.ConfigEntry;
@@ -25,21 +28,21 @@ import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.element.EntityType;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Authorizable;
-import co.cask.cdap.proto.security.Principal;
 import co.cask.cdap.proto.security.Role;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.junit.Before;
+import org.junit.Assert;
 
-import java.util.EnumSet;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 /**
@@ -67,32 +70,25 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   // after each test
   private static final String ITN_ADMIN = "cdapitn";
 
-  protected AuthorizationClient authorizationClient;
+  AuthorizationTestClient authorizationTestClient;
 
   // General test namespace
-  protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
+  NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
                                                            null, null, null, null);
 
   // this is the cache time out for the authorizer
-  protected int cacheTimeout;
+  int cacheTimeout;
 
   @Override
   public void setUp() throws Exception {
-    ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
-    RESTClient systemClient = new RESTClient(systemConfig);
-    // this client is loggin as cdapitn, and cdapitn should be the sentry admin
-    authorizationClient = new AuthorizationClient(systemConfig, systemClient);
-    createAllUserRoles();
-    grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
-    grant(INSTANCE_NAME, NamespaceId.DEFAULT, Action.ADMIN);
-    grantAlltoItnAdmin();
-    waitForAuthzCacheTimeout();
+    verifyAndSetUpAuthz();
     super.setUp();
   }
 
-  @Before
-  public void setup() throws Exception {
-    Map<String, ConfigEntry> configs = this.getMetaClient().getCDAPConfig();
+  private void verifyAndSetUpAuthz() throws Exception {
+    ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
+    RESTClient systemClient = new RESTClient(systemConfig);
+    Map<String, ConfigEntry> configs = new MetaClient(systemConfig, systemClient).getCDAPConfig();
     ConfigEntry configEntry = configs.get("security.authorization.enabled");
     Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
                                "security.authorization.enabled");
@@ -100,6 +96,22 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     // cache time out is the sum of cache timeout on master side + cache timeout on remote side + buffer
     this.cacheTimeout = Integer.valueOf(configs.get("security.authorization.cache.ttl.secs").getValue()) +
       Integer.valueOf(configs.get("security.authorization.extension.config.cache.ttl.secs").getValue()) + 5;
+
+    // this client is loggin as cdapitn, and cdapitn should be the sentry admin
+    AuthorizationClient authorizationClient = new AuthorizationClient(systemConfig, systemClient);
+
+    boolean isSentry = configs.get("security.authorization.extension.config.sentry.site.url") != null;
+    if (isSentry) {
+      authorizationTestClient = new SentryAuthorizationTestClient(authorizationClient, cacheTimeout);;
+      createAllUserRoles(authorizationClient);
+    } else {
+      authorizationTestClient =
+        new RangerAuthorizationTestClient(new RangerAuthorizationClient(authorizationClient, getInstanceURI()));
+    }
+    authorizationTestClient.grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
+    authorizationTestClient.grant(INSTANCE_NAME, NamespaceId.DEFAULT, Action.ADMIN);
+    grantAlltoItnAdmin();
+    authorizationTestClient.waitForAuthzCacheTimeout();
   }
 
   @Override
@@ -107,18 +119,18 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     // teardown in parent deletes all entities
     super.tearDown();
     // reset the test by revoking privileges from all users.
-    revoke(ADMIN_USER);
-    revoke(ALICE);
-    revoke(BOB);
-    revoke(CAROL);
-    revoke(EVE);
-    revoke(INSTANCE_NAME);
-    revoke(ITN_ADMIN);
-    waitForAuthzCacheTimeout();
+    authorizationTestClient.revokeAll(ADMIN_USER);
+    authorizationTestClient.revokeAll(ALICE);
+    authorizationTestClient.revokeAll(BOB);
+    authorizationTestClient.revokeAll(CAROL);
+    authorizationTestClient.revokeAll(EVE);
+    authorizationTestClient.revokeAll(INSTANCE_NAME);
+    authorizationTestClient.revokeAll(ITN_ADMIN);
+    authorizationTestClient.waitForAuthzCacheTimeout();
   }
 
-  protected NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
-                                                   RESTClient client) throws Exception {
+  NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
+                                         RESTClient client) throws Exception {
     try {
       new NamespaceClient(config, client).create(namespaceMeta);
     } finally {
@@ -127,57 +139,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     return namespaceMeta.getNamespaceId();
   }
 
-  /**
-   * Grants action privilege to user on entityId.
-   *
-   * @param principal The principal we want to grant privilege to.
-   * @param entityId The entity we want to grant privilege on.
-   * @param action The privilege we want to grant.
-   */
-  protected void grant(String principal, EntityId entityId, Action action) throws Exception {
-    grant(principal, entityId, action, null);
-  }
-
-  protected void grant(String principal, EntityId entityId, Action action,
-                       @Nullable String groupName) throws Exception {
-    // grant to role and add to group
-    authorizationClient.grant(entityId, new Role(principal), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(
-      new Role(principal), groupName == null ? new Principal(principal, Principal.PrincipalType.GROUP) :
-        new Principal(groupName, Principal.PrincipalType.GROUP));
-  }
-
-  protected void wildCardGrant(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
-                               Action action) throws Exception {
-    authorizationClient.grant(authorizable, new Principal(principal, Principal.PrincipalType.ROLE), EnumSet.of(action));
-    authorizationClient.addRoleToPrincipal(new Role(principal),
-                                           new Principal(principal, Principal.PrincipalType.GROUP));
-  }
-
-  protected void wildCardRevoke(String principal, co.cask.cdap.proto.security.Authorizable authorizable,
-                                Action action) throws Exception {
-    authorizationClient.revoke(authorizable, new Role(principal), EnumSet.of(action));
-  }
-
-  protected void revoke(String principal, EntityId entityId, Action action) throws Exception {
-    wildCardRevoke(principal, Authorizable.fromEntityId(entityId), action);
-  }
-
-  /**
-   * Revokes all privileges from the principal.
-   *
-   * @param principal The principal we want to revoke privilege from.
-   */
-  protected void revoke(String principal) throws Exception {
-    authorizationClient.dropRole(new Role(principal));
-  }
-
-  protected void waitForAuthzCacheTimeout() throws Exception {
-    // sleep for the cache timeout
-    TimeUnit.SECONDS.sleep(cacheTimeout);
-  }
-
-  private void createAllUserRoles() throws Exception {
+  private void createAllUserRoles(AuthorizationClient authorizationClient) throws Exception {
     authorizationClient.createRole(new Role(ADMIN_USER));
     authorizationClient.createRole(new Role(ALICE));
     authorizationClient.createRole(new Role(BOB));
@@ -187,10 +149,10 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     authorizationClient.createRole(new Role(ITN_ADMIN));
   }
 
-  protected NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
-                                           @Nullable String groupName, @Nullable String keytabURI,
-                                           @Nullable String rootDirectory, @Nullable String hbaseNamespace,
-                                           @Nullable String hiveDatabase) {
+  NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
+                                 @Nullable String groupName, @Nullable String keytabURI,
+                                 @Nullable String rootDirectory, @Nullable String hbaseNamespace,
+                                 @Nullable String hiveDatabase) {
     return new NamespaceMeta.Builder()
       .setName(namespaceId)
       .setDescription("Namespace for authorization test")
@@ -210,7 +172,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
            EntityType.KERBEROSPRINCIPAL).build();
     for (EntityType entityType : entityTypes) {
       String authorizable = getWildCardString(entityType);
-      wildCardGrant(ITN_ADMIN, co.cask.cdap.proto.security.Authorizable.fromString(authorizable), Action.ADMIN);
+      authorizationTestClient.wildCardGrant(ITN_ADMIN, Authorizable.fromString(authorizable), Action.ADMIN);
     }
   }
 
@@ -243,8 +205,37 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected void setUpPrivileges(String user, Map<EntityId, Set<Action>> neededPrivileges) throws Exception {
     for (Map.Entry<EntityId, Set<Action>> privilege : neededPrivileges.entrySet()) {
       for (Action action : privilege.getValue()) {
-        grant(user, privilege.getKey(), action);
+        authorizationTestClient.grant(user, privilege.getKey(), action);
       }
+    }
+  }
+
+  void verifyStreamReadWritePrivilege(StreamClient streamClient, StreamId streamId,
+                                              Set<Action> allowedPrivileges) throws Exception {
+    boolean hasRead = allowedPrivileges.contains(Action.READ);
+    boolean hasWrite = allowedPrivileges.contains(Action.WRITE);
+    try {
+      streamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+      if (!hasRead) {
+        Assert.fail("Stream read should fail since user does not have read privilege");
+      }
+    } catch (UnauthorizedException ex) {
+      if (hasRead) {
+        Assert.fail("Stream read should be successful since user has read privilege");
+      }
+      // otherwise it is expected
+    }
+
+    try {
+      streamClient.sendEvent(streamId, "integration test message");
+      if (!hasWrite) {
+        Assert.fail("Stream write should fail since user does not have write privilege");
+      }
+    } catch (UnauthorizedException ex) {
+      if (hasWrite) {
+        Assert.fail("Stream write should be successful since user has write privilege");
+      }
+      // otherwise it is expected
     }
   }
 }

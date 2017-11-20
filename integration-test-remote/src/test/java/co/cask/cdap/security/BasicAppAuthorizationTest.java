@@ -142,11 +142,11 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     setUpPrivileges(ALICE, appDeployPrivileges.build());
 
     // grant alice and bob execute privilege to run the flow
-    grant(ALICE, whoFlow, Action.EXECUTE);
-    grant(BOB, whoFlow, Action.EXECUTE);
+    authorizationTestClient.grant(ALICE, whoFlow, Action.EXECUTE);
+    authorizationTestClient.grant(BOB, whoFlow, Action.EXECUTE);
     // let bob be able to get the app and program info
-    grant(BOB, appId, Action.ADMIN);
-    grant(BOB, whoFlow, Action.ADMIN);
+    authorizationTestClient.grant(BOB, appId, Action.ADMIN);
+    authorizationTestClient.grant(BOB, whoFlow, Action.ADMIN);
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
@@ -234,11 +234,11 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     }
     setUpPrivileges(ADMIN_USER, adminPrivileges.build());
     setUpPrivileges(CAROL, appDeployPrivileges.build());
-    grant(ALICE, appId.workflow(workflowName), Action.EXECUTE);
+    authorizationTestClient.grant(ALICE, appId.workflow(workflowName), Action.EXECUTE);
     // this is needed to add the schedule
-    grant(ALICE, appId, Action.ADMIN);
+    authorizationTestClient.grant(ALICE, appId, Action.ADMIN);
 
-    waitForAuthzCacheTimeout();
+    authorizationTestClient.waitForAuthzCacheTimeout();
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
@@ -289,7 +289,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       getTestManager(aliceConfig, aliceClient).getApplicationManager(appId).getWorkflowManager(workflowName);
     workflowAliceManager.waitForRun(ProgramRunStatus.RUNNING, 90, TimeUnit.SECONDS);
     scheduleAliceClient.suspend(scheduleId);
-    workflowAliceManager.waitForRun(ProgramRunStatus.COMPLETED, 120, TimeUnit.SECONDS);
+    workflowAliceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
   }
 
   /**
@@ -302,10 +302,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     adminClient.addListener(createRestClientListener());
     NamespaceId namespaceId = testNamespace.getNamespaceId();
 
-    grant(ADMIN_USER, namespaceId, Action.ADMIN);
+    authorizationTestClient.grant(ADMIN_USER, namespaceId, Action.ADMIN);
     String principal = testNamespace.getConfig().getPrincipal();
     if (principal != null) {
-      grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
+      authorizationTestClient.grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
     }
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
@@ -329,7 +329,6 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
    * running. So for user2 only Read operation should succeed. In the second program run, user2 is able to read and
    * write on dataset1, so Read, Write, IncrementAndGet should work. In last run, user2 is only able to write, so
    * Read and IncrementAndGet will not work.
-   *
    *
    * Note that this test can ONLY be used when impersonation is enabled, since currently we do not have
    * endpoint enforcement
@@ -389,11 +388,11 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // write the dataset
     DatasetId dataset1 = testNs1.dataset(datasetName);
     DatasetId dataset2 = testNs2.dataset(datasetName);
-    grant(user1, dataset1, Action.ADMIN);
-    grant(user1, dataset1, Action.WRITE);
+    authorizationTestClient.grant(user1, dataset1, Action.ADMIN);
+    authorizationTestClient.grant(user1, dataset1, Action.WRITE);
     // grant user2 the read access to dataset in ns1
-    grant(user2, dataset2, Action.ADMIN);
-    grant(user2, dataset1, Action.READ);
+    authorizationTestClient.grant(user2, dataset2, Action.ADMIN);
+    authorizationTestClient.grant(user2, dataset1, Action.READ);
 
     createAndRegisterNamespace(crossNsTest1, adminConfig, adminClient);
     createAndRegisterNamespace(crossNsTest2, adminConfig, adminClient);
@@ -459,8 +458,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       }
 
       // grant user WRITE privilege on the dataset
-      grant(user2, dataset1, Action.WRITE);
-      waitForAuthzCacheTimeout();
+      authorizationTestClient.grant(user2, dataset1, Action.WRITE);
+      authorizationTestClient.waitForAuthzCacheTimeout();
 
       user2ServiceManager.stop();
       user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs, PROGRAM_START_STOP_TIMEOUT_SECONDS,
@@ -479,8 +478,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
       Assert.assertEquals(200, response.getResponseCode());
 
       // revoke privileges from user2
-      revoke(user2, dataset1, Action.READ);
-      waitForAuthzCacheTimeout();
+      authorizationTestClient.revoke(user2, dataset1, Action.READ);
+      authorizationTestClient.waitForAuthzCacheTimeout();
 
       user2ServiceManager.stop();
       user2ServiceManager.waitForRuns(ProgramRunStatus.KILLED, ++runs,

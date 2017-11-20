@@ -25,7 +25,6 @@ public class NamespaceImpersonationAppAuthorizationTest extends BasicAppAuthoriz
 
   @Before
   public void setup() throws Exception {
-    super.setup();
     testNamespace =
       getNamespaceMeta(testNamespace.getNamespaceId(), ALICE, null,
                        SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()), null,
