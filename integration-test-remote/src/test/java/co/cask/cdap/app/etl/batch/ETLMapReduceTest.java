@@ -25,6 +25,7 @@ import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.datapipeline.SmartWorkflow;
+import co.cask.cdap.etl.api.ErrorTransform;
 import co.cask.cdap.etl.api.Transform;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
@@ -558,21 +559,34 @@ public class ETLMapReduceTest extends ETLTestBase {
                                                        Transform.PLUGIN_TYPE,
                                                        ImmutableMap.of(
                                                          "validators", "core", "validationScript", validationScript),
-                                                       null), "keyErrors");
+                                                       null));
 
-    ETLStage sink = new ETLStage("TableSink", new ETLPlugin("Table",
-                                                            BatchSink.PLUGIN_TYPE,
-                                                            ImmutableMap.of(
-                                                              Properties.BatchReadableWritable.NAME, "outputTable",
-                                                              Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey"),
-                                                            null));
+    ETLStage sink1 = new ETLStage("sink1", new ETLPlugin("Table",
+                                                         BatchSink.PLUGIN_TYPE,
+                                                         ImmutableMap.of(
+                                                           Properties.BatchReadableWritable.NAME, "outputTable",
+                                                           Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey")));
+
+    ETLStage sink2 = new ETLStage("sink2", new ETLPlugin("Table",
+                                                         BatchSink.PLUGIN_TYPE,
+                                                         ImmutableMap.of(
+                                                           Properties.BatchReadableWritable.NAME, "keyErrors",
+                                                           Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey")));
+
+    ETLStage errors = new ETLStage("errors", new ETLPlugin("ErrorCollector",
+                                                           ErrorTransform.PLUGIN_TYPE,
+                                                           ImmutableMap.<String, String>of()));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
-      .addStage(sink)
+      .addStage(sink1)
+      .addStage(sink2)
       .addStage(transform)
+      .addStage(errors)
       .addConnection(source.getName(), transform.getName())
-      .addConnection(transform.getName(), sink.getName())
+      .addConnection(transform.getName(), sink1.getName())
+      .addConnection(transform.getName(), errors.getName())
+      .addConnection(errors.getName(), sink2.getName())
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
@@ -615,7 +629,17 @@ public class ETLMapReduceTest extends ETLTestBase {
     Assert.assertEquals("scotch", row.getString("item"));
 
     row = outputTable.get(Bytes.toBytes("row2"));
-    Assert.assertEquals(0, row.getColumns().size());
+    Assert.assertTrue(row.isEmpty());
+
+    DataSetManager<Table> errorManager = getTableDataset("keyErrors");
+    Table errorTable = errorManager.get();
+
+    Assert.assertTrue(errorTable.get(Bytes.toBytes("row1")).isEmpty());
+    row = errorTable.get(Bytes.toBytes("row2"));
+    Assert.assertEquals("jackson", row.getString("userId"));
+    Assert.assertEquals(10, (int) row.getInt("count"));
+    Assert.assertTrue(Math.abs(123456789d - row.getDouble("price")) < 0.000001);
+    Assert.assertEquals("island", row.getString("item"));
   }
 
   private void verifyRewardResults(List<QueryResult> queryResults, Set<Rewards> expected, String type) {
