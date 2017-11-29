@@ -17,6 +17,7 @@
 package co.cask.cdap.longrunning.datacleansing;
 
 import co.cask.cdap.api.ProgramLifecycle;
+import co.cask.cdap.api.ProgramStatus;
 import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.annotation.UseDataSet;
 import co.cask.cdap.api.data.batch.Output;
@@ -65,7 +66,8 @@ public class DataCleansingMapReduce extends AbstractMapReduce {
   }
 
   @Override
-  public void beforeSubmit(MapReduceContext context) throws Exception {
+  public void initialize() throws Exception {
+    MapReduceContext context = getContext();
     partitionCommitter =
       PartitionBatchInput.setInput(context, DataCleansingApp.RAW_RECORDS,
                                    new KVTableStatePersistor(DataCleansingApp.CONSUMING_STATE, "state.key"));
@@ -99,8 +101,9 @@ public class DataCleansingMapReduce extends AbstractMapReduce {
   }
 
   @Override
-  public void onFinish(boolean succeeded, MapReduceContext context) throws Exception {
-    partitionCommitter.onFinish(succeeded);
+  public void destroy() {
+    boolean isSuccessful = getContext().getState().getStatus() == ProgramStatus.COMPLETED;
+    partitionCommitter.onFinish(isSuccessful);
   }
 
   /**
