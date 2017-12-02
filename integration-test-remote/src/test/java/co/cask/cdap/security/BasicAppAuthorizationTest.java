@@ -147,6 +147,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // let bob be able to get the app and program info
     authorizationTestClient.grant(BOB, appId, Action.ADMIN);
     authorizationTestClient.grant(BOB, whoFlow, Action.ADMIN);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
@@ -237,8 +238,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     authorizationTestClient.grant(ALICE, appId.workflow(workflowName), Action.EXECUTE);
     // this is needed to add the schedule
     authorizationTestClient.grant(ALICE, appId, Action.ADMIN);
-
     authorizationTestClient.waitForAuthzCacheTimeout();
+
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
@@ -307,6 +308,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     if (principal != null) {
       authorizationTestClient.grant(ADMIN_USER, new KerberosPrincipalId(principal), Action.ADMIN);
     }
+    authorizationTestClient.waitForAuthzCacheTimeout();
+
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
@@ -393,6 +396,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // grant user2 the read access to dataset in ns1
     authorizationTestClient.grant(user2, dataset2, Action.ADMIN);
     authorizationTestClient.grant(user2, dataset1, Action.READ);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndRegisterNamespace(crossNsTest1, adminConfig, adminClient);
     createAndRegisterNamespace(crossNsTest2, adminConfig, adminClient);

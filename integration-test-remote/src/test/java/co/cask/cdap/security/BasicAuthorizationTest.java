@@ -92,6 +92,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     authorizationTestClient.grant(ALICE, streamId, Action.ADMIN);
     // eve only has access to the stream
     authorizationTestClient.grant(EVE, streamId, Action.ADMIN);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     // bob can't create namespace without having ADMIN privilege on the namespace
     try {
@@ -161,11 +162,6 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     ClientConfig eveConfig = getClientConfig(fetchAccessToken(EVE, EVE + PASSWORD_SUFFIX));
     RESTClient eveClient = new RESTClient(eveConfig);
     eveClient.addListener(createRestClientListener());
-    Principal adminPrincipal = new Principal(ADMIN_USER, Principal.PrincipalType.USER);
-    Principal alicePrincipal = new Principal(ALICE, Principal.PrincipalType.USER);
-    Principal bobPrincipal = new Principal(BOB, Principal.PrincipalType.USER);
-    Principal evePrincipal = new Principal(EVE, Principal.PrincipalType.USER);
-
 
     // set up entities
     String namespacePrefix = "testPrivilegesAndVisibility";
@@ -217,6 +213,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
 
     // Grant privileges on entity stream22 to eve
     authorizationTestClient.grant(EVE, stream22, Action.EXECUTE);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     // create these entities
     NamespaceMeta nsMeta1 = new NamespaceMeta.Builder().setName(namespaceId1).build();
@@ -362,6 +359,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     }
     // eve can read from the dataset
     authorizationTestClient.grant(EVE, testDatasetinstance, Action.READ);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
     DatasetClient datasetAdminClient = new DatasetClient(adminConfig, adminClient);
@@ -447,6 +445,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
     authorizationTestClient.grant(ALICE, streamId, Action.WRITE);
     // Bob can read the stream
     authorizationTestClient.grant(BOB, streamId, Action.READ);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
@@ -535,6 +534,7 @@ public class BasicAuthorizationTest extends AuthorizationTestBase {
       authorizationTestClient.grant(ALICE, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
       authorizationTestClient.grant(EVE, new KerberosPrincipalId(namespacePrincipal), Action.ADMIN);
     }
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndDeleteNamespace(testNamespace, ALICE);
     createAndDeleteNamespace(testNamespace, EVE);

@@ -77,7 +77,7 @@ public class SentryBasicAuthorizationTest extends AuthorizationTestBase {
     authorizationTestClient.grant(roleName, streamLists.get(2), Action.WRITE, groupName);
 
     // Sleep for the cache timeout to let the created role take effect
-    TimeUnit.SECONDS.sleep(cacheTimeout);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
