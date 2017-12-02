@@ -57,6 +57,7 @@ public class NamespaceImpersonationBasicAuthorizationTest extends BasicAuthoriza
     authorizationTestClient.grant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
     authorizationTestClient.grant(ADMIN_USER, new KerberosPrincipalId(ALICE), Action.ADMIN);
     authorizationTestClient.grant(ADMIN_USER, new KerberosPrincipalId(EVE), Action.ADMIN);
+    authorizationTestClient.waitForAuthzCacheTimeout();
 
     // initially the namespace owner is ALICE, which is in nscreator group, creation should success
     NamespaceId namespaceId = createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
