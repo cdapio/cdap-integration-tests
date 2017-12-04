@@ -16,72 +16,34 @@
 
 package co.cask.cdap.security;
 
+import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.AuthorizationClient;
+import co.cask.cdap.client.MetaClient;
 import co.cask.cdap.client.NamespaceClient;
+import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.element.EntityType;
-import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.ArtifactId;
-import co.cask.cdap.proto.id.DatasetId;
-import co.cask.cdap.proto.id.DatasetModuleId;
-import co.cask.cdap.proto.id.DatasetTypeId;
 import co.cask.cdap.proto.id.EntityId;
-import co.cask.cdap.proto.id.InstanceId;
-import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.proto.id.ProgramId;
-import co.cask.cdap.proto.id.SecureKeyId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
+import co.cask.cdap.proto.security.Authorizable;
 import co.cask.cdap.proto.security.Role;
-import co.cask.cdap.security.authorization.sentry.model.Application;
-import co.cask.cdap.security.authorization.sentry.model.Artifact;
-import co.cask.cdap.security.authorization.sentry.model.Authorizable;
-import co.cask.cdap.security.authorization.sentry.model.Dataset;
-import co.cask.cdap.security.authorization.sentry.model.DatasetModule;
-import co.cask.cdap.security.authorization.sentry.model.DatasetType;
-import co.cask.cdap.security.authorization.sentry.model.Instance;
-import co.cask.cdap.security.authorization.sentry.model.Namespace;
-import co.cask.cdap.security.authorization.sentry.model.Program;
-import co.cask.cdap.security.authorization.sentry.model.SecureKey;
-import co.cask.cdap.security.authorization.sentry.model.Stream;
+import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.sentry.provider.db.SentryNoSuchObjectException;
-import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClient;
-import org.apache.sentry.provider.db.generic.service.thrift.SentryGenericServiceClientFactory;
-import org.apache.sentry.provider.db.generic.service.thrift.TAuthorizable;
-import org.apache.sentry.provider.db.generic.service.thrift.TSentryGrantOption;
-import org.apache.sentry.provider.db.generic.service.thrift.TSentryPrivilege;
-import org.apache.sentry.service.thrift.ServiceConstants;
-import org.junit.Before;
+import org.junit.Assert;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
 
 /**
  * Authorization test base for all authorization tests
@@ -93,122 +55,104 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String BOB = "bob";
   protected static final String CAROL = "carol";
   protected static final String EVE = "eve";
-  protected static final String ADMIN_USER = "cdapitn";
+  // system admin user will generally have admin privilege on the entities in the test, and thus is generally used to
+  // create namespace and other entities. Other users can also be used to create entities.
+  protected static final String ADMIN_USER = "systemadmin";
   protected static final String PASSWORD_SUFFIX = "password";
   protected static final String VERSION = "1.0.0";
-  protected static final String NO_PRIVILEGE_MSG = "does not have privileges to access entity";
+  protected static final String NO_ACCESS_MSG = "does not have privileges to access entity";
+  protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform action";
+  protected static final String NOT_VISIBLE_MSG = "since the principal does not have any privilege on this namespace" +
+    " or any entity in this namespace";
+  protected static final String INSTANCE_NAME = "cdap";
 
-  private static final String COMPONENT = "cdap";
-  private static final String INSTANCE_NAME = "cdap";
-  private static final Role DUMMY_ROLE = new Role("dummy");
+  // cdapitn user will be running the tests, thus will have all wildcard privileges to be able to clean up entities
+  // after each test
+  private static final String ITN_ADMIN = "cdapitn";
 
-  // TODO: Remove this when we migrate to wildcard privilege
-  protected Set<EntityId> cleanUpEntities;
-  private SentryGenericServiceClient sentryClient;
-  private AuthorizationClient authorizationClient;
+  AuthorizationTestClient authorizationTestClient;
 
   // General test namespace
-  protected NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
+  NamespaceMeta testNamespace = getNamespaceMeta(new NamespaceId("authorization"), null, null,
                                                            null, null, null, null);
+
+  // this is the cache time out for the authorizer
+  int cacheTimeout;
 
   @Override
   public void setUp() throws Exception {
-    sentryClient = SentryGenericServiceClientFactory.create(getSentryConfig());
-    // TODO: remove this once caching in sentry is fixed
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
-    RESTClient adminClient = new RESTClient(adminConfig);
-    authorizationClient = new AuthorizationClient(adminConfig, adminClient);
-    userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.ADMIN);
-    invalidateCache();
+    verifyAndSetUpAuthz();
     super.setUp();
-    userRevoke(ADMIN_USER);
-    cleanUpEntities = new HashSet<>();
   }
 
-  @Before
-  public void setup() throws Exception {
-    ConfigEntry configEntry = this.getMetaClient().getCDAPConfig().get("security.authorization.enabled");
+  private void verifyAndSetUpAuthz() throws Exception {
+    ClientConfig systemConfig = getClientConfig(fetchAccessToken(ITN_ADMIN, ITN_ADMIN));
+    RESTClient systemClient = new RESTClient(systemConfig);
+    Map<String, ConfigEntry> configs = new MetaClient(systemConfig, systemClient).getCDAPConfig();
+    ConfigEntry configEntry = configs.get("security.authorization.enabled");
     Preconditions.checkNotNull(configEntry, "Missing key from CDAP Configuration: %s",
                                "security.authorization.enabled");
     Preconditions.checkState(Boolean.parseBoolean(configEntry.getValue()), "Authorization not enabled.");
+    // cache time out is the sum of cache timeout on master side + cache timeout on remote side + buffer
+    this.cacheTimeout = Integer.valueOf(configs.get("security.authorization.cache.ttl.secs").getValue()) +
+      Integer.valueOf(configs.get("security.authorization.extension.config.cache.ttl.secs").getValue()) + 5;
+
+    // this client is loggin as cdapitn, and cdapitn should be the sentry admin
+    AuthorizationClient authorizationClient = new AuthorizationClient(systemConfig, systemClient);
+
+    boolean isSentry = configs.get("security.authorization.extension.config.sentry.site.url") != null;
+    if (isSentry) {
+      authorizationTestClient = new SentryAuthorizationTestClient(authorizationClient, cacheTimeout);;
+      createAllUserRoles(authorizationClient);
+    } else {
+      authorizationTestClient =
+        new RangerAuthorizationTestClient(new RangerAuthorizationClient(authorizationClient, getInstanceURI()));
+    }
+    authorizationTestClient.grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
+    authorizationTestClient.grant(INSTANCE_NAME, NamespaceId.DEFAULT, Action.ADMIN);
+    grantAlltoItnAdmin();
+    authorizationTestClient.waitForAuthzCacheTimeout();
   }
 
   @Override
   public void tearDown() throws Exception {
-    // we have to grant ADMIN privileges to all clean up entites such that these entities can be deleted
-    for (EntityId entityId : cleanUpEntities) {
-      userGrant(ADMIN_USER, entityId, Action.ADMIN);
-    }
-    userGrant(ADMIN_USER, testNamespace.getNamespaceId(), Action.ADMIN);
-    userGrant(ADMIN_USER, NamespaceId.DEFAULT, Action.ADMIN);
-    invalidateCache();
     // teardown in parent deletes all entities
     super.tearDown();
     // reset the test by revoking privileges from all users.
-    userRevoke(ADMIN_USER);
-    userRevoke(ALICE);
-    userRevoke(BOB);
-    userRevoke(CAROL);
-    userRevoke(EVE);
-    sentryClient.close();
+    authorizationTestClient.revokeAll(ADMIN_USER);
+    authorizationTestClient.revokeAll(ALICE);
+    authorizationTestClient.revokeAll(BOB);
+    authorizationTestClient.revokeAll(CAROL);
+    authorizationTestClient.revokeAll(EVE);
+    authorizationTestClient.revokeAll(INSTANCE_NAME);
+    authorizationTestClient.revokeAll(ITN_ADMIN);
+    authorizationTestClient.waitForAuthzCacheTimeout();
   }
 
-  protected NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
-                                                   RESTClient client) throws Exception {
+  NamespaceId createAndRegisterNamespace(NamespaceMeta namespaceMeta, ClientConfig config,
+                                         RESTClient client) throws Exception {
     try {
       new NamespaceClient(config, client).create(namespaceMeta);
-      cleanUpEntities.add(namespaceMeta.getNamespaceId());
     } finally {
       registerForDeletion(namespaceMeta.getNamespaceId());
     }
     return namespaceMeta.getNamespaceId();
   }
 
-  /**
-   * Grants action privilege to user on entityId. Creates a role for the user. Grant action privilege
-   * on that role, and add the role to the group the user belongs to. All done through sentry.
-   *  @param user The user we want to grant privilege to.
-   * @param entityId The entity we want to grant privilege on.
-   * @param action The privilege we want to grant.
-   */
-  protected void userGrant(String user, EntityId entityId, Action action) throws Exception {
-    // create role and add to group
-    // TODO: use a different user as Sentry Admin (neither CDAP, nor an user used in our tests)
-    sentryClient.createRoleIfNotExist(ADMIN_USER, user, COMPONENT);
-    sentryClient.addRoleToGroups(ADMIN_USER, user, COMPONENT, Sets.newHashSet(user));
-
-    // create authorizable list
-    List<TAuthorizable> authorizables = toTAuthorizable(entityId);
-    TSentryPrivilege privilege = new TSentryPrivilege(COMPONENT, INSTANCE_NAME, authorizables, action.name());
-    privilege.setGrantOption(TSentryGrantOption.TRUE);
-    sentryClient.grantPrivilege(ADMIN_USER, user, COMPONENT, privilege);
+  private void createAllUserRoles(AuthorizationClient authorizationClient) throws Exception {
+    authorizationClient.createRole(new Role(ADMIN_USER));
+    authorizationClient.createRole(new Role(ALICE));
+    authorizationClient.createRole(new Role(BOB));
+    authorizationClient.createRole(new Role(CAROL));
+    authorizationClient.createRole(new Role(EVE));
+    authorizationClient.createRole(new Role(INSTANCE_NAME));
+    authorizationClient.createRole(new Role(ITN_ADMIN));
   }
 
-  protected void invalidateCache() throws Exception {
-    // TODO: Hack to invalidate cache in sentry authorizer. Remove once cache problem is solved.
-    authorizationClient.dropRole(DUMMY_ROLE);
-  }
-
-  /**
-   * Revokes all privileges from user. Deletes the user role through sentry.
-   *
-   * @param user The user we want to revoke privilege from.
-   */
-  protected void userRevoke(String user) throws Exception {
-    try {
-      sentryClient.deleteRoleToGroups(ADMIN_USER, user, COMPONENT, Sets.newHashSet(user));
-    } catch (SentryNoSuchObjectException e) {
-      // skip a role that hasn't been added to the user
-    } finally {
-      sentryClient.dropRoleIfExists(ADMIN_USER, user, COMPONENT);
-      invalidateCache();
-    }
-  }
-
-  protected NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
-                                                  @Nullable String groupName, @Nullable String keytabURI,
-                                                  @Nullable String rootDirectory, @Nullable String hbaseNamespace,
-                                                  @Nullable String hiveDatabase) {
+  NamespaceMeta getNamespaceMeta(NamespaceId namespaceId, @Nullable String principal,
+                                 @Nullable String groupName, @Nullable String keytabURI,
+                                 @Nullable String rootDirectory, @Nullable String hbaseNamespace,
+                                 @Nullable String hiveDatabase) {
     return new NamespaceMeta.Builder()
       .setName(namespaceId)
       .setDescription("Namespace for authorization test")
@@ -221,128 +165,77 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
       .build();
   }
 
-  private Configuration getSentryConfig() throws IOException, LoginException, URISyntaxException {
-
-    String hostUri = super.getInstanceURI();
-    String sentryRpcAddr = new URI(hostUri).getHost();
-    String sentryPrincipal = "sentry/" + sentryRpcAddr + "@CONTINUUITY.NET";
-    String sentryRpcPort = "8038";
-
-    Configuration conf = new Configuration(false);
-    conf.clear();
-    conf.set(ServiceConstants.ServerConfig.SECURITY_MODE, ServiceConstants.ServerConfig.SECURITY_MODE_KERBEROS);
-    conf.set(ServiceConstants.ServerConfig.PRINCIPAL, sentryPrincipal);
-    conf.set(ServiceConstants.ClientConfig.SERVER_RPC_ADDRESS, sentryRpcAddr);
-    conf.set(ServiceConstants.ClientConfig.SERVER_RPC_PORT, sentryRpcPort);
-
-    // Log in to Kerberos
-    UserGroupInformation.setConfiguration(conf);
-    LoginContext lc = kinit();
-    UserGroupInformation.loginUserFromSubject(lc.getSubject());
-    return conf;
-  }
-
-  private static LoginContext kinit() throws LoginException {
-    LoginContext lc = new LoginContext(BasicAuthorizationTest.class.getSimpleName(), new CallbackHandler() {
-      public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-        for (Callback c : callbacks) {
-          if (c instanceof NameCallback) {
-            ((NameCallback) c).setName(ADMIN_USER);
-          }
-          if (c instanceof PasswordCallback) {
-            ((PasswordCallback) c).setPassword(ADMIN_USER.toCharArray());
-          }
-        }
-      }
-    });
-    lc.login();
-    return lc;
-  }
-
-  private List<TAuthorizable> toTAuthorizable(EntityId entityId) {
-    List<org.apache.sentry.core.common.Authorizable> authorizables = toSentryAuthorizables(entityId);
-    List<TAuthorizable> tAuthorizables = new ArrayList<>();
-    for (org.apache.sentry.core.common.Authorizable authorizable : authorizables) {
-      tAuthorizables.add(new TAuthorizable(authorizable.getTypeName(), authorizable.getName()));
+  private void grantAlltoItnAdmin() throws Exception {
+    Set<EntityType> entityTypes = ImmutableSet.<EntityType>builder()
+      .add(EntityType.NAMESPACE, EntityType.APPLICATION, EntityType.PROGRAM, EntityType.ARTIFACT,
+           EntityType.DATASET, EntityType.STREAM, EntityType.DATASET_MODULE, EntityType.DATASET_TYPE,
+           EntityType.KERBEROSPRINCIPAL).build();
+    for (EntityType entityType : entityTypes) {
+      String authorizable = getWildCardString(entityType);
+      authorizationTestClient.wildCardGrant(ITN_ADMIN, Authorizable.fromString(authorizable), Action.ADMIN);
     }
-    return tAuthorizables;
   }
 
-  @VisibleForTesting
-  List<org.apache.sentry.core.common.Authorizable> toSentryAuthorizables(final EntityId entityId) {
-    List<org.apache.sentry.core.common.Authorizable> authorizables = new LinkedList<>();
-    toAuthorizables(entityId, authorizables);
-    return authorizables;
-  }
-
-  private void toAuthorizables(EntityId entityId, List<? super Authorizable> authorizables) {
-    EntityType entityType = entityId.getEntityType();
+  private String getWildCardString(EntityType entityType) throws Exception {
+    String prefix = entityType.toString().toLowerCase() + ":";
     switch (entityType) {
-      case INSTANCE:
-        authorizables.add(new Instance(((InstanceId) entityId).getInstance()));
-        break;
       case NAMESPACE:
-        toAuthorizables(new InstanceId(INSTANCE_NAME), authorizables);
-        authorizables.add(new Namespace(((NamespaceId) entityId).getNamespace()));
-        break;
+        return prefix + "*";
       case ARTIFACT:
-        ArtifactId artifactId = (ArtifactId) entityId;
-        toAuthorizables(artifactId.getParent(), authorizables);
-        authorizables.add(new Artifact(artifactId.getArtifact()));
-        break;
+        return prefix + "*.*";
       case APPLICATION:
-        ApplicationId applicationId = (ApplicationId) entityId;
-        toAuthorizables(applicationId.getParent(), authorizables);
-        authorizables.add(new Application(applicationId.getApplication()));
-        break;
+        return prefix + "*.*";
       case DATASET:
-        DatasetId dataset = (DatasetId) entityId;
-        toAuthorizables(dataset.getParent(), authorizables);
-        authorizables.add(new Dataset(dataset.getDataset()));
-        break;
+        return prefix + "*.*";
       case DATASET_MODULE:
-        DatasetModuleId datasetModuleId = (DatasetModuleId) entityId;
-        toAuthorizables(datasetModuleId.getParent(), authorizables);
-        authorizables.add(new DatasetModule(datasetModuleId.getModule()));
-        break;
+        return prefix + "*.*";
       case DATASET_TYPE:
-        DatasetTypeId datasetTypeId = (DatasetTypeId) entityId;
-        toAuthorizables(datasetTypeId.getParent(), authorizables);
-        authorizables.add(new DatasetType(datasetTypeId.getType()));
-        break;
+        return prefix + "*.*";
       case STREAM:
-        StreamId streamId = (StreamId) entityId;
-        toAuthorizables(streamId.getParent(), authorizables);
-        authorizables.add(new Stream((streamId).getStream()));
-        break;
+        return prefix + "*.*";
       case PROGRAM:
-        ProgramId programId = (ProgramId) entityId;
-        toAuthorizables(programId.getParent(), authorizables);
-        authorizables.add(new Program(programId.getType(), programId.getProgram()));
-        break;
-      case SECUREKEY:
-        SecureKeyId secureKeyId = (SecureKeyId) entityId;
-        toAuthorizables(secureKeyId.getParent(), authorizables);
-        authorizables.add(new SecureKey(secureKeyId.getName()));
-        break;
+        return prefix + "*.*.*";
       case KERBEROSPRINCIPAL:
-        KerberosPrincipalId principalId = (KerberosPrincipalId) entityId;
-        toAuthorizables(new InstanceId(INSTANCE_NAME), authorizables);
-        authorizables.add(new co.cask.cdap.security.authorization.sentry.model.Principal(principalId.getPrincipal()));
-        break;
+        return prefix + "*";
       default:
-        throw new IllegalArgumentException(String.format("The entity %s is of unknown type %s", entityId, entityType));
+        throw new IllegalArgumentException(String.format("The entity is of unknown type %s", entityType));
     }
   }
 
-  // TODO: Remove this when we migrate to wildcard privilege
-  protected void setUpPrivilegeAndRegisterForDeletion(String user,
-                                                      Map<EntityId, Set<Action>> neededPrivileges) throws Exception {
+  protected void setUpPrivileges(String user, Map<EntityId, Set<Action>> neededPrivileges) throws Exception {
     for (Map.Entry<EntityId, Set<Action>> privilege : neededPrivileges.entrySet()) {
       for (Action action : privilege.getValue()) {
-        userGrant(user, privilege.getKey(), action);
-        cleanUpEntities.add(privilege.getKey());
+        authorizationTestClient.grant(user, privilege.getKey(), action);
       }
+    }
+  }
+
+  void verifyStreamReadWritePrivilege(StreamClient streamClient, StreamId streamId,
+                                              Set<Action> allowedPrivileges) throws Exception {
+    boolean hasRead = allowedPrivileges.contains(Action.READ);
+    boolean hasWrite = allowedPrivileges.contains(Action.WRITE);
+    try {
+      streamClient.getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, new ArrayList<StreamEvent>());
+      if (!hasRead) {
+        Assert.fail("Stream read should fail since user does not have read privilege");
+      }
+    } catch (UnauthorizedException ex) {
+      if (hasRead) {
+        Assert.fail("Stream read should be successful since user has read privilege");
+      }
+      // otherwise it is expected
+    }
+
+    try {
+      streamClient.sendEvent(streamId, "integration test message");
+      if (!hasWrite) {
+        Assert.fail("Stream write should fail since user does not have write privilege");
+      }
+    } catch (UnauthorizedException ex) {
+      if (hasWrite) {
+        Assert.fail("Stream write should be successful since user has write privilege");
+      }
+      // otherwise it is expected
     }
   }
 }
