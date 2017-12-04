@@ -12,7 +12,9 @@
       },
       "cdap_site": {
         "explore.executor.container.memory.mb": "2048",
-        "metrics.processor.memory.mb": "512"
+        "metrics.processor.memory.mb": "512",
+        "security.keytab.path": "/etc/security/keytabs/${name}.headless.keytab",
+        "security.authorization.extension.jar.path": "/opt/cdap/master/ext/security/cdap-ranger-binding-0.1.2.jar"
       }
     }
   },
