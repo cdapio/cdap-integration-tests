@@ -152,21 +152,6 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
     authorizationClient.revoke(authorizable);
   }
 
-  @Override
-  public void grant(EntityId entity, Principal principal, Set<Action> actions) throws Exception {
-    grant(Authorizable.fromEntityId(entity), principal, actions);
-  }
-
-  @Override
-  public void revoke(EntityId entity, Principal principal, Set<Action> actions) throws Exception {
-    revoke(Authorizable.fromEntityId(entity), principal, actions);
-  }
-
-  @Override
-  public void revoke(EntityId entity) throws Exception {
-    revoke(Authorizable.fromEntityId(entity));
-  }
-
   // Note: This is bad design but all authorization tests are written without Principal and in compatible with CDAP's
   // Authorizer API
   public void revokeAll(String username) throws Exception {

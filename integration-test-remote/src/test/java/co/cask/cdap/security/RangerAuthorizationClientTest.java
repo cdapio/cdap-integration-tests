@@ -44,25 +44,32 @@ public class RangerAuthorizationClientTest {
 
   @Test
   public void test() throws Exception {
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("shankar", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("shankar", Principal.PrincipalType.USER),
                                     ImmutableSet.of(Action.READ));
 
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("shankar", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("shankar", Principal.PrincipalType.USER),
                                     ImmutableSet.of(Action.WRITE));
 
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("sagar", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("sagar", Principal.PrincipalType.USER),
                                     ImmutableSet.of(Action.ADMIN));
 
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("sysadmin", Principal.PrincipalType.GROUP),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("sysadmin", Principal.PrincipalType.GROUP),
                                     ImmutableSet.of(Action.ADMIN));
 
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("sysadmin", Principal.PrincipalType.GROUP),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("sysadmin", Principal.PrincipalType.GROUP),
                                     ImmutableSet.of(Action.WRITE));
 
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("ali", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("ali", Principal.PrincipalType.USER),
                                     ImmutableSet.of(Action.ADMIN));
 
-    rangerAuthorizationClient.grant(NamespaceId.DEFAULT, new Principal("ali", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                    new Principal("ali", Principal.PrincipalType.USER),
                                     ImmutableSet.of(Action.WRITE));
 
 
@@ -91,10 +98,12 @@ public class RangerAuthorizationClientTest {
     Assert.assertEquals(rangerAuthorizationClient.getAccesses(ImmutableSet.of(Action.WRITE, Action.ADMIN)),
                         policies.getAccesses());
 
-    rangerAuthorizationClient.revoke(NamespaceId.DEFAULT, new Principal("shankar", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.revoke(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                     new Principal("shankar", Principal.PrincipalType.USER),
                                      ImmutableSet.of(Action.WRITE));
 
-    rangerAuthorizationClient.revoke(NamespaceId.DEFAULT, new Principal("sagar", Principal.PrincipalType.USER),
+    rangerAuthorizationClient.revoke(Authorizable.fromEntityId(NamespaceId.DEFAULT),
+                                     new Principal("sagar", Principal.PrincipalType.USER),
                                      ImmutableSet.of(Action.ADMIN));
 
     policies = getPolicyItemsForUser(
