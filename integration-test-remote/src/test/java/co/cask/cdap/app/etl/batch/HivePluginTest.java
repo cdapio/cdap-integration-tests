@@ -171,7 +171,7 @@ public class HivePluginTest extends ETLTestBase {
     }
     jdbcURL = jdbcURL.substring(0, firstSlashIndex + 1) + getHiveDatabase() + jdbcURL.substring(firstSemiColon);
 
-    return jdbcURL + ";auth=delegationToken";
+    return jdbcURL + ";auth=delegationToken;user=cdap";
   }
 
   private String getHiveDatabase() {
