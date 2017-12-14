@@ -69,11 +69,9 @@ import java.util.concurrent.TimeUnit;
 public class HivePluginTest extends ETLTestBase {
 
   private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
-  private static List<String> DATA_LIST;
-  static {
-    DATA_LIST = Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");
-    Collections.sort(DATA_LIST);
-  }
+  private static final List<String> DATA_LIST =
+    // already sorted, for list comparison at the end of the test
+    Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");
   private static final String DATA_UPLOAD = Joiner.on("\n").join(DATA_LIST);
 
   @Test
