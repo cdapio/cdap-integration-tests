@@ -118,13 +118,10 @@ public class HivePluginTest extends ETLTestBase {
     Assert.assertEquals(200, response.getResponseCode());
     String location =
       new JsonParser().parse(response.getResponseBodyAsString()).getAsJsonObject().get("location").getAsString();
-    // file:/tmp/foo  --> /tmp/foo
-    // hdfs://tmp/foo --> /tmp/foo
-    String locationPath = new URI(location).getPath();
 
     Map<String, String> properties =
       ImmutableMap.of("connectionString", getHiveConnectionString(),
-                      "statement", "LOAD DATA INPATH '" + locationPath + "' INTO TABLE dataset_" + outputDataset);
+                      "statement", "LOAD DATA INPATH '" + location + "' INTO TABLE dataset_" + outputDataset);
 
     // use a pipeline that imports data from one FileSet to the other, using the HiveImport plugin
     ETLStage hiveImport = new ETLStage("HiveImportStage",
