@@ -165,7 +165,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     return readLong(totalRecordsTable.read(recordKey));
   }
 
-  // TODO: Use serivce instead of explore as Explore is slower
+  // TODO: Use service instead of explore as Explore is slower
   private boolean verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
     QueryClient queryClient = new QueryClient(getClientConfig());
     String cleanRecordsQuery = "SELECT * FROM dataset_" + CLEAN_RECORDS_DATASET + " where TIME = "
