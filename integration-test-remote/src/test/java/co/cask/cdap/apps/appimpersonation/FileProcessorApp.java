@@ -19,6 +19,7 @@ package co.cask.cdap.apps.appimpersonation;
 import co.cask.cdap.api.Predicate;
 import co.cask.cdap.api.ProgramStatus;
 import co.cask.cdap.api.app.AbstractApplication;
+import co.cask.cdap.api.app.ProgramType;
 import co.cask.cdap.api.data.batch.Output;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.lib.PartitionDetail;
@@ -32,7 +33,6 @@ import co.cask.cdap.api.dataset.lib.partitioned.KVTableStatePersistor;
 import co.cask.cdap.api.dataset.lib.partitioned.PartitionBatchInput;
 import co.cask.cdap.api.mapreduce.AbstractMapReduce;
 import co.cask.cdap.api.mapreduce.MapReduceContext;
-import co.cask.cdap.api.schedule.Schedules;
 import co.cask.cdap.api.workflow.AbstractWorkflow;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -75,9 +75,12 @@ public class FileProcessorApp extends AbstractApplication {
       .build());
     addWorkflow(new FileProcessWorkflow());
     addMapReduce(new FileProcessMapReduce());
-    scheduleWorkflow(Schedules.builder("Running every 10 min")
-                       .setMaxConcurrentRuns(1)
-                       .createTimeSchedule("*/10 * * * *"), WORKFLOW_NAME);
+    // Schedule the workflow
+    schedule(
+      buildSchedule("Running every 10 min", ProgramType.WORKFLOW, WORKFLOW_NAME)
+        .withConcurrency(1)
+        .triggerByTime("*/10 * * * *")
+    );
   }
 
   public class FileProcessWorkflow extends AbstractWorkflow {
