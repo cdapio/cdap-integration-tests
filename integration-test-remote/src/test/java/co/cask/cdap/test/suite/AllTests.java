@@ -47,7 +47,6 @@ import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
-import co.cask.cdap.apps.purchase.StreamSchedulerTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
 import co.cask.cdap.apps.tracker.TrackerTest;
 import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
@@ -97,7 +96,6 @@ import org.junit.runners.Suite;
   RowDenormalizerTest.class,
   ServiceWorkerTest.class,
   SparkPageRankAppTest.class,
-  StreamSchedulerTest.class,
   StreamTest.class,
   StreamTPFSWithProjectionTest.class,
   TPFSSinkSourceTest.class,

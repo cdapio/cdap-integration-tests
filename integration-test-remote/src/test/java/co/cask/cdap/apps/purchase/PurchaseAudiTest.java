@@ -81,7 +81,7 @@ public class PurchaseAudiTest extends AudiTestBase {
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), restClient);
     List<ScheduleDetail> workflowSchedules = scheduleClient.listSchedules(PURCHASE_HISTORY_WORKFLOW);
 
-    Assert.assertEquals(2, workflowSchedules.size());
+    Assert.assertEquals(1, workflowSchedules.size());
     checkScheduleState(scheduleClient, ProgramScheduleStatus.SUSPENDED, workflowSchedules);
 
     // start PurchaseFlow and ingest an event
