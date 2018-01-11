@@ -388,8 +388,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     // using schedule
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, "DailySchedule", null));
-    Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, "DataSchedule", null));
-    Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, "1+MB", null));
   }
 
   private void assertProgramSearch() throws Exception {
@@ -543,12 +541,10 @@ public class PurchaseMetadataTest extends AudiTestBase {
     result = searchMetadata(TEST_NAMESPACE, "ttl:*", null);
     Assert.assertEquals(expected, result);
 
-    // search using names. here purchase app gets matched because the stream name is in its schedule's description
     result = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(), null);
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PURCHASE_STREAM),
-                      new MetadataSearchResultRecord(view),
-                      new MetadataSearchResultRecord(PURCHASE_APP)
+                      new MetadataSearchResultRecord(view)
       ),
       result);
 
