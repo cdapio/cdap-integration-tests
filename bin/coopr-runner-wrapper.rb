@@ -270,12 +270,12 @@ module Cask
           dimension_json.each do |k, v|
             arg_k = "--#{k}"
             # Value may either be json (in the case of --config) or else convertible to string (--services, --initial-lease-time)
-            begin
-              arg_v = JSON.generate(v)
-            rescue JSON::GeneratorError
-              # Not a json object, pass as string
-              arg_v = v.to_s
-            end
+            arg_v = if v.respond_to?(:to_hash) || v.respond_to?(:to_h)
+                      JSON.generate(v)
+                    else
+                      # Not a json object, pass as string
+                      v.to_s
+                    end
             res_args += [arg_k, arg_v]
           end
         rescue => e
