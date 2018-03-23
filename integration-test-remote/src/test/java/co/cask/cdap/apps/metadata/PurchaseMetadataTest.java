@@ -33,7 +33,6 @@ import co.cask.cdap.data2.metadata.lineage.Lineage;
 import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
 import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.purchase.PurchaseApp;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
@@ -149,27 +148,27 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     // add tag for the dataset
     Set<String> historyDatasetTags = ImmutableSet.of("dsTag1");
-    metadataClient.addTags(HISTORY_DS.toId(), historyDatasetTags);
+    metadataClient.addTags(HISTORY_DS, historyDatasetTags);
 
     // add tag for the service
     Set<String> purchaseHistoryServiceTags = ImmutableSet.of("serviceTag1");
-    metadataClient.addTags(PURCHASE_HISTORY_SERVICE.toId(), purchaseHistoryServiceTags);
+    metadataClient.addTags(PURCHASE_HISTORY_SERVICE, purchaseHistoryServiceTags);
 
     // assert that the tags we added exist
-    Assert.assertEquals(historyDatasetTags, metadataClient.getTags(HISTORY_DS.toId(), MetadataScope.USER));
+    Assert.assertEquals(historyDatasetTags, metadataClient.getTags(HISTORY_DS, MetadataScope.USER));
     Assert.assertEquals(purchaseHistoryServiceTags,
-                        metadataClient.getTags(PURCHASE_HISTORY_SERVICE.toId(), MetadataScope.USER));
+                        metadataClient.getTags(PURCHASE_HISTORY_SERVICE, MetadataScope.USER));
 
     // add metadata properties
     Map<String, String> serviceProperties = ImmutableMap.of("spKey1", "spValue1");
-    metadataClient.addProperties(PURCHASE_HISTORY_SERVICE.toId(), serviceProperties);
+    metadataClient.addProperties(PURCHASE_HISTORY_SERVICE, serviceProperties);
     Map<String, String> appProperties = ImmutableMap.of("spKey1", "spApp1");
-    metadataClient.addProperties(PURCHASE_APP.toId(), appProperties);
+    metadataClient.addProperties(PURCHASE_APP, appProperties);
 
     // assert that the properties that we added exists
-    Assert.assertEquals(serviceProperties, metadataClient.getProperties(PURCHASE_HISTORY_SERVICE.toId(),
+    Assert.assertEquals(serviceProperties, metadataClient.getProperties(PURCHASE_HISTORY_SERVICE,
                                                                         MetadataScope.USER));
-    Assert.assertEquals(appProperties, metadataClient.getProperties(PURCHASE_APP.toId(), MetadataScope.USER));
+    Assert.assertEquals(appProperties, metadataClient.getProperties(PURCHASE_APP, MetadataScope.USER));
 
     ServiceManager purchaseHistoryService =
       applicationManager.getServiceManager(PURCHASE_HISTORY_SERVICE.getEntityName());
@@ -203,17 +202,17 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(mrRanRecords.get(0).getPid())),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRuns.get(0).getPid()))
-        )), ImmutableSet.<CollapseType>of());
+        )), ImmutableSet.of());
 
     Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // add more tags
-    metadataClient.addTags(HISTORY_DS.toId(), ImmutableSet.of("dsTag2"));
-    metadataClient.addTags(PURCHASE_HISTORY_SERVICE.toId(), ImmutableSet.of("serviceTag2"));
+    metadataClient.addTags(HISTORY_DS, ImmutableSet.of("dsTag2"));
+    metadataClient.addTags(PURCHASE_HISTORY_SERVICE, ImmutableSet.of("serviceTag2"));
 
     // add more metadata props
     serviceProperties = ImmutableMap.of("spKey2", "spValue2");
-    metadataClient.addProperties(PURCHASE_HISTORY_SERVICE.toId(), serviceProperties);
+    metadataClient.addProperties(PURCHASE_HISTORY_SERVICE, serviceProperties);
 
     String secondServiceRunId = makePurchaseHistoryServiceCallAndReturnRunId(purchaseHistoryService);
 
@@ -242,7 +241,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(serviceRuns.get(0).getPid())),
           new Relation(HISTORY_DS, PURCHASE_HISTORY_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRuns.get(1).getPid()))
-        )), ImmutableSet.<CollapseType>of());
+        )), ImmutableSet.of());
 
     Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
@@ -250,29 +249,29 @@ public class PurchaseMetadataTest extends AudiTestBase {
     Set<MetadataRecord> expectedTagsFirst =
       ImmutableSet.of(
         new MetadataRecord(PURCHASE_APP, MetadataScope.USER, appProperties,
-                           ImmutableSet.<String>of()),
+                           ImmutableSet.of()),
         new MetadataRecord(PURCHASE_HISTORY_SERVICE, MetadataScope.USER, ImmutableMap.of("spKey1", "spValue1"),
                            ImmutableSet.of("serviceTag1")),
-        new MetadataRecord(HISTORY_DS, MetadataScope.USER, ImmutableMap.<String, String>of(),
+        new MetadataRecord(HISTORY_DS, MetadataScope.USER, ImmutableMap.of(),
                            ImmutableSet.of("dsTag1"))
       );
 
     Assert.assertEquals(expectedTagsFirst,
-                        metadataClient.getMetadata(new Id.Run(PURCHASE_HISTORY_SERVICE.toId(), firstServiceRunId)));
+                        metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(firstServiceRunId)));
 
     Set<MetadataRecord> expectedTagsSecond = ImmutableSet.of(
       new MetadataRecord(PURCHASE_APP, MetadataScope.USER, appProperties,
-                         ImmutableSet.<String>of()),
+                         ImmutableSet.of()),
       new MetadataRecord(PURCHASE_HISTORY_SERVICE, MetadataScope.USER,
                          ImmutableMap.of("spKey1", "spValue1", "spKey2", "spValue2"),
                          ImmutableSet.of("serviceTag1", "serviceTag2")),
       new MetadataRecord(HISTORY_DS, MetadataScope.USER,
-                         ImmutableMap.<String, String>of(),
+                         ImmutableMap.of(),
                          ImmutableSet.of("dsTag1", "dsTag2"))
     );
 
     Assert.assertEquals(expectedTagsSecond,
-                        metadataClient.getMetadata(new Id.Run(PURCHASE_HISTORY_SERVICE.toId(), secondServiceRunId)));
+                        metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(secondServiceRunId)));
 
     // check dataset lineage
     Assert.assertEquals(expected, lineageClient.getLineage(HISTORY_DS, startTime, endTime, null));
@@ -505,7 +504,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
     // search all entities that have a defined schema
     // add a user property with "schema" as key
     Map<String, String> datasetProperties = ImmutableMap.of("schema", "schemaValue");
-    metadataClient.addProperties(HISTORY_DS.toId(), datasetProperties);
+    metadataClient.addProperties(HISTORY_DS, datasetProperties);
 
     result = searchMetadata(TEST_NAMESPACE, "schema:*", null);
     Assert.assertEquals(ImmutableSet.<MetadataSearchResultRecord>builder()
@@ -601,7 +600,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
   private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
                                                          EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
-      metadataClient.searchMetadata(namespace.toId(), query, targetType).getResults();
+      metadataClient.searchMetadata(namespace, query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));

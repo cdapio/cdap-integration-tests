@@ -23,7 +23,6 @@ import co.cask.cdap.common.DatasetNotFoundException;
 import co.cask.cdap.common.DatasetTypeNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.proto.DatasetInstanceConfiguration;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import com.google.common.base.Throwables;

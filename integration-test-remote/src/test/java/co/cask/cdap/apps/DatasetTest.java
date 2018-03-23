@@ -22,7 +22,6 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.examples.wordcount.RetrieveCounts;
 import co.cask.cdap.examples.wordcount.WordCount;
-import co.cask.cdap.gateway.handlers.UsageHandler;
 import co.cask.cdap.proto.DatasetMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.DatasetId;
@@ -156,21 +155,15 @@ public class DatasetTest extends AudiTestBase {
   private Set<ProgramId> getPrograms(String endPoint)
     throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    // CDAP-7316 The handler for this request (UsageHandler) returns results in Id.Program serialized form
-    // for backward compatibility with the help of UsageHandler.BackwardCompatibility.IdProgram class
-    // so verify with that rather than ProgramId class
     return GSON.fromJson(response.getResponseBodyAsString(),
-                         new TypeToken<Set<UsageHandler.BackwardCompatibility.IdProgram>>() { }.getType());
+                         new TypeToken<Set<ProgramId>>() { }.getType());
   }
 
   private Set<DatasetId> getDatasetInstances(String endPoint)
     throws IOException, UnauthenticatedException, UnauthorizedException {
     HttpResponse response = makeRequest(endPoint);
-    // CDAP-7316 The handler for this request (UsageHandler) returns results in Id.DatasetInstance serialized form
-    // for backward compatibility with the help of UsageHandler.BackwardCompatibility.IdDatasetInstance class
-    // so verify with that rather than DatasetId class
     return GSON.fromJson(response.getResponseBodyAsString(),
-                         new TypeToken<Set<UsageHandler.BackwardCompatibility.IdDatasetInstance>>() { }.getType());
+                         new TypeToken<Set<DatasetId>>() { }.getType());
   }
 
   private HttpResponse makeRequest(String endPoint)
