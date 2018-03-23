@@ -25,11 +25,9 @@ import co.cask.cdap.data2.metadata.lineage.Lineage;
 import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
 import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
-import co.cask.cdap.proto.Id;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.NamespacedEntityIdCodec;
-import co.cask.cdap.proto.codec.NamespacedIdCodec;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespacedEntityId;
@@ -82,7 +80,6 @@ import java.util.concurrent.TimeUnit;
 })
 public class SparkPageRankAppTest extends AudiTestBase {
   private static final Gson GSON = new GsonBuilder()
-    .registerTypeAdapter(Id.NamespacedId.class, new NamespacedIdCodec())
     .registerTypeAdapter(NamespacedEntityId.class, new NamespacedEntityIdCodec())
     .create();
   private static final String URL_1 = "http://example.com/page1";

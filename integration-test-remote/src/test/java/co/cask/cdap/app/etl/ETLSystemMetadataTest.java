@@ -68,7 +68,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
                                                          NamespaceId namespace, String query,
                                                          EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
-      metadataClient.searchMetadata(namespace.toId(), query, targetType).getResults();
+      metadataClient.searchMetadata(namespace, query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));

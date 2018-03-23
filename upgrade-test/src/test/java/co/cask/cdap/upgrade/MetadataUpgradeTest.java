@@ -96,19 +96,19 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
     // Add some user metadata
     MetadataClient metadataClient = getMetadataClient();
-    metadataClient.addProperties(PURCHASE_APP.toId(), APP_PROPERTIES);
-    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP.toId(), MetadataScope.USER));
+    metadataClient.addProperties(PURCHASE_APP, APP_PROPERTIES);
+    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP, MetadataScope.USER));
 
-    metadataClient.addTags(PURCHASE_STREAM.toId(), STREAM_TAGS);
-    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM.toId(), 
+    metadataClient.addTags(PURCHASE_STREAM, STREAM_TAGS);
+    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM, 
                                                                              MetadataScope.USER));
 
-    metadataClient.addTags(PURCHASE_HISTORY_BUILDER.toId(), MR_TAGS);
-    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER.toId(), 
+    metadataClient.addTags(PURCHASE_HISTORY_BUILDER, MR_TAGS);
+    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER, 
                                                                          MetadataScope.USER));
 
-    metadataClient.addTags(HISTORY.toId(), DS_TAGS);
-    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY.toId(), MetadataScope.USER));
+    metadataClient.addTags(HISTORY, DS_TAGS);
+    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY, MetadataScope.USER));
 
     // there should be system metadata records for these entities
     verifySystemMetadata(PURCHASE_APP, true, true);
@@ -123,12 +123,12 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     Assert.assertTrue("PurchaseApp must exist after upgrade.", getApplicationClient().exists(PURCHASE_APP));
     MetadataClient metadataClient = getMetadataClient();
     // verify user metadata added prior to upgrade
-    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP.toId(), MetadataScope.USER));
-    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM.toId(), 
+    Assert.assertEquals(EXPECTED_APP_METADATA, metadataClient.getMetadata(PURCHASE_APP, MetadataScope.USER));
+    Assert.assertEquals(EXPECTED_STREAM_METADATA, metadataClient.getMetadata(PURCHASE_STREAM, 
                                                                              MetadataScope.USER));
-    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER.toId(),
+    Assert.assertEquals(EXPECTED_MR_METADATA, metadataClient.getMetadata(PURCHASE_HISTORY_BUILDER,
                                                                          MetadataScope.USER));
-    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY.toId(),
+    Assert.assertEquals(EXPECTED_DS_METADATA, metadataClient.getMetadata(HISTORY,
                                                                          MetadataScope.USER));
     // verify search using user metadata added prior to upgrade
     Assert.assertEquals(
@@ -209,7 +209,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
 
   private void verifySystemMetadata(NamespacedEntityId id, boolean checkProperties,
                                     boolean checkTags) throws Exception {
-    Set<MetadataRecord> metadataRecords = getMetadataClient().getMetadata(id.toId(), MetadataScope.SYSTEM);
+    Set<MetadataRecord> metadataRecords = getMetadataClient().getMetadata(id, MetadataScope.SYSTEM);
     Assert.assertEquals(1, metadataRecords.size());
     MetadataRecord metadata = metadataRecords.iterator().next();
     Assert.assertEquals(MetadataScope.SYSTEM, metadata.getScope());
@@ -260,7 +260,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
                                                          EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
-      getMetadataClient().searchMetadata(namespace.toId(), query, targetType).getResults();
+      getMetadataClient().searchMetadata(namespace, query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));
