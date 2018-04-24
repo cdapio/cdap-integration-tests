@@ -149,26 +149,43 @@ module Cask
   module CooprDriver
     # Convenience class for making Coopr requests
     class CooprClient
-      attr_accessor :uri, :user, :tenant
+      attr_accessor :uri, :user, :tenant, :retries, :retry_interval
       def initialize(options)
         @options = options
         @headers = { :'Coopr-UserID' => @options[:user], :'Coopr-TenantID' => @options[:tenant] }
+        @retries = 0
+        @retry_interval = 5
       end
 
       def get(url)
-        ::RestClient.get("#{@options[:uri]}/#{url}", @headers)
+        with_retry { ::RestClient.get("#{@options[:uri]}/#{url}", @headers) }
       end
 
       def post(url, postdata)
-        ::RestClient.post("#{@options[:uri]}/#{url}", postdata, @headers)
+        with_retry { ::RestClient.post("#{@options[:uri]}/#{url}", postdata, @headers) }
       end
 
       def put(url, putdata)
-        ::RestClient.put("#{@options[:uri]}/#{url}", putdata, @headers)
+        with_retry { ::RestClient.put("#{@options[:uri]}/#{url}", putdata, @headers) }
       end
 
       def delete(url)
-        ::RestClient.delete("#{@options[:uri]}/#{url}", @headers)
+        with_retry { ::RestClient.delete("#{@options[:uri]}/#{url}", @headers) }
+      end
+
+      private
+
+      # Retries a given block until it completes without exception, or
+      # reaches @retries, at which points it raises the last exception
+      def with_retry
+        attempt ||= 0
+        yield
+      rescue => e
+        if (attempt += 1) <= @retries
+          sleep @retry_interval
+          retry
+        end
+        raise e
       end
     end
 
@@ -178,6 +195,8 @@ module Cask
 
       def initialize(options)
         @coopr_client = Cask::CooprDriver::CooprClient.new(options)
+        # Enable retries
+        @coopr_client.retries = 5
 
         # json blocks to be manipulated
         @services_contents = []
