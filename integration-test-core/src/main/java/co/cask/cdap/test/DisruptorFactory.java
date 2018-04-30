@@ -22,7 +22,6 @@ import co.cask.chaosmonkey.common.Constants;
 import co.cask.chaosmonkey.common.conf.Configuration;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.chaosmonkey.proto.ClusterInfoCollector;
-import com.esotericsoftware.minlog.Log;
 
 import javax.annotation.Nullable;
 
@@ -71,13 +70,13 @@ public class DisruptorFactory {
     disruptorSetup();
     ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(this.conf);
     ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(this.conf, clusterInfoCollector);
-    chaosMonkeyService.startAndWait();
+    chaosMonkeyService.startAsync().awaitRunning();
     clusterDisruptor = chaosMonkeyService;
   }
 
   public void disruptorStop() {
     if (clusterDisruptor != null) {
-      clusterDisruptor.stop();
+      clusterDisruptor.stopAsync().awaitTerminated();
     }
   }
 

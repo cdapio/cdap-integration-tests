@@ -102,7 +102,8 @@ public class WranglerTest extends ETLTestBase {
   private void testWrangler(Engine engine) throws Exception {
     //create a source stream and then send an event
     String streamName = "personal_info";
-    StreamId sourceStreamId = createSourceStream(streamName);
+    StreamId sourceStreamId = TEST_NAMESPACE.stream(streamName);
+    streamClient.create(sourceStreamId);
     streamClient.sendEvent(sourceStreamId, "1,David,123 Everett St,94303,123-456-7890");
     streamClient.sendEvent(sourceStreamId, "2,Albert,456 Everett St,94304,123-456-7880");
     streamClient.sendEvent(sourceStreamId, "3,Daniel,789 Everett St,94305,123-456-7870");

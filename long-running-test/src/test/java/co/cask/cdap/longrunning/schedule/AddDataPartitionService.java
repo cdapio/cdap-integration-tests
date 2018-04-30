@@ -86,7 +86,11 @@ public class AddDataPartitionService extends AbstractService {
 
           @Override
           public void onError(HttpServiceResponder responder, Throwable failureCause) {
-            Closeables.closeQuietly(channel);
+            try {
+              channel.close();
+            } catch (IOException ignore) {
+              LOG.error("Ignoring exception on close.", ignore);
+            }
             try {
               location.delete();
             } catch (IOException e) {

@@ -49,7 +49,8 @@ public class KVTableWithProjectionTest extends ETLTestBase {
   @Test
   public void testKVTableWithProjection() throws Exception {
     //1. create a source stream and send an event
-    StreamId sourceStreamId = createSourceStream(SOURCE_STREAM);
+    StreamId sourceStreamId = TEST_NAMESPACE.stream(SOURCE_STREAM);
+    streamClient.create(sourceStreamId);
     streamClient.sendEvent(sourceStreamId, DUMMY_STREAM_EVENT);
 
     // 2. Run Stream To KVTable with Projection Transform plugin
