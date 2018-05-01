@@ -23,16 +23,20 @@ import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.schedule.SchedulableProgramType;
 import co.cask.cdap.api.workflow.ScheduleProgramInfo;
+import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.client.ScheduleClient;
+import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.examples.helloworld.HelloWorld;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryStore;
+import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProtoConstraint;
 import co.cask.cdap.proto.ProtoTrigger;
+import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.ScheduleDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
@@ -43,6 +47,7 @@ import co.cask.cdap.proto.id.FlowId;
 import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ScheduleId;
+import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
@@ -63,6 +68,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.URL;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -92,10 +98,10 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
   protected String appOwner = null;
 
   /**
-   * Test anyone has EXECUTE privilege will be able to start the flow
+   * Test anyone has EXECUTE privilege will be able to start the flow, and test stream exploration after that
    */
   @Test
-  public void testRunningFlow() throws Exception {
+  public void testRunningFlowAndExploreStreams() throws Exception {
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
@@ -103,6 +109,8 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     NamespaceId namespaceId = testNamespace.getNamespaceId();
     ApplicationId appId = namespaceId.app(HelloWorld.class.getSimpleName());
     FlowId whoFlow = appId.flow("WhoFlow");
+    StreamId streamId = namespaceId.stream("who");
+    String streamName = "who";
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
@@ -112,7 +120,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // Privileges needed to create datasets and streams
     Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(namespaceId.dataset("whom"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.stream("who"), EnumSet.of(Action.ADMIN))
+      .put(streamId, EnumSet.of(Action.ADMIN))
       .build();
 
     // alice will be able to create the HelloWorld app
@@ -147,6 +155,20 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     // let bob be able to get the app and program info
     authorizationTestClient.grant(BOB, appId, Action.ADMIN);
     authorizationTestClient.grant(BOB, whoFlow, Action.ADMIN);
+    // grant bob WRITE privilege to the stream so he can write to the stream
+    authorizationTestClient.grant(BOB, streamId, Action.WRITE);
+    // this is needed to run first query, since it does not start a MR job
+    authorizationTestClient.grant(BOB, streamId, Action.READ);
+    // for the second query which will start a MR job, we will grant CDAP or ns owner READ privilege,
+    // note that we don't run the query as the application owner, since we can access multiple dataset or stream in a
+    // query, and they can belong to different applications
+    if (namespacePrincipal == null) {
+      // if no impersonation is involved, the cdap user will be running the MR job and read from the stream
+      authorizationTestClient.grant(CDAP_USER, streamId, Action.READ);
+    } else {
+      // if impersonation is involved, the namespace owner will be runnign the MR job and read from the stream
+      authorizationTestClient.grant(namespacePrincipal, streamId, Action.READ);
+    }
     authorizationTestClient.waitForAuthzCacheTimeout();
 
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
@@ -169,6 +191,35 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     FlowManager flowBobManager =
       getTestManager(bobConfig, bobClient).getApplicationManager(appId).getFlowManager("WhoFlow");
     startAndKillProgram(flowBobManager, 2);
+
+    StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
+    for (int i = 0; i < 5; i++) {
+      bobStreamClient.sendEvent(streamId, String.format("event %s", i));
+    }
+
+    QueryClient bobQueryClient = new QueryClient(bobConfig);
+
+    // start a query without provisioning a container
+    ExploreExecutionResult result =
+      bobQueryClient.execute(testNamespace.getNamespaceId(),
+                               String.format("SELECT * FROM cdap_%s.stream_%s LIMIT 500",
+                                             testNamespace.getName(), streamName.toLowerCase())).get();
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+
+    int count = 0;
+    while (result.hasNext()) {
+      List<Object> event = result.next().getColumns();
+      Assert.assertEquals(String.format("event %s", count), event.get(2));
+      count++;
+    }
+    Assert.assertEquals(count, 5);
+
+    // start a query which will provision a mapreduce job
+    result = bobQueryClient.execute(testNamespace.getNamespaceId(),
+                                      String.format("SELECT count(*) FROM cdap_%s.stream_%s",
+                                                    testNamespace.getName(), streamName.toLowerCase())).get();
+    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
+    Assert.assertEquals(5L, result.next().getColumns().get(0));
   }
 
   /**
@@ -229,9 +280,9 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     } else {
       // else the requesting user will need the privileges
       appDeployPrivileges.putAll(dsStreamCreationPrivileges);
-      setUpPrivileges(INSTANCE_NAME, dsStreamCreationPrivileges);
+      setUpPrivileges(CDAP_USER, dsStreamCreationPrivileges);
       // if no impersonation, CDAP will run the program, so it needs privilege on the dataset and stream
-      setUpPrivileges(INSTANCE_NAME, dsStreamReadWritePrvileges);
+      setUpPrivileges(CDAP_USER, dsStreamReadWritePrvileges);
     }
     setUpPrivileges(ADMIN_USER, adminPrivileges.build());
     setUpPrivileges(CAROL, appDeployPrivileges.build());

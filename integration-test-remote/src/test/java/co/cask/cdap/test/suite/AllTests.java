@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2016 Cask Data, Inc.
+ * Copyright © 2015-2017 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -23,6 +23,7 @@ import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.BatchJoinerTest;
 import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
+import co.cask.cdap.app.etl.batch.HivePluginTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
 import co.cask.cdap.app.etl.batch.TPFSSinkSourceTest;
@@ -79,6 +80,7 @@ import org.junit.runners.Suite;
   ExploreTest.class,
   FileSetTest.class,
   HangingWorkerTest.class,
+  HivePluginTest.class,
   KVTableWithProjectionTest.class,
   NamespacedStreamTest.class,
   NamespaceTest.class,
