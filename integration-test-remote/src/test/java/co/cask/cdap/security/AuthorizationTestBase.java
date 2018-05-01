@@ -64,7 +64,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
   protected static final String NO_PRIVILEGE_MESG = "is not authorized to perform action";
   protected static final String NOT_VISIBLE_MSG = "since the principal does not have any privilege on this namespace" +
     " or any entity in this namespace";
-  protected static final String INSTANCE_NAME = "cdap";
+  protected static final String CDAP_USER = "cdap";
 
   // cdapitn user will be running the tests, thus will have all wildcard privileges to be able to clean up entities
   // after each test
@@ -109,7 +109,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
         new RangerAuthorizationTestClient(new RangerAuthorizationClient(authorizationClient, getInstanceURI()));
     }
     authorizationTestClient.grant(ITN_ADMIN, NamespaceId.DEFAULT, Action.ADMIN);
-    authorizationTestClient.grant(INSTANCE_NAME, NamespaceId.DEFAULT, Action.ADMIN);
+    authorizationTestClient.grant(CDAP_USER, NamespaceId.DEFAULT, Action.ADMIN);
     grantAlltoItnAdmin();
     authorizationTestClient.waitForAuthzCacheTimeout();
   }
@@ -124,7 +124,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     authorizationTestClient.revokeAll(BOB);
     authorizationTestClient.revokeAll(CAROL);
     authorizationTestClient.revokeAll(EVE);
-    authorizationTestClient.revokeAll(INSTANCE_NAME);
+    authorizationTestClient.revokeAll(CDAP_USER);
     authorizationTestClient.revokeAll(ITN_ADMIN);
     authorizationTestClient.waitForAuthzCacheTimeout();
   }
@@ -145,7 +145,7 @@ public abstract class AuthorizationTestBase extends AudiTestBase {
     authorizationClient.createRole(new Role(BOB));
     authorizationClient.createRole(new Role(CAROL));
     authorizationClient.createRole(new Role(EVE));
-    authorizationClient.createRole(new Role(INSTANCE_NAME));
+    authorizationClient.createRole(new Role(CDAP_USER));
     authorizationClient.createRole(new Role(ITN_ADMIN));
   }
 

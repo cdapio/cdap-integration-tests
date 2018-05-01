@@ -52,7 +52,7 @@ public class FileSetTest extends AudiTestBase {
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
-    DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
+    DatasetClient datasetClient = getDatasetClient();
     List<DatasetSpecificationSummary> datasetSpecificationsList = datasetClient.list(TEST_NAMESPACE);
     Assert.assertEquals(2, datasetSpecificationsList.size());
     for (DatasetSpecificationSummary datasetSpecificationSummary : datasetSpecificationsList) {
