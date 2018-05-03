@@ -4,7 +4,7 @@
       "distribution_version": "5.12",
       "csd": {
         "install": {
-          "SPARK2": "http://archive.cloudera.com/spark2/csd/SPARK2_ON_YARN-2.0.0.cloudera1.jar"
+          "SPARK2": "http://archive.cloudera.com/spark2/csd/SPARK2_ON_YARN-2.3.0.cloudera2.jar"
         }
       }
     }
