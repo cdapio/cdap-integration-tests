@@ -176,7 +176,11 @@ public class UploadFile extends AbstractApplication {
 
             @Override
             public void onError(HttpServiceResponder responder, Throwable failureCause) {
-              Closeables.closeQuietly(channel);
+              try {
+                channel.close();
+              } catch (IOException e) {
+                LOG.error("IOException should not have happened.", e);
+              }
               try {
                 location.delete();
               } catch (IOException e) {

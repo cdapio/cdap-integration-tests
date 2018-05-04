@@ -26,11 +26,13 @@ import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.LongRunningTestBase;
+import co.cask.common.ContentProvider;
 import com.google.common.base.Charsets;
-import com.google.common.io.ByteStreams;
 import org.junit.Assert;
-import org.junit.Ignore;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringWriter;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +111,12 @@ public class IncrementTest extends LongRunningTestBase<IncrementTestState> {
       writer.write("\n");
     }
     streamClient.sendBatch(getLongRunningNamespace().stream(IncrementApp.INT_STREAM), "text/plain",
-                           ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
+                           new ContentProvider<InputStream>() {
+                             @Override
+                             public InputStream getInput() throws IOException {
+                               return new ByteArrayInputStream(writer.toString().getBytes(Charsets.UTF_8));
+                             }
+                           });
     long newSum = state.getSumEvents() + SUM_BATCH;
     return new IncrementTestState(newSum, state.getNumEvents() + BATCH_SIZE);
   }
