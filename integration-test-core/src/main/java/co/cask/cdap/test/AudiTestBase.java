@@ -43,12 +43,11 @@ import co.cask.cdap.remote.dataset.kvtable.RemoteKeyValueTable;
 import co.cask.cdap.remote.dataset.table.RemoteTable;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
+import co.cask.common.ContentProvider;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
-import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
-import com.google.common.io.InputSupplier;
 import org.junit.After;
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -56,7 +55,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -109,10 +110,12 @@ public class AudiTestBase extends IntegrationTestBase {
       @Override
       public void onRequest(HttpRequest httpRequest, int i) {
         try {
-          InputSupplier<? extends InputStream> inputSupplier = httpRequest.getBody();
+          ContentProvider<? extends InputStream> inputSupplier = httpRequest.getBody();
           String body = null;
           if (inputSupplier != null) {
-            body = CharStreams.toString(CharStreams.newReaderSupplier(inputSupplier, Charsets.UTF_8));
+            try (InputStream is = inputSupplier.getInput()) {
+              body = CharStreams.toString(new InputStreamReader(is, StandardCharsets.UTF_8));
+            }
           }
 
           if (logBodyLimit > 0) {

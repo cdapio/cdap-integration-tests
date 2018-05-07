@@ -37,7 +37,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import org.junit.Assert;
-import org.junit.Ignore;
 
 import java.io.IOException;
 import java.net.URL;

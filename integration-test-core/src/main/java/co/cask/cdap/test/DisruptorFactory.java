@@ -22,7 +22,6 @@ import co.cask.chaosmonkey.common.Constants;
 import co.cask.chaosmonkey.common.conf.Configuration;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
 import co.cask.chaosmonkey.proto.ClusterInfoCollector;
-import com.esotericsoftware.minlog.Log;
 
 import javax.annotation.Nullable;
 
