@@ -37,7 +37,6 @@ import co.cask.common.ContentProvider;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.amazonaws.util.Throwables;
-import com.google.common.io.InputSupplier;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;

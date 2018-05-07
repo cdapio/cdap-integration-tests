@@ -20,11 +20,8 @@ import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.client.LineageClient;
-import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.common.app.RunIds;
-import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.common.utils.TimeMathParser;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
 import co.cask.cdap.data2.metadata.lineage.Lineage;
@@ -34,8 +31,6 @@ import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.ProgramStatus;
-import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
@@ -53,9 +48,7 @@ import org.apache.twill.api.RunId;
 import org.junit.Assert;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 public class LineageUpgradeTest extends UpgradeTestBase {

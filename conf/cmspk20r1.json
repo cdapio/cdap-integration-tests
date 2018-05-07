@@ -1,12 +1,17 @@
 {
   "config": {
     "cloudera_manager": {
-      "distribution_version": "5.12",
+      "distribution_version": "5.10",
       "csd": {
         "install": {
           "SPARK2": "http://archive.cloudera.com/spark2/csd/SPARK2_ON_YARN-2.0.0.cloudera1.jar"
         }
       }
+    },
+    "coopr_base_to_cm": {
+      "--cdh-parcel-version": "5.10.0",
+      "--remote-parcel-repo-url": "https://archive.cloudera.com/cdh5/parcels/5.10.0/,http://archive.cloudera.com/spark2/parcels/2.0.0.cloudera1/",
+      "--remove-remote-parcel-repo-url": "http://archive.cloudera.com/spark2/parcels/latest/"
     }
   }
 }

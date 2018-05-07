@@ -113,7 +113,9 @@ public class AudiTestBase extends IntegrationTestBase {
           ContentProvider<? extends InputStream> inputSupplier = httpRequest.getBody();
           String body = null;
           if (inputSupplier != null) {
-            body = CharStreams.toString(new InputStreamReader(inputSupplier.getInput(), StandardCharsets.UTF_8));
+            try (InputStream is = inputSupplier.getInput()) {
+              body = CharStreams.toString(new InputStreamReader(is, StandardCharsets.UTF_8));
+            }
           }
 
           if (logBodyLimit > 0) {

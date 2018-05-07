@@ -15,7 +15,6 @@
  */
 package co.cask.cdap.examples.wikipedia;
 
-import co.cask.cdap.api.Config;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.DatasetProperties;

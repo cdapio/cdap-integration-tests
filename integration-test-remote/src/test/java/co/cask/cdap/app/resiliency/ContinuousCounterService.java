@@ -17,7 +17,6 @@
 package co.cask.cdap.app.resiliency;
 
 import co.cask.cdap.api.annotation.UseDataSet;
-import co.cask.cdap.api.data.batch.Split;
 import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.api.dataset.lib.KeyValue;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
@@ -27,13 +26,10 @@ import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
 
 import java.net.HttpURLConnection;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 
 /**
  *
