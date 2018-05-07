@@ -33,10 +33,10 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
+import co.cask.common.ContentProvider;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.amazonaws.util.Throwables;
-import com.google.common.io.InputSupplier;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -122,7 +122,7 @@ public class ServiceWorkerTest extends AudiTestBase {
                                          "cdap-data-streams",
                                          new ArtifactVersion("4.3.0-SNAPSHOT"),
                                          new ArtifactVersion("10.0.0-SNAPSHOT")));
-    artifactClient.add(artifactId, parentArtifacts, new InputSupplier<InputStream>() {
+    artifactClient.add(artifactId, parentArtifacts, new ContentProvider<InputStream>() {
       @Override
       public InputStream getInput() throws IOException {
         return new FileInputStream(directiveJar);

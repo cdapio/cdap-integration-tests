@@ -24,7 +24,6 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.common.StreamNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
-import co.cask.cdap.proto.DatasetInstanceConfiguration;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
@@ -33,21 +32,22 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.LongRunningTestBase;
 import co.cask.cdap.test.MapReduceManager;
-import co.cask.cdap.test.RemoteDatasetAdmin;
 import co.cask.chaosmonkey.proto.ClusterDisruptor;
+import co.cask.common.ContentProvider;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.io.ByteStreams;
 import com.google.common.reflect.TypeToken;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -180,7 +180,12 @@ public class InvalidListPruneTest extends LongRunningTestBase<InvalidListPruneTe
 
     LOG.info("Writing {} events in one batch to stream {}", events.size(), stream);
     streamClient.sendBatch(stream, "text/plain",
-                           ByteStreams.newInputStreamSupplier(writer.toString().getBytes(Charsets.UTF_8)));
+                           new ContentProvider<InputStream>() {
+                             @Override
+                             public InputStream getInput() throws IOException {
+                               return new ByteArrayInputStream(writer.toString().getBytes(Charsets.UTF_8));
+                             }
+                           });
   }
 
   private ApplicationManager getApplicationManager() throws Exception {
