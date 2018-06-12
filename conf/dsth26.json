@@ -3,7 +3,7 @@
     "cdap": {
       "cdap_site": {
         "dataset.executor.container.memory.mb": "1024"
-      },
+      }
     },
     "hadoop": {
       "distribution": "hdp",
