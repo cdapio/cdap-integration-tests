@@ -2,7 +2,8 @@
   "config": {
     "cdap": {
       "cdap_site": {
-        "dataset.executor.container.memory.mb": "1024"
+        "dataset.executor.container.memory.mb": "1024",
+        "messaging.container.memory.mb": "1024"
       }
     },
     "hadoop": {
