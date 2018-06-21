@@ -4,7 +4,9 @@
       "cdap_site": {
         "explore.enabled": "true",
         "cdap.ugi.cache.expiration.ms": "60000",
-        "cdap.http.client.read.timeout.ms":"120000"
+        "cdap.http.client.read.timeout.ms":"120000",
+        "dataset.executor.container.memory.mb": "1024",
+        "messaging.container.memory.mb": "1024"
       },
       "version": "4.1.0-1"
     },
