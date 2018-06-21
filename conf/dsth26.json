@@ -1,11 +1,5 @@
 {
   "config": {
-    "cdap": {
-      "cdap_site": {
-        "dataset.executor.container.memory.mb": "1024",
-        "messaging.container.memory.mb": "1024"
-      }
-    },
     "hadoop": {
       "distribution": "hdp",
       "distribution_version": "2.6.3.0"
