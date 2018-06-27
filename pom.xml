@@ -38,7 +38,7 @@
     <cdap.pre.version>4.2.0</cdap.pre.version>
     <cdap.version>5.0.0-SNAPSHOT</cdap.version>
     <hydrator.version>2.0.0-SNAPSHOT</hydrator.version>
-    <tracker.version>0.6.0-SNAPSHOT</tracker.version>
+    <tracker.version>0.7.0-SNAPSHOT</tracker.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
