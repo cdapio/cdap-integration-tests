@@ -503,7 +503,7 @@ module Cask
           sleep @poll_interval
         end
         log "Cluster #{@id} is complete and active"
-      rescue RuntimeError => e
+      rescue StandardError => e
         log "ERROR: #{e.inspect}"
         log_failed_tasks
         raise e
