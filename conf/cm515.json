@@ -1,0 +1,7 @@
+{
+  "config": {
+    "cloudera_manager": {
+      "distribution_version": "5.15"
+    }
+  }
+}
