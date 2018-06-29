@@ -46,6 +46,7 @@ import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
+import co.cask.cdap.apps.metadata.ProgramMetadataTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
@@ -88,6 +89,7 @@ import org.junit.runners.Suite;
   PartitionCorrectorTest.class,
   PartitionedFileSetUpdateTest.class,
   PermissionTest.class,
+  ProgramMetadataTest.class,
   PurchaseAudiTest.class,
   PurchaseMetadataTest.class,
   ReadlessIncrementTest.class,
