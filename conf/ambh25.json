@@ -1,13 +1,13 @@
 {
   "config": {
     "ambari": {
-      "version": "2.4.2",
-      "rhel_6_repo": "http://public-repo-1.hortonworks.com/ambari/centos6/2.x/updates/2.4.2.0/ambari.repo",
-      "ubuntu_12_repo": "http://public-repo-1.hortonworks.com/ambari/ubuntu12/2.x/updates/2.4.2.0"
+      "version": "2.5.2",
+      "rhel_6_repo": "http://public-repo-1.hortonworks.com/ambari/centos6/2.x/updates/2.5.2.0/ambari.repo",
+      "ubuntu_12_repo": "http://public-repo-1.hortonworks.com/ambari/ubuntu12/2.x/updates/2.5.2.0"
     },
     "hadoop": {
       "distribution": "hdp",
-      "distribution_version": "2.5.0.0"
+      "distribution_version": "2.6.3.0"
     }
   }
 }
