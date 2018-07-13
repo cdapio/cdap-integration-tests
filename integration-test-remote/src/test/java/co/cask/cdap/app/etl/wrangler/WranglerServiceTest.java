@@ -71,7 +71,7 @@ public class WranglerServiceTest extends ETLTestBase {
     private final String name;
     private final int results;
 
-    public Workspace(String name, int results) {
+    Workspace(String name, int results) {
       this.name = name;
       this.results = results;
     }
@@ -82,7 +82,7 @@ public class WranglerServiceTest extends ETLTestBase {
     private final boolean save;
     private final String name;
 
-    public Recipe(List<String> directives, boolean save, String name) {
+    Recipe(List<String> directives, boolean save, String name) {
       this.directives = directives;
       this.save = save;
       this.name = name;
@@ -94,7 +94,7 @@ public class WranglerServiceTest extends ETLTestBase {
     private final int seed;
     private final int limit;
 
-    public Sampling(String method, int seed, int limit) {
+    Sampling(String method, int seed, int limit) {
       this.method = method;
       this.seed = seed;
       this.limit = limit;
