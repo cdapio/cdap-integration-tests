@@ -19,6 +19,7 @@ package co.cask.cdap.apps.workflow;
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.workflow.WorkflowToken;
 import co.cask.cdap.common.NotFoundException;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.examples.wikipedia.SparkWikipediaClustering;
 import co.cask.cdap.examples.wikipedia.TestData;
 import co.cask.cdap.examples.wikipedia.TopNMapReduce;
@@ -51,6 +52,7 @@ import org.junit.experimental.categories.Category;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
@@ -128,17 +130,21 @@ public class WorkflowTest extends AudiTestBase {
     // Wait for the workflow status. The timeout here is actually a sleep so, the timeout is a low value and instead
     // we retry a large number of times.
     workflowManager.waitForStatus(false, 60, 1);
-    String pid = getLatestPid(workflowManager.getHistory());
-    WorkflowTokenNodeDetail tokenAtCondition =
-      workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
-    boolean conditionResult = Boolean.parseBoolean(tokenAtCondition.getTokenDataAtNode().get("result"));
-    if (threshold == null) {
-      Assert.assertFalse(conditionResult);
-      assertWorkflowToken(workflowManager, config, pid, false);
-    } else {
-      Assert.assertTrue(conditionResult);
-      assertWorkflowToken(workflowManager, config, pid, true);
-    }
+    final String pid = getLatestPid(workflowManager.getHistory());
+    Tasks.waitFor(true, () -> {
+      WorkflowTokenNodeDetail tokenAtCondition =
+              workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
+      boolean conditionResult = Boolean.parseBoolean(tokenAtCondition.getTokenDataAtNode().get("result"));
+      if (threshold == null) {
+        Assert.assertFalse(conditionResult);
+        assertWorkflowToken(workflowManager, config, pid, false);
+      } else {
+        Assert.assertTrue(conditionResult);
+        assertWorkflowToken(workflowManager, config, pid, true);
+      }
+      return true;
+    }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+
   }
 
   @Nullable
