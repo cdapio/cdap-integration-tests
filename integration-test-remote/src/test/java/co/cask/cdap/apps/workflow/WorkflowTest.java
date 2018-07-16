@@ -143,8 +143,8 @@ public class WorkflowTest extends AudiTestBase {
           assertWorkflowToken(workflowManager, config, pid, true);
         }
         return true;
-      } catch (Exception e) {
-        // retry on exception
+      } catch (AssertionError | NotFoundException e) {
+        // retry upon AssertionError or NotFoundException
         return false;
       }
     }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
