@@ -131,17 +131,22 @@ public class WorkflowTest extends AudiTestBase {
     workflowManager.waitForStatus(false, 60, 1);
     final String pid = getLatestPid(workflowManager.getHistory());
     Tasks.waitFor(true, () -> {
-      WorkflowTokenNodeDetail tokenAtCondition =
-              workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
-      boolean conditionResult = Boolean.parseBoolean(tokenAtCondition.getTokenDataAtNode().get("result"));
-      if (threshold == null) {
-        Assert.assertFalse(conditionResult);
-        assertWorkflowToken(workflowManager, config, pid, false);
-      } else {
-        Assert.assertTrue(conditionResult);
-        assertWorkflowToken(workflowManager, config, pid, true);
+      try {
+        WorkflowTokenNodeDetail tokenAtCondition =
+                workflowManager.getTokenAtNode(pid, "EnoughDataToProceed", WorkflowToken.Scope.USER, "result");
+        boolean conditionResult = Boolean.parseBoolean(tokenAtCondition.getTokenDataAtNode().get("result"));
+        if (threshold == null) {
+          Assert.assertFalse(conditionResult);
+          assertWorkflowToken(workflowManager, config, pid, false);
+        } else {
+          Assert.assertTrue(conditionResult);
+          assertWorkflowToken(workflowManager, config, pid, true);
+        }
+        return true;
+      } catch (Exception e) {
+        // retry on exception
+        return false;
       }
-      return true;
     }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
 
   }
