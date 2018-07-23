@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -24,23 +24,38 @@ import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.StreamClient;
+import co.cask.cdap.client.config.ConnectionConfig;
 import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
+import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.AudiTestBase;
+import co.cask.common.http.HttpMethod;
+import co.cask.common.http.HttpResponse;
+import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.junit.Assert;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +73,7 @@ public abstract class ETLTestBase extends AudiTestBase {
     Schema.Field.of("ticker", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("num", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
+  private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
 
   protected ETLStageProvider etlStageProvider;
   protected StreamClient streamClient;
@@ -126,8 +142,7 @@ public abstract class ETLTestBase extends AudiTestBase {
   }
 
   // make the above two methods use this method instead
-  protected AppRequest<ETLBatchConfig> getBatchAppRequestV2(
-    co.cask.cdap.etl.proto.v2.ETLBatchConfig config) throws IOException, UnauthenticatedException {
+  protected AppRequest<ETLBatchConfig> getBatchAppRequestV2(co.cask.cdap.etl.proto.v2.ETLBatchConfig config) {
     return new AppRequest<>(new ArtifactSummary("cdap-data-pipeline", version, ArtifactScope.SYSTEM), config);
   }
 
@@ -142,16 +157,43 @@ public abstract class ETLTestBase extends AudiTestBase {
     return version;
   }
 
-  /**
-   * Creates a {@link Stream} with the given name
-   *
-   * @param streamName: the name of the stream
-   * @return {@link StreamId} the id of the created stream
-   */
-  protected StreamId createSourceStream(String streamName)
-    throws UnauthenticatedException, BadRequestException, IOException, UnauthorizedException {
-    StreamId sourceStreamId = TEST_NAMESPACE.stream(streamName);
-    streamClient.create(sourceStreamId);
-    return sourceStreamId;
+  protected void installPluginFromMarket(String packageName, String pluginName, String version)
+    throws IOException, UnauthenticatedException {
+    URL pluginJsonURL = new URL(String.format("%s/packages/%s/%s/%s-%s.json",
+                                              CASK_MARKET_URI, packageName, version, pluginName, version));
+    HttpResponse response = getRestClient().execute(HttpMethod.GET, pluginJsonURL, getClientConfig().getAccessToken());
+    Assert.assertEquals(200, response.getResponseCode());
+
+    // get the artifact 'parents' from the plugin json
+    JsonObject pluginJson = new JsonParser().parse(response.getResponseBodyAsString()).getAsJsonObject();
+    JsonArray parents = pluginJson.get("parents").getAsJsonArray();
+    List<String> parentStrings = new ArrayList<>();
+    for (JsonElement parent : parents) {
+      parentStrings.add(parent.getAsString());
+    }
+
+    // leverage a UI endpoint to upload the plugins from market
+    String source = URLEncoder.encode(
+      String.format("%s/packages/%s/%s/%s-%s.jar",
+                    CASK_MARKET_URI, packageName, version, pluginName, version), "UTF-8");
+    String target = URLEncoder.encode(getClientConfig().getConnectionConfig().resolveURI(
+      String.format("v3/namespaces/%s/artifacts/%s", TEST_NAMESPACE.getNamespace(), pluginName)).toString(), "UTF-8");
+
+    Map<String, ConfigEntry> cdapConfig = getMetaClient().getCDAPConfig();
+    ConnectionConfig connConfig = getClientConfig().getConnectionConfig();
+    String uiPort = connConfig.isSSLEnabled() ?
+      cdapConfig.get("dashboard.ssl.bind.port").getValue() : cdapConfig.get("dashboard.bind.port").getValue();
+    String url =
+      String.format("%s://%s:%s/forwardMarketToCdap?source=%s&target=%s",
+                    connConfig.isSSLEnabled() ? "https" : "http",
+                    connConfig.getHostname(), // just assume that UI is colocated with Router
+                    uiPort,
+                    source, target);
+
+    Map<String, String> headers =
+      ImmutableMap.of("Artifact-Extends", Joiner.on("/").join(parentStrings),
+                      "Artifact-Version", version);
+    response = getRestClient().execute(HttpMethod.GET, new URL(url), headers, getClientConfig().getAccessToken());
+    Assert.assertEquals(200, response.getResponseCode());
   }
 }
