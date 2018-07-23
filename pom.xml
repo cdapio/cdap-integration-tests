@@ -112,6 +112,11 @@
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-program-report2_2.11</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
+    <dependency>
       <groupId>co.cask.hydrator</groupId>
       <artifactId>core-plugins</artifactId>
       <version>${hydrator.version}</version>
