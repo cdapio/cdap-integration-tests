@@ -16,13 +16,16 @@
 
 package co.cask.cdap.app.etl;
 
+import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.common.UnauthenticatedException;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
@@ -38,12 +41,15 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -53,10 +59,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -69,6 +78,7 @@ public class GCSTest extends ETLTestBase {
   private static final String INPUT_BLOB_NAME = "data/input/customers.csv";
   private static final String OUTPUT_BLOB_NAME = "data/output";
   private Bucket bucket;
+  private Map<String, String> idToRowMap;
 
   @Before
   public void testSetup() throws IOException, UnauthenticatedException {
@@ -83,6 +93,11 @@ public class GCSTest extends ETLTestBase {
 
     try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
       bucket.create(INPUT_BLOB_NAME, is);
+    }
+
+    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
+      String result = CharStreams.toString(new InputStreamReader(is, Charsets.UTF_8));
+      idToRowMap = parseIdToRow(result, true, false);
     }
   }
 
@@ -136,7 +151,7 @@ public class GCSTest extends ETLTestBase {
     properties.add(ofProperty("workerDiskGB", "100"));
 
     JsonObject provisioner = new JsonObject();
-    provisioner.addProperty("name", "gce-dataproc");
+    provisioner.addProperty("name", "gcp-dataproc");
     provisioner.add("properties", properties);
 
     JsonObject jsonObj = new JsonObject();
@@ -202,22 +217,48 @@ public class GCSTest extends ETLTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start(Collections.singletonMap("system.profile.name", PROFILE_NAME));
-    // https://issues.cask.co/browse/CDAP-13415
-//    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     String successFile = OUTPUT_BLOB_NAME + "/_SUCCESS";
-    while (bucket.get(successFile) == null) {
-      TimeUnit.SECONDS.sleep(10);
-    }
+    Assert.assertNotNull(bucket.get(successFile));
 
     List<Blob> outputBlobs = new ArrayList<>();
-
+    Map<String, String> retrievedIdToRowMap = new HashMap<>();
     for (Blob blob : bucket.list().iterateAll()) {
       if (blob.getName().startsWith(OUTPUT_BLOB_NAME + "/") && !successFile.equals(blob.getName())) {
         outputBlobs.add(blob);
+        byte[] content = blob.getContent();
+        String contentString = Bytes.toString(content);
+        retrievedIdToRowMap.putAll(parseIdToRow(contentString, true, true));
       }
     }
 
     LOG.info("Output blobs: {}", outputBlobs);
+    // check that the output content is equivalent to the input content. Output content files are not guaranteed to be
+    // split the same way, so we put the data into a map before checking equality.
+    Assert.assertEquals(idToRowMap, retrievedIdToRowMap);
+  }
+
+  /**
+   * Parses a string, whose content is a newline-separated list of rows.
+   * The rows are comma-separated, where the first value is the id.
+   * The first column may represent file offset, in which case we will skip it.
+   */
+  private Map<String, String> parseIdToRow(String content, boolean skipFirstRow, boolean skipFirstColumn) {
+    Map<String, String> idToRowMap = new HashMap<>();
+    String[] rows = content.split("\n");
+
+    for (int idx = skipFirstRow ? 1 : 0; idx < rows.length; idx++) {
+      String row = rows[idx];
+      if (row.isEmpty()) {
+        continue;
+      }
+      if (skipFirstColumn) {
+        row = row.split(",", 2)[1];
+      }
+      String[] rowSplit = row.split(",", 2);
+      idToRowMap.put(rowSplit[0], row);
+    }
+    return idToRowMap;
   }
 }

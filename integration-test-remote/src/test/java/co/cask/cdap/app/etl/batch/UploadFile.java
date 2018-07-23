@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Cask Data, Inc.
+ * Copyright © 2016-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -179,7 +179,7 @@ public class UploadFile extends AbstractApplication {
               try {
                 channel.close();
               } catch (IOException e) {
-                LOG.error("Ignoring exception on close.", e);
+                LOG.warn("Ignoring exception on close.", e);
               }
               try {
                 location.delete();
