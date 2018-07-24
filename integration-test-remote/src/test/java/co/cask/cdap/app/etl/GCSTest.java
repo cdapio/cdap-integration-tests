@@ -18,7 +18,7 @@ package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.common.UnauthenticatedException;
-import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
@@ -39,6 +39,7 @@ import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Charsets;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.io.CharStreams;
@@ -47,7 +48,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -82,7 +82,9 @@ public class GCSTest extends ETLTestBase {
 
   @Before
   public void testSetup() throws IOException, UnauthenticatedException {
-    String pathToJsonKey = System.getProperty("google.application.credentials");
+    String pathToJsonKey = Preconditions.checkNotNull(System.getProperty("google.application.credentials"),
+                                                      "The credentials file provided is null. " +
+                                                        "Please make sure the path is correct and the file exists.");
 
     String serviceAccountFileContents = Files.toString(new File(pathToJsonKey), Charsets.UTF_8);
     JsonObject serviceAccountFileJson = new JsonParser().parse(serviceAccountFileContents).getAsJsonObject();
@@ -97,15 +99,19 @@ public class GCSTest extends ETLTestBase {
 
     try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
       String result = CharStreams.toString(new InputStreamReader(is, Charsets.UTF_8));
-      idToRowMap = parseIdToRow(result, true, false);
+      idToRowMap = parseIdToRow(result, false);
     }
   }
 
   @After
   public void testTearDown() {
     try {
-      URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + PROFILE_NAME);
-      getRestClient().execute(HttpRequest.delete(url).build());
+      // Disable the profile before deleting
+      URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + PROFILE_NAME + "/disable");
+      getRestClient().execute(HttpRequest.post(url).build(), getClientConfig().getAccessToken());
+
+      url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + PROFILE_NAME);
+      getRestClient().execute(HttpRequest.delete(url).build(), getClientConfig().getAccessToken());
     } catch (Exception e) {
       LOG.error("Failed to delete profile.", e);
     }
@@ -219,6 +225,12 @@ public class GCSTest extends ETLTestBase {
     workflowManager.start(Collections.singletonMap("system.profile.name", PROFILE_NAME));
     workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, "user." + source.getName() + ".records.out", 101, 10);
+    checkMetric(tags, "user." + sink.getName() + ".records.in", 101, 10);
+
     String successFile = OUTPUT_BLOB_NAME + "/_SUCCESS";
     Assert.assertNotNull(bucket.get(successFile));
 
@@ -228,12 +240,16 @@ public class GCSTest extends ETLTestBase {
       if (blob.getName().startsWith(OUTPUT_BLOB_NAME + "/") && !successFile.equals(blob.getName())) {
         outputBlobs.add(blob);
         byte[] content = blob.getContent();
-        String contentString = Bytes.toString(content);
-        retrievedIdToRowMap.putAll(parseIdToRow(contentString, true, true));
+        String contentString = Preconditions.checkNotNull(Bytes.toString(content));
+        if (!contentString.isEmpty()) {
+          // The way that the content is parsed, it assumes that there is only one output split with content.
+          // This is because the first row of the content is skipped, because it contains the headers.
+          retrievedIdToRowMap.putAll(parseIdToRow(contentString, true));
+        }
       }
     }
 
-    LOG.info("Output blobs: {}", outputBlobs);
+    LOG.debug("Output blobs: {}", outputBlobs);
     // check that the output content is equivalent to the input content. Output content files are not guaranteed to be
     // split the same way, so we put the data into a map before checking equality.
     Assert.assertEquals(idToRowMap, retrievedIdToRowMap);
@@ -244,11 +260,12 @@ public class GCSTest extends ETLTestBase {
    * The rows are comma-separated, where the first value is the id.
    * The first column may represent file offset, in which case we will skip it.
    */
-  private Map<String, String> parseIdToRow(String content, boolean skipFirstRow, boolean skipFirstColumn) {
+  private Map<String, String> parseIdToRow(String content, boolean skipFirstColumn) {
     Map<String, String> idToRowMap = new HashMap<>();
     String[] rows = content.split("\n");
 
-    for (int idx = skipFirstRow ? 1 : 0; idx < rows.length; idx++) {
+    // we skip the first row, because it is the column headers
+    for (int idx = 1; idx < rows.length; idx++) {
       String row = rows[idx];
       if (row.isEmpty()) {
         continue;
