@@ -55,13 +55,16 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -82,16 +85,25 @@ public class GCSTest extends ETLTestBase {
 
   @Before
   public void testSetup() throws IOException, UnauthenticatedException {
-    String pathToJsonKey = Preconditions.checkNotNull(System.getProperty("google.application.credentials"),
-                                                      "The credentials file provided is null. " +
-                                                        "Please make sure the path is correct and the file exists.");
+    // base64-encode the credentials, to avoid a commandline-parsing error, since the credentials have dashes in them
+    String property = System.getProperty("google.application.credentials.base64.encoded");
 
-    String serviceAccountFileContents = Files.toString(new File(pathToJsonKey), Charsets.UTF_8);
-    JsonObject serviceAccountFileJson = new JsonParser().parse(serviceAccountFileContents).getAsJsonObject();
-    String projectId = serviceAccountFileJson.get("project_id").getAsString();
+    String serviceAccountCredentials;
+    if (property != null) {
+      serviceAccountCredentials = Bytes.toString(Base64.getDecoder().decode(property));
+    } else {
+      property = Preconditions.checkNotNull(System.getProperty("google.application.credentials.path"),
+                                         "The credentials file provided is null. " +
+                                                 "Please make sure the path is correct and the file exists.");
 
-    bucket = createTestBucket(projectId, pathToJsonKey);
-    createProfile(PROFILE_NAME, projectId, serviceAccountFileContents);
+      serviceAccountCredentials = Files.toString(new File(property), Charsets.UTF_8);
+    }
+
+    JsonObject serviceAccountJson = new JsonParser().parse(serviceAccountCredentials).getAsJsonObject();
+    String projectId = serviceAccountJson.get("project_id").getAsString();
+
+    bucket = createTestBucket(projectId, serviceAccountCredentials);
+    createProfile(PROFILE_NAME, projectId, serviceAccountCredentials);
 
     try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
       bucket.create(INPUT_BLOB_NAME, is);
@@ -139,10 +151,10 @@ public class GCSTest extends ETLTestBase {
 
   private void createProfile(String profileName,
                              String projectId,
-                             String serviceAccountFileContents) throws IOException, UnauthenticatedException {
+                             String serviceAccountCredentials) throws IOException, UnauthenticatedException {
     Gson gson = new Gson();
     JsonArray properties = new JsonArray();
-    properties.add(ofProperty("accountKey", serviceAccountFileContents));
+    properties.add(ofProperty("accountKey", serviceAccountCredentials));
     properties.add(ofProperty("region", "global"));
     properties.add(ofProperty("zone", "us-central1-a"));
     properties.add(ofProperty("projectId", projectId));
@@ -168,12 +180,13 @@ public class GCSTest extends ETLTestBase {
     getRestClient().execute(httpRequest, getAccessToken());
   }
 
-  private Bucket createTestBucket(String projectId, String pathToJsonKey) throws IOException {
+  private Bucket createTestBucket(String projectId, String serviceAccountCredentials) throws IOException {
     StorageOptions storageOptions = StorageOptions
       .newBuilder()
       .setProjectId(projectId)
       .setCredentials(GoogleCredentials.fromStream(
-        new FileInputStream(pathToJsonKey))).build();
+        new ByteArrayInputStream(serviceAccountCredentials.getBytes(StandardCharsets.UTF_8))))
+      .build();
     Storage storage = storageOptions.getService();
 
     String bucketPrefix = "co-cask-test-bucket-";
