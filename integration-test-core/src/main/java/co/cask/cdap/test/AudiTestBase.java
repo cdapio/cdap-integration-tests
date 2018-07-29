@@ -147,17 +147,19 @@ public class AudiTestBase extends IntegrationTestBase {
     return disruptor.getClusterDisruptor();
   }
 
-  protected void checkMetric(final Map<String, String> tags, final String metric,
-                             long expectedCount, int timeOutSeconds) throws Exception {
-    Tasks.waitFor(expectedCount, new Callable<Long>() {
-      @Override
-      public Long call() throws Exception {
-        return getMetricValue(tags, metric);
-      }
-    }, timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+  protected void checkMetricAtLeast(final Map<String, String> tags, final String metric,
+                                    long expectedCount, int timeOutSeconds) throws Exception {
+    Tasks.waitFor(true, () -> getMetricValue(tags, metric) >= expectedCount,
+                  timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
-  private long getMetricValue(Map<String, String> tags, String metric) throws Exception {
+  protected void checkMetric(final Map<String, String> tags, final String metric,
+                             long expectedCount, int timeOutSeconds) throws Exception {
+    Tasks.waitFor(expectedCount, () -> getMetricValue(tags, metric),
+                  timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+  }
+
+  protected long getMetricValue(Map<String, String> tags, String metric) throws Exception {
     MetricQueryResult metricQueryResult = getMetricsClient().query(tags, metric);
     MetricQueryResult.TimeSeries[] series = metricQueryResult.getSeries();
     if (series.length == 0) {

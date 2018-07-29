@@ -12,6 +12,12 @@
           },
           "hydrator-plugins": {
             "branch": "develop"
+          },
+          "mmds": {
+            "branch": "develop"
+          },
+          "dre": {
+            "branch": "develop"
           }
         }
       }

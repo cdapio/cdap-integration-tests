@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2017-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -67,7 +67,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class HivePluginTest extends ETLTestBase {
 
-  private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
   private static final List<String> DATA_LIST =
     // already sorted, for list comparison at the end of the test
     Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");
@@ -75,7 +74,7 @@ public class HivePluginTest extends ETLTestBase {
 
   @Test
   public void testHivePlugins() throws Exception {
-    setupHivePlugins("hydrator-plugin-hive", "hive-plugins", "1.7.2-1.1.0");
+    installPluginFromMarket("hydrator-plugin-hive", "hive-plugins", "1.7.2-1.1.0");
 
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
     ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
@@ -154,7 +153,7 @@ public class HivePluginTest extends ETLTestBase {
   }
 
   // construct a hive connection string, based upon cdap configs
-  private String getHiveConnectionString() throws IOException, UnauthenticatedException, URISyntaxException {
+  private String getHiveConnectionString() throws IOException, UnauthenticatedException {
     String jdbcURL = getMetaClient().getCDAPConfig().get("hive.server2.jdbc.url").getValue();
     // remove 'principal=hive/_HOST@REALM.NET'
     jdbcURL = jdbcURL.replaceFirst("principal=.*?(;|$)", "");
@@ -178,45 +177,5 @@ public class HivePluginTest extends ETLTestBase {
       return NamespaceId.DEFAULT.getNamespace();
     }
     return "cdap_" + TEST_NAMESPACE.getNamespace();
-  }
-
-  private void setupHivePlugins(String packageName, String pluginName, String version)
-    throws IOException, UnauthenticatedException {
-    URL pluginJsonURL = new URL(String.format("%s/packages/%s/%s/%s-%s.json",
-                                              CASK_MARKET_URI, packageName, version, pluginName, version));
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, pluginJsonURL, getClientConfig().getAccessToken());
-    Assert.assertEquals(200, response.getResponseCode());
-
-    // get the artifact 'parents' from the plugin json
-    JsonObject pluginJson = new JsonParser().parse(response.getResponseBodyAsString()).getAsJsonObject();
-    JsonArray parents = pluginJson.get("parents").getAsJsonArray();
-    List<String> parentStrings = new ArrayList<>();
-    for (JsonElement parent : parents) {
-      parentStrings.add(parent.getAsString());
-    }
-
-    // leverage a UI endpoint to upload the plugins from market
-    String source = URLEncoder.encode(
-      String.format("%s/packages/%s/%s/%s-%s.jar",
-                    CASK_MARKET_URI, packageName, version, pluginName, version), "UTF-8");
-    String target = URLEncoder.encode(getClientConfig().getConnectionConfig().resolveURI(
-      String.format("v3/namespaces/%s/artifacts/hive-plugins", TEST_NAMESPACE.getNamespace())).toString(), "UTF-8");
-
-    Map<String, ConfigEntry> cdapConfig = getMetaClient().getCDAPConfig();
-    ConnectionConfig connConfig = getClientConfig().getConnectionConfig();
-    String uiPort = connConfig.isSSLEnabled() ?
-      cdapConfig.get("dashboard.ssl.bind.port").getValue() : cdapConfig.get("dashboard.bind.port").getValue();
-    String url =
-      String.format("%s://%s:%s/forwardMarketToCdap?source=%s&target=%s",
-                    connConfig.isSSLEnabled() ? "https" : "http",
-                    connConfig.getHostname(), // just assume that UI is colocated with Router
-                    uiPort,
-                    source, target);
-
-    Map<String, String> headers =
-      ImmutableMap.of("Artifact-Extends", Joiner.on("/").join(parentStrings),
-                      "Artifact-Version", version);
-    response = getRestClient().execute(HttpMethod.GET, new URL(url), headers, getClientConfig().getAccessToken());
-    Assert.assertEquals(200, response.getResponseCode());
   }
 }

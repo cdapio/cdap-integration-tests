@@ -170,12 +170,9 @@ public class DataStreamsTest extends ETLTestBase {
   private void verifyOutput(final Table table, final String id, String firstName, String lastName)
     throws InterruptedException, ExecutionException, TimeoutException {
 
-    Tasks.waitFor(true, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        Row row = table.get(Bytes.toBytes(id));
-        return row.getString("fname") != null;
-      }
+    Tasks.waitFor(true, () -> {
+      Row row = table.get(Bytes.toBytes(id));
+      return row.getString("fname") != null;
     }, 5, TimeUnit.MINUTES, 5, TimeUnit.SECONDS);
 
     Row row = table.get(Bytes.toBytes(id));
