@@ -19,7 +19,10 @@ package co.cask.cdap.apps.metadata;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
+import co.cask.cdap.api.messaging.Message;
+import co.cask.cdap.api.messaging.MessageFetcher;
 import co.cask.cdap.api.metadata.MetadataScope;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.LineageClient;
@@ -27,7 +30,9 @@ import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.common.app.RunIds;
+import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.metadata.MetadataRecord;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.metadata.dataset.MetadataDataset;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
 import co.cask.cdap.data2.metadata.lineage.Lineage;
@@ -69,6 +74,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -122,7 +128,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
 
     List<RunRecord> ranRecords = getRunRecords(1, programClient, PURCHASE_FLOW,
                                                ProgramRunStatus.RUNNING.name(), 0, endTime);
-
     // check stream lineage
     LineageRecord expected =
       LineageSerializer.toLineageRecord(
@@ -135,7 +140,15 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(PURCHASE_FLOW.flowlet("reader")))
         )), ImmutableSet.<CollapseType>of());
-    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
+
+    // wait for lineage to be written
+    Tasks.waitFor(expected, new Callable<LineageRecord>() {
+      @Override
+      public LineageRecord call() throws Exception {
+        return lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null);
+      }
+    }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getEntityName());
 

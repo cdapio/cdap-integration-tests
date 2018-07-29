@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2017-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -70,13 +70,13 @@ public class DisruptorFactory {
     disruptorSetup();
     ClusterInfoCollector clusterInfoCollector = Clusters.createInitializedInfoCollector(this.conf);
     ChaosMonkeyService chaosMonkeyService = new ChaosMonkeyService(this.conf, clusterInfoCollector);
-    chaosMonkeyService.startAndWait();
+    chaosMonkeyService.startAsync().awaitRunning();
     clusterDisruptor = chaosMonkeyService;
   }
 
   public void disruptorStop() {
     if (clusterDisruptor != null) {
-      clusterDisruptor.stop();
+      clusterDisruptor.stopAsync().awaitTerminated();
     }
   }
 

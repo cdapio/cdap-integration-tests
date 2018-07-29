@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright © 2015-2016 Cask Data, Inc.
+  Copyright © 2015-2018 Cask Data, Inc.
 
   Licensed under the Apache License, Version 2.0 (the "License"); you may not
   use this file except in compliance with the License. You may obtain a copy of
@@ -54,7 +54,17 @@
   </properties>
 
   <dependencies>
-    <!-- Use provided scope for example jars that pulled in for testing -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+      <version>1.26.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>20.0</version>
+    </dependency>
+     <!--Use provided scope for example jars that pulled in for testing-->
     <dependency>
       <groupId>co.cask.cdap</groupId>
       <artifactId>HelloWorld</artifactId>
@@ -99,6 +109,11 @@
     <dependency> <!-- ETLBatchConfig -->
       <groupId>co.cask.cdap</groupId>
       <artifactId>cdap-data-pipeline</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>co.cask.cdap</groupId>
+      <artifactId>cdap-program-report2_2.11</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
@@ -239,6 +254,13 @@
             </goals>
           </execution>
         </executions>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>6.19</version>
+          </dependency>
+        </dependencies>
       </plugin>
       <plugin>
         <groupId>org.apache.rat</groupId>
