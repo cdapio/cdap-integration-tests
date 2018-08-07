@@ -38,7 +38,6 @@
     <cdap.pre.version>5.0.0</cdap.pre.version>
     <cdap.version>5.1.0-SNAPSHOT</cdap.version>
     <hydrator.version>2.0.0-SNAPSHOT</hydrator.version>
-    <tracker.version>0.7.0-SNAPSHOT</tracker.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.11</junit.version>
@@ -126,17 +125,6 @@
           <artifactId>*</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.tracker</groupId>
-      <artifactId>tracker</artifactId>
-      <version>${tracker.version}</version>
-      <exclusions>
-        <exclusion>
-         <groupId>*</groupId>
-         <artifactId>*</artifactId>
-        </exclusion>
-        </exclusions>
     </dependency>
     <dependency>
       <!-- co.cask.hydrator.common.Constants -->

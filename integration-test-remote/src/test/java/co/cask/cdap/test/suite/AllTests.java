@@ -49,7 +49,6 @@ import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
-import co.cask.cdap.apps.tracker.TrackerTest;
 import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
 import co.cask.cdap.apps.workflow.WorkflowTest;
@@ -101,7 +100,6 @@ import org.junit.runners.Suite;
   StreamTest.class,
   StreamTPFSWithProjectionTest.class,
   TPFSSinkSourceTest.class,
-  TrackerTest.class,
   TransactionTimeoutTest.class,
   ValueMapperTest.class,
   WordCountTest.class,
