@@ -29,6 +29,8 @@ import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.etl.api.batch.BatchAggregator;
+import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.proto.v2.DataStreamsConfig;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.proto.ConfigEntry;
@@ -95,32 +97,28 @@ public abstract class ETLTestBase extends AudiTestBase {
     final ArtifactId datastreamsId = TEST_NAMESPACE.artifact("cdap-data-streams", version);
 
     // wait until we see extensions for cdap-data-pipeline and cdap-data-streams
-    Tasks.waitFor(true, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        try {
-          boolean datapipelineReady = false;
-          List<PluginSummary> plugins = artifactClient.getPluginSummaries(datapipelineId,
-                                                                          "batchaggregator", ArtifactScope.SYSTEM);
-          for (PluginSummary plugin : plugins) {
-            if ("GroupByAggregate".equals(plugin.getName())) {
-              datapipelineReady = true;
-              break;
-            }
-          }
-          boolean datastreamsReady = false;
-          plugins = artifactClient.getPluginSummaries(datastreamsId, "batchaggregator", ArtifactScope.SYSTEM);
-          for (PluginSummary plugin : plugins) {
-            if ("GroupByAggregate".equals(plugin.getName())) {
-              datastreamsReady = true;
-              break;
-            }
-          }
-          return datapipelineReady && datastreamsReady;
-        } catch (ArtifactNotFoundException e) {
-          // happens if cdap-data-pipeline or cdap-data-streams were not added yet
+    Tasks.waitFor(true, () -> {
+      try {
+        List<PluginSummary> plugins =
+          artifactClient.getPluginSummaries(datapipelineId, BatchAggregator.PLUGIN_TYPE, ArtifactScope.SYSTEM);
+        if (plugins.stream().noneMatch(pluginSummary -> "GroupByAggregate".equals(pluginSummary.getName()))) {
           return false;
         }
+
+        plugins = artifactClient.getPluginSummaries(datapipelineId, BatchSink.PLUGIN_TYPE, ArtifactScope.SYSTEM);
+        if (plugins.stream().noneMatch(pluginSummary -> "HDFS".equals(pluginSummary.getName()))) {
+          return false;
+        }
+
+        plugins = artifactClient.getPluginSummaries(datastreamsId, BatchAggregator.PLUGIN_TYPE, ArtifactScope.SYSTEM);
+        if (plugins.stream().noneMatch(pluginSummary -> "GroupByAggregate".equals(pluginSummary.getName()))) {
+          return false;
+        }
+
+        return true;
+      } catch (ArtifactNotFoundException e) {
+        // happens if cdap-data-pipeline or cdap-data-streams were not added yet
+        return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
   }
