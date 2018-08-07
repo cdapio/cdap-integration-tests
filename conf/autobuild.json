@@ -4,9 +4,6 @@
       "git": {
         "local_user": "root",
         "repos": {
-          "cask-tracker": {
-            "branch": "develop"
-          },
           "cdap-navigator": {
             "branch": "develop"
           },
