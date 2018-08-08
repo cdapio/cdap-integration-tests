@@ -37,6 +37,8 @@ import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.SDKIncompatible;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -51,6 +53,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -65,6 +68,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests for HiveImport plugin.
  */
+@Category({
+  // Do not run the tests on SDK because there no Hive server available for the HivePlugin to connect to.
+  SDKIncompatible.class
+})
 public class HivePluginTest extends ETLTestBase {
 
   private static final List<String> DATA_LIST =
