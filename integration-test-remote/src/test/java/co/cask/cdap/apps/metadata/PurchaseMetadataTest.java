@@ -19,10 +19,7 @@ package co.cask.cdap.apps.metadata;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
-import co.cask.cdap.api.messaging.Message;
-import co.cask.cdap.api.messaging.MessageFetcher;
 import co.cask.cdap.api.metadata.MetadataScope;
 import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.LineageClient;
@@ -30,7 +27,6 @@ import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.common.app.RunIds;
-import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.metadata.MetadataRecord;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.data2.metadata.dataset.MetadataDataset;
@@ -139,15 +135,10 @@ public class PurchaseMetadataTest extends AudiTestBase {
           new Relation(PURCHASE_STREAM, PURCHASE_FLOW, AccessType.READ,
                        RunIds.fromString(ranRecords.get(0).getPid()),
                        ImmutableSet.of(PURCHASE_FLOW.flowlet("reader")))
-        )), ImmutableSet.<CollapseType>of());
+        )), ImmutableSet.of());
 
     // wait for lineage to be written
-    Tasks.waitFor(expected, new Callable<LineageRecord>() {
-      @Override
-      public LineageRecord call() throws Exception {
-        return lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null);
-      }
-    }, 30, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+    waitFor(expected, () -> lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     WorkflowManager purchaseHistoryWorkflowManager =
       applicationManager.getWorkflowManager(PURCHASE_HISTORY_WORKFLOW.getEntityName());
@@ -217,7 +208,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(serviceRuns.get(0).getPid()))
         )), ImmutableSet.of());
 
-    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
+    waitFor(expected, () -> lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // add more tags
     metadataClient.addTags(HISTORY_DS, ImmutableSet.of("dsTag2"));
@@ -256,7 +247,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
                        RunIds.fromString(serviceRuns.get(1).getPid()))
         )), ImmutableSet.of());
 
-    Assert.assertEquals(expected, lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
+    waitFor(expected, () -> lineageClient.getLineage(PURCHASE_STREAM, startTime, endTime, null));
 
     // verify tags and metadata properties for the 2 service runs
     Set<MetadataRecord> expectedTagsFirst =
@@ -269,8 +260,8 @@ public class PurchaseMetadataTest extends AudiTestBase {
                            ImmutableSet.of("dsTag1"))
       );
 
-    Assert.assertEquals(expectedTagsFirst,
-                        metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(firstServiceRunId)));
+    waitFor(expectedTagsFirst,
+            () -> metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(firstServiceRunId)));
 
     Set<MetadataRecord> expectedTagsSecond = ImmutableSet.of(
       new MetadataRecord(PURCHASE_APP, MetadataScope.USER, appProperties,
@@ -283,11 +274,11 @@ public class PurchaseMetadataTest extends AudiTestBase {
                          ImmutableSet.of("dsTag1", "dsTag2"))
     );
 
-    Assert.assertEquals(expectedTagsSecond,
-                        metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(secondServiceRunId)));
+    waitFor(expectedTagsSecond,
+            () -> metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(secondServiceRunId)));
 
     // check dataset lineage
-    Assert.assertEquals(expected, lineageClient.getLineage(HISTORY_DS, startTime, endTime, null));
+    waitFor(expected, () -> lineageClient.getLineage(HISTORY_DS, startTime, endTime, null));
 
     // verify search tags
     Set<MetadataSearchResultRecord> expectedSearchResults =
@@ -334,6 +325,10 @@ public class PurchaseMetadataTest extends AudiTestBase {
     assertProgramSearch();
     // search data entities
     assertDataEntitySearch();
+  }
+
+  private <T> void waitFor(T expected, Callable<T> callable) throws Exception {
+    Tasks.waitFor(expected, callable, 10, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
   private void assertArtifactSearch() throws Exception {
