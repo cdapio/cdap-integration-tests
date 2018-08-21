@@ -24,7 +24,7 @@ import co.cask.cdap.api.mapreduce.MapReduceContext;
 import co.cask.cdap.api.metadata.Metadata;
 import co.cask.cdap.api.metadata.MetadataEntity;
 import co.cask.cdap.api.metadata.MetadataScope;
-import co.cask.cdap.common.utils.Tasks;
+import co.cask.cdap.test.Tasks;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 
@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -146,26 +145,20 @@ public class ProgramMetadataApp extends AbstractApplication {
       for (String tag : tags) {
         context.addTags(MetadataEntity.ofDataset(context.getNamespace(), dataset), tag);
       }
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            getContext().getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), dataset));
-          return metadata.get(MetadataScope.USER).getTags().containsAll(tags);
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          getContext().getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), dataset));
+        return metadata.get(MetadataScope.USER).getTags().containsAll(tags);
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
 
     private void addProperties(MapReduceContext context, String dataset, Map<String, String> properties)
       throws InterruptedException, ExecutionException, TimeoutException {
       context.addProperties(MetadataEntity.ofDataset(context.getNamespace(), dataset), properties);
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
-          return metadata.get(MetadataScope.USER).getProperties().keySet().containsAll(properties.keySet());
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
+        return metadata.get(MetadataScope.USER).getProperties().keySet().containsAll(properties.keySet());
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
 
@@ -174,13 +167,10 @@ public class ProgramMetadataApp extends AbstractApplication {
       throws InterruptedException, ExecutionException, TimeoutException {
       context.removeTags(MetadataEntity.ofDataset(context.getNamespace(), dataset), tag);
 
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
-          return !metadata.get(MetadataScope.USER).getTags().contains(tag);
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
+        return !metadata.get(MetadataScope.USER).getTags().contains(tag);
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
 
@@ -188,13 +178,10 @@ public class ProgramMetadataApp extends AbstractApplication {
       throws InterruptedException, ExecutionException, TimeoutException {
       context.removeTags(MetadataEntity.ofDataset(context.getNamespace(), dataset));
 
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
-          return metadata.get(MetadataScope.USER).getTags().isEmpty();
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
+        return metadata.get(MetadataScope.USER).getTags().isEmpty();
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
 
@@ -202,13 +189,10 @@ public class ProgramMetadataApp extends AbstractApplication {
       throws InterruptedException, ExecutionException, TimeoutException {
       context.removeProperties(MetadataEntity.ofDataset(context.getNamespace(), dataset), key);
 
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
-          return !metadata.get(MetadataScope.USER).getProperties().keySet().contains(key);
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
+        return !metadata.get(MetadataScope.USER).getProperties().keySet().contains(key);
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
 
@@ -216,13 +200,10 @@ public class ProgramMetadataApp extends AbstractApplication {
       throws InterruptedException, ExecutionException, TimeoutException {
       context.removeProperties(MetadataEntity.ofDataset(context.getNamespace(), dataset));
 
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
-          return metadata.get(MetadataScope.USER).getProperties().isEmpty();
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
+        return metadata.get(MetadataScope.USER).getProperties().isEmpty();
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
 
@@ -230,14 +211,11 @@ public class ProgramMetadataApp extends AbstractApplication {
       throws InterruptedException, ExecutionException, TimeoutException {
       context.removeMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
 
-      Tasks.waitFor(true, new Callable<Boolean>() {
-        @Override
-        public Boolean call() throws Exception {
-          Map<MetadataScope, Metadata> metadata =
-            context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
-          return metadata.get(MetadataScope.USER).getProperties().isEmpty() &&
-            metadata.get(MetadataScope.USER).getTags().isEmpty();
-        }
+      Tasks.waitFor(true, () -> {
+        Map<MetadataScope, Metadata> metadata =
+          context.getMetadata(MetadataEntity.ofDataset(context.getNamespace(), dataset));
+        return metadata.get(MetadataScope.USER).getProperties().isEmpty() &&
+          metadata.get(MetadataScope.USER).getTags().isEmpty();
       }, TIMEOUT_IN_SECONDS, TimeUnit.SECONDS, SLEEP_DELAY_IN_MILLI_SECONDS, TimeUnit.MILLISECONDS);
     }
   }
