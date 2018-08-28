@@ -36,12 +36,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
-import co.cask.cdap.test.suite.category.CDH51Incompatible;
-import co.cask.cdap.test.suite.category.CDH52Incompatible;
-import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.CDH54Incompatible;
-import co.cask.cdap.test.suite.category.HDP20Incompatible;
-import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpMethod;
@@ -55,7 +50,6 @@ import org.junit.experimental.categories.Category;
 import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -67,16 +61,7 @@ public class DataStreamsTest extends ETLTestBase {
 
   // DataStreams are based on Spark runtime, so marking incompatible for all Hadoop versions that don't support Spark
   @Category({
-    // We don't support spark on these distros
-    HDP20Incompatible.class,
-    HDP21Incompatible.class,
-    CDH51Incompatible.class,
-    CDH52Incompatible.class,
-    // (HYDRATOR-1134) All spark plugins fail to load on CDH 5.3, due to one of them not not being able to load on
-    // CDH 5.3. Once this JIRA is resolved, we should look at all the places we have used CDH53Incompatible, and see if
-    // they're still incompatible.
-    CDH53Incompatible.class,
-    // (HYDRATOR-1135) Mark HDP 2.2 and CDH 5.4 incompatible at least until we resolve this JIRA.
+    // (CDAP-10143) Mark HDP 2.2 and CDH 5.4 incompatible at least until we resolve this JIRA.
     HDP22Incompatible.class,
     CDH54Incompatible.class,
     // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed

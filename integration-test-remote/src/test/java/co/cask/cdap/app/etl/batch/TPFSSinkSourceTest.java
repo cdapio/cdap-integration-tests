@@ -37,10 +37,6 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.cdap.test.suite.category.CDH51Incompatible;
-import co.cask.cdap.test.suite.category.CDH52Incompatible;
-import co.cask.cdap.test.suite.category.HDP20Incompatible;
-import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
@@ -62,21 +58,12 @@ import java.util.concurrent.TimeUnit;
 public class TPFSSinkSourceTest extends ETLTestBase {
   private static final String SOURCE_STREAM = "sourceStream";
 
-  @Category({
-  //incompatible for HDP 2.0, see CDAP-12089
-    HDP20Incompatible.class
-  })
   @Test
   public void testMR() throws Exception {
     testStreamTPFSWithProjection(Engine.MAPREDUCE);
   }
 
   @Category({
-    // We don't support spark on these distros
-    HDP20Incompatible.class,
-    HDP21Incompatible.class,
-    CDH51Incompatible.class,
-    CDH52Incompatible.class,
     // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
     MapR5Incompatible.class // MapR5x category is used for all MapR version
   })

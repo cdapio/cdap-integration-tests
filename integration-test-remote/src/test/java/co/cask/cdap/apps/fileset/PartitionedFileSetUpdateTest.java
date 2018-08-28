@@ -28,8 +28,6 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
-import co.cask.cdap.test.suite.category.CDH51Incompatible;
-import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -40,7 +38,6 @@ import com.google.gson.Gson;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,11 +51,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests that updating the properties of a PartitionedFileSet does not remove its partitions.
  */
-@Category({
-  // Do not run the tests on the distros which has older version of hive.
-  HDP20Incompatible.class,
-  CDH51Incompatible.class
-})
 public class PartitionedFileSetUpdateTest extends AudiTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PartitionedFileSetUpdateTest.class);
