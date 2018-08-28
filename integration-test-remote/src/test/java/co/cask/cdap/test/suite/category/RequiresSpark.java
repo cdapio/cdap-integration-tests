@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Cask Data, Inc.
+ * Copyright © 2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,21 +14,13 @@
  * the License.
  */
 
-package co.cask.cdap.test.suite;
+package co.cask.cdap.test.suite.category;
 
-import co.cask.cdap.test.suite.category.EMRIncompatible;
-import co.cask.cdap.test.suite.category.RequiresSpark2;
-import org.junit.experimental.categories.Categories;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
+import org.junit.experimental.categories.Category;
 
 /**
- * Junit suite for tests that should run on EMR.
+ * JUnit {@link Category} for tests that Require Spark.
+ * This should be excluded by test suites that do not support Spark.
  */
-@RunWith(Categories.class)
-@Categories.ExcludeCategory({EMRIncompatible.class, RequiresSpark2.class})
-@Suite.SuiteClasses({
-  AllTests.class
-})
-public class EMRSuite {
+public interface RequiresSpark {
 }

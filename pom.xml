@@ -40,7 +40,7 @@
     <hydrator.version>2.0.0-SNAPSHOT</hydrator.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
-    <junit.version>4.11</junit.version>
+    <junit.version>4.12</junit.version>
     <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
     <chaosmonkey.version>0.1.0-SNAPSHOT</chaosmonkey.version>

@@ -37,7 +37,7 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
@@ -64,15 +64,14 @@ public class TPFSSinkSourceTest extends ETLTestBase {
   }
 
   @Category({
-    // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
-    MapR5Incompatible.class // MapR5x category is used for all MapR version
+    RequiresSpark.class
   })
   @Test
   public void testSpark() throws Exception {
     testStreamTPFSWithProjection(Engine.SPARK);
   }
 
-  public void testStreamTPFSWithProjection(Engine engine) throws Exception {
+  private void testStreamTPFSWithProjection(Engine engine) throws Exception {
     //1. create a source stream and send an event
     StreamId sourceStreamId = TEST_NAMESPACE.stream(SOURCE_STREAM);
     streamClient.create(sourceStreamId);

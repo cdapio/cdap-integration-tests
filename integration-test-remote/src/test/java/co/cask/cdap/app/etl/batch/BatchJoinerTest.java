@@ -43,6 +43,7 @@ import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
@@ -85,8 +86,7 @@ public class BatchJoinerTest extends ETLTestBase {
   }
 
   @Category({
-    // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
-    MapR5Incompatible.class // MapR5x category is used for all MapR version
+    RequiresSpark.class
   })
   @Test
   public void testJoinerSpark() throws Exception {

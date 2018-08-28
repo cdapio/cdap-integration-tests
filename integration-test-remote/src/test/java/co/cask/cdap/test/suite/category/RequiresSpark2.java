@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -19,7 +19,7 @@ package co.cask.cdap.test.suite.category;
 import org.junit.experimental.categories.Category;
 
 /**
- * JUnit {@link Category} for tests incompatible with Cloudera Manager.
+ * JUnit {@link Category} for tests that Require Spark 2.x.
  */
-public interface CMIncompatible {
+public interface RequiresSpark2 {
 }

@@ -17,6 +17,7 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -25,7 +26,7 @@ import org.junit.runners.Suite;
  * Junit suite for tests that should run on HDP2.3.
  */
 @RunWith(Categories.class)
-@Categories.ExcludeCategory(HDP23Incompatible.class)
+@Categories.ExcludeCategory({HDP23Incompatible.class, RequiresSpark2.class})
 @Suite.SuiteClasses({
   AllTests.class
 })

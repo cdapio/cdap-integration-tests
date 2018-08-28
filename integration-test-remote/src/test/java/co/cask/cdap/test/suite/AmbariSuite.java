@@ -16,20 +16,18 @@
 
 package co.cask.cdap.test.suite;
 
-import co.cask.cdap.apps.report.ReportGenerationAppTest;
-import co.cask.cdap.test.suite.category.CMIncompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 /**
- * Junit suite for tests that should run on cluster with spark 2.
+ * Junit suite for tests that should run on Ambari-managed clusters.
  */
 @RunWith(Categories.class)
-@Categories.ExcludeCategory(CMIncompatible.class)
+@Categories.ExcludeCategory(RequiresSpark2.class)
 @Suite.SuiteClasses({
-  ReportGenerationAppTest.class
+  AllTests.class
 })
-public class ReportingSpark2 {
+public class AmbariSuite {
 }
-

@@ -42,7 +42,8 @@ import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.StreamManager;
-import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -67,8 +68,7 @@ import java.util.concurrent.TimeUnit;
  * Tests the functionality of {@link SparkPageRankApp}
  */
 @Category({
-  // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
-  MapR5Incompatible.class
+  RequiresSpark2.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
   private static final Gson GSON = new GsonBuilder()
