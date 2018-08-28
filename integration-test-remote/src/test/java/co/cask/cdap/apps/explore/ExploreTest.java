@@ -36,8 +36,6 @@ import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
-import co.cask.cdap.test.suite.category.CDH51Incompatible;
-import co.cask.cdap.test.suite.category.HDP20Incompatible;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -45,7 +43,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -560,7 +557,6 @@ public class ExploreTest extends AudiTestBase {
   }
 
   @Test
-  @Category({HDP20Incompatible.class, CDH51Incompatible.class})
   public void testSubqueryInWhereClause() throws Exception {
     // Have to send input data all over again, because IntegrationTestBase methods are not static, so cannot be
     // run in @BeforeClass.

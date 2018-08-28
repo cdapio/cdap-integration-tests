@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2016 Cask Data, Inc.
+ * Copyright © 2015-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -35,12 +35,7 @@ import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.cdap.test.suite.category.CDH51Incompatible;
-import co.cask.cdap.test.suite.category.CDH52Incompatible;
-import co.cask.cdap.test.suite.category.CDH53Incompatible;
 import co.cask.cdap.test.suite.category.CDH54Incompatible;
-import co.cask.cdap.test.suite.category.HDP20Incompatible;
-import co.cask.cdap.test.suite.category.HDP21Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
@@ -59,13 +54,8 @@ import javax.annotation.Nullable;
  * Test for {@link WikipediaPipelineApp}.
  */
 @Category({
-  HDP20Incompatible.class,
-  HDP21Incompatible.class,
   HDP22Incompatible.class,
   HDP23Incompatible.class,
-  CDH51Incompatible.class,
-  CDH52Incompatible.class,
-  CDH53Incompatible.class,
   MapR5Incompatible.class
 })
 public class WorkflowTest extends AudiTestBase {
