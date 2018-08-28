@@ -48,6 +48,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableList;
@@ -58,8 +59,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -71,8 +71,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+@Category({
+  RequiresSpark2.class,
+})
 public class ReportGenerationAppTest extends AudiTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(ReportGenerationAppTest.class);
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(ReportContent.class, new ReportContentDeserializer())
     .registerTypeAdapter(Filter.class, new FilterCodec())

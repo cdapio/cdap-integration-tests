@@ -17,6 +17,7 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.test.suite.category.EMRIncompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -25,7 +26,7 @@ import org.junit.runners.Suite;
  * Junit suite for tests that should run on EMR.
  */
 @RunWith(Categories.class)
-@Categories.ExcludeCategory(EMRIncompatible.class)
+@Categories.ExcludeCategory({EMRIncompatible.class, RequiresSpark2.class})
 @Suite.SuiteClasses({
   AllTests.class
 })

@@ -14,12 +14,20 @@
  * the License.
  */
 
-package co.cask.cdap.test.suite.category;
+package co.cask.cdap.test.suite;
 
-import org.junit.experimental.categories.Category;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
+import org.junit.experimental.categories.Categories;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
 /**
- * JUnit {@link Category} for tests that Require Spark 1.x.
+ * Junit suite for tests that should run on Ambari-managed clusters.
  */
-public interface RequiresSpark1 extends RequiresSpark {
+@RunWith(Categories.class)
+@Categories.ExcludeCategory(RequiresSpark2.class)
+@Suite.SuiteClasses({
+  AllTests.class
+})
+public class AmbariSuite {
 }

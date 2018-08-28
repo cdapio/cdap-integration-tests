@@ -21,5 +21,5 @@ import org.junit.experimental.categories.Category;
 /**
  * JUnit {@link Category} for tests that Require Spark 2.x.
  */
-public interface RequiresSpark2 extends RequiresSpark {
+public interface RequiresSpark2 {
 }

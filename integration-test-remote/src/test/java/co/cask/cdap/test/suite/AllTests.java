@@ -49,6 +49,7 @@ import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.ProgramMetadataTest;
 import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
+import co.cask.cdap.apps.report.ReportGenerationAppTest;
 import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
 import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
@@ -96,6 +97,7 @@ import org.junit.runners.Suite;
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
   RemoteTableTest.class,
+  ReportGenerationAppTest.class,
   RowDenormalizerTest.class,
   ServiceWorkerTest.class,
   SparkPageRankAppTest.class,

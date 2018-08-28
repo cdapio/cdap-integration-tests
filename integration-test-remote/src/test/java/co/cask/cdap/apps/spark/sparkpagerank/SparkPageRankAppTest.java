@@ -43,6 +43,7 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.suite.category.RequiresSpark;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -67,7 +68,7 @@ import java.util.concurrent.TimeUnit;
  * Tests the functionality of {@link SparkPageRankApp}
  */
 @Category({
-  RequiresSpark.class
+  RequiresSpark2.class
 })
 public class SparkPageRankAppTest extends AudiTestBase {
   private static final Gson GSON = new GsonBuilder()

@@ -17,6 +17,7 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.test.suite.category.CDH56Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -25,7 +26,7 @@ import org.junit.runners.Suite;
  * Junit suite for tests that should run on CDH5.6.
  */
 @RunWith(Categories.class)
-@Categories.ExcludeCategory(CDH56Incompatible.class)
+@Categories.ExcludeCategory({CDH56Incompatible.class, RequiresSpark2.class})
 @Suite.SuiteClasses({
   AllTests.class
 })
