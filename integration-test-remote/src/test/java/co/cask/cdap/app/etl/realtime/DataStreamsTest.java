@@ -38,7 +38,7 @@ import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.suite.category.CDH54Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
-import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -59,13 +59,11 @@ import java.util.concurrent.TimeoutException;
  */
 public class DataStreamsTest extends ETLTestBase {
 
-  // DataStreams are based on Spark runtime, so marking incompatible for all Hadoop versions that don't support Spark
   @Category({
+    RequiresSpark.class,
     // (CDAP-10143) Mark HDP 2.2 and CDH 5.4 incompatible at least until we resolve this JIRA.
     HDP22Incompatible.class,
     CDH54Incompatible.class,
-    // Currently, coopr doesn't provision MapR cluster with Spark. Enable this test once COOK-108 is fixed
-    MapR5Incompatible.class // MapR5x category is used for all MapR version
   })
 
   @Test

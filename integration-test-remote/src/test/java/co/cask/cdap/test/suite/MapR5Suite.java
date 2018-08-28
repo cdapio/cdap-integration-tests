@@ -17,6 +17,7 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -25,7 +26,8 @@ import org.junit.runners.Suite;
  * Junit suite for tests that should run on MapR 5.x.
  */
 @RunWith(Categories.class)
-@Categories.ExcludeCategory(MapR5Incompatible.class)
+// coopr doesn't provision MapR cluster with Spark. Remove exclusion of "RequiresSpark" once COOK-108 is fixed
+@Categories.ExcludeCategory({MapR5Incompatible.class, RequiresSpark.class})
 @Suite.SuiteClasses({
   AllTests.class
 })
