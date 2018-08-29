@@ -39,6 +39,7 @@ import co.cask.cdap.test.suite.category.CDH54Incompatible;
 import co.cask.cdap.test.suite.category.HDP22Incompatible;
 import co.cask.cdap.test.suite.category.HDP23Incompatible;
 import co.cask.cdap.test.suite.category.MapR5Incompatible;
+import co.cask.cdap.test.suite.category.RequiresSpark2;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,7 +57,8 @@ import javax.annotation.Nullable;
 @Category({
   HDP22Incompatible.class,
   HDP23Incompatible.class,
-  MapR5Incompatible.class
+  MapR5Incompatible.class,
+  RequiresSpark2.class
 })
 public class WorkflowTest extends AudiTestBase {
 

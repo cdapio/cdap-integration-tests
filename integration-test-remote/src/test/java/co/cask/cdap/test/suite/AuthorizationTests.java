@@ -16,10 +16,6 @@
 
 package co.cask.cdap.test.suite;
 
-/**
- * Suite to represent all authorization integration tests for CDAP.
- */
-
 import co.cask.cdap.security.AppImpersonationAuthorizationTest;
 import co.cask.cdap.security.BasicAppAuthorizationTest;
 import co.cask.cdap.security.BasicAuthorizationTest;
@@ -30,6 +26,9 @@ import co.cask.cdap.security.NamespaceImpersonationBasicAuthorizationTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+/**
+ * Suite to represent all authorization integration tests for CDAP.
+ */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
   // Note: all the class names below are in sorted order

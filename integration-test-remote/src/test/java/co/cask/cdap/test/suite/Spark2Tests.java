@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2015-2017 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -16,16 +16,19 @@
 
 package co.cask.cdap.test.suite;
 
+import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
+import co.cask.cdap.apps.workflow.WorkflowTest;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 /**
- * Junit suite for tests that should run on Cloudera Manager.
+ * Suite to represent all integration tests that require Spark2.
  */
 @RunWith(Categories.class)
 @Suite.SuiteClasses({
-  AllTests.class
+  SparkPageRankAppTest.class,
+  WorkflowTest.class,
 })
-public class CMSuite {
+public class Spark2Tests {
 }
