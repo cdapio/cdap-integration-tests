@@ -90,10 +90,10 @@ public class WorkflowTest extends AudiTestBase {
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(WikipediaPipelineWorkflow.class.getSimpleName());
     // Test with default threshold. Workflow should not proceed beyond first condition.
-    testWorkflow(workflowManager, appConfig);
+    testWorkflow(workflowManager, appConfig, 10);
 
     // Test with a reduced threshold, so the workflow proceeds beyond the first predicate
-    testWorkflow(workflowManager, appConfig, 1);
+    testWorkflow(workflowManager, appConfig, 10, 1);
   }
 
   @Test
@@ -105,15 +105,17 @@ public class WorkflowTest extends AudiTestBase {
     // Setup input streams with test data
     TestData.sendTestData(TEST_NAMESPACE, getTestManager());
     WorkflowManager workflowManager = appManager.getWorkflowManager(WikipediaPipelineWorkflow.class.getSimpleName());
-    testWorkflow(workflowManager, appConfig, 1);
+    testWorkflow(workflowManager, appConfig, 2, 1);
   }
 
   private void testWorkflow(WorkflowManager workflowManager,
-                            WikipediaPipelineApp.WikipediaAppConfig config) throws Exception {
-    testWorkflow(workflowManager, config, null);
+                            WikipediaPipelineApp.WikipediaAppConfig config,
+                            int expectedRecords) throws Exception {
+    testWorkflow(workflowManager, config, expectedRecords, null);
   }
 
   private void testWorkflow(WorkflowManager workflowManager, WikipediaPipelineApp.WikipediaAppConfig config,
+                            int expectedRecords,
                             @Nullable Integer threshold) throws Exception {
     // Wait for previous runs to finish
     List<RunRecord> history = workflowManager.getHistory();
@@ -137,10 +139,10 @@ public class WorkflowTest extends AudiTestBase {
         boolean conditionResult = Boolean.parseBoolean(tokenAtCondition.getTokenDataAtNode().get("result"));
         if (threshold == null) {
           Assert.assertFalse(conditionResult);
-          assertWorkflowToken(workflowManager, config, pid, false);
+          assertWorkflowToken(workflowManager, config, pid, expectedRecords, false);
         } else {
           Assert.assertTrue(conditionResult);
-          assertWorkflowToken(workflowManager, config, pid, true);
+          assertWorkflowToken(workflowManager, config, pid, expectedRecords, true);
         }
         return true;
       } catch (AssertionError | NotFoundException e) {
@@ -167,11 +169,12 @@ public class WorkflowTest extends AudiTestBase {
 
   private void assertWorkflowToken(WorkflowManager workflowManager,
                                    WikipediaPipelineApp.WikipediaAppConfig config, String pid,
+                                   int expectedRecords,
                                    boolean continueConditionSucceeded) throws NotFoundException {
     assertTokenAtPageTitlesMRNode(workflowManager, pid);
     assertTokenAtRawDataMRNode(workflowManager, pid, continueConditionSucceeded);
     assertTokenAtNormalizationMRNode(workflowManager, pid, continueConditionSucceeded);
-    assertTokenAtSparkClusteringNode(workflowManager, config, pid, continueConditionSucceeded);
+    assertTokenAtSparkClusteringNode(workflowManager, config, pid, expectedRecords, continueConditionSucceeded);
     assertTokenAtTopNMRNode(workflowManager, pid, continueConditionSucceeded);
   }
 
@@ -211,6 +214,7 @@ public class WorkflowTest extends AudiTestBase {
 
   private void assertTokenAtSparkClusteringNode(WorkflowManager workflowManager,
                                                 WikipediaPipelineApp.WikipediaAppConfig config, String pid,
+                                                int expectedRecords,
                                                 boolean continueConditionSucceeded) throws NotFoundException {
     if (!continueConditionSucceeded) {
       return;
@@ -219,7 +223,7 @@ public class WorkflowTest extends AudiTestBase {
     String sparkProgramName = SparkWikipediaClustering.NAME + "-" + config.clusteringAlgorithm.toUpperCase();
     WorkflowTokenNodeDetail ldaUserTokens =
       workflowManager.getTokenAtNode(pid, sparkProgramName, null, null);
-    Assert.assertEquals(10, Integer.parseInt(ldaUserTokens.getTokenDataAtNode().get("num.records")));
+    Assert.assertEquals(expectedRecords, Integer.parseInt(ldaUserTokens.getTokenDataAtNode().get("num.records")));
     Assert.assertTrue(ldaUserTokens.getTokenDataAtNode().containsKey("highest.score.term"));
     Assert.assertTrue(ldaUserTokens.getTokenDataAtNode().containsKey("highest.score.value"));
     WorkflowTokenNodeDetail ldaSystemTokens =
