@@ -42,7 +42,6 @@ import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
 import co.cask.cdap.test.StreamManager;
-import co.cask.cdap.test.suite.category.RequiresSpark;
 import co.cask.cdap.test.suite.category.RequiresSpark2;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
