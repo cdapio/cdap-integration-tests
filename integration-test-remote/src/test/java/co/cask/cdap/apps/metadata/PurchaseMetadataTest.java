@@ -274,6 +274,14 @@ public class PurchaseMetadataTest extends AudiTestBase {
                          ImmutableSet.of("dsTag1", "dsTag2"))
     );
 
+    Set<String> purchaseHistoryServiceTwoTags = ImmutableSet.of("serviceTag1", "serviceTag2");
+    Map<String, String> purchaseHistoryServiceTwoProps = ImmutableMap.of("spKey1", "spValue1", "spKey2", "spValue2");
+    // assert tags and props for second run.
+    Assert.assertEquals(purchaseHistoryServiceTwoTags,
+                        metadataClient.getTags(PURCHASE_HISTORY_SERVICE, MetadataScope.USER));
+    Assert.assertEquals(purchaseHistoryServiceTwoProps, metadataClient.getProperties(PURCHASE_HISTORY_SERVICE,
+                                                                                     MetadataScope.USER));
+
     waitFor(expectedTagsSecond,
             () -> metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(secondServiceRunId)));
 
@@ -328,7 +336,7 @@ public class PurchaseMetadataTest extends AudiTestBase {
   }
 
   private <T> void waitFor(T expected, Callable<T> callable) throws Exception {
-    Tasks.waitFor(expected, callable, 10, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+    Tasks.waitFor(expected, callable, 60, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
   }
 
   private void assertArtifactSearch() throws Exception {
