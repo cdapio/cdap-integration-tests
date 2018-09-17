@@ -38,6 +38,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.HttpURLConnection;
@@ -57,6 +58,8 @@ import java.util.concurrent.TimeUnit;
  * bob: nscreator, deployers
  * eve: deployers
  */
+// CDAP-14328: Ignored temporarily. Will be enabled to run in spark 2 compat distro
+@Ignore
 public class CrossNSAppImpersonationTest extends AudiTestBase {
   private static final String ALICE = "alice";
   private static final String EVE = "eve";
