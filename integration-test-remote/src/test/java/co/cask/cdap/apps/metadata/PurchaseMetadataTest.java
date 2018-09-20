@@ -63,6 +63,8 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -77,6 +79,7 @@ import java.util.concurrent.TimeUnit;
  * Tests the metadata and lineage functionality using PurchaseApp
  */
 public class PurchaseMetadataTest extends AudiTestBase {
+  private static final Logger LOG = LoggerFactory.getLogger(PurchaseMetadataTest.class);
   private static final ApplicationId PURCHASE_APP = TEST_NAMESPACE.app(PurchaseApp.APP_NAME);
   private static final ProgramId PURCHASE_FLOW = PURCHASE_APP.flow("PurchaseFlow");
   private static final ProgramId PURCHASE_HISTORY_SERVICE = PURCHASE_APP.service("PurchaseHistoryService");
@@ -281,6 +284,8 @@ public class PurchaseMetadataTest extends AudiTestBase {
                         metadataClient.getTags(PURCHASE_HISTORY_SERVICE, MetadataScope.USER));
     Assert.assertEquals(purchaseHistoryServiceTwoProps, metadataClient.getProperties(PURCHASE_HISTORY_SERVICE,
                                                                                      MetadataScope.USER));
+
+    LOG.info("First service runId {}, second runId {}", firstServiceRunId, secondServiceRunId);
 
     waitFor(expectedTagsSecond,
             () -> metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(secondServiceRunId)));
