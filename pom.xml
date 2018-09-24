@@ -35,9 +35,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.pre.version>5.0.0</cdap.pre.version>
-    <cdap.version>5.1.0-SNAPSHOT</cdap.version>
-    <hydrator.version>2.0.0-SNAPSHOT</hydrator.version>
+    <cdap.pre.version>5.1.0</cdap.pre.version>
+    <cdap.version>5.2.0-SNAPSHOT</cdap.version>
+    <hydrator.version>2.1.0-SNAPSHOT</hydrator.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <junit.version>4.12</junit.version>
@@ -112,7 +112,7 @@
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
-      <artifactId>cdap-program-report2_2.11</artifactId>
+      <artifactId>cdap-program-report</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
