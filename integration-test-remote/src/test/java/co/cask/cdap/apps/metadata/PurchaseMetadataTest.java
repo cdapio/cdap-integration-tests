@@ -263,8 +263,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
                            ImmutableSet.of("dsTag1"))
       );
 
-    waitFor(expectedTagsFirst,
-            () -> metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(firstServiceRunId)));
 
     Set<MetadataRecord> expectedTagsSecond = ImmutableSet.of(
       new MetadataRecord(PURCHASE_APP, MetadataScope.USER, appProperties,
@@ -286,9 +284,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
                                                                                      MetadataScope.USER));
 
     LOG.info("First service runId {}, second runId {}", firstServiceRunId, secondServiceRunId);
-
-    waitFor(expectedTagsSecond,
-            () -> metadataClient.getMetadata(PURCHASE_HISTORY_SERVICE.run(secondServiceRunId)));
 
     // check dataset lineage
     waitFor(expected, () -> lineageClient.getLineage(HISTORY_DS, startTime, endTime, null));
