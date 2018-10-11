@@ -2,19 +2,19 @@
   "config": {
     "cdap": {
       "repo": {
-        "apt_repo_url": "file:///tmp/cdap-apt-repo/5.1",
-        "yum_repo_url": "file:///tmp/cdap-yum-repo/5.1",
-        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/5.1/pubkey.gpg"
+        "apt_repo_url": "file:///tmp/cdap-apt-repo/5.2",
+        "yum_repo_url": "file:///tmp/cdap-yum-repo/5.2",
+        "yum_repo_key_url": "file:///tmp/cdap-yum-repo/5.2/pubkey.gpg"
       },
-      "version": "5.1.0-1",
+      "version": "5.2.0-1",
       "ambari": {
-        "version": "5.1.0-1"
+        "version": "5.2.0-1"
       },
       "cdap_site": {
         "explore.executor.container.memory.mb": "2048",
         "metrics.processor.memory.mb": "512",
         "security.keytab.path": "/etc/security/keytabs/${name}.headless.keytab",
-        "security.authorization.extension.jar.path": "/opt/cdap/master/ext/security/cdap-ranger-binding-0.1.4.jar"
+        "security.authorization.extension.jar.path": "/opt/cdap/master/ext/security/cdap-ranger-binding-0.1.5.jar"
       }
     }
   },
