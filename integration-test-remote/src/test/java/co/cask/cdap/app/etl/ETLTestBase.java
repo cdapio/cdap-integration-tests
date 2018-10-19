@@ -94,6 +94,7 @@ public abstract class ETLTestBase extends AudiTestBase {
     // wait until we see extensions for cdap-data-pipeline and cdap-data-streams
     Tasks.waitFor(true, () -> {
       try {
+        // cdap-data-pipeline and cdap-data-streams are parent artifacts
         List<PluginSummary> plugins =
           artifactClient.getPluginSummaries(datapipelineId, BatchAggregator.PLUGIN_TYPE, ArtifactScope.SYSTEM);
         if (plugins.stream().noneMatch(pluginSummary -> "GroupByAggregate".equals(pluginSummary.getName()))) {
@@ -101,7 +102,7 @@ public abstract class ETLTestBase extends AudiTestBase {
         }
 
         plugins = artifactClient.getPluginSummaries(datapipelineId, BatchSink.PLUGIN_TYPE, ArtifactScope.SYSTEM);
-        if (plugins.stream().noneMatch(pluginSummary -> "HDFS".equals(pluginSummary.getName()))) {
+        if (plugins.stream().noneMatch(pluginSummary -> "File".equals(pluginSummary.getName()))) {
           return false;
         }
 
