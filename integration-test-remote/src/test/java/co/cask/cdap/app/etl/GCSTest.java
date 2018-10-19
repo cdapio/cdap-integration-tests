@@ -218,10 +218,11 @@ public class GCSTest extends ETLTestBase {
                                                    "referenceName", "gcs-input",
                                                    "path", createPath(bucket, INPUT_BLOB_NAME))));
 
-    ETLStage sink = new ETLStage("HdfsSinkStage", new ETLPlugin("HDFS",
+    ETLStage sink = new ETLStage("FileSinkStage", new ETLPlugin("File",
                                                          BatchSink.PLUGIN_TYPE,
                                                          ImmutableMap.of(
                                                            "path", createPath(bucket, OUTPUT_BLOB_NAME),
+                                                           "format", "delimited",
                                                            "referenceName", "gcs-output")));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
