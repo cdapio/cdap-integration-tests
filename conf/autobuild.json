@@ -4,17 +4,14 @@
       "git": {
         "local_user": "root",
         "repos": {
-          "cdap-navigator": {
-            "branch": "develop"
-          },
           "hydrator-plugins": {
-            "branch": "develop"
+            "branch": "release/2.1"
           },
           "mmds": {
-            "branch": "develop"
+            "branch": "release/1.1"
           },
           "dre": {
-            "branch": "develop"
+            "branch": "release/1.1"
           }
         }
       }
