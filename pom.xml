@@ -112,7 +112,7 @@
     </dependency>
     <dependency>
       <groupId>co.cask.cdap</groupId>
-      <artifactId>cdap-program-report2_2.11</artifactId>
+      <artifactId>cdap-program-report</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
