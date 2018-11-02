@@ -17,7 +17,6 @@
 package co.cask.cdap.app.etl.batch;
 
 import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.app.etl.dataset.DatasetAccessApp;
 import co.cask.cdap.app.etl.dataset.TPFSService;
 import co.cask.cdap.common.UnauthenticatedException;
@@ -35,6 +34,7 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.ETLTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.RequiresSpark;

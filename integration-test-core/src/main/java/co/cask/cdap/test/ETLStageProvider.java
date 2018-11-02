@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.app.etl;
+package co.cask.cdap.test;
 
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.etl.api.batch.BatchSource;

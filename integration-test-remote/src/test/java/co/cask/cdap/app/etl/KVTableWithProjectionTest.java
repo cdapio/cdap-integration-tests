@@ -28,6 +28,7 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.ETLTestBase;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.batch.source.KVTableSource;
 import co.cask.hydrator.plugin.common.Properties;

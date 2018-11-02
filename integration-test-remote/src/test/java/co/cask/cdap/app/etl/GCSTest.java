@@ -29,6 +29,7 @@ import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.ETLTestBase;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
 import com.google.api.gax.paging.Page;

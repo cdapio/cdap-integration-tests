@@ -16,6 +16,7 @@
 package co.cask.cdap.upgrade;
 
 import co.cask.cdap.api.artifact.ArtifactSummary;
+import co.cask.cdap.app.etl.batch.ETLMapReduceTest;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.common.NotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
@@ -37,6 +38,7 @@ public class ArtifactTest extends UpgradeTestBase {
   @Override
   protected void postStage() throws Exception {
     assertArtifacts();
+    new ETLMapReduceTest().testKVToKV();
   }
 
   private void assertArtifacts() throws NotFoundException, IOException, UnauthenticatedException {

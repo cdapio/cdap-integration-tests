@@ -14,7 +14,7 @@
  * the License.
  */
 
-package co.cask.cdap.app.etl;
+package co.cask.cdap.test;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.artifact.ArtifactSummary;
@@ -35,7 +35,6 @@ import co.cask.cdap.proto.ConfigEntry;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
-import co.cask.cdap.test.AudiTestBase;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -80,7 +79,7 @@ public abstract class ETLTestBase extends AudiTestBase {
   protected String version;
 
   @Before
-  public void setup() throws InterruptedException, ExecutionException, TimeoutException {
+  public void setup() throws InterruptedException, ExecutionException, TimeoutException, Exception {
     appClient = getApplicationClient();
     datasetClient = getDatasetClient();
     etlStageProvider = new ETLStageProvider();

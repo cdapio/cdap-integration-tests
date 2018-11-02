@@ -18,7 +18,6 @@ package co.cask.cdap.app.etl.batch;
 
 import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.FileSetProperties;
-import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.datapipeline.SmartWorkflow;
@@ -33,6 +32,7 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.ETLTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.SDKIncompatible;

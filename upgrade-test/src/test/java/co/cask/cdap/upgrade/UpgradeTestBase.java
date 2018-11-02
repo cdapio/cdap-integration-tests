@@ -16,7 +16,7 @@
 
 package co.cask.cdap.upgrade;
 
-import co.cask.cdap.test.AudiTestBase;
+import co.cask.cdap.test.ETLTestBase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Test base to test cdap functionality after an upgrade.
  */
-public abstract class UpgradeTestBase extends AudiTestBase {
+public abstract class UpgradeTestBase extends ETLTestBase {
   protected static final Logger LOG = LoggerFactory.getLogger(UpgradeTestBase.class);
   private static final String STAGE = System.getProperty("stage");
   private static final String PRE = "PRE";
@@ -36,9 +36,11 @@ public abstract class UpgradeTestBase extends AudiTestBase {
   protected abstract void postStage() throws Exception;
 
   @Before
-  public void setUp() throws Exception {
+  public void setup() throws Exception {
     // override super to avoid calls to assertUnrecoverableResetEnabled and assertIsClear
+    System.out.println("##################");
     checkSystemServices();
+    super.setup();
   }
 
   @After
