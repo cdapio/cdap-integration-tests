@@ -187,8 +187,8 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     // system metadata for stream check
     searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
                                    EntityTypeSimpleName.ALL);
-    // 3 = stream: purchaseStream + app: PurchaseHistory + view: purchaseStreamView
-    Assert.assertEquals(3, searchResults.size());
+    // 2 = stream: purchaseStream + view: purchaseStreamView
+    Assert.assertEquals(2, searchResults.size());
 
     // perform schema searches
     searchResults = filterNonPurchaseEntities(searchMetadata(TEST_NAMESPACE, "price",
