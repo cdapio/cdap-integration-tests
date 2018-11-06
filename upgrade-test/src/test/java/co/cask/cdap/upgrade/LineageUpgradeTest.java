@@ -61,6 +61,7 @@ public class LineageUpgradeTest extends UpgradeTestBase {
     PURCHASE_STREAM.getEntityName() + "View");
   private static final DatasetId HISTORY = LINEAGE_NAMESPACE.dataset("history");
   private static final DatasetId PURCHASES = LINEAGE_NAMESPACE.dataset("purchases");
+  private static final DatasetId FREQUENT_CUSTOMERS = LINEAGE_NAMESPACE.dataset("frequentCustomers");
 
   private static final String PURCHASE_VIEW_FIELD = "purchaseViewBody";
 
@@ -121,7 +122,8 @@ public class LineageUpgradeTest extends UpgradeTestBase {
       stopTime,
       new Lineage(ImmutableSet.of(
         new Relation(HISTORY, PURCHASE_HISTORY_BUILDER, AccessType.WRITE, runId),
-        new Relation(PURCHASES, PURCHASE_HISTORY_BUILDER, AccessType.READ, runId)
+        new Relation(PURCHASES, PURCHASE_HISTORY_BUILDER, AccessType.READ, runId),
+        new Relation(FREQUENT_CUSTOMERS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN, runId)
       )),
       Collections.<CollapseType>emptySet());
   }
