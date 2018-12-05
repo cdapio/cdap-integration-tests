@@ -16,8 +16,6 @@
 
 package co.cask.cdap.apps.metadata;
 
-import co.cask.cdap.api.data.format.FormatSpecification;
-import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.metadata.MetadataScope;
@@ -25,7 +23,6 @@ import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.LineageClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.ProgramClient;
-import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.metadata.MetadataRecord;
 import co.cask.cdap.common.utils.Tasks;
@@ -38,7 +35,6 @@ import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
@@ -46,7 +42,6 @@ import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
-import co.cask.cdap.proto.id.StreamViewId;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
@@ -489,45 +484,15 @@ public class PurchaseMetadataTest extends AudiTestBase {
   }
 
   private void assertDataEntitySearch() throws Exception {
-    StreamViewId view = PURCHASE_STREAM.view("view");
-
-    Set<MetadataSearchResultRecord> expected = ImmutableSet.of(
-      new MetadataSearchResultRecord(PURCHASE_STREAM)
-    );
-
-    // schema search with fieldname
-    Set<MetadataSearchResultRecord> result = searchMetadata(TEST_NAMESPACE, "body", null);
-    Assert.assertEquals(expected, result);
-
-    // schema search with fieldname and fieldtype
-    result = searchMetadata(TEST_NAMESPACE, "body:" + Schema.Type.STRING.toString(), null);
-    Assert.assertEquals(expected, result);
-
-    // schema search for partial fieldname
-    result = searchMetadata(TEST_NAMESPACE, "bo*", null);
-    Assert.assertEquals(expected, result);
-
-    // schema search with fieldname and all/partial fieldtype
-    result = searchMetadata(TEST_NAMESPACE, "body:STR*", null);
-    Assert.assertEquals(expected, result);
-
-    // create a view
-    Schema viewSchema = Schema.recordOf("record",
-                                        Schema.Field.of("viewBody", Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
-    StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(view, new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
-
     // search all entities that have a defined schema
     // add a user property with "schema" as key
     Map<String, String> datasetProperties = ImmutableMap.of("schema", "schemaValue");
     metadataClient.addProperties(HISTORY_DS, datasetProperties);
 
-    result = searchMetadata(TEST_NAMESPACE, "schema:*", null);
+    Set<MetadataSearchResultRecord> result = searchMetadata(TEST_NAMESPACE, "schema:*", null);
     Assert.assertEquals(ImmutableSet.<MetadataSearchResultRecord>builder()
-                          .add(new MetadataSearchResultRecord(PURCHASE_STREAM))
                           .add(new MetadataSearchResultRecord(HISTORY_DS))
                           .add(new MetadataSearchResultRecord(PURCHASES_DS))
-                          .add(new MetadataSearchResultRecord(view))
                           .build(),
                         result);
 
@@ -552,25 +517,6 @@ public class PurchaseMetadataTest extends AudiTestBase {
     result = searchMetadata(TEST_NAMESPACE, "type:*", null);
     Assert.assertEquals(expectedAllDatasets, result);
 
-    // search using ttl
-    result = searchMetadata(TEST_NAMESPACE, "ttl:*", null);
-    Assert.assertEquals(expected, result);
-
-    result = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(), null);
-    Assert.assertEquals(
-      ImmutableSet.of(new MetadataSearchResultRecord(PURCHASE_STREAM),
-                      new MetadataSearchResultRecord(view)
-      ),
-      result);
-
-    result = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
-                            EntityTypeSimpleName.STREAM);
-    Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(PURCHASE_STREAM)), result);
-    result = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
-                            EntityTypeSimpleName.VIEW);
-    Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(view)), result);
-    result = searchMetadata(TEST_NAMESPACE, "view", EntityTypeSimpleName.VIEW);
-    Assert.assertEquals(ImmutableSet.of(new MetadataSearchResultRecord(view)), result);
     result = searchMetadata(TEST_NAMESPACE, HISTORY_DS.getEntityName(), null);
     Assert.assertEquals(
       ImmutableSet.of(
