@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2018 Cask Data, Inc.
+ * Copyright © 2017-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,13 +14,14 @@
  * the License.
  */
 
-package co.cask.cdap.app.etl;
+package co.cask.cdap.app.etl.batch;
 
-import co.cask.cdap.api.data.format.Formats;
+import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.app.etl.dataset.DatasetAccessApp;
 import co.cask.cdap.app.etl.dataset.TPFSService;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.datapipeline.SmartWorkflow;
+import co.cask.cdap.etl.api.Engine;
 import co.cask.cdap.etl.api.Transform;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
@@ -30,22 +31,20 @@ import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
+import co.cask.cdap.test.suite.category.RequiresSpark;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
-import co.cask.hydrator.plugin.batch.sink.TimePartitionedFileSetDatasetAvroSink;
-import co.cask.hydrator.plugin.batch.source.StreamBatchSource;
-import co.cask.hydrator.plugin.batch.source.TimePartitionedFileSetDatasetAvroSource;
-import co.cask.hydrator.plugin.transform.ProjectionTransform;
+import co.cask.hydrator.plugin.common.Properties;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
 import java.net.URL;
@@ -53,35 +52,38 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Integration test which tests the following:
- * <ul>
- * <li>{@link StreamBatchSource}</li>
- * <li>{@link ProjectionTransform} : Drop</li>
- * <li>{@link TimePartitionedFileSetDatasetAvroSink}</li>
- * <li>{@link TimePartitionedFileSetDatasetAvroSource}</li>
+ * Tests functionalities of TPFS parquet sinks and sources
  */
-public class StreamTPFSWithProjectionTest extends ETLTestBase {
-
-  private static final String SOURCE_STREAM = "sourceStream";
+public class TPFSParquetSinkSourceTest extends ETLTestBase {
 
   @Test
-  public void testStreamTPFSWithProjection() throws Exception {
-    //1. create a source stream and send an event
-    StreamId sourceStreamId = TEST_NAMESPACE.stream(SOURCE_STREAM);
-    streamClient.create(sourceStreamId);
-    streamClient.sendEvent(sourceStreamId, DUMMY_STREAM_EVENT);
+  public void testMR() throws Exception {
+    testTPFSWithProjection(Engine.MAPREDUCE);
+  }
 
-    //2. Deploy an application with a service to get TPFS data for verification
+  @Category({
+    RequiresSpark.class
+  })
+  @Test
+  public void testSpark() throws Exception {
+    testTPFSWithProjection(Engine.SPARK);
+  }
+
+  private void testTPFSWithProjection(Engine engine) throws Exception {
+    // 1. Deploy an application with a service to get TPFS data for verification
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(TPFSService.class.getSimpleName());
     serviceManager.start();
     serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
+    // 2. Ingest Data
+    ingestData();
+
     // 3. Run Stream To TPFS with Projection Transform pipeline
-    ApplicationId streamToTPFSAppId = TEST_NAMESPACE.app("StreamToTPFSWithProjection");
-    ETLBatchConfig etlBatchConfig = constructStreamToTPFSConfig();
+    ApplicationId tableToTPFSAppId = TEST_NAMESPACE.app("DatasetToTPFSWithProjection");
+    ETLBatchConfig etlBatchConfig = constructTableToTPFSConfig(engine);
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlBatchConfig);
-    ApplicationManager appManager = getTestManager().deployApplication(streamToTPFSAppId, appRequest);
+    ApplicationManager appManager = deployApplication(tableToTPFSAppId, appRequest);
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
 
     long timeInMillis = System.currentTimeMillis();
@@ -90,7 +92,7 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
 
     // 4. Run TPFS to TPFS pipeline where the source is the sink from the above pipeline
     ApplicationId tpfsToTPFSAppId = TEST_NAMESPACE.app("TPFSToTPFSWithProjection");
-    etlBatchConfig = constructTPFSToTPFSConfig();
+    etlBatchConfig = constructTPFSToTPFSConfig(engine);
     appRequest = getBatchAppRequestV2(etlBatchConfig);
     appManager = getTestManager().deployApplication(tpfsToTPFSAppId, appRequest);
     workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -118,16 +120,20 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
       response, new TypeToken<List<IntegrationTestRecord>>() {
       }.getType()).getResponseObject();
     Assert.assertEquals("AAPL", responseObject.get(0).getTicker());
+
   }
 
-  private ETLBatchConfig constructStreamToTPFSConfig() {
-    ETLStage source = etlStageProvider.getStreamBatchSource(SOURCE_STREAM, "10m", "0d",
-                                                            Formats.CSV, DUMMY_STREAM_EVENT_SCHEMA, "|");
+  private ETLBatchConfig constructTableToTPFSConfig(Engine engine) {
+    ETLStage source = new ETLStage("TableSource",
+                                   new ETLPlugin("Table", BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Properties.BatchReadableWritable.NAME, SOURCE_DATASET,
+                                                                 Properties.Table.PROPERTY_SCHEMA,
+                                                                 DATASET_SCHEMA.toString()), null));
+
     ETLStage sink = new ETLStage("sink",
-                                 new ETLPlugin("TPFSAvro", BatchSink.PLUGIN_TYPE,
+                                 new ETLPlugin("TPFSParquet", BatchSink.PLUGIN_TYPE,
                                                ImmutableMap.of("schema", TPFSService.EVENT_SCHEMA.toString(),
-                                                               "name", TPFSService.TPFS_1),
-                                               null));
+                                                               "name", TPFSService.TPFS_1), null));
     ETLStage transform = new ETLStage("testTransform",
                                       new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
                                                     ImmutableMap.of("drop", "headers"), null));
@@ -137,26 +143,27 @@ public class StreamTPFSWithProjectionTest extends ETLTestBase {
       .addStage(transform)
       .addConnection(source.getName(), transform.getName())
       .addConnection(transform.getName(), sink.getName())
+      .setEngine(engine)
       .build();
   }
 
-  private ETLBatchConfig constructTPFSToTPFSConfig() {
+  private ETLBatchConfig constructTPFSToTPFSConfig(Engine engine) {
+
     ETLStage source = new ETLStage("source",
-                                   new ETLPlugin("TPFSAvro", BatchSource.PLUGIN_TYPE,
+                                   new ETLPlugin("TPFSParquet", BatchSource.PLUGIN_TYPE,
                                                  ImmutableMap.of("name", TPFSService.TPFS_1,
                                                                  "schema", TPFSService.EVENT_SCHEMA.toString(),
-                                                                 "duration", "20m"),
-                                                 null));
+                                                                 "duration", "1h"), null));
     ETLStage sink = new ETLStage("sink",
-                                 new ETLPlugin("TPFSAvro", BatchSink.PLUGIN_TYPE,
+                                 new ETLPlugin("TPFSParquet", BatchSink.PLUGIN_TYPE,
                                                ImmutableMap.of("name", TPFSService.TPFS_2,
-                                                               "schema", TPFSService.EVENT_SCHEMA.toString()),
-                                               null));
+                                                               "schema", TPFSService.EVENT_SCHEMA.toString()), null));
 
-    return ETLBatchConfig.builder("*/10 * * * *")
+    return ETLBatchConfig.builder("0 * * * *")
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
+      .setEngine(engine)
       .build();
   }
 

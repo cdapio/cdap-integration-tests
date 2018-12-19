@@ -18,7 +18,10 @@ package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.artifact.ArtifactSummary;
+import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.api.dataset.table.Put;
+import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
@@ -36,6 +39,7 @@ import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.test.AudiTestBase;
+import co.cask.cdap.test.DataSetManager;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
@@ -63,17 +67,16 @@ import javax.annotation.Nullable;
  * An abstract class for writing etl integration tests. Tests for etl should extend this class.
  */
 public abstract class ETLTestBase extends AudiTestBase {
-
-  protected static final String DUMMY_STREAM_EVENT = "AAPL|10|500.32";
-  protected static final Schema DUMMY_STREAM_EVENT_SCHEMA = Schema.recordOf(
+  protected static final String SOURCE_DATASET = "sourceDataset";
+  protected static final Schema DATASET_SCHEMA = Schema.recordOf(
     "event",
+    Schema.Field.of("ts", Schema.of(Schema.Type.LONG)),
     Schema.Field.of("ticker", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("num", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
   private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
 
   protected ETLStageProvider etlStageProvider;
-  protected StreamClient streamClient;
   protected ApplicationClient appClient;
   protected DatasetClient datasetClient;
   protected ArtifactClient artifactClient;
@@ -84,7 +87,6 @@ public abstract class ETLTestBase extends AudiTestBase {
     appClient = getApplicationClient();
     datasetClient = getDatasetClient();
     etlStageProvider = new ETLStageProvider();
-    streamClient = getStreamClient();
     artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
 
     version = getVersion();
@@ -189,5 +191,23 @@ public abstract class ETLTestBase extends AudiTestBase {
                       "Artifact-Version", version);
     response = getRestClient().execute(HttpMethod.GET, new URL(url), headers, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
+  }
+
+  protected void ingestData() throws Exception {
+    // write input data
+    DataSetManager<Table> datasetManager = getTableDataset(SOURCE_DATASET);
+    Table table = datasetManager.get();
+    // AAPL|10|500.32 with dummy timestamp
+    putValues(table, 1, 234, "AAPL", 10, 500.32);
+    datasetManager.flush();
+  }
+
+  private void putValues(Table table, int index, long ts, String ticker, int num, double price) {
+    Put put = new Put(Bytes.toBytes(index));
+    put.add("ts", ts);
+    put.add("ticker", ticker);
+    put.add("num", num);
+    put.add("price", price);
+    table.put(put);
   }
 }

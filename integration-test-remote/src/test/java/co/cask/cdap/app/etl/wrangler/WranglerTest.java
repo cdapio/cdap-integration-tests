@@ -20,7 +20,10 @@ package co.cask.cdap.app.etl.wrangler;
 import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.artifact.ArtifactSummary;
+import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
+import co.cask.cdap.api.dataset.table.Put;
+import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.app.etl.ETLTestBase;
 import co.cask.cdap.app.etl.dataset.DatasetAccessApp;
 import co.cask.cdap.app.etl.dataset.SnapshotFilesetService;
@@ -40,6 +43,7 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
+import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.RequiresSpark;
@@ -90,26 +94,18 @@ public class WranglerTest extends ETLTestBase {
   }
 
   private void testWrangler(Engine engine) throws Exception {
-    //create a source stream and then send an event
-    String streamName = "personal_info";
-    StreamId sourceStreamId = TEST_NAMESPACE.stream(streamName);
-    streamClient.create(sourceStreamId);
-    streamClient.sendEvent(sourceStreamId, "1,David,123 Everett St,94303,123-456-7890");
-    streamClient.sendEvent(sourceStreamId, "2,Albert,456 Everett St,94304,123-456-7880");
-    streamClient.sendEvent(sourceStreamId, "3,Daniel,789 Everett St,94305,123-456-7870");
-    streamClient.sendEvent(sourceStreamId, "4,Alex,000 Everett St,94306,123-456-7860");
-    streamClient.sendEvent(sourceStreamId, "5,Daniel,789 Everett St,94303,123-456-7870");
-
-    Schema streamSchema = Schema.recordOf("etlSchemaBody",
+    String datasetName = "personal_info";
+    ingestDataForWrangler(datasetName);
+    Schema datasetSchema = Schema.recordOf("etlSchemaBody",
                                           Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
 
-    ETLStage streamSourceStage =
-      new ETLStage("Stream",
-                   new ETLPlugin("Stream",
+    ETLStage tableSourceStage =
+      new ETLStage("Dataset",
+                   new ETLPlugin("Table",
                                  BatchSource.PLUGIN_TYPE,
-                                 ImmutableMap.of("schema", streamSchema.toString(),
+                                 ImmutableMap.of("schema", datasetSchema.toString(),
                                                  "format", "text",
-                                                 "name", streamName,
+                                                 "name", datasetName,
                                                  "duration", "1d"), null));
 
     Schema wranglerSchema = Schema.recordOf("etlSchemaBody",
@@ -153,11 +149,11 @@ public class WranglerTest extends ETLTestBase {
                                                                  "name", "SnapshotAvro"), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("0 * * * *")
-      .addStage(streamSourceStage)
+      .addStage(tableSourceStage)
       .addStage(wranglerTransformStage)
       .addStage(groupStage)
       .addStage(sinkStage)
-      .addConnection(streamSourceStage.getName(), wranglerTransformStage.getName())
+      .addConnection(tableSourceStage.getName(), wranglerTransformStage.getName())
       .addConnection(wranglerTransformStage.getName(), groupStage.getName())
       .addConnection(groupStage.getName(), sinkStage.getName())
       .setEngine(engine)
@@ -249,5 +245,23 @@ public class WranglerTest extends ETLTestBase {
       }
     }
     return records;
+  }
+
+  private void ingestDataForWrangler(String tableName) throws Exception {
+    // write input data
+    DataSetManager<Table> datasetManager = getTableDataset(tableName);
+    Table table = datasetManager.get();
+    putValues(table, 1, "1,David,123 Everett St,94303,123-456-7890");
+    putValues(table, 2, "2,Albert,456 Everett St,94304,123-456-7880");
+    putValues(table, 3, "3,Daniel,789 Everett St,94305,123-456-7870");
+    putValues(table, 4, "4,Alex,000 Everett St,94306,123-456-7860");
+    putValues(table, 5, "5,Daniel,789 Everett St,94303,123-456-7870");
+    datasetManager.flush();
+  }
+
+  private void putValues(Table table, int index, String body) {
+    Put put = new Put(Bytes.toBytes(index));
+    put.add("body", body);
+    table.put(put);
   }
 }

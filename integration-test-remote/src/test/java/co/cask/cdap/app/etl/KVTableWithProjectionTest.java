@@ -16,17 +16,16 @@
 
 package co.cask.cdap.app.etl;
 
-import co.cask.cdap.api.data.format.Formats;
 import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.Transform;
 import co.cask.cdap.etl.api.batch.BatchSink;
+import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
-import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.hydrator.plugin.batch.source.KVTableSource;
@@ -43,21 +42,21 @@ import java.util.concurrent.TimeUnit;
  */
 public class KVTableWithProjectionTest extends ETLTestBase {
 
-  private static final String SOURCE_STREAM = "sourceStream";
   private static final String KVTABLE_NAME = "kvtable1";
 
   @Test
   public void testKVTableWithProjection() throws Exception {
-    //1. create a source stream and send an event
-    StreamId sourceStreamId = TEST_NAMESPACE.stream(SOURCE_STREAM);
-    streamClient.create(sourceStreamId);
-    streamClient.sendEvent(sourceStreamId, DUMMY_STREAM_EVENT);
+    // 1. Ingest data
+    ingestData();
 
     // 2. Run Stream To KVTable with Projection Transform plugin
-    ApplicationId appId = TEST_NAMESPACE.app("StreamToKVTableWithProjection");
+    ApplicationId appId = TEST_NAMESPACE.app("TableToKVTableWithProjection");
 
-    ETLStage source = etlStageProvider.getStreamBatchSource(SOURCE_STREAM, "10m", "0d", Formats.CSV,
-                                                            DUMMY_STREAM_EVENT_SCHEMA, "|");
+    ETLStage source = new ETLStage("TableSource",
+                                   new ETLPlugin("Table", BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(Properties.BatchReadableWritable.NAME, SOURCE_DATASET,
+                                                                 Properties.Table.PROPERTY_SCHEMA,
+                                                                 DATASET_SCHEMA.toString()), null));
     ETLStage sink = new ETLStage("sink",
                                  new ETLPlugin("KVTable", BatchSink.PLUGIN_TYPE,
                                                ImmutableMap.of("name", KVTABLE_NAME,
