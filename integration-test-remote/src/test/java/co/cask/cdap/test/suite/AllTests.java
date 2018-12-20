@@ -47,13 +47,9 @@ import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.ProgramMetadataTest;
-import co.cask.cdap.apps.metadata.PurchaseMetadataTest;
 import co.cask.cdap.apps.purchase.PurchaseAudiTest;
-import co.cask.cdap.apps.report.ReportGenerationAppTest;
-import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
 import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
 import co.cask.cdap.apps.wordcount.WordCountTest;
-import co.cask.cdap.apps.workflow.WorkflowTest;
 import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
@@ -92,7 +88,6 @@ import org.junit.runners.Suite;
   PermissionTest.class,
   ProgramMetadataTest.class,
   PurchaseAudiTest.class,
-  PurchaseMetadataTest.class,
   ReadlessIncrementTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
