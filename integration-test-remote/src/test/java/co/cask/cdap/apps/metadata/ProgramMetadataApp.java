@@ -25,6 +25,7 @@ import co.cask.cdap.api.metadata.Metadata;
 import co.cask.cdap.api.metadata.MetadataEntity;
 import co.cask.cdap.api.metadata.MetadataScope;
 import co.cask.cdap.test.Tasks;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Assert;
 
@@ -41,9 +42,12 @@ import java.util.concurrent.TimeoutException;
  */
 public class ProgramMetadataApp extends AbstractApplication {
 
+  @VisibleForTesting
   static final String APP_NAME = "AppWithMetadataPrograms";
-  private static final String INPUT_DATASET = "inputDataset";
-  private static final String OUTPUT_DATASET = "outputDataset";
+  @VisibleForTesting
+  static final String INPUT_DATASET_NAME = "inputDataset";
+  @VisibleForTesting
+  static final String OUTPUT_DATASET_NAME = "outputDataset";
 
 
   @Override
@@ -52,8 +56,8 @@ public class ProgramMetadataApp extends AbstractApplication {
     addMapReduce(new MetadataMR());
     // TODO: Add more programs here which uses metadata
     // dummy datasets for metadata association
-    createDataset(INPUT_DATASET, KeyValueTable.class);
-    createDataset(OUTPUT_DATASET, KeyValueTable.class);
+    createDataset(INPUT_DATASET_NAME, KeyValueTable.class);
+    createDataset(OUTPUT_DATASET_NAME, KeyValueTable.class);
   }
 
   public static class MetadataMR extends AbstractMapReduce {
@@ -69,27 +73,27 @@ public class ProgramMetadataApp extends AbstractApplication {
     @Override
     public void initialize() throws Exception {
       MapReduceContext context = getContext();
-      context.addInput(Input.ofDataset(INPUT_DATASET));
-      context.addOutput(Output.ofDataset(OUTPUT_DATASET));
+      context.addInput(Input.ofDataset(INPUT_DATASET_NAME));
+      context.addOutput(Output.ofDataset(OUTPUT_DATASET_NAME));
 
       // add some tag
       Set<String> tagsToAdd = new HashSet<>(Arrays.asList("tag1", "tag2"));
-      addTag(context, INPUT_DATASET, tagsToAdd);
-      addTag(context, OUTPUT_DATASET, tagsToAdd);
+      addTag(context, INPUT_DATASET_NAME, tagsToAdd);
+      addTag(context, OUTPUT_DATASET_NAME, tagsToAdd);
 
       // add some properties
       Map<String, String> propertiesToAdd = ImmutableMap.of("k1", "v1", "k2", "v2");
-      addProperties(context, INPUT_DATASET, propertiesToAdd);
+      addProperties(context, INPUT_DATASET_NAME, propertiesToAdd);
 
       Map<MetadataScope, Metadata> inputDsMetadata =
-        context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), INPUT_DATASET));
+        context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), INPUT_DATASET_NAME));
       // verify system metadata
       Assert.assertTrue(inputDsMetadata.containsKey(MetadataScope.SYSTEM));
       Assert.assertTrue(inputDsMetadata.containsKey(MetadataScope.USER));
       Assert.assertFalse(inputDsMetadata.get(MetadataScope.SYSTEM).getProperties().isEmpty());
       Assert.assertFalse(inputDsMetadata.get(MetadataScope.SYSTEM).getTags().isEmpty());
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.SYSTEM).getProperties().containsKey("entity-name"));
-      Assert.assertEquals(INPUT_DATASET,
+      Assert.assertEquals(INPUT_DATASET_NAME,
                           inputDsMetadata.get(MetadataScope.SYSTEM).getProperties().get("entity-name"));
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.SYSTEM).getTags()
                           .containsAll(Arrays.asList("explore", "batch")));
@@ -104,19 +108,19 @@ public class ProgramMetadataApp extends AbstractApplication {
 
       // verify output dataset only have user tag and not properties
       Map<MetadataScope, Metadata> outputDsMetadata =
-        context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), OUTPUT_DATASET));
+        context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), OUTPUT_DATASET_NAME));
       Assert.assertTrue(outputDsMetadata.get(MetadataScope.USER).getProperties().isEmpty());
       Assert.assertFalse(outputDsMetadata.get(MetadataScope.USER).getTags().isEmpty());
       Assert.assertTrue(outputDsMetadata.get(MetadataScope.USER).getTags().containsAll(Arrays.asList("tag1", "tag2")));
 
       // delete a tag
-      removeTag(context, INPUT_DATASET, "tag1");
+      removeTag(context, INPUT_DATASET_NAME, "tag1");
 
       // delete a property
-      removeProperty(context, INPUT_DATASET, "k1");
+      removeProperty(context, INPUT_DATASET_NAME, "k1");
 
       // get metadata and verify
-      inputDsMetadata = context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), INPUT_DATASET));
+      inputDsMetadata = context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), INPUT_DATASET_NAME));
       Assert.assertEquals(1, inputDsMetadata.get(MetadataScope.USER).getTags().size());
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.USER).getTags().contains("tag2"));
       Assert.assertEquals(1, inputDsMetadata.get(MetadataScope.USER).getProperties().size());
@@ -124,18 +128,18 @@ public class ProgramMetadataApp extends AbstractApplication {
       Assert.assertEquals("v2", inputDsMetadata.get(MetadataScope.USER).getProperties().get("k2"));
 
       // remove all properties and tags
-      removeProperties(context, INPUT_DATASET);
-      removeTags(context, INPUT_DATASET);
+      removeProperties(context, INPUT_DATASET_NAME);
+      removeTags(context, INPUT_DATASET_NAME);
 
       // get metadata and verify
-      inputDsMetadata = context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), INPUT_DATASET));
+      inputDsMetadata = context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), INPUT_DATASET_NAME));
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.USER).getTags().isEmpty());
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.USER).getProperties().isEmpty());
 
       // remove all metadata from output dataset
-      removeAllMetadata(context, OUTPUT_DATASET);
+      removeAllMetadata(context, OUTPUT_DATASET_NAME);
       // get metadata and verify
-      inputDsMetadata = context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), OUTPUT_DATASET));
+      inputDsMetadata = context.getMetadata(MetadataEntity.ofDataset(getContext().getNamespace(), OUTPUT_DATASET_NAME));
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.USER).getTags().isEmpty());
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.USER).getProperties().isEmpty());
     }

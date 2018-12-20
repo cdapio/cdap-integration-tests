@@ -33,6 +33,8 @@ To run integration tests against a remote CDAP instance, execute::
 
 Note that the CDAP instance against which the integration tests are run must have unrecoverable reset enabled.
 
+Also note that if -DinstanceUri is not specified, then it will connect to the default host and port.
+
 To run integration tests against an automatically instantiated CDAP Standalone instance, execute::
 
   mvn clean test -P standalone-test
