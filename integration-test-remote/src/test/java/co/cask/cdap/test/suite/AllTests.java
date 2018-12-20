@@ -17,7 +17,7 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.app.etl.KVTableWithProjectionTest;
-import co.cask.cdap.app.etl.StreamTPFSWithProjectionTest;
+import co.cask.cdap.app.etl.TPFSAvroSinkSourceTest;
 import co.cask.cdap.app.etl.batch.BatchAggregatorTest;
 import co.cask.cdap.app.etl.batch.BatchCubeSinkTest;
 import co.cask.cdap.app.etl.batch.BatchJoinerTest;
@@ -26,7 +26,7 @@ import co.cask.cdap.app.etl.batch.ExcelInputReaderTest;
 import co.cask.cdap.app.etl.batch.HivePluginTest;
 import co.cask.cdap.app.etl.batch.NormalizeTest;
 import co.cask.cdap.app.etl.batch.RowDenormalizerTest;
-import co.cask.cdap.app.etl.batch.TPFSSinkSourceTest;
+import co.cask.cdap.app.etl.batch.TPFSParquetSinkSourceTest;
 import co.cask.cdap.app.etl.batch.ValueMapperTest;
 import co.cask.cdap.app.etl.batch.XMLReaderTest;
 import co.cask.cdap.app.etl.realtime.DataStreamsTest;
@@ -47,9 +47,7 @@ import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.ProgramMetadataTest;
-import co.cask.cdap.apps.purchase.PurchaseAudiTest;
 import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
-import co.cask.cdap.apps.wordcount.WordCountTest;
 import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
@@ -87,7 +85,6 @@ import org.junit.runners.Suite;
   PartitionedFileSetUpdateTest.class,
   PermissionTest.class,
   ProgramMetadataTest.class,
-  PurchaseAudiTest.class,
   ReadlessIncrementTest.class,
   RemoteCubeTest.class,
   RemoteKeyValueTest.class,
@@ -95,11 +92,10 @@ import org.junit.runners.Suite;
   RowDenormalizerTest.class,
   ServiceWorkerTest.class,
   StreamTest.class,
-  StreamTPFSWithProjectionTest.class,
-  TPFSSinkSourceTest.class,
+  TPFSAvroSinkSourceTest.class,
+  TPFSParquetSinkSourceTest.class,
   TransactionTimeoutTest.class,
   ValueMapperTest.class,
-  WordCountTest.class,
   WranglerServiceTest.class,
   WranglerTest.class,
   XMLReaderTest.class
