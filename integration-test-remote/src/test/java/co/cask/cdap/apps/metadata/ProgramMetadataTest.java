@@ -21,7 +21,7 @@ import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.data2.metadata.dataset.MetadataDataset;
+import co.cask.cdap.data2.metadata.MetadataConstants;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
 import co.cask.cdap.data2.metadata.lineage.Lineage;
 import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
@@ -157,7 +157,7 @@ public class ProgramMetadataTest extends AudiTestBase {
     Assert.assertEquals(
       expected,
       searchMetadata(TEST_NAMESPACE,
-                     ProgramType.MAPREDUCE.getPrettyName() + MetadataDataset.KEYVALUE_SEPARATOR + "*",
+                     ProgramType.MAPREDUCE.getPrettyName() + MetadataConstants.KEYVALUE_SEPARATOR + "*",
                      EntityTypeSimpleName.APP));
   }
 
