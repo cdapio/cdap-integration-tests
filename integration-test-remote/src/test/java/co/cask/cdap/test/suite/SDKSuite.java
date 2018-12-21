@@ -16,6 +16,7 @@
 
 package co.cask.cdap.test.suite;
 
+import co.cask.cdap.app.etl.preview.PreviewDataPipelineTest;
 import co.cask.cdap.test.suite.category.SDKIncompatible;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
@@ -27,7 +28,8 @@ import org.junit.runners.Suite;
 @RunWith(Categories.class)
 @Categories.ExcludeCategory(SDKIncompatible.class)
 @Suite.SuiteClasses({
-  AllTests.class
+  AllTests.class,
+  PreviewDataPipelineTest.class
 })
 public class SDKSuite {
 }

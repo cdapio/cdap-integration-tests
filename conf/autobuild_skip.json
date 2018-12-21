@@ -1,0 +1,7 @@
+{
+  "config": {
+    "cdap_auto": {
+      "skip_build": "true"
+    }
+  }
+}
