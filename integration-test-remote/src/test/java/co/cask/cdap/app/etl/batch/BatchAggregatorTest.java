@@ -103,14 +103,14 @@ public class BatchAggregatorTest extends ETLTestBase {
     ETLStage userSinkStage =
       new ETLStage("users", new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
                                           ImmutableMap.<String, String>builder()
-                                            .put(Properties.SnapshotFileSetSink.NAME, USER_SINK)
+                                            .put(Properties.BatchReadableWritable.NAME, USER_SINK)
                                             .put("schema", USER_SCHEMA.toString())
                                             .build(), null));
 
     ETLStage itemSinkStage =
       new ETLStage("items", new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
                                           ImmutableMap.<String, String>builder()
-                                            .put(Properties.SnapshotFileSetSink.NAME, ITEM_SINK)
+                                            .put(Properties.BatchReadableWritable.NAME, ITEM_SINK)
                                             .put("schema", ITEM_SCHEMA.toString())
                                             .build(), null));
 
