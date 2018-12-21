@@ -20,7 +20,6 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.common.UnauthenticatedException;
-import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryResult;

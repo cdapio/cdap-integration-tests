@@ -18,43 +18,35 @@ package co.cask.cdap.security;
 
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Get;
 import co.cask.cdap.api.dataset.table.Increment;
 import co.cask.cdap.api.dataset.table.Put;
 import co.cask.cdap.api.schedule.SchedulableProgramType;
 import co.cask.cdap.api.workflow.ScheduleProgramInfo;
-import co.cask.cdap.client.QueryClient;
+import co.cask.cdap.apps.wikipedia.WikipediaPipelineApp;
+import co.cask.cdap.apps.wikipedia.WikipediaPipelineWorkflow;
 import co.cask.cdap.client.ScheduleClient;
-import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.examples.helloworld.HelloWorld;
-import co.cask.cdap.examples.purchase.PurchaseApp;
-import co.cask.cdap.examples.purchase.PurchaseHistoryStore;
-import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProtoConstraint;
 import co.cask.cdap.proto.ProtoTrigger;
-import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.ScheduleDetail;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.EntityId;
-import co.cask.cdap.proto.id.FlowId;
 import co.cask.cdap.proto.id.KerberosPrincipalId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ScheduleId;
-import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.remote.dataset.AbstractDatasetApp;
 import co.cask.cdap.remote.dataset.table.TableDatasetApp;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.FlowManager;
-import co.cask.cdap.test.ProgramManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.TestManager;
 import co.cask.cdap.test.WorkflowManager;
@@ -68,7 +60,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.URL;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -98,170 +89,43 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
   protected String appOwner = null;
 
   /**
-   * Test anyone has EXECUTE privilege will be able to start the flow, and test stream exploration after that
-   */
-  @Test
-  public void testRunningFlowAndExploreStreams() throws Exception {
-    ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
-    RESTClient adminClient = new RESTClient(adminConfig);
-    adminClient.addListener(createRestClientListener());
-
-    NamespaceId namespaceId = testNamespace.getNamespaceId();
-    ApplicationId appId = namespaceId.app(HelloWorld.class.getSimpleName());
-    FlowId whoFlow = appId.flow("WhoFlow");
-    StreamId streamId = namespaceId.stream("who");
-    String streamName = "who";
-
-    // pre-grant all required privileges
-    // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
-    ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(namespaceId, EnumSet.of(Action.ADMIN));
-
-    // Privileges needed to create datasets and streams
-    Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(namespaceId.dataset("whom"), EnumSet.of(Action.ADMIN))
-      .put(streamId, EnumSet.of(Action.ADMIN))
-      .build();
-
-    // alice will be able to create the HelloWorld app
-    ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(appId, EnumSet.of(Action.ADMIN))
-      // use some random artifact version to test version is not enforced
-      .put(namespaceId.artifact(HelloWorld.class.getSimpleName(),
-                                String.format("1.0.0-SNAPSHOT-%d", System.currentTimeMillis())),
-           EnumSet.of(Action.ADMIN));
-
-    String namespacePrincipal = testNamespace.getConfig().getPrincipal();
-    String appEffectiveOwner = appOwner == null ? namespacePrincipal : appOwner;
-    if (namespacePrincipal != null) {
-      // this is needed to create an impersonated namespace
-      adminPrivileges.put(new KerberosPrincipalId(namespacePrincipal), EnumSet.of(Action.ADMIN));
-    }
-    if (appEffectiveOwner != null) {
-      // this is needed to create an impersonated app
-      appDeployPrivileges.put(new KerberosPrincipalId(appEffectiveOwner), EnumSet.of(Action.ADMIN));
-      // if impersonation is involved, impersonated user will be responsible to create the dataset
-      setUpPrivileges(appEffectiveOwner, dsStreamCreationPrivileges);
-    } else {
-      // else the requesting user will need the privileges
-      appDeployPrivileges.putAll(dsStreamCreationPrivileges);
-    }
-    setUpPrivileges(ADMIN_USER, adminPrivileges.build());
-    setUpPrivileges(ALICE, appDeployPrivileges.build());
-
-    // grant alice and bob execute privilege to run the flow
-    authorizationTestClient.grant(ALICE, whoFlow, Action.EXECUTE);
-    authorizationTestClient.grant(BOB, whoFlow, Action.EXECUTE);
-    // let bob be able to get the app and program info
-    authorizationTestClient.grant(BOB, appId, Action.ADMIN);
-    authorizationTestClient.grant(BOB, whoFlow, Action.ADMIN);
-    // grant bob WRITE privilege to the stream so he can write to the stream
-    authorizationTestClient.grant(BOB, streamId, Action.WRITE);
-    // this is needed to run first query, since it does not start a MR job
-    authorizationTestClient.grant(BOB, streamId, Action.READ);
-    // for the second query which will start a MR job, we will grant CDAP or ns owner READ privilege,
-    // note that we don't run the query as the application owner, since we can access multiple dataset or stream in a
-    // query, and they can belong to different applications
-    if (namespacePrincipal == null) {
-      // if no impersonation is involved, the cdap user will be running the MR job and read from the stream
-      authorizationTestClient.grant(CDAP_USER, streamId, Action.READ);
-    } else {
-      // if impersonation is involved, the namespace owner will be runnign the MR job and read from the stream
-      authorizationTestClient.grant(namespacePrincipal, streamId, Action.READ);
-    }
-    authorizationTestClient.waitForAuthzCacheTimeout();
-
-    createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
-    ClientConfig aliceConfig = getClientConfig(fetchAccessToken(ALICE, ALICE + PASSWORD_SUFFIX));
-    RESTClient aliceClient = new RESTClient(aliceConfig);
-    aliceClient.addListener(createRestClientListener());
-
-    TestManager testManager = getTestManager(aliceConfig, aliceClient);
-    testManager.addAppArtifact(namespaceId.artifact(HelloWorld.class.getSimpleName(), "1.0.0"), HelloWorld.class);
-    ArtifactSummary appArtifactSummary = new ArtifactSummary(HelloWorld.class.getSimpleName(), "1.0.0");
-    ApplicationManager appManager =
-      testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
-    FlowManager flowAliceManager = appManager.getFlowManager("WhoFlow");
-    startAndKillProgram(flowAliceManager, 1);
-
-    ClientConfig bobConfig = getClientConfig(fetchAccessToken(BOB, BOB + PASSWORD_SUFFIX));
-    RESTClient bobClient = new RESTClient(bobConfig);
-    bobClient.addListener(createRestClientListener());
-
-    FlowManager flowBobManager =
-      getTestManager(bobConfig, bobClient).getApplicationManager(appId).getFlowManager("WhoFlow");
-    startAndKillProgram(flowBobManager, 2);
-
-    StreamClient bobStreamClient = new StreamClient(bobConfig, bobClient);
-    for (int i = 0; i < 5; i++) {
-      bobStreamClient.sendEvent(streamId, String.format("event %s", i));
-    }
-
-    QueryClient bobQueryClient = new QueryClient(bobConfig);
-
-    // start a query without provisioning a container
-    ExploreExecutionResult result =
-      bobQueryClient.execute(testNamespace.getNamespaceId(),
-                               String.format("SELECT * FROM cdap_%s.stream_%s LIMIT 500",
-                                             testNamespace.getName(), streamName.toLowerCase())).get();
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
-
-    int count = 0;
-    while (result.hasNext()) {
-      List<Object> event = result.next().getColumns();
-      Assert.assertEquals(String.format("event %s", count), event.get(2));
-      count++;
-    }
-    Assert.assertEquals(count, 5);
-
-    // start a query which will provision a mapreduce job
-    result = bobQueryClient.execute(testNamespace.getNamespaceId(),
-                                      String.format("SELECT count(*) FROM cdap_%s.stream_%s",
-                                                    testNamespace.getName(), streamName.toLowerCase())).get();
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, result.getStatus().getStatus());
-    Assert.assertEquals(5L, result.next().getColumns().get(0));
-  }
-
-  /**
    * Test deploy app under authorization.
    */
   @Test
   public void testDeployApp() throws Exception {
-
     ClientConfig adminConfig = getClientConfig(fetchAccessToken(ADMIN_USER, ADMIN_USER));
     RESTClient adminClient = new RESTClient(adminConfig);
     adminClient.addListener(createRestClientListener());
 
     NamespaceId namespaceId = testNamespace.getNamespaceId();
-    ApplicationId appId = namespaceId.app(PurchaseApp.APP_NAME);
+    ApplicationId appId = namespaceId.app(WikipediaPipelineApp.WIKIPEDIA_APP_NAME);
 
     // pre-grant all required privileges
     // admin user will be able to create namespace and retrieve the status of programs(needed for teardown)
-    String workflowName = "PurchaseHistoryWorkflow";
+    String workflowName = WikipediaPipelineWorkflow.NAME;
     ImmutableMap.Builder<EntityId, Set<Action>> adminPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(namespaceId, EnumSet.of(Action.ADMIN));
 
-    // Privileges needed to create datasets and streams
+    // Privileges needed to create datasets
     Map<EntityId, Set<Action>> dsStreamCreationPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(namespaceId.dataset("frequentCustomers"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.stream("purchaseStream"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.dataset("userProfiles"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.dataset("history"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.dataset("purchases"), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.datasetModule(PurchaseHistoryStore.class.getName()), EnumSet.of(Action.ADMIN))
-      .put(namespaceId.datasetType(PurchaseHistoryStore.class.getName()), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset(WikipediaPipelineApp.NORMALIZED_WIKIPEDIA_DATASET), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset(WikipediaPipelineApp.SPARK_CLUSTERING_OUTPUT_DATASET), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset(WikipediaPipelineApp.PAGE_TITLES_DATASET), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.dataset(WikipediaPipelineApp.RAW_WIKIPEDIA_DATASET), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.datasetModule(KeyValueTable.class.getName()), EnumSet.of(Action.ADMIN))
+      .put(namespaceId.datasetType(KeyValueTable.class.getName()), EnumSet.of(Action.ADMIN))
       .build();
 
     Map<EntityId, Set<Action>> dsStreamReadWritePrvileges = ImmutableMap.<EntityId, Set<Action>>builder()
-      .put(namespaceId.dataset("history"), EnumSet.of(Action.WRITE))
-      .put(namespaceId.dataset("purchases"), EnumSet.of(Action.READ))
+      .put(namespaceId.dataset(WikipediaPipelineApp.PAGE_TITLES_DATASET), EnumSet.of(Action.WRITE))
+      .put(namespaceId.dataset(WikipediaPipelineApp.RAW_WIKIPEDIA_DATASET), EnumSet.of(Action.READ))
       .build();
 
-    // carol will be able to deploy the purchase app
+    // carol will be able to deploy the wikipedia app
     ImmutableMap.Builder<EntityId, Set<Action>> appDeployPrivileges = ImmutableMap.<EntityId, Set<Action>>builder()
       .put(appId, EnumSet.of(Action.ADMIN))
       // use some random artifact version to test version is not enforced
-      .put(namespaceId.artifact(PurchaseApp.class.getSimpleName(),
+      .put(namespaceId.artifact(WikipediaPipelineApp.class.getSimpleName(),
                                 String.format("1.0.0-SNAPSHOT-%d", System.currentTimeMillis())),
            EnumSet.of(Action.ADMIN));
     String namespacePrincipal = testNamespace.getConfig().getPrincipal();
@@ -291,6 +155,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     authorizationTestClient.grant(ALICE, appId, Action.ADMIN);
     authorizationTestClient.waitForAuthzCacheTimeout();
 
+
     createAndRegisterNamespace(testNamespace, adminConfig, adminClient);
 
     ClientConfig carolConfig = getClientConfig(fetchAccessToken(CAROL, CAROL + PASSWORD_SUFFIX));
@@ -298,14 +163,15 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     carolClient.addListener(createRestClientListener());
 
     TestManager testManager = getTestManager(carolConfig, carolClient);
-    testManager.addAppArtifact(namespaceId.artifact(PurchaseApp.class.getSimpleName(), "1.0.0"), PurchaseApp.class);
-    ArtifactSummary appArtifactSummary = new ArtifactSummary(PurchaseApp.class.getSimpleName(), "1.0.0");
+    testManager.addAppArtifact(
+      namespaceId.artifact(WikipediaPipelineApp.class.getSimpleName(), "1.0.0"), WikipediaPipelineApp.class);
+    ArtifactSummary appArtifactSummary = new ArtifactSummary(WikipediaPipelineApp.class.getSimpleName(), "1.0.0");
     ApplicationManager appManager =
       testManager.deployApplication(appId, new AppRequest<>(appArtifactSummary, null, appOwner));
 
     // carol should not able to start the program since he does not have execute privilege on program
     try {
-      appManager.startProgram(appId.flow("PurchaseFlow"));
+      appManager.startProgram(appId.mr(WikipediaPipelineApp.MAPREDUCE_TOPN_OUTPUT));
       Assert.fail();
     } catch (UnauthorizedException e) {
       // expected
@@ -368,7 +234,7 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     carolClient.addListener(createRestClientListener());
 
     try {
-      getTestManager(carolConfig, carolClient).deployApplication(namespaceId, PurchaseApp.class);
+      getTestManager(carolConfig, carolClient).deployApplication(namespaceId, WikipediaPipelineApp.class);
       Assert.fail();
     } catch (Exception ex) {
       // expected
@@ -604,12 +470,5 @@ public class BasicAppAuthorizationTest extends AuthorizationTestBase {
     return client.execute(
       HttpRequest.post(serviceURL.toURI().resolve(path).toURL()).withBody(jsonString).build(),
       config.getAccessToken());
-  }
-
-  private void startAndKillProgram(ProgramManager programManager, int runs) throws Exception {
-    programManager.start();
-    programManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    programManager.stop();
-    programManager.waitForRuns(ProgramRunStatus.KILLED, runs, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 }

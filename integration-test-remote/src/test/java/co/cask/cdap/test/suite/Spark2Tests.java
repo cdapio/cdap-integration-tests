@@ -16,7 +16,6 @@
 
 package co.cask.cdap.test.suite;
 
-import co.cask.cdap.apps.spark.sparkpagerank.SparkPageRankAppTest;
 import co.cask.cdap.apps.workflow.WorkflowTest;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
@@ -27,7 +26,6 @@ import org.junit.runners.Suite;
  */
 @RunWith(Categories.class)
 @Suite.SuiteClasses({
-  SparkPageRankAppTest.class,
   WorkflowTest.class,
 })
 public class Spark2Tests {

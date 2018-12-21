@@ -18,10 +18,10 @@ package co.cask.cdap.apps.workflow;
 
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.workflow.WorkflowToken;
+import co.cask.cdap.apps.wikipedia.TestData;
 import co.cask.cdap.common.NotFoundException;
 import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.examples.wikipedia.SparkWikipediaClustering;
-import co.cask.cdap.examples.wikipedia.TestData;
 import co.cask.cdap.examples.wikipedia.TopNMapReduce;
 import co.cask.cdap.examples.wikipedia.WikiContentValidatorAndNormalizer;
 import co.cask.cdap.examples.wikipedia.WikipediaPipelineApp;

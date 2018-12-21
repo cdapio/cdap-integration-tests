@@ -17,11 +17,11 @@
 package co.cask.cdap.security;
 
 import co.cask.cdap.api.artifact.ArtifactSummary;
+import co.cask.cdap.apps.wikipedia.TestData;
+import co.cask.cdap.apps.wikipedia.WikipediaPipelineTestApp;
+import co.cask.cdap.apps.wikipedia.WikipediaPipelineWorkflow;
+import co.cask.cdap.apps.wikipedia.WikipediaService;
 import co.cask.cdap.client.NamespaceClient;
-import co.cask.cdap.examples.wikipedia.TestData;
-import co.cask.cdap.examples.wikipedia.WikipediaPipelineTestApp;
-import co.cask.cdap.examples.wikipedia.WikipediaPipelineWorkflow;
-import co.cask.cdap.examples.wikipedia.WikipediaService;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;

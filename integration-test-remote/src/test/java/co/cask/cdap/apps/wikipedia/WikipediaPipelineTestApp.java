@@ -13,10 +13,9 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package co.cask.cdap.examples.wikipedia;
+package co.cask.cdap.apps.wikipedia;
 
 import co.cask.cdap.api.app.AbstractApplication;
-import co.cask.cdap.api.data.stream.Stream;
 import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Table;
@@ -30,10 +29,7 @@ public final class WikipediaPipelineTestApp
   extends AbstractApplication<WikipediaPipelineTestApp.WikipediaTestAppConfig> {
   @Override
   public void configure() {
-    // At least one program is required for an application to be deployed
-    addMapReduce(new StreamToDataset(WikipediaPipelineApp.LIKES_TO_DATASET_MR_NAME));
     if (getConfig().createPrograms) {
-      addMapReduce(new StreamToDataset(WikipediaPipelineApp.WIKIPEDIA_TO_DATASET_MR_NAME));
       addMapReduce(new WikipediaDataDownloader());
       addMapReduce(new WikiContentValidatorAndNormalizer());
       addMapReduce(new TopNMapReduce());
@@ -42,8 +38,6 @@ public final class WikipediaPipelineTestApp
       addService(new WikipediaService());
     }
     if (getConfig().createDatasets) {
-      addStream(new Stream(WikipediaPipelineApp.PAGE_TITLES_STREAM));
-      addStream(new Stream(WikipediaPipelineApp.RAW_WIKIPEDIA_STREAM));
       createDataset(WikipediaPipelineApp.PAGE_TITLES_DATASET, KeyValueTable.class,
                     DatasetProperties.builder().setDescription("Page titles dataset").build());
       createDataset(WikipediaPipelineApp.RAW_WIKIPEDIA_DATASET, KeyValueTable.class,
