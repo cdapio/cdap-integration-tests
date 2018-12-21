@@ -41,6 +41,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
   public void testSearchETLArtifactsWithSystemMetadata() throws Exception {
     MetadataClient metadataClient = new MetadataClient(getClientConfig(), getRestClient());
     String version = getMetaClient().getVersion().getVersion();
+
     ArtifactId batchId = NamespaceId.SYSTEM.artifact("cdap-data-pipeline", version);
     Set<MetadataSearchResultRecord> expected = ImmutableSet.of(new MetadataSearchResultRecord(batchId));
     Set<MetadataSearchResultRecord> result =
@@ -48,12 +49,14 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     Assert.assertEquals(expected, result);
     result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-data-p*", EntityTypeSimpleName.ARTIFACT);
     Assert.assertEquals(expected, result);
+
     ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
     List<ArtifactSummary> allCorePlugins = artifactClient.listVersions(TEST_NAMESPACE, "core-plugins",
                                                                        ArtifactScope.SYSTEM);
     Assert.assertTrue("Expected at least one core-plugins artifact.", allCorePlugins.size() > 0);
     String corePluginsVersion = allCorePlugins.get(0).getVersion();
     ArtifactId corePlugins = NamespaceId.SYSTEM.artifact("core-plugins", corePluginsVersion);
+
     expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
     result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "table", EntityTypeSimpleName.ARTIFACT);
     Assert.assertEquals(expected, result);

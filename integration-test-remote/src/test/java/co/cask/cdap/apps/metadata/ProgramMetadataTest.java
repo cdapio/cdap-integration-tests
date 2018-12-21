@@ -16,6 +16,7 @@
 package co.cask.cdap.apps.metadata;
 
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
+import co.cask.cdap.api.metadata.MetadataScope;
 import co.cask.cdap.client.LineageClient;
 import co.cask.cdap.client.MetadataClient;
 import co.cask.cdap.client.ProgramClient;
@@ -128,6 +129,15 @@ public class ProgramMetadataTest extends AudiTestBase {
     getTestManager().addPluginArtifact(pluginArtifact, systemMetadataArtifact,
                                        ArtifactSystemMetadataApp.EchoPlugin1.class,
                                        ArtifactSystemMetadataApp.EchoPlugin2.class);
+
+    // Wait for system metadata to be populated
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(systemMetadataArtifact, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(pluginArtifact, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+
     // verify search using artifact name
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(systemMetadataArtifact)),
@@ -147,6 +157,14 @@ public class ProgramMetadataTest extends AudiTestBase {
   }
 
   private void assertAppSearch() throws Exception {
+    // Wait for system metadata to be populated
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(APP, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+
     // using app name
     Set<MetadataSearchResultRecord> expected = ImmutableSet.of(new MetadataSearchResultRecord(APP));
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, APP.getEntityName(), null));
@@ -162,6 +180,11 @@ public class ProgramMetadataTest extends AudiTestBase {
   }
 
   private void assertProgramSearch() throws Exception {
+    // Wait for system metadata to be populated
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PROGRAM)),
       searchMetadata(TEST_NAMESPACE, "batch", EntityTypeSimpleName.PROGRAM));
@@ -179,6 +202,14 @@ public class ProgramMetadataTest extends AudiTestBase {
   }
 
   private void assertDatasetSearch() throws Exception {
+    // Wait for system metadata to be populated
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(INPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+    Tasks.waitFor(false,
+        () -> metadataClient.getProperties(OUTPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
+        10, TimeUnit.SECONDS);
+
     // search all entities that have a defined schema
     // add a user property with "schema" as key
     Map<String, String> datasetProperties = ImmutableMap.of("schema", "schemaValue");
