@@ -21,10 +21,8 @@ import co.cask.cdap.api.artifact.ArtifactRange;
 import co.cask.cdap.api.artifact.ArtifactVersion;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.plugin.PluginClass;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.util.RESTClient;
-import co.cask.cdap.common.conf.PluginClassDeserializer;
 import co.cask.cdap.internal.io.SchemaTypeAdapter;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.id.ArtifactId;
@@ -63,7 +61,6 @@ public class ServiceWorkerTest extends AudiTestBase {
   private static final ArtifactId artifactId = TEST_NAMESPACE.artifact("image-app", "1.0.0");
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(Schema.class, new SchemaTypeAdapter())
-    .registerTypeAdapter(PluginClass.class, new PluginClassDeserializer())
     .create();
 
   @Test

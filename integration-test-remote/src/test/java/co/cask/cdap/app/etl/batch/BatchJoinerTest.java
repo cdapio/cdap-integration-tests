@@ -180,7 +180,7 @@ public class BatchJoinerTest extends ETLTestBase {
     ETLStage joinSinkStage =
       new ETLStage("sink", new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
                                          ImmutableMap.<String, String>builder()
-                                           .put(Properties.SnapshotFileSetSink.NAME, joinedDatasetName)
+                                           .put(Properties.BatchReadableWritable.NAME, joinedDatasetName)
                                            .put("schema", outputSchema.toString())
                                            .build(), null));
 

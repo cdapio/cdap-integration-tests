@@ -19,12 +19,10 @@ package co.cask.cdap.app.serviceworker;
 import co.cask.cdap.api.artifact.ArtifactInfo;
 import co.cask.cdap.api.artifact.CloseableClassLoader;
 import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.plugin.PluginClass;
 import co.cask.cdap.api.service.AbstractService;
 import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
-import co.cask.cdap.common.conf.PluginClassDeserializer;
 import co.cask.cdap.internal.io.SchemaTypeAdapter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -46,7 +44,6 @@ public class ArtifactHttpService extends AbstractService {
   private static final Logger LOG = LoggerFactory.getLogger(ArtifactHttpService.class);
   private static final Gson GSON = new GsonBuilder()
     .registerTypeAdapter(Schema.class, new SchemaTypeAdapter())
-    .registerTypeAdapter(PluginClass.class, new PluginClassDeserializer())
     .create();
   private static final Type ARTIFACT_INFO_LIST_TYPE = new TypeToken<List<ArtifactInfo>>() { }.getType();
 
