@@ -132,11 +132,11 @@ public class ProgramMetadataTest extends AudiTestBase {
 
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(systemMetadataArtifact, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(systemMetadataArtifact, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(pluginArtifact, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(pluginArtifact, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
 
     // verify search using artifact name
     Assert.assertEquals(
@@ -159,11 +159,11 @@ public class ProgramMetadataTest extends AudiTestBase {
   private void assertAppSearch() throws Exception {
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(APP, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(APP, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
 
     // using app name
     Set<MetadataSearchResultRecord> expected = ImmutableSet.of(new MetadataSearchResultRecord(APP));
@@ -182,8 +182,8 @@ public class ProgramMetadataTest extends AudiTestBase {
   private void assertProgramSearch() throws Exception {
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
 
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PROGRAM)),
@@ -204,11 +204,11 @@ public class ProgramMetadataTest extends AudiTestBase {
   private void assertDatasetSearch() throws Exception {
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(INPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(INPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
     Tasks.waitFor(false,
-        () -> metadataClient.getProperties(OUTPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
-        10, TimeUnit.SECONDS);
+                  () -> metadataClient.getProperties(OUTPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
+                  10, TimeUnit.SECONDS);
 
     // search all entities that have a defined schema
     // add a user property with "schema" as key
