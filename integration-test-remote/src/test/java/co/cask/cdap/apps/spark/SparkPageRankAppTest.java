@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2016 Cask Data, Inc.
+ * Copyright © 2015-2018 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,8 +14,9 @@
  * the License.
  */
 
-package co.cask.cdap.apps.spark.sparkpagerank;
+package co.cask.cdap.apps.spark;
 
+import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.client.ProgramClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.app.RunIds;
@@ -24,7 +25,6 @@ import co.cask.cdap.data2.metadata.lineage.AccessType;
 import co.cask.cdap.data2.metadata.lineage.Lineage;
 import co.cask.cdap.data2.metadata.lineage.LineageSerializer;
 import co.cask.cdap.data2.metadata.lineage.Relation;
-import co.cask.cdap.examples.sparkpagerank.SparkPageRankApp;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.RunRecord;
 import co.cask.cdap.proto.codec.NamespacedEntityIdCodec;
@@ -32,16 +32,15 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespacedEntityId;
 import co.cask.cdap.proto.id.ProgramId;
-import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
+import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.MapReduceManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.SparkManager;
-import co.cask.cdap.test.StreamManager;
 import co.cask.cdap.test.suite.category.RequiresSpark2;
 import co.cask.common.http.HttpRequest;
 import co.cask.common.http.HttpResponse;
@@ -80,12 +79,15 @@ public class SparkPageRankAppTest extends AudiTestBase {
   private static final String TOTAL_PAGES = "1";
 
   private static final ApplicationId SPARK_PAGE_RANK_APP = TEST_NAMESPACE.app("SparkPageRank");
-  private static final StreamId STREAM = TEST_NAMESPACE.stream(SparkPageRankApp.BACKLINK_URL_STREAM);
+  // We ingest data into the dataset through an app created through integration test infrastructure
+  private static final ApplicationId INPUT_DATASET_APP = TEST_NAMESPACE.app(SparkPageRankApp.BACKLINK_URL_DATASET);
   private static final ProgramId PAGE_RANK_SERVICE = SPARK_PAGE_RANK_APP.service(SparkPageRankApp.SERVICE_HANDLERS);
   private static final ProgramId RANKS_COUNTER_PROGRAM = SPARK_PAGE_RANK_APP.mr(
     SparkPageRankApp.RanksCounter.class.getSimpleName());
   private static final ProgramId PAGE_RANK_PROGRAM = SPARK_PAGE_RANK_APP.spark(
     SparkPageRankApp.PageRankSpark.class.getSimpleName());
+  private static final ProgramId DATASET_SERVICE = INPUT_DATASET_APP.service("DatasetService");
+  private static final DatasetId INPUT_DATASET = TEST_NAMESPACE.dataset(SparkPageRankApp.BACKLINK_URL_DATASET);
   private static final DatasetId RANKS_DATASET = TEST_NAMESPACE.dataset("ranks");
   private static final DatasetId RANKS_COUNTS_DATASET = TEST_NAMESPACE.dataset("rankscount");
 
@@ -99,11 +101,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // none of the programs should have any run records
     assertRuns(0, programClient, ProgramRunStatus.ALL, PAGE_RANK_SERVICE, RANKS_COUNTER_PROGRAM, PAGE_RANK_PROGRAM);
 
-    StreamManager backlinkURLStream = getTestManager().getStreamManager(STREAM);
-    backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_2));
-    backlinkURLStream.send(Joiner.on(" ").join(URL_1, URL_3));
-    backlinkURLStream.send(Joiner.on(" ").join(URL_2, URL_1));
-    backlinkURLStream.send(Joiner.on(" ").join(URL_3, URL_1));
+    ingestData();
 
     // Start service
     ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getEntityName()).start();
@@ -170,12 +168,12 @@ public class SparkPageRankAppTest extends AudiTestBase {
       getRunRecords(1, programClient, PAGE_RANK_SERVICE,
                     ProgramRunStatus.KILLED.name(), 0, Long.MAX_VALUE);
 
+    List<RunRecord> inputRunRecords =
+      getRunRecords(1, programClient, DATASET_SERVICE,
+                    ProgramRunStatus.RUNNING.name(), 0, Long.MAX_VALUE);
+
     long endTimeSecs = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + 100;
 
-    url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
-                                                   String.format("streams/%s/lineage?start=%s&end=%s",
-                                                                 SparkPageRankApp.BACKLINK_URL_STREAM,
-                                                                 startTimeSecs, endTimeSecs));
     LineageRecord expected =
       // When CDAP-3657 is fixed, we will no longer need to use LineageSerializer for serializing.
       // Instead we can direclty use Id.toString() to get the program and data keys.
@@ -183,7 +181,9 @@ public class SparkPageRankAppTest extends AudiTestBase {
         startTimeSecs,
         endTimeSecs,
         new Lineage(ImmutableSet.of(
-          new Relation(STREAM, PAGE_RANK_PROGRAM, AccessType.READ,
+          new Relation(INPUT_DATASET, DATASET_SERVICE, AccessType.WRITE,
+                       RunIds.fromString(inputRunRecords.get(0).getPid())),
+          new Relation(INPUT_DATASET, PAGE_RANK_PROGRAM, AccessType.READ,
                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
           new Relation(RANKS_DATASET, PAGE_RANK_PROGRAM, AccessType.WRITE,
                        RunIds.fromString(sparkRanRecords.get(0).getPid())),
@@ -196,8 +196,6 @@ public class SparkPageRankAppTest extends AudiTestBase {
           new Relation(RANKS_COUNTS_DATASET, PAGE_RANK_SERVICE, AccessType.READ,
                        RunIds.fromString(serviceRanRecords.get(0).getPid()))
         )), ImmutableSet.<CollapseType>of());
-    testLineage(url, expected);
-
     url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE,
                                                    String.format("datasets/%s/lineage?start=%s&end=%s",
                                                                  "ranks",
@@ -220,5 +218,16 @@ public class SparkPageRankAppTest extends AudiTestBase {
     HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     LineageRecord lineageRecord = GSON.fromJson(response.getResponseBodyAsString(), LineageRecord.class);
     Assert.assertEquals(expected, lineageRecord);
+  }
+
+  protected void ingestData() throws Exception {
+    // write input data
+    DataSetManager<KeyValueTable> datasetManager = getKVTableDataset(SparkPageRankApp.BACKLINK_URL_DATASET);
+    KeyValueTable table = datasetManager.get();
+    table.write("1", Joiner.on(" ").join(URL_1, URL_2));
+    table.write("2", Joiner.on(" ").join(URL_1, URL_3));
+    table.write("3", Joiner.on(" ").join(URL_2, URL_1));
+    table.write("4", Joiner.on(" ").join(URL_3, URL_1));
+    datasetManager.flush();
   }
 }
