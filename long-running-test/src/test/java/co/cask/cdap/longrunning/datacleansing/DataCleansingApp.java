@@ -21,12 +21,12 @@ import co.cask.cdap.api.dataset.lib.KeyValueTable;
 import co.cask.cdap.api.dataset.table.Table;
 
 /**
- * DataCleansing Application which extends {@link co.cask.cdap.examples.datacleansing.DataCleansing} to assert using
+ * DataCleansing Application which extends {@link DataCleansing} to assert using
  * readless table instead of metrics.
  */
-public class DataCleansingApp extends co.cask.cdap.examples.datacleansing.DataCleansing {
+public class DataCleansingApp extends DataCleansing {
   /**
-   Copied from {@link co.cask.cdap.examples.datacleansing.DataCleansing} as values are protected
+   Copied from {@link DataCleansing} as values are protected
    */
   public static final String RAW_RECORDS = "rawRecords";
   public static final String CLEAN_RECORDS = "cleanRecords";

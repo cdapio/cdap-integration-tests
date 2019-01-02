@@ -41,7 +41,6 @@ import co.cask.cdap.apps.ApplicationVersionTest;
 import co.cask.cdap.apps.DatasetTest;
 import co.cask.cdap.apps.NamespaceTest;
 import co.cask.cdap.apps.NamespacedStreamTest;
-import co.cask.cdap.apps.StreamTest;
 import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
@@ -91,7 +90,6 @@ import org.junit.runners.Suite;
   RemoteTableTest.class,
   RowDenormalizerTest.class,
   ServiceWorkerTest.class,
-  StreamTest.class,
   TPFSAvroSinkSourceTest.class,
   TPFSParquetSinkSourceTest.class,
   TransactionTimeoutTest.class,
