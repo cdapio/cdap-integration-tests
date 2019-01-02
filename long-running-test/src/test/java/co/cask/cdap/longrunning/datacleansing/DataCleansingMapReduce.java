@@ -31,7 +31,6 @@ import co.cask.cdap.api.dataset.lib.partitioned.PartitionBatchInput;
 import co.cask.cdap.api.mapreduce.AbstractMapReduce;
 import co.cask.cdap.api.mapreduce.MapReduceContext;
 import co.cask.cdap.api.mapreduce.MapReduceTaskContext;
-import co.cask.cdap.examples.datacleansing.SimpleSchemaMatcher;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonParser;
 import org.apache.hadoop.io.LongWritable;
@@ -45,11 +44,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Modified {@link co.cask.cdap.examples.datacleansing.DataCleansingMapReduce} to write to readless table
- *
  * A simple MapReduce that reads records from the rawRecords PartitionedFileSet and writes all records
  * that match a particular {@link Schema} to the cleanRecords PartitionedFileSet. It also keeps track of its state of
- * which partitions it has processed, so that it only processes new partitions of data each time it runs.
+ * which partitions it has processed, so that it only processes new partitions of data each time it runs. Wrties to
+ * readless table.
  */
 public class DataCleansingMapReduce extends AbstractMapReduce {
   protected static final String NAME = "DataCleansingMapReduce";
