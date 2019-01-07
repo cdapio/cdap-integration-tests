@@ -16,11 +16,7 @@
 
 package co.cask.cdap.upgrade;
 
-import co.cask.cdap.api.data.format.FormatSpecification;
-import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.client.LineageClient;
-import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.utils.TimeMathParser;
 import co.cask.cdap.data2.metadata.lineage.AccessType;
@@ -31,14 +27,11 @@ import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.ProgramRunStatus;
-import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
-import co.cask.cdap.proto.id.StreamViewId;
-import co.cask.cdap.proto.metadata.lineage.CollapseType;
 import co.cask.cdap.proto.metadata.lineage.LineageRecord;
 import co.cask.cdap.proto.metadata.lineage.RelationRecord;
 import co.cask.cdap.test.ApplicationManager;
@@ -57,13 +50,9 @@ public class LineageUpgradeTest extends UpgradeTestBase {
   private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr(
     PurchaseHistoryBuilder.class.getSimpleName());
   private static final StreamId PURCHASE_STREAM = LINEAGE_NAMESPACE.stream("purchaseStream");
-  private static final StreamViewId PURCHASE_VIEW = PURCHASE_STREAM.view(
-    PURCHASE_STREAM.getEntityName() + "View");
   private static final DatasetId HISTORY = LINEAGE_NAMESPACE.dataset("history");
   private static final DatasetId PURCHASES = LINEAGE_NAMESPACE.dataset("purchases");
   private static final DatasetId FREQUENT_CUSTOMERS = LINEAGE_NAMESPACE.dataset("frequentCustomers");
-
-  private static final String PURCHASE_VIEW_FIELD = "purchaseViewBody";
 
   @Override
   public void preStage() throws Exception {
@@ -73,13 +62,6 @@ public class LineageUpgradeTest extends UpgradeTestBase {
 
     // deploy an application
     ApplicationManager appManager = deployApplication(LINEAGE_NAMESPACE, PurchaseApp.class);
-
-    // create a view
-    Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
-                                                                  Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
-    StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(PURCHASE_VIEW,
-                              new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     getStreamClient().sendEvent(PURCHASE_STREAM, "John bought 10 Apples for $1000");
     long startTime = 0;
@@ -125,6 +107,6 @@ public class LineageUpgradeTest extends UpgradeTestBase {
         new Relation(PURCHASES, PURCHASE_HISTORY_BUILDER, AccessType.READ, runId),
         new Relation(FREQUENT_CUSTOMERS, PURCHASE_HISTORY_BUILDER, AccessType.UNKNOWN, runId)
       )),
-      Collections.<CollapseType>emptySet());
+      Collections.emptySet());
   }
 }

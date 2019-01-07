@@ -16,16 +16,11 @@
 
 package co.cask.cdap.upgrade;
 
-import co.cask.cdap.api.data.format.FormatSpecification;
-import co.cask.cdap.api.data.format.Formats;
-import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.metadata.MetadataScope;
 import co.cask.cdap.client.MetadataClient;
-import co.cask.cdap.client.StreamViewClient;
 import co.cask.cdap.common.metadata.MetadataRecord;
 import co.cask.cdap.examples.purchase.PurchaseApp;
 import co.cask.cdap.examples.purchase.PurchaseHistoryBuilder;
-import co.cask.cdap.proto.ViewSpecification;
 import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
@@ -34,7 +29,6 @@ import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.NamespacedEntityId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.StreamId;
-import co.cask.cdap.proto.id.StreamViewId;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
@@ -55,8 +49,6 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private static final ProgramId PURCHASE_HISTORY_BUILDER = PURCHASE_APP.mr(
     PurchaseHistoryBuilder.class.getSimpleName());
   private static final StreamId PURCHASE_STREAM = TEST_NAMESPACE.stream("purchaseStream");
-  private static final StreamViewId PURCHASE_VIEW = PURCHASE_STREAM.view(
-    PURCHASE_STREAM.getEntityName() + "View");
   private static final DatasetId HISTORY = TEST_NAMESPACE.dataset("history");
   private static final DatasetId FREQUENT_CUSTOMERS = TEST_NAMESPACE.dataset("frequentCustomers");
   private static final DatasetId USER_PROFILES = TEST_NAMESPACE.dataset("userProfiles");
@@ -64,7 +56,7 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private static final Map<String, String> EMPTY_PROPERTIES = ImmutableMap.of();
   private static final Map<String, String> APP_PROPERTIES = ImmutableMap.of("env", "prod");
   private static final Set<MetadataRecord> EXPECTED_APP_METADATA = ImmutableSet.of(
-    new MetadataRecord(PURCHASE_APP, MetadataScope.USER, APP_PROPERTIES, ImmutableSet.<String>of())
+    new MetadataRecord(PURCHASE_APP, MetadataScope.USER, APP_PROPERTIES, ImmutableSet.of())
   );
   private static final Set<String> STREAM_TAGS = ImmutableSet.of("input");
   private static final Set<MetadataRecord> EXPECTED_STREAM_METADATA = ImmutableSet.of(
@@ -78,7 +70,6 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   private static final Set<MetadataRecord> EXPECTED_DS_METADATA = ImmutableSet.of(
     new MetadataRecord(HISTORY, MetadataScope.USER, EMPTY_PROPERTIES, DS_TAGS)
   );
-  private static final String PURCHASE_VIEW_FIELD = "purchaseViewBody";
   private static Predicate<MetadataSearchResultRecord> purchaseAppPredicate;
   private MetadataClient metadataClient;
 
@@ -86,13 +77,6 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
   protected void preStage() throws Exception {
     // deploy an application
     deployApplication(PurchaseApp.class);
-
-    // create a view
-    Schema viewSchema = Schema.recordOf("record", Schema.Field.of(PURCHASE_VIEW_FIELD,
-                                                                  Schema.nullableOf(Schema.of(Schema.Type.BYTES))));
-    StreamViewClient viewClient = new StreamViewClient(getClientConfig(), getRestClient());
-    viewClient.createOrUpdate(PURCHASE_VIEW,
-                              new ViewSpecification(new FormatSpecification(Formats.AVRO, viewSchema)));
 
     // Add some user metadata
     MetadataClient metadataClient = getMetadataClient();
@@ -187,8 +171,8 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     // system metadata for stream check
     searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_STREAM.getEntityName(),
                                    EntityTypeSimpleName.ALL);
-    // 2 = stream: purchaseStream + view: purchaseStreamView
-    Assert.assertEquals(2, searchResults.size());
+    // 1 = stream: purchaseStream
+    Assert.assertEquals(1, searchResults.size());
 
     // perform schema searches
     searchResults = filterNonPurchaseEntities(searchMetadata(TEST_NAMESPACE, "price",
@@ -199,11 +183,6 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
     searchResults = filterNonPurchaseEntities(searchMetadata(TEST_NAMESPACE, "lastname:string",
                                                              EntityTypeSimpleName.ALL));
     // 1 =  dataset: history
-    Assert.assertEquals(1, searchResults.size());
-
-    // search for view schema
-    searchResults = searchMetadata(TEST_NAMESPACE, PURCHASE_VIEW_FIELD,
-                                   EntityTypeSimpleName.ALL);
     Assert.assertEquals(1, searchResults.size());
   }
 
@@ -233,8 +212,6 @@ public class MetadataUpgradeTest extends UpgradeTestBase {
           NamespacedEntityId entityId = input.getEntityId();
           if (entityId instanceof DatasetId) {
             return ImmutableSet.of(HISTORY, USER_PROFILES, PURCHASES, FREQUENT_CUSTOMERS).contains(entityId);
-          } else if (entityId instanceof StreamViewId) {
-            return PURCHASE_VIEW.equals(entityId);
           } else if (entityId instanceof StreamId) {
             return PURCHASE_STREAM.equals(entityId);
           } else if (entityId instanceof ApplicationId) {
