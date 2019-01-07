@@ -66,7 +66,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     result = searchMetadata(metadataClient, TEST_NAMESPACE, "cdap-data-pipeline", null);
     Assert.assertEquals(expected, result);
   }
-  
+
   private Set<MetadataSearchResultRecord> searchMetadata(MetadataClient metadataClient,
                                                          NamespaceId namespace, String query,
                                                          EntityTypeSimpleName targetType) throws Exception {

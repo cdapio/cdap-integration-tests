@@ -20,6 +20,7 @@ import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.datapipeline.SmartWorkflow;
+import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
@@ -31,7 +32,6 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
-import com.google.api.gax.paging.Page;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
@@ -41,7 +41,6 @@ import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
@@ -51,6 +50,7 @@ import com.google.gson.JsonParser;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +69,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -80,39 +81,39 @@ public class GCSTest extends ETLTestBase {
   private static final String PROFILE_NAME = "dataproc-itn-profile";
   private static final String INPUT_BLOB_NAME = "data/input/customers.csv";
   private static final String OUTPUT_BLOB_NAME = "data/output";
-  private Bucket bucket;
-  private Map<String, String> idToRowMap;
+  private static String projectId;
+  private static String serviceAccountCredentials;
+  private static Storage storage;
+  private List<Bucket> createdBuckets;
 
-  @Before
-  public void testSetup() throws IOException, UnauthenticatedException {
+  @BeforeClass
+  public static void testClassSetup() throws IOException {
     // base64-encode the credentials, to avoid a commandline-parsing error, since the credentials have dashes in them
     String property = System.getProperty("google.application.credentials.base64.encoded");
 
-    String serviceAccountCredentials;
     if (property != null) {
       serviceAccountCredentials = Bytes.toString(Base64.getDecoder().decode(property));
     } else {
       property = Preconditions.checkNotNull(System.getProperty("google.application.credentials.path"),
-                                         "The credentials file provided is null. " +
-                                                 "Please make sure the path is correct and the file exists.");
+                                            "The credentials file provided is null. " +
+                                              "Please make sure the path is correct and the file exists.");
 
       serviceAccountCredentials = Files.toString(new File(property), Charsets.UTF_8);
     }
 
     JsonObject serviceAccountJson = new JsonParser().parse(serviceAccountCredentials).getAsJsonObject();
-    String projectId = serviceAccountJson.get("project_id").getAsString();
+    projectId = serviceAccountJson.get("project_id").getAsString();
+    storage = StorageOptions.newBuilder()
+      .setProjectId(projectId)
+      .setCredentials(GoogleCredentials.fromStream(
+        new ByteArrayInputStream(serviceAccountCredentials.getBytes(StandardCharsets.UTF_8))))
+      .build().getService();
+  }
 
-    bucket = createTestBucket(projectId, serviceAccountCredentials);
-    createProfile(PROFILE_NAME, projectId, serviceAccountCredentials);
-
-    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
-      bucket.create(INPUT_BLOB_NAME, is);
-    }
-
-    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
-      String result = CharStreams.toString(new InputStreamReader(is, Charsets.UTF_8));
-      idToRowMap = parseIdToRow(result, false);
-    }
+  @Before
+  public void testSetup() throws IOException, UnauthenticatedException {
+    createProfile(PROFILE_NAME);
+    createdBuckets = new ArrayList<>();
   }
 
   @After
@@ -127,10 +128,24 @@ public class GCSTest extends ETLTestBase {
     } catch (Exception e) {
       LOG.error("Failed to delete profile.", e);
     }
-
-    if (bucket != null) {
-      deleteBucket(bucket);
+    for (Bucket bucket : createdBuckets) {
+      try {
+        deleteBucket(bucket);
+      } catch (RuntimeException e) {
+        LOG.error("Unable to delete GCS bucket {}", bucket.getName(), e);
+      }
     }
+  }
+
+  /**
+   * Create a bucket that will be automatically deleted when the test completes.
+   */
+  private Bucket createBucket(String name) {
+    LOG.info("Creating bucket {}", name);
+    Bucket bucket = storage.create(BucketInfo.of(name));
+    LOG.info("Created bucket {}", name);
+    createdBuckets.add(bucket);
+    return bucket;
   }
 
   private void deleteBucket(Bucket bucket) {
@@ -149,12 +164,11 @@ public class GCSTest extends ETLTestBase {
     return jsonObject;
   }
 
-  private void createProfile(String profileName,
-                             String projectId,
-                             String serviceAccountCredentials) throws IOException, UnauthenticatedException {
+  private void createProfile(String profileName) throws IOException, UnauthenticatedException {
     Gson gson = new Gson();
     JsonArray properties = new JsonArray();
     properties.add(ofProperty("accountKey", serviceAccountCredentials));
+    properties.add(ofProperty("network", "default"));
     properties.add(ofProperty("region", "global"));
     properties.add(ofProperty("zone", "us-central1-a"));
     properties.add(ofProperty("projectId", projectId));
@@ -180,33 +194,204 @@ public class GCSTest extends ETLTestBase {
     getRestClient().execute(httpRequest, getAccessToken());
   }
 
-  private Bucket createTestBucket(String projectId, String serviceAccountCredentials) throws IOException {
-    StorageOptions storageOptions = StorageOptions
-      .newBuilder()
-      .setProjectId(projectId)
-      .setCredentials(GoogleCredentials.fromStream(
-        new ByteArrayInputStream(serviceAccountCredentials.getBytes(StandardCharsets.UTF_8))))
-      .build();
-    Storage storage = storageOptions.getService();
-
-    String bucketPrefix = "co-cask-test-bucket-";
-
-    Page<Bucket> bucketPages = storage.list(Storage.BucketListOption.prefix(bucketPrefix));
-    List<Bucket> buckets = Lists.newArrayList(bucketPages.iterateAll());
-    LOG.info("Existing bucket list: {}", buckets);
-
-    String bucketName = bucketPrefix + System.currentTimeMillis();
-    Bucket bucket = storage.create(BucketInfo.of(bucketName));
-    LOG.info("Bucket {} created.", bucket);
-    return bucket;
-  }
-
   private String createPath(Bucket bucket, String blobName) {
     return String.format("gs://%s/%s", bucket.getName(), blobName);
   }
 
   @Test
+  public void testGCSCopy() throws Exception {
+    String prefix = "cdap-gcs-cp-test";
+    String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
+    String bucket3Name = String.format("%s-3-%s", prefix, UUID.randomUUID());
+    String bucket4Name = String.format("%s-4-%s", prefix, UUID.randomUUID());
+
+    Bucket bucket1 = createBucket(bucket1Name);
+    Bucket bucket2 = createBucket(bucket2Name);
+    Bucket bucket3 = createBucket(bucket3Name);
+    Bucket bucket4 = createBucket(bucket4Name);
+
+    /*
+        Start off with the following objects:
+
+        bucket1/catalog.txt
+        bucket1/stats.txt
+        bucket1/listings/2018-01-01/l0.txt
+        bucket1/listings/2018-01-01/l1.txt
+        bucket1/listings/2018-02-01/l2.txt
+     */
+    String catalogContent = "c";
+    String statsContent = "s";
+    String l0Content = "l0";
+    String l1Content = "l1";
+    String l2Content = "l2";
+    bucket1.create("catalog.txt", catalogContent.getBytes(StandardCharsets.UTF_8));
+    bucket1.create("stats.txt", statsContent.getBytes(StandardCharsets.UTF_8));
+    bucket1.create("listings/2018-01-01/l0.txt", l0Content.getBytes(StandardCharsets.UTF_8));
+    bucket1.create("listings/2018-01-01/l1.txt", l1Content.getBytes(StandardCharsets.UTF_8));
+    bucket1.create("listings/2018-02-01/l2.txt", l2Content.getBytes(StandardCharsets.UTF_8));
+
+    /*
+        cp bucket1 bucket2
+        should result in:
+
+        bucket2/catalog.txt
+        bucket2/stats.txt
+     */
+    ETLStage cp1 = createCopyStage("cp1", bucket1Name, bucket2Name, false);
+
+    /*
+        cp -r bucket1 bucket3
+        should result in everything being copied
+     */
+    ETLStage cp2 = createCopyStage("cp2", bucket1Name, bucket3Name, true);
+
+    /*
+        cp bucket1/catalog.txt bucket4/catalog-backup.txt
+        should copy the one file
+     */
+    ETLStage cp3 = createCopyStage("cp3", String.format("%s/catalog.txt", bucket1Name),
+                                   String.format("%s/catalog-backup.txt", bucket4Name), false);
+
+    /*
+        cp bucket1/catalog.txt bucket4/dir1 when 'dir1' already exists
+        should copy the file into bucket4/dir1/catalog.txt
+     */
+    bucket4.create("dir1/", new byte[] { });
+    ETLStage cp4 = createCopyStage("cp4", String.format("%s/catalog.txt", bucket1Name),
+                                   String.format("%s/dir1", bucket4Name), false);
+
+    /*
+        cp bucket1/catalog.txt bucket4/dir2/
+        should copy the file into bucket4/dir2/catalog.txt even though 'dir2' does not yet exist because of the
+        ending slash in dir2/
+     */
+    ETLStage cp5 = createCopyStage("cp5", String.format("%s/catalog.txt", bucket1Name),
+                                   String.format("%s/dir2/", bucket4Name), false);
+
+    /*
+        cp -r bucket1/listings bucket4/dir3 when 'dir3' does not exist should result in:
+        bucket4/dir3/2018-01-01/l0.txt
+        bucket4/dir3/2018-01-01/l1.txt
+        bucket4/dir3/2018-02-01/l2.txt
+     */
+    ETLStage cp6 = createCopyStage("cp6", String.format("%s/listings", bucket1Name),
+                                   String.format("%s/dir3", bucket4Name), true);
+
+    /*
+        cp -r bucket1/listings bucket4/dir3 when 'dir4' already exists should result in:
+        bucket4/dir4/listings/2018-01-01/l0.txt
+        bucket4/dir4/listings/2018-01-01/l1.txt
+        bucket4/dir4/listings/2018-02-01/l2.txt
+     */
+    bucket4.create("dir4/", new byte[] { });
+    ETLStage cp7 = createCopyStage("cp7", String.format("%s/listings", bucket1Name),
+                                   String.format("%s/dir4", bucket4Name), true);
+
+    // deploy the pipeline
+    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
+      .addStage(cp1)
+      .addStage(cp2)
+      .addStage(cp3)
+      .addStage(cp4)
+      .addStage(cp5)
+      .addStage(cp6)
+      .addStage(cp7)
+      .addConnection(cp1.getName(), cp2.getName())
+      .addConnection(cp2.getName(), cp3.getName())
+      .addConnection(cp3.getName(), cp4.getName())
+      .addConnection(cp4.getName(), cp5.getName())
+      .addConnection(cp5.getName(), cp6.getName())
+      .addConnection(cp6.getName(), cp7.getName())
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSCopyTest");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // start the pipeline and wait for it to finish
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.start(Collections.singletonMap("system.profile.name", PROFILE_NAME));
+    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+
+    /*
+        From cp1, bucket 2 should look like:
+
+        bucket2/catalog.txt
+        bucket2/stats.txt
+     */
+    assertGCSContents(bucket2, "catalog.txt", catalogContent);
+    assertGCSContents(bucket2, "stats.txt", statsContent);
+    Assert.assertNull("directory should not get copied during non-recursive copy", bucket2.get("listings/"));
+
+    /*
+        From cp2, bucket 3 should look like:
+
+        bucket3/catalog.txt
+        bucket3/stats.txt
+        bucket3/listings/2018-01-01/l0.txt
+        bucket3/listings/2018-01-01/l1.txt
+        bucket3/listings/2018-02-01/l2.txt
+     */
+    assertGCSContents(bucket3, "catalog.txt", catalogContent);
+    assertGCSContents(bucket3, "stats.txt", statsContent);
+    assertGCSContents(bucket3, "listings/2018-01-01/l0.txt", l0Content);
+    assertGCSContents(bucket3, "listings/2018-01-01/l1.txt", l1Content);
+    assertGCSContents(bucket3, "listings/2018-02-01/l2.txt", l2Content);
+
+    /*
+        From other copies, bucket 4 should look like:
+
+        bucket4/catalog-backup.txt
+        bucket4/dir1/catalog.txt
+        bucket4/dir2/catalog.txt
+        bucket4/dir3/2018-01-01/l0.txt
+        bucket4/dir3/2018-01-01/l1.txt
+        bucket4/dir3/2018-02-01/l2.txt
+        bucket4/dir4/listings/2018-01-01/l0.txt
+        bucket4/dir4/listings/2018-01-01/l1.txt
+        bucket4/dir4/listings/2018-02-01/l2.txt
+     */
+    assertGCSContents(bucket4, "catalog-backup.txt", catalogContent);
+    assertGCSContents(bucket4, "dir1/catalog.txt", catalogContent);
+    assertGCSContents(bucket4, "dir2/catalog.txt", catalogContent);
+    assertGCSContents(bucket4, "dir3/2018-01-01/l0.txt", l0Content);
+    assertGCSContents(bucket4, "dir3/2018-01-01/l1.txt", l1Content);
+    assertGCSContents(bucket4, "dir3/2018-02-01/l2.txt", l2Content);
+    assertGCSContents(bucket4, "dir4/listings/2018-01-01/l0.txt", l0Content);
+    assertGCSContents(bucket4, "dir4/listings/2018-01-01/l1.txt", l1Content);
+    assertGCSContents(bucket4, "dir4/listings/2018-02-01/l2.txt", l2Content);
+  }
+
+  private void assertGCSContents(Bucket bucket, String blobName, String content) {
+    Blob blob = bucket.get(blobName);
+    Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
+    Assert.assertEquals(content, new String(blob.getContent(), StandardCharsets.UTF_8));
+  }
+
+  private ETLStage createCopyStage(String name, String src, String dest, boolean recursive) {
+    return new ETLStage(name, new ETLPlugin("GCSCopy", Action.PLUGIN_TYPE,
+                                            ImmutableMap.of("projectId", projectId,
+                                                            "sourcePath", src,
+                                                            "destPath", dest,
+                                                            "recursive", String.valueOf(recursive))));
+  }
+
+  @Test
   public void testGCSToGCS() throws Exception {
+    String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
+    Bucket bucket = createBucket(bucketName);
+
+    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
+      bucket.create(INPUT_BLOB_NAME, is);
+    }
+
+    Map<String, String> idToRowMap;
+    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
+      String result = CharStreams.toString(new InputStreamReader(is, Charsets.UTF_8));
+      idToRowMap = parseIdToRow(result, false);
+    }
+
     String sourceSchema = "{\"type\":\"record\",\"name\":\"etlSchemaBody\"," +
       "\"fields\":[{\"name\":\"offset\",\"type\":\"long\"},{\"name\":\"body\",\"type\":\"string\"}]}";
     ETLStage source = new ETLStage("GCSSourceStage",
@@ -219,11 +404,11 @@ public class GCSTest extends ETLTestBase {
                                                    "path", createPath(bucket, INPUT_BLOB_NAME))));
 
     ETLStage sink = new ETLStage("FileSinkStage", new ETLPlugin("File",
-                                                         BatchSink.PLUGIN_TYPE,
-                                                         ImmutableMap.of(
-                                                           "path", createPath(bucket, OUTPUT_BLOB_NAME),
-                                                           "format", "delimited",
-                                                           "referenceName", "gcs-output")));
+                                                                BatchSink.PLUGIN_TYPE,
+                                                                ImmutableMap.of(
+                                                                  "path", createPath(bucket, OUTPUT_BLOB_NAME),
+                                                                  "format", "delimited",
+                                                                  "referenceName", "gcs-output")));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
