@@ -47,6 +47,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -132,10 +133,11 @@ public class ProgramMetadataTest extends AudiTestBase {
 
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(systemMetadataArtifact, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(systemMetadataArtifact.toMetadataEntity(),
+                  MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(pluginArtifact, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(pluginArtifact.toMetadataEntity(), MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
 
     // verify search using artifact name
@@ -159,10 +161,10 @@ public class ProgramMetadataTest extends AudiTestBase {
   private void assertAppSearch() throws Exception {
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(APP, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(APP.toMetadataEntity(), MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(PROGRAM.toMetadataEntity(), MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
 
     // using app name
@@ -182,7 +184,7 @@ public class ProgramMetadataTest extends AudiTestBase {
   private void assertProgramSearch() throws Exception {
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(PROGRAM, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(PROGRAM.toMetadataEntity(), MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
 
     Assert.assertEquals(
@@ -204,16 +206,16 @@ public class ProgramMetadataTest extends AudiTestBase {
   private void assertDatasetSearch() throws Exception {
     // Wait for system metadata to be populated
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(INPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(INPUT_DATASET.toMetadataEntity(), MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
     Tasks.waitFor(false,
-                  () -> metadataClient.getProperties(OUTPUT_DATASET, MetadataScope.SYSTEM).isEmpty(),
+                  () -> metadataClient.getProperties(OUTPUT_DATASET.toMetadataEntity(), MetadataScope.SYSTEM).isEmpty(),
                   10, TimeUnit.SECONDS);
 
     // search all entities that have a defined schema
     // add a user property with "schema" as key
     Map<String, String> datasetProperties = ImmutableMap.of("schema", "schemaValue");
-    metadataClient.addProperties(INPUT_DATASET, datasetProperties);
+    metadataClient.addProperties(INPUT_DATASET.toMetadataEntity(), datasetProperties);
 
     Set<MetadataSearchResultRecord> result = searchMetadata(TEST_NAMESPACE, "schema:*", null);
     Assert.assertEquals(ImmutableSet.<MetadataSearchResultRecord>builder()
@@ -245,7 +247,8 @@ public class ProgramMetadataTest extends AudiTestBase {
   private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
                                                          EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
-      metadataClient.searchMetadata(namespace, query, targetType).getResults();
+      metadataClient.searchMetadata(namespace, query, Collections.singleton(targetType),
+                                    null, 0, Integer.MAX_VALUE, 0, null, false).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));
