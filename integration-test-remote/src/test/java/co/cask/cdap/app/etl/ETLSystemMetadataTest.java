@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableSet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -71,7 +72,8 @@ public class ETLSystemMetadataTest extends ETLTestBase {
                                                          NamespaceId namespace, String query,
                                                          EntityTypeSimpleName targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
-      metadataClient.searchMetadata(namespace, query, targetType).getResults();
+      metadataClient.searchMetadata(namespace, query, Collections.singleton(targetType),
+                                    null, 0, Integer.MAX_VALUE, 0, null, false).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
     for (MetadataSearchResultRecord result : results) {
       transformed.add(new MetadataSearchResultRecord(result.getEntityId()));
