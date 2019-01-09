@@ -55,7 +55,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     ApplicationId appId1 = TEST_NAMESPACE.app("ConfigTestApp", "v1-SNAPSHOT");
     AppRequest<ConfigTestApp.ConfigClass> createRequestV1 = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
-      new ConfigTestApp.ConfigClass("tS1", "tD1", "tV1"));
+      new ConfigTestApp.ConfigClass("tD1", "tV1"));
     ApplicationManager appManagerV1 = deployApplication(appId1, createRequestV1);
 
     // Start the service in ConfigTestApp v1
@@ -74,7 +74,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     // Can update ConfigTestApp v1 because its version has suffix "-SNAPSHOT"
     AppRequest<ConfigTestApp.ConfigClass> createRequestV1Update = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
-      new ConfigTestApp.ConfigClass("tS1", "tD1", "tV1_update"));
+      new ConfigTestApp.ConfigClass("tD1", "tV1_update"));
     deployApplication(appId1, createRequestV1Update);
 
     // Start the service after updating ConfigTestApp v1 will fail because the same service is running
@@ -101,7 +101,7 @@ public class ApplicationVersionTest extends AudiTestBase {
     ApplicationId appId2 = TEST_NAMESPACE.app("ConfigTestApp", "v2-SNAPSHOT");
     AppRequest<ConfigTestApp.ConfigClass> createRequestV2 = new AppRequest<>(
       new ArtifactSummary(artifactId.getArtifact(), artifactId.getVersion()),
-      new ConfigTestApp.ConfigClass("tS2", "tD2", "tV2"));
+      new ConfigTestApp.ConfigClass("tD2", "tV2"));
     ApplicationManager appManagerV2 = deployApplication(appId2, createRequestV2);
 
     // Start the service in ConfigTestApp v2
