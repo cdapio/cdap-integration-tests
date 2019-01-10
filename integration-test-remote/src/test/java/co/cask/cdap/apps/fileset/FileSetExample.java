@@ -1,5 +1,5 @@
 /*
- * Copyright © 2014 Cask Data, Inc.
+ * Copyright © 2014-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -34,9 +34,11 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
  */
 public class FileSetExample extends AbstractApplication {
 
+  public static final String NAME = "FileSetExample";
+
   @Override
   public void configure() {
-    setName("FileSetExample");
+    setName(NAME);
     setDescription("Application with a MapReduce that uses a FileSet dataset");
     createDataset("lines", FileSet.class, FileSetProperties.builder()
       .setBasePath("example/data/lines")
