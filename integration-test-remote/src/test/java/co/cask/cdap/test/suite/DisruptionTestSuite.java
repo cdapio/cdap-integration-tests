@@ -25,7 +25,7 @@ import org.junit.runners.Suite;
  */
 @RunWith(Categories.class)
 @Suite.SuiteClasses({
-  DisruptionTests.class
+  // TODO(CDAP-14746): Bring back ContinuousCounterTest?
 })
 public class DisruptionTestSuite {
 }
