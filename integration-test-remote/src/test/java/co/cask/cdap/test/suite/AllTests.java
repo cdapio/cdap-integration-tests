@@ -39,7 +39,6 @@ import co.cask.cdap.app.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.ApplicationVersionTest;
 import co.cask.cdap.apps.NamespaceTest;
-import co.cask.cdap.apps.NamespacedStreamTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
@@ -71,7 +70,6 @@ import org.junit.runners.Suite;
   HangingWorkerTest.class,
   HivePluginTest.class,
   KVTableWithProjectionTest.class,
-  NamespacedStreamTest.class,
   NamespaceTest.class,
   NormalizeTest.class,
   OperationalStatsTest.class,

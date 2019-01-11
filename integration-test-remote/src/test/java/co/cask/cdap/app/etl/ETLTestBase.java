@@ -25,7 +25,6 @@ import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
-import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ConnectionConfig;
 import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
