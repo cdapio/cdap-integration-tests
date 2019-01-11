@@ -10,19 +10,19 @@ When writing an integration test, the same APIs are available as in CDAP unit te
 Note that some APIs are not available, such as the ``TestManager`` methods ``deployTemplate``, ``addTemplatePlugins``,
 and ``getDataset``.
 
-For instance, to compile and deploy an Application class and start a Flow of that application::
+For instance, to compile and deploy an Application class and start a Service of that application::
 
-  ApplicationManager applicationManager = deployApplication(WordCount.class);
-  applicationManager.getFlowManager("WordCounter").start()
+  ApplicationManager applicationManager = deployApplication(DataCleansingApp.class);
+  applicationManager.getServiceManager("DataCleansingService").start()
 
 If additional APIs are needed that are not available in the CDAP unit tests framework,
 the CDAP clients library can be utilized to interact with the CDAP instance.
 
-For instance, example usage of StreamClient is in the StreamTest test class. Other clients can be
+For instance, example usage of ApplicationClient is in the ApplicationTest test class. Other clients can be
 instantiated in a similar manner::
 
-  StreamClient streamClient = new StreamClient(getClientConfig(), getRestClient());
-  streamClient.create("TestStream");
+  ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
+  appClient.list(new NamespaceId("myns"));
 
 
 Running Tests

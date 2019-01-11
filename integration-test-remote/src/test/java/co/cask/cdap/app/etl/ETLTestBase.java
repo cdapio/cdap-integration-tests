@@ -75,7 +75,6 @@ public abstract class ETLTestBase extends AudiTestBase {
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
   private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
 
-  protected ETLStageProvider etlStageProvider;
   protected ApplicationClient appClient;
   protected DatasetClient datasetClient;
   protected ArtifactClient artifactClient;
@@ -85,7 +84,6 @@ public abstract class ETLTestBase extends AudiTestBase {
   public void setup() throws InterruptedException, ExecutionException, TimeoutException {
     appClient = getApplicationClient();
     datasetClient = getDatasetClient();
-    etlStageProvider = new ETLStageProvider();
     artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
 
     version = getVersion();
