@@ -38,7 +38,6 @@ import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.app.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.ApplicationVersionTest;
-import co.cask.cdap.apps.DatasetTest;
 import co.cask.cdap.apps.NamespaceTest;
 import co.cask.cdap.apps.NamespacedStreamTest;
 import co.cask.cdap.apps.explore.ExploreTest;
@@ -66,7 +65,6 @@ import org.junit.runners.Suite;
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   BatchJoinerTest.class,
-  DatasetTest.class,
   DataStreamsTest.class,
   ETLMapReduceTest.class,
   ExcelInputReaderTest.class,
