@@ -38,15 +38,11 @@ import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.app.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
 import co.cask.cdap.apps.ApplicationVersionTest;
-import co.cask.cdap.apps.DatasetTest;
 import co.cask.cdap.apps.NamespaceTest;
-import co.cask.cdap.apps.NamespacedStreamTest;
-import co.cask.cdap.apps.explore.ExploreTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.ProgramMetadataTest;
-import co.cask.cdap.apps.transaction.TransactionTimeoutTest;
 import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
@@ -67,16 +63,13 @@ import org.junit.runners.Suite;
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   BatchJoinerTest.class,
-  DatasetTest.class,
   DataStreamsTest.class,
   ETLMapReduceTest.class,
   ExcelInputReaderTest.class,
-  ExploreTest.class,
   FileSetTest.class,
   HangingWorkerTest.class,
   HivePluginTest.class,
   KVTableWithProjectionTest.class,
-  NamespacedStreamTest.class,
   NamespaceTest.class,
   NormalizeTest.class,
   OperationalStatsTest.class,
@@ -92,7 +85,6 @@ import org.junit.runners.Suite;
   ServiceWorkerTest.class,
   TPFSAvroSinkSourceTest.class,
   TPFSParquetSinkSourceTest.class,
-  TransactionTimeoutTest.class,
   ValueMapperTest.class,
   WranglerServiceTest.class,
   WranglerTest.class,

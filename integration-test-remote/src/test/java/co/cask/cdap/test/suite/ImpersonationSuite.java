@@ -17,7 +17,6 @@
 package co.cask.cdap.test.suite;
 
 import co.cask.cdap.security.AppImpersonationTest;
-import co.cask.cdap.security.CrossNSAppImpersonationTest;
 import org.junit.experimental.categories.Categories;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -31,7 +30,6 @@ import org.junit.runners.Suite;
   // distros, this should be AllTests.class
   CDH55Suite.class,
   AppImpersonationTest.class,
-  CrossNSAppImpersonationTest.class
 })
 public class ImpersonationSuite {
 }

@@ -49,7 +49,7 @@ public class KVTableWithProjectionTest extends ETLTestBase {
     // 1. Ingest data
     ingestData();
 
-    // 2. Run Stream To KVTable with Projection Transform plugin
+    // 2. Run Table To KVTable with Projection Transform plugin
     ApplicationId appId = TEST_NAMESPACE.app("TableToKVTableWithProjection");
 
     ETLStage source = new ETLStage("TableSource",
