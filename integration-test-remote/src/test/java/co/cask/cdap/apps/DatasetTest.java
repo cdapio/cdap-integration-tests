@@ -16,7 +16,6 @@
 
 package co.cask.cdap.apps;
 
-import co.cask.cdap.api.metrics.RuntimeMetrics;
 import co.cask.cdap.client.DatasetClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.common.UnauthenticatedException;
@@ -29,7 +28,6 @@ import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.StreamManager;
 import co.cask.common.http.HttpMethod;
@@ -39,6 +37,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -56,6 +55,8 @@ public class DatasetTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();
 
+  // TODO: (CDAP-14746) fix after removal of flows
+  @Ignore
   @Test
   public void test() throws Exception {
 
@@ -97,16 +98,11 @@ public class DatasetTest extends AudiTestBase {
     datasetClient.delete(testDatasetinstance);
     Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
 
-    FlowManager flowManager = applicationManager.getFlowManager("WordCounter").start();
-    flowManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
     wordCountService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     StreamManager wordStream = getTestManager().getStreamManager(TEST_NAMESPACE.stream("wordStream"));
     wordStream.send("hello world");
-
-    RuntimeMetrics flowletMetrics = flowManager.getFlowletMetrics("unique");
-    flowletMetrics.waitForProcessed(1, PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     // verify through service that there are 2 words
     Map<String, Object> responseMap = getWordCountStats(wordCountService);

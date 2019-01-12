@@ -31,7 +31,6 @@ import co.cask.cdap.api.service.http.AbstractHttpServiceHandler;
 import co.cask.cdap.api.service.http.HttpContentConsumer;
 import co.cask.cdap.api.service.http.HttpServiceRequest;
 import co.cask.cdap.api.service.http.HttpServiceResponder;
-import com.google.common.io.Closeables;
 import com.google.gson.Gson;
 import org.apache.twill.filesystem.Location;
 import org.slf4j.Logger;

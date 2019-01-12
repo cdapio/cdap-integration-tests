@@ -16,50 +16,42 @@
 
 package co.cask.cdap.apps.explore;
 
-import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.format.FormatSpecification;
 import co.cask.cdap.api.data.schema.Schema;
-import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.client.StreamClient;
-import co.cask.cdap.common.StreamNotFoundException;
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
 import co.cask.cdap.proto.ColumnDesc;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.StreamProperties;
 import co.cask.cdap.proto.id.StreamId;
-import co.cask.cdap.security.spi.authorization.UnauthorizedException;
-import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.cdap.test.FlowManager;
 import co.cask.cdap.test.ProgramManager;
-import co.cask.cdap.test.ServiceManager;
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import javax.annotation.Nullable;
 
 /**
- * Tests Explore functionality using {@link WordCountApplication}.
+ * Tests Explore functionality.
  */
 public class ExploreTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(ExploreTest.class);
   private static final Gson GSON = new Gson();
 
+  // TODO: (CDAP-14746) test explore using something other than flows and streams
+  @Ignore
   @Test
   public void test() throws Exception {
     LOG.info("Sending input data.");
@@ -212,42 +204,7 @@ public class ExploreTest extends AudiTestBase {
   }
 
   private void sendInputData() throws Exception {
-    ApplicationManager app = deployApplication(WordCountApplication.class);
-    FlowManager wordCountFlow = app.getFlowManager("WordCountFlow").start();
-    FlowManager extendedWordCountFlow = app.getFlowManager("ExtendedWordCountFlow").start();
-    FlowManager keyValueFlow = app.getFlowManager("KeyValueFlow").start();
-    ServiceManager wordCountService = app.getServiceManager("WordCountService").start();
-    waitForRun(ProgramRunStatus.RUNNING, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
-
-    StreamId listsStreamId = TEST_NAMESPACE.stream("lists");
-    StreamId wordsStreamId = TEST_NAMESPACE.stream("words");
-    StreamId words2StreamId = TEST_NAMESPACE.stream("words2");
-
-    StreamClient streamClient = getStreamClient();
-    streamClient.sendEvent(listsStreamId, "Mike 12 32 0");
-    streamClient.sendEvent(listsStreamId, "iPad 902 332 2286");
-    streamClient.sendEvent(listsStreamId, "Jada");
-    streamClient.sendEvent(listsStreamId, "Spike 8023 334 0 34");
-    streamClient.sendEvent(wordsStreamId, "Mike has macbook.");
-    streamClient.sendEvent(wordsStreamId, "Mike has iPad.");
-    streamClient.sendEvent(wordsStreamId, "Jada has iPad.");
-    streamClient.sendEvent(words2StreamId, "foo bar foo foobar barbar foobarbar");
-
-    // verify stream content
-    assertStreamEvents(listsStreamId, "Mike 12 32 0", "iPad 902 332 2286", "Jada", "Spike 8023 334 0 34");
-    assertStreamEvents(wordsStreamId, "Mike has macbook.", "Mike has iPad.", "Jada has iPad.");
-    assertStreamEvents(words2StreamId, "foo bar foo foobar barbar foobarbar");
-
-    // verify processed count
-    keyValueFlow.getFlowletMetrics("wordSplitter").waitForProcessed(4, 2, TimeUnit.MINUTES);
-    wordCountFlow.getFlowletMetrics("wordCounter").waitForProcessed(3, 2, TimeUnit.MINUTES);
-    extendedWordCountFlow.getFlowletMetrics("wordCounter").waitForProcessed(1, 2, TimeUnit.MINUTES);
-
-    wordCountFlow.stop();
-    extendedWordCountFlow.stop();
-    keyValueFlow.stop();
-    wordCountService.stop();
-    waitForRun(ProgramRunStatus.KILLED, wordCountFlow, extendedWordCountFlow, keyValueFlow, wordCountService);
+    // TODO: (CDAP-14746) implement without using flows and streams
   }
 
   private void testEqualityJoin() throws Exception {
@@ -662,21 +619,6 @@ public class ExploreTest extends AudiTestBase {
       rows.add(executionResult.next().getColumns());
     }
     return rows;
-  }
-
-  private void assertStreamEvents(StreamId streamId, String... expectedEvents)
-    throws UnauthenticatedException, IOException, StreamNotFoundException, UnauthorizedException {
-
-    List<StreamEvent> streamEvents = Lists.newArrayList();
-    getStreamClient().getEvents(streamId, 0, Long.MAX_VALUE, Integer.MAX_VALUE, streamEvents);
-    List<String> streamEventsAsStrings = Lists.transform(streamEvents, new Function<StreamEvent, String>() {
-      @Nullable
-      @Override
-      public String apply(StreamEvent input) {
-        return Bytes.toString(input.getBody());
-      }
-    });
-    Assert.assertArrayEquals(expectedEvents, streamEventsAsStrings.toArray(new String[streamEventsAsStrings.size()]));
   }
 
   private void waitForRun(ProgramRunStatus status, ProgramManager... managers)

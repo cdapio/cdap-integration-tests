@@ -25,7 +25,6 @@ import co.cask.cdap.api.dataset.table.Table;
 import co.cask.cdap.client.ApplicationClient;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.DatasetClient;
-import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ConnectionConfig;
 import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
@@ -76,7 +75,6 @@ public abstract class ETLTestBase extends AudiTestBase {
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
   private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
 
-  protected ETLStageProvider etlStageProvider;
   protected ApplicationClient appClient;
   protected DatasetClient datasetClient;
   protected ArtifactClient artifactClient;
@@ -86,7 +84,6 @@ public abstract class ETLTestBase extends AudiTestBase {
   public void setup() throws InterruptedException, ExecutionException, TimeoutException {
     appClient = getApplicationClient();
     datasetClient = getDatasetClient();
-    etlStageProvider = new ETLStageProvider();
     artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
 
     version = getVersion();
