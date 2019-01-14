@@ -26,8 +26,7 @@ import org.junit.runners.Suite;
  */
 @RunWith(Categories.class)
 @Suite.SuiteClasses({
-  SparkPageRankAppTest.class,
-  WorkflowTest.class,
+  SparkPageRankAppTest.class
 })
 public class Spark2Tests {
 }
