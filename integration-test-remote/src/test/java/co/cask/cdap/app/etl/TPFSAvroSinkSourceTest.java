@@ -37,7 +37,6 @@ import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import co.cask.common.http.ObjectResponse;
 import co.cask.hydrator.plugin.batch.sink.TimePartitionedFileSetDatasetAvroSink;
-import co.cask.hydrator.plugin.batch.source.StreamBatchSource;
 import co.cask.hydrator.plugin.batch.source.TimePartitionedFileSetDatasetAvroSource;
 import co.cask.hydrator.plugin.common.Properties;
 import co.cask.hydrator.plugin.transform.ProjectionTransform;
@@ -54,7 +53,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Integration test which tests the following:
  * <ul>
- * <li>{@link StreamBatchSource}</li>
  * <li>{@link ProjectionTransform} : Drop</li>
  * <li>{@link TimePartitionedFileSetDatasetAvroSink}</li>
  * <li>{@link TimePartitionedFileSetDatasetAvroSource}</li>
