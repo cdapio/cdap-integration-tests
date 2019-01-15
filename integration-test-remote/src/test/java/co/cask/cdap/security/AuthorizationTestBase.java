@@ -16,11 +16,9 @@
 
 package co.cask.cdap.security;
 
-import co.cask.cdap.api.flow.flowlet.StreamEvent;
 import co.cask.cdap.client.AuthorizationClient;
 import co.cask.cdap.client.MetaClient;
 import co.cask.cdap.client.NamespaceClient;
-import co.cask.cdap.client.StreamClient;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.proto.ConfigEntry;
@@ -28,7 +26,6 @@ import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.element.EntityType;
 import co.cask.cdap.proto.id.EntityId;
 import co.cask.cdap.proto.id.NamespaceId;
-import co.cask.cdap.proto.id.StreamId;
 import co.cask.cdap.proto.security.Action;
 import co.cask.cdap.proto.security.Authorizable;
 import co.cask.cdap.proto.security.Role;
@@ -40,7 +37,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Assert;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
