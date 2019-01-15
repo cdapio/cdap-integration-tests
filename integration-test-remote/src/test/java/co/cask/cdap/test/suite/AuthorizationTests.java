@@ -16,13 +16,6 @@
 
 package co.cask.cdap.test.suite;
 
-import co.cask.cdap.security.AppImpersonationAuthorizationTest;
-import co.cask.cdap.security.BasicAppAuthorizationTest;
-import co.cask.cdap.security.BasicAuthorizationTest;
-import co.cask.cdap.security.CustomMappingAppAuthorizationTest;
-import co.cask.cdap.security.CustomMappingBasicAuthorizationTest;
-import co.cask.cdap.security.NamespaceImpersonationAppAuthorizationTest;
-import co.cask.cdap.security.NamespaceImpersonationBasicAuthorizationTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -32,13 +25,6 @@ import org.junit.runners.Suite;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
   // Note: all the class names below are in sorted order
-  AppImpersonationAuthorizationTest.class,
-  BasicAppAuthorizationTest.class,
-  BasicAuthorizationTest.class,
-  CustomMappingAppAuthorizationTest.class,
-  CustomMappingBasicAuthorizationTest.class,
-  NamespaceImpersonationAppAuthorizationTest.class,
-  NamespaceImpersonationBasicAuthorizationTest.class,
 })
 public class AuthorizationTests {
 }

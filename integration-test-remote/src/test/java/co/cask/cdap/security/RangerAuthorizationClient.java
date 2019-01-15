@@ -365,14 +365,6 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
         resource.put(RangerCommon.KEY_DATASET_TYPE,
                      new RangerPolicy.RangerPolicyResource(authorizable.getEntityParts().get(EntityType.DATASET_TYPE)));
         break;
-      case STREAM:
-        resource.put(RangerCommon.KEY_INSTANCE,
-                     new RangerPolicy.RangerPolicyResource("cdap"));
-        resource.put(RangerCommon.KEY_NAMESPACE,
-                     new RangerPolicy.RangerPolicyResource(authorizable.getEntityParts().get(EntityType.NAMESPACE)));
-        resource.put(RangerCommon.KEY_STREAM,
-                     new RangerPolicy.RangerPolicyResource(authorizable.getEntityParts().get(EntityType.STREAM)));
-        break;
       case PROGRAM:
         resource.put(RangerCommon.KEY_INSTANCE,
                      new RangerPolicy.RangerPolicyResource("cdap"));
