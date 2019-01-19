@@ -20,16 +20,18 @@ import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.app.etl.ETLTestBase;
+import co.cask.cdap.common.ApplicationNotFoundException;
 import co.cask.cdap.internal.io.SchemaTypeAdapter;
+import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
 import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.common.http.HttpMethod;
 import co.cask.common.http.HttpResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.junit.Assert;
@@ -39,6 +41,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,21 +106,14 @@ public class WranglerServiceTest extends ETLTestBase {
 
   @Test
   public void test() throws Exception {
-
-    ApplicationId appId = TEST_NAMESPACE.app("dataprep");
-    List<ArtifactSummary> artifactSummaryList = artifactClient.list(TEST_NAMESPACE.getNamespaceId(),
-                                                                    ArtifactScope.SYSTEM);
-    AppRequest appRequest = getWranglerAppRequest(artifactSummaryList);
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-    ServiceManager wranglerServiceManager = appManager.getServiceManager("service");
-    wranglerServiceManager.start();
+    ServiceManager wranglerServiceManager = ensureServiceRunning();
 
     URL baseURL = wranglerServiceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     List<String> uploadContents = ImmutableList.of("bob,anderson", "joe,mchall");
-    createAndUploadWorkspace(baseURL, WORKSPACE_NAME, uploadContents);
+    createAndUploadWorkspace(baseURL, uploadContents);
 
-    Schema schema = schema(baseURL, WORKSPACE_NAME);
+    Schema schema = schema(baseURL);
     Schema expectedSchema =
       Schema.recordOf("avroSchema",
                       Schema.Field.of("fname", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
@@ -126,27 +122,50 @@ public class WranglerServiceTest extends ETLTestBase {
     wranglerServiceManager.stop();
   }
 
-  protected void createAndUploadWorkspace(URL baseURL, String workspace, List<String> lines) throws Exception {
+  private ServiceManager ensureServiceRunning() throws Exception {
+    ApplicationId appId = NamespaceId.SYSTEM.app("dataprep");
+    ApplicationManager appManager;
+    // Deploy the dataprep app if it doesn't exist already
+    try {
+      getApplicationClient().get(appId);
+      appManager = getApplicationManager(appId);
+    } catch (ApplicationNotFoundException e) {
+      List<ArtifactSummary> artifactSummaryList = artifactClient.list(TEST_NAMESPACE.getNamespaceId(),
+                                                                      ArtifactScope.SYSTEM);
 
-    HttpResponse response = getRestClient().execute(HttpMethod.PUT, new URL(baseURL, "workspaces/" + workspace),
+      AppRequest appRequest = getWranglerAppRequest(artifactSummaryList);
+      appManager = deployApplication(appId, appRequest);
+    }
+
+    ServiceManager serviceManager = appManager.getServiceManager("service");
+    if (!serviceManager.isRunning()) {
+      serviceManager.start();
+    }
+    serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.MINUTES);
+    return serviceManager;
+  }
+
+  private void createAndUploadWorkspace(URL baseURL, List<String> lines) throws Exception {
+    String workspacePath = String.format("contexts/%s/workspaces/%s", TEST_NAMESPACE.getNamespace(), WORKSPACE_NAME);
+    HttpResponse response = getRestClient().execute(HttpMethod.PUT, new URL(baseURL, workspacePath),
                                                     getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
     String body = Joiner.on(URLEncoder.encode("\n", StandardCharsets.UTF_8.name())).join(lines);
-    Map<String, String> headers = new HashMap<String, String>();
+    Map<String, String> headers = new HashMap<>();
     headers.put("recorddelimiter", URLEncoder.encode("\n", StandardCharsets.UTF_8.name()));
-    response = getRestClient().execute(HttpMethod.POST, new URL(baseURL, "workspaces/" + workspace + "/upload"),
+    response = getRestClient().execute(HttpMethod.POST, new URL(baseURL, workspacePath + "/upload"),
                                        body, headers, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
   }
 
-  public Schema schema(URL baseURL, String workspace) throws Exception {
-
-    URL url = new URL(baseURL, "workspaces/" + workspace + "/schema");
-   HttpResponse response = getRestClient().execute(HttpMethod.POST, url,
-                                                   GSON.toJson(createServiceRequest()),
-                                                   ImmutableMap.<String, String>of(),
-                                                   getClientConfig().getAccessToken());
+  public Schema schema(URL baseURL) throws Exception {
+    URL url = new URL(baseURL, String.format("contexts/%s/workspaces/%s/schema",
+                                             TEST_NAMESPACE.getNamespace(), WORKSPACE_NAME));
+    HttpResponse response = getRestClient().execute(HttpMethod.POST, url,
+                                                    GSON.toJson(createServiceRequest()),
+                                                    Collections.emptyMap(),
+                                                    getClientConfig().getAccessToken());
     //verify that request has succeeded
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
@@ -155,7 +174,7 @@ public class WranglerServiceTest extends ETLTestBase {
                            + response.getResponseBodyAsString() + " }", Schema.class);
   }
 
-  protected WranglerServiceRequest createServiceRequest() {
+  private WranglerServiceRequest createServiceRequest() {
     Workspace workspace = new Workspace(WORKSPACE_NAME, 2);
     List<String> directives =
       ImmutableList.of("split-to-columns test_ws ,",
@@ -164,7 +183,6 @@ public class WranglerServiceTest extends ETLTestBase {
                        "rename test_ws_2 lname");
     Recipe recipe = new Recipe(directives, true, "my-recipe");
     Sampling sampling = new Sampling("first", 1, 2);
-    WranglerServiceRequest request = new WranglerServiceRequest(1.0, workspace, recipe, sampling);
-    return request;
+    return new WranglerServiceRequest(1.0, workspace, recipe, sampling);
   }
 }
