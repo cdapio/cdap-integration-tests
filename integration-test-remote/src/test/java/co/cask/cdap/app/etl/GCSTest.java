@@ -16,9 +16,12 @@
 
 package co.cask.cdap.app.etl;
 
+import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.common.Bytes;
+import co.cask.cdap.common.ArtifactNotFoundException;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
+import co.cask.cdap.common.utils.Tasks;
 import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.batch.BatchSink;
@@ -28,7 +31,9 @@ import co.cask.cdap.etl.proto.v2.ETLPlugin;
 import co.cask.cdap.etl.proto.v2.ETLStage;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.artifact.AppRequest;
+import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ApplicationId;
+import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.common.http.HttpRequest;
@@ -111,7 +116,20 @@ public class GCSTest extends ETLTestBase {
   }
 
   @Before
-  public void testSetup() throws IOException, UnauthenticatedException {
+  public void testSetup() throws Exception {
+    // wait for artifact containing GCSCopy to load
+    Tasks.waitFor(true, () -> {
+      try {
+        final ArtifactId datapipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
+        List<PluginSummary> plugins =
+          artifactClient.getPluginSummaries(datapipelineId, Action.PLUGIN_TYPE, ArtifactScope.SYSTEM);
+        return plugins.stream().anyMatch(pluginSummary -> "GCSCopy".equals(pluginSummary.getName()));
+      } catch (ArtifactNotFoundException e) {
+        // happens if the relevant artifact(s) were not added yet
+        return false;
+      }
+    }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
+
     createProfile(PROFILE_NAME);
     createdBuckets = new ArrayList<>();
   }
