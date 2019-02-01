@@ -169,10 +169,10 @@ public abstract class ETLTestBase extends AudiTestBase {
 
     // leverage a UI endpoint to upload the plugins from market
     String source = URLEncoder.encode(
-      String.format("%s/packages/%s/%s/%s-%s.jar",
-                    caskMarketURL, packageName, version, pluginName, version), "UTF-8");
-    String target = URLEncoder.encode(getClientConfig().getConnectionConfig().resolveURI(
-      String.format("v3/namespaces/%s/artifacts/%s", TEST_NAMESPACE.getNamespace(), pluginName)).toString(), "UTF-8");
+      String.format("packages/%s/%s/%s-%s.jar",
+                    packageName, version, pluginName, version), "UTF-8");
+    String target = URLEncoder.encode(
+      String.format("v3/namespaces/%s/artifacts/%s", TEST_NAMESPACE.getNamespace(), pluginName), "UTF-8");
 
     ConnectionConfig connConfig = getClientConfig().getConnectionConfig();
     String uiPort = connConfig.isSSLEnabled() ?
