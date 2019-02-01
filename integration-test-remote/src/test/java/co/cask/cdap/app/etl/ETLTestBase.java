@@ -73,7 +73,6 @@ public abstract class ETLTestBase extends AudiTestBase {
     Schema.Field.of("ticker", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("num", Schema.of(Schema.Type.INT)),
     Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
-  private static final String CASK_MARKET_URI = System.getProperty("cask.market.uri", "http://market.cask.co/v2");
 
   protected ApplicationClient appClient;
   protected DatasetClient datasetClient;
@@ -152,8 +151,11 @@ public abstract class ETLTestBase extends AudiTestBase {
 
   protected void installPluginFromMarket(String packageName, String pluginName, String version)
     throws IOException, UnauthenticatedException {
+    Map<String, ConfigEntry> cdapConfig = getMetaClient().getCDAPConfig();
+
+    String caskMarketURL = cdapConfig.get("market.base.url").getValue();
     URL pluginJsonURL = new URL(String.format("%s/packages/%s/%s/%s-%s.json",
-                                              CASK_MARKET_URI, packageName, version, pluginName, version));
+                                              caskMarketURL, packageName, version, pluginName, version));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, pluginJsonURL, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
@@ -168,11 +170,10 @@ public abstract class ETLTestBase extends AudiTestBase {
     // leverage a UI endpoint to upload the plugins from market
     String source = URLEncoder.encode(
       String.format("%s/packages/%s/%s/%s-%s.jar",
-                    CASK_MARKET_URI, packageName, version, pluginName, version), "UTF-8");
+                    caskMarketURL, packageName, version, pluginName, version), "UTF-8");
     String target = URLEncoder.encode(getClientConfig().getConnectionConfig().resolveURI(
       String.format("v3/namespaces/%s/artifacts/%s", TEST_NAMESPACE.getNamespace(), pluginName)).toString(), "UTF-8");
 
-    Map<String, ConfigEntry> cdapConfig = getMetaClient().getCDAPConfig();
     ConnectionConfig connConfig = getClientConfig().getConnectionConfig();
     String uiPort = connConfig.isSSLEnabled() ?
       cdapConfig.get("dashboard.ssl.bind.port").getValue() : cdapConfig.get("dashboard.bind.port").getValue();
