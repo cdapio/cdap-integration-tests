@@ -44,6 +44,7 @@ import co.cask.cdap.apps.fileset.FileSetTest;
 import co.cask.cdap.apps.fileset.PartitionCorrectorTest;
 import co.cask.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import co.cask.cdap.apps.metadata.ProgramMetadataTest;
+import co.cask.cdap.apps.workflow.WorkflowTest;
 import co.cask.cdap.operations.OperationalStatsTest;
 import co.cask.cdap.remote.dataset.test.RemoteCubeTest;
 import co.cask.cdap.remote.dataset.test.RemoteKeyValueTest;
@@ -88,6 +89,7 @@ import org.junit.runners.Suite;
   TPFSAvroSinkSourceTest.class,
   TPFSParquetSinkSourceTest.class,
   ValueMapperTest.class,
+  WorkflowTest.class,
   WranglerServiceTest.class,
   WranglerTest.class,
   XMLReaderTest.class
