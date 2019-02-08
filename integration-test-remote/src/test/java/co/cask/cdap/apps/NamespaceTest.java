@@ -23,7 +23,6 @@ import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.test.AudiTestBase;
 import com.google.common.base.Joiner;
-import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,7 +54,8 @@ public class NamespaceTest extends AudiTestBase {
     List<NamespaceMeta> list = namespaceClient.list();
     int initialNamespaceCount = list.size();
     NamespaceMeta defaultMeta = getById(list, NamespaceId.DEFAULT);
-    Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
+    Assert.assertNotNull(defaultMeta);
+    Assert.assertEquals(NamespaceMeta.DEFAULT, new NamespaceMeta.Builder(defaultMeta).setGeneration(0L).build());
 
     try {
       namespaceClient.get(NS1);
@@ -90,8 +90,13 @@ public class NamespaceTest extends AudiTestBase {
                                                                      NamespaceId.SYSTEM.getNamespace())));
     }
 
+    // zero out generation so that it's not used in comparison
+    list.clear();
+    for (NamespaceMeta ns : namespaceClient.list()) {
+      list.add(new NamespaceMeta.Builder(ns).setGeneration(0L).build());
+    }
+
     // list should contain the default namespace as well as the two explicitly created
-    list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount + 2, list.size());
     Assert.assertTrue(list.contains(ns1Meta));
     NamespaceMeta retrievedNs1Meta = getById(list, NS1);
@@ -107,8 +112,8 @@ public class NamespaceTest extends AudiTestBase {
     Assert.assertEquals(ns2Meta, retrievedNs2Meta);
     Assert.assertTrue(list.contains(NamespaceMeta.DEFAULT));
 
-    Assert.assertEquals(ns1Meta, namespaceClient.get(NS1));
-    Assert.assertEquals(ns2Meta, namespaceClient.get(NS2));
+    Assert.assertEquals(ns1Meta, new NamespaceMeta.Builder(namespaceClient.get(NS1)).setGeneration(0L).build());
+    Assert.assertEquals(ns2Meta, new NamespaceMeta.Builder(namespaceClient.get(NS2)).setGeneration(0L).build());
 
     // after deleting the explicitly created namespaces, only default namespace should remain in namespace list
     namespaceClient.delete(NS1);
@@ -117,18 +122,15 @@ public class NamespaceTest extends AudiTestBase {
     list = namespaceClient.list();
     Assert.assertEquals(initialNamespaceCount, list.size());
     defaultMeta = getById(list, NamespaceId.DEFAULT);
-    Assert.assertEquals(NamespaceMeta.DEFAULT, defaultMeta);
+    Assert.assertNotNull(defaultMeta);
+    Assert.assertEquals(NamespaceMeta.DEFAULT, new NamespaceMeta.Builder(defaultMeta).setGeneration(0L).build());
   }
 
   // From a list of NamespaceMeta, finds the element that matches a given namespaceId.
   @Nullable
   private NamespaceMeta getById(List<NamespaceMeta> namespaces, final NamespaceId namespaceId) {
-    Iterable<NamespaceMeta> filter = Iterables.filter(namespaces, new Predicate<NamespaceMeta>() {
-      @Override
-      public boolean apply(@Nullable NamespaceMeta namespaceMeta) {
-        return namespaceMeta != null && namespaceId.getNamespace().equals(namespaceMeta.getName());
-      }
-    });
+    Iterable<NamespaceMeta> filter = Iterables.filter(namespaces, namespaceMeta ->
+      namespaceMeta != null && namespaceId.getNamespace().equals(namespaceMeta.getName()));
     return Iterables.getFirst(filter, null);
   }
 }
