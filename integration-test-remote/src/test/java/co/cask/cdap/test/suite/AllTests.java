@@ -37,7 +37,6 @@ import co.cask.cdap.app.mapreduce.readless.ReadlessIncrementTest;
 import co.cask.cdap.app.restart.HangingWorkerTest;
 import co.cask.cdap.app.serviceworker.ServiceWorkerTest;
 import co.cask.cdap.apps.ApplicationTest;
-import co.cask.cdap.apps.ApplicationVersionTest;
 import co.cask.cdap.apps.NamespaceTest;
 import co.cask.cdap.apps.dataset.DatasetTest;
 import co.cask.cdap.apps.fileset.FileSetTest;
@@ -61,7 +60,6 @@ import org.junit.runners.Suite;
 // Note: all the class names below are in sorted order
 //
   ApplicationTest.class,
-  ApplicationVersionTest.class,
   BatchAggregatorTest.class,
   BatchCubeSinkTest.class,
   BatchJoinerTest.class,
