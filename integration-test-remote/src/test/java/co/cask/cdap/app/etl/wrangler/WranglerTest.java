@@ -18,8 +18,6 @@ package co.cask.cdap.app.etl.wrangler;
 
 
 import co.cask.cdap.api.Resources;
-import co.cask.cdap.api.artifact.ArtifactScope;
-import co.cask.cdap.api.artifact.ArtifactSummary;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.api.data.schema.Schema;
 import co.cask.cdap.api.dataset.table.Put;
@@ -67,7 +65,6 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -160,15 +157,8 @@ public class WranglerTest extends ETLTestBase {
       .setResources(new Resources(1024))
       .build();
 
-    ApplicationId appId = TEST_NAMESPACE.app("dataprep");
-    List<ArtifactSummary> artifactSummaryList = artifactClient.list(TEST_NAMESPACE.getNamespaceId(),
-                                                                    ArtifactScope.SYSTEM);
-    AppRequest appRequest = getWranglerAppRequest(artifactSummaryList);
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-    ServiceManager wranglerServiceManager = startService(appManager, "service");
-
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    appId = TEST_NAMESPACE.app("wrangler-test");
+    ApplicationId appId = TEST_NAMESPACE.app("wrangler-test");
     ApplicationManager testAppManager = deployApplication(appId, request);
 
     // run the pipeline
@@ -177,7 +167,7 @@ public class WranglerTest extends ETLTestBase {
     workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     // Deploy an application with a service to get partitionedFileset data for verification
-    appManager = deployApplication(DatasetAccessApp.class);
+    ApplicationManager appManager = deployApplication(DatasetAccessApp.class);
     ServiceManager serviceManager = startService(appManager, SnapshotFilesetService.class.getSimpleName());
 
     org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser().parse(sinkSchema.toString());
@@ -205,7 +195,6 @@ public class WranglerTest extends ETLTestBase {
     Set<GenericRecord> actual = readOutput(serviceManager, "SnapshotAvro", sinkSchema);
     // verfiy output
     Assert.assertEquals(expected, actual);
-
   }
 
   private ServiceManager startService(ApplicationManager appManager, String service) throws InterruptedException,
