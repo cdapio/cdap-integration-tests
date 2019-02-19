@@ -18,9 +18,9 @@ package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.artifact.ArtifactSummary;
+import co.cask.cdap.api.metadata.MetadataEntity;
 import co.cask.cdap.client.ArtifactClient;
 import co.cask.cdap.client.MetadataClient;
-import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.metadata.MetadataSearchResultRecord;
@@ -48,7 +48,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     Set<MetadataSearchResultRecord> result =
       searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-data-pipeline", null);
     Assert.assertEquals(expected, result);
-    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-data-p*", EntityTypeSimpleName.ARTIFACT);
+    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "cdap-data-p*", MetadataEntity.ARTIFACT);
     Assert.assertEquals(expected, result);
 
     ArtifactClient artifactClient = new ArtifactClient(getClientConfig(), getRestClient());
@@ -59,7 +59,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
     ArtifactId corePlugins = NamespaceId.SYSTEM.artifact("core-plugins", corePluginsVersion);
 
     expected = ImmutableSet.of(new MetadataSearchResultRecord(corePlugins));
-    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "table", EntityTypeSimpleName.ARTIFACT);
+    result = searchMetadata(metadataClient, NamespaceId.SYSTEM, "table", MetadataEntity.ARTIFACT);
     Assert.assertEquals(expected, result);
     // Searching in some user namespace should also surface entities from the system namespace
     expected = ImmutableSet.of(new MetadataSearchResultRecord(
@@ -70,7 +70,7 @@ public class ETLSystemMetadataTest extends ETLTestBase {
 
   private Set<MetadataSearchResultRecord> searchMetadata(MetadataClient metadataClient,
                                                          NamespaceId namespace, String query,
-                                                         @Nullable EntityTypeSimpleName targetType) throws Exception {
+                                                         @Nullable String targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
       metadataClient.searchMetadata(namespace, query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
