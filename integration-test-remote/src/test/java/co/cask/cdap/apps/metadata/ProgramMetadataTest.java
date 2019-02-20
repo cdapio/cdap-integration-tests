@@ -16,6 +16,7 @@
 package co.cask.cdap.apps.metadata;
 
 import co.cask.cdap.api.dataset.lib.KeyValueTable;
+import co.cask.cdap.api.metadata.MetadataEntity;
 import co.cask.cdap.api.metadata.MetadataScope;
 import co.cask.cdap.client.LineageClient;
 import co.cask.cdap.client.MetadataClient;
@@ -29,7 +30,6 @@ import co.cask.cdap.data2.metadata.lineage.Relation;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.ProgramType;
 import co.cask.cdap.proto.RunRecord;
-import co.cask.cdap.proto.element.EntityTypeSimpleName;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.proto.id.DatasetId;
@@ -149,7 +149,7 @@ public class ProgramMetadataTest extends AudiTestBase {
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(pluginArtifact)),
       searchMetadata(TEST_NAMESPACE,
-                     ArtifactSystemMetadataApp.PLUGIN1_NAME, EntityTypeSimpleName.ARTIFACT)
+                     ArtifactSystemMetadataApp.PLUGIN1_NAME, MetadataEntity.ARTIFACT)
     );
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(pluginArtifact)),
@@ -172,13 +172,13 @@ public class ProgramMetadataTest extends AudiTestBase {
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, APP.getEntityName(), null));
     // using program names
     Assert.assertEquals(expected, searchMetadata(TEST_NAMESPACE, PROGRAM.getEntityName(),
-                                                 EntityTypeSimpleName.APP));
+                                                 MetadataEntity.APPLICATION));
     // using program types
     Assert.assertEquals(
       expected,
       searchMetadata(TEST_NAMESPACE,
                      ProgramType.MAPREDUCE.getPrettyName() + MetadataConstants.KEYVALUE_SEPARATOR + "*",
-                     EntityTypeSimpleName.APP));
+                     MetadataEntity.APPLICATION));
   }
 
   private void assertProgramSearch() throws Exception {
@@ -189,18 +189,18 @@ public class ProgramMetadataTest extends AudiTestBase {
 
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PROGRAM)),
-      searchMetadata(TEST_NAMESPACE, "batch", EntityTypeSimpleName.PROGRAM));
+      searchMetadata(TEST_NAMESPACE, "batch", MetadataEntity.PROGRAM));
 
     // Using program names
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PROGRAM)),
-      searchMetadata(TEST_NAMESPACE, PROGRAM.getEntityName(), EntityTypeSimpleName.PROGRAM));
+      searchMetadata(TEST_NAMESPACE, PROGRAM.getEntityName(), MetadataEntity.PROGRAM));
 
     // using program types
     Assert.assertEquals(
       ImmutableSet.of(new MetadataSearchResultRecord(PROGRAM)),
       searchMetadata(TEST_NAMESPACE, ProgramType.MAPREDUCE.getPrettyName(),
-                     EntityTypeSimpleName.PROGRAM));
+                     MetadataEntity.PROGRAM));
   }
 
   private void assertDatasetSearch() throws Exception {
@@ -227,15 +227,15 @@ public class ProgramMetadataTest extends AudiTestBase {
     Set<MetadataSearchResultRecord> expectedKvTables = ImmutableSet.of(
       new MetadataSearchResultRecord(INPUT_DATASET), new MetadataSearchResultRecord(OUTPUT_DATASET)
     );
-    result = searchMetadata(TEST_NAMESPACE, "batch", EntityTypeSimpleName.DATASET);
+    result = searchMetadata(TEST_NAMESPACE, "batch", MetadataEntity.DATASET);
     Assert.assertEquals(expectedKvTables, result);
-    result = searchMetadata(TEST_NAMESPACE, "explore", EntityTypeSimpleName.DATASET);
+    result = searchMetadata(TEST_NAMESPACE, "explore", MetadataEntity.DATASET);
     Assert.assertEquals(expectedKvTables, result);
     result = searchMetadata(TEST_NAMESPACE, KeyValueTable.class.getName(), null);
     Assert.assertEquals(expectedKvTables, result);
     result = searchMetadata(TEST_NAMESPACE, "type:*", null);
     Assert.assertEquals(expectedKvTables, result);
-    result = searchMetadata(TEST_NAMESPACE, "dataset*", EntityTypeSimpleName.DATASET);
+    result = searchMetadata(TEST_NAMESPACE, "dataset*", MetadataEntity.DATASET);
     Assert.assertEquals(expectedKvTables, result);
 
     result = searchMetadata(TEST_NAMESPACE, INPUT_DATASET.getEntityName(), null);
@@ -245,7 +245,7 @@ public class ProgramMetadataTest extends AudiTestBase {
   }
 
   private Set<MetadataSearchResultRecord> searchMetadata(NamespaceId namespace, String query,
-                                                         @Nullable EntityTypeSimpleName targetType) throws Exception {
+                                                         @Nullable String targetType) throws Exception {
     Set<MetadataSearchResultRecord> results =
       metadataClient.searchMetadata(namespace, query, targetType).getResults();
     Set<MetadataSearchResultRecord> transformed = new HashSet<>();
