@@ -19,10 +19,8 @@ package co.cask.cdap.app.etl;
 import co.cask.cdap.api.artifact.ArtifactScope;
 import co.cask.cdap.api.common.Bytes;
 import co.cask.cdap.common.ArtifactNotFoundException;
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.api.action.Action;
 import co.cask.cdap.etl.api.batch.BatchSink;
 import co.cask.cdap.etl.api.batch.BatchSource;
@@ -35,8 +33,6 @@ import co.cask.cdap.proto.artifact.PluginSummary;
 import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.ArtifactId;
 import co.cask.cdap.test.ApplicationManager;
-import co.cask.cdap.test.WorkflowManager;
-import co.cask.common.http.HttpRequest;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
@@ -47,30 +43,19 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
-import com.google.common.io.Files;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,43 +65,25 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests reading from GCS (Google Cloud Storage) and writing to GCS from within a Dataproc cluster.
  */
-public class GCSTest extends ETLTestBase {
+public class GCSTest extends DataprocETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSTest.class);
-  private static final String PROFILE_NAME = "dataproc-itn-profile";
   private static final String INPUT_BLOB_NAME = "data/input/customers.csv";
   private static final String OUTPUT_BLOB_NAME = "data/output";
-  private static String projectId;
-  private static String serviceAccountCredentials;
   private static Storage storage;
   private List<Bucket> createdBuckets;
 
   @BeforeClass
   public static void testClassSetup() throws IOException {
-    // base64-encode the credentials, to avoid a commandline-parsing error, since the credentials have dashes in them
-    String property = System.getProperty("google.application.credentials.base64.encoded");
-
-    if (property != null) {
-      serviceAccountCredentials = Bytes.toString(Base64.getDecoder().decode(property));
-    } else {
-      property = Preconditions.checkNotNull(System.getProperty("google.application.credentials.path"),
-                                            "The credentials file provided is null. " +
-                                              "Please make sure the path is correct and the file exists.");
-
-      serviceAccountCredentials = Files.toString(new File(property), Charsets.UTF_8);
-    }
-
-    JsonObject serviceAccountJson = new JsonParser().parse(serviceAccountCredentials).getAsJsonObject();
-    projectId = serviceAccountJson.get("project_id").getAsString();
     storage = StorageOptions.newBuilder()
-      .setProjectId(projectId)
+      .setProjectId(getProjectId())
       .setCredentials(GoogleCredentials.fromStream(
-        new ByteArrayInputStream(serviceAccountCredentials.getBytes(StandardCharsets.UTF_8))))
+        new ByteArrayInputStream(getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))))
       .build().getService();
   }
 
-  @Before
-  public void testSetup() throws Exception {
+  @Override
+  protected void innerSetup() throws Exception {
     // wait for artifact containing GCSCopy to load
     Tasks.waitFor(true, () -> {
       try {
@@ -129,23 +96,11 @@ public class GCSTest extends ETLTestBase {
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
-
-    createProfile(PROFILE_NAME);
     createdBuckets = new ArrayList<>();
   }
 
-  @After
-  public void testTearDown() {
-    try {
-      // Disable the profile before deleting
-      URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + PROFILE_NAME + "/disable");
-      getRestClient().execute(HttpRequest.post(url).build(), getClientConfig().getAccessToken());
-
-      url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + PROFILE_NAME);
-      getRestClient().execute(HttpRequest.delete(url).build(), getClientConfig().getAccessToken());
-    } catch (Exception e) {
-      LOG.error("Failed to delete profile.", e);
-    }
+  @Override
+  protected void innerTearDown() {
     for (Bucket bucket : createdBuckets) {
       try {
         deleteBucket(bucket);
@@ -173,43 +128,6 @@ public class GCSTest extends ETLTestBase {
     }
     LOG.info("Deleting bucket {}", bucket);
     bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
-  }
-
-  private JsonObject ofProperty(String name, String value) {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.addProperty("name", name);
-    jsonObject.addProperty("value", value);
-    return jsonObject;
-  }
-
-  private void createProfile(String profileName) throws IOException, UnauthenticatedException {
-    Gson gson = new Gson();
-    JsonArray properties = new JsonArray();
-    properties.add(ofProperty("accountKey", serviceAccountCredentials));
-    properties.add(ofProperty("network", "default"));
-    properties.add(ofProperty("region", "global"));
-    properties.add(ofProperty("zone", "us-central1-a"));
-    properties.add(ofProperty("projectId", projectId));
-
-    properties.add(ofProperty("masterNumNodes", "1"));
-    properties.add(ofProperty("masterCPUs", "1"));
-    properties.add(ofProperty("masterMemoryMB", "4096"));
-    properties.add(ofProperty("masterDiskGB", "100"));
-    properties.add(ofProperty("workerNumNodes", "2"));
-    properties.add(ofProperty("workerCPUs", "1"));
-    properties.add(ofProperty("workerMemoryMB", "4096"));
-    properties.add(ofProperty("workerDiskGB", "100"));
-
-    JsonObject provisioner = new JsonObject();
-    provisioner.addProperty("name", "gcp-dataproc");
-    provisioner.add("properties", properties);
-
-    JsonObject jsonObj = new JsonObject();
-    jsonObj.add("provisioner", provisioner);
-
-    URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + profileName);
-    HttpRequest httpRequest = HttpRequest.put(url).withBody(gson.toJson(jsonObj)).build();
-    getRestClient().execute(httpRequest, getAccessToken());
   }
 
   private String createPath(Bucket bucket, String blobName) {
@@ -328,9 +246,7 @@ public class GCSTest extends ETLTestBase {
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start(Collections.singletonMap("system.profile.name", PROFILE_NAME));
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     /*
         From cp1, bucket 2 should look like:
@@ -389,7 +305,7 @@ public class GCSTest extends ETLTestBase {
 
   private ETLStage createCopyStage(String name, String src, String dest, boolean recursive) {
     return new ETLStage(name, new ETLPlugin("GCSCopy", Action.PLUGIN_TYPE,
-                                            ImmutableMap.of("projectId", projectId,
+                                            ImmutableMap.of("projectId", getProjectId(),
                                                             "sourcePath", src,
                                                             "destPath", dest,
                                                             "recursive", String.valueOf(recursive))));
@@ -438,9 +354,7 @@ public class GCSTest extends ETLTestBase {
     ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start(Collections.singletonMap("system.profile.name", PROFILE_NAME));
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
                                                Constants.Metrics.Tag.APP, appId.getEntityName());
