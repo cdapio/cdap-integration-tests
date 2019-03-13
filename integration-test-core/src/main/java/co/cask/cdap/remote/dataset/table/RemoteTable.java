@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -25,12 +25,12 @@ import co.cask.cdap.api.dataset.table.Row;
 import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.remote.dataset.TreeMapInstanceCreator;
-import co.cask.common.http.HttpMethod;
-import co.cask.common.http.HttpResponse;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import io.cdap.common.http.HttpMethod;
+import io.cdap.common.http.HttpResponse;
 
 import java.io.IOException;
 import java.net.URL;
@@ -137,7 +137,7 @@ public class RemoteTable extends AbstractRemoteTable {
     try {
       URL url = new URL(serviceURL, method);
       return restClient.execute(HttpMethod.POST, url, json,
-                                ImmutableMap.<String, String>of(), clientConfig.getAccessToken());
+                                ImmutableMap.of(), clientConfig.getAccessToken());
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }

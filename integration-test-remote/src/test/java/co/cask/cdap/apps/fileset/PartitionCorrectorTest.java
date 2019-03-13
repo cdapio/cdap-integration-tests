@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2017 Cask Data, Inc.
+ * Copyright © 2015-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -18,7 +18,6 @@ package co.cask.cdap.apps.fileset;
 
 import co.cask.cdap.client.QueryClient;
 import co.cask.cdap.explore.client.ExploreExecutionResult;
-import co.cask.cdap.explore.service.ExploreException;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.proto.QueryStatus;
 import co.cask.cdap.proto.RunRecord;
@@ -26,10 +25,10 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
-import co.cask.common.http.HttpRequest;
-import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
+import io.cdap.common.http.HttpRequest;
+import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -67,7 +66,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
   }
 
   private void dropPartitionsAndCorrect(ApplicationManager applicationManager, Map<String, String> args)
-    throws TimeoutException, InterruptedException, ExploreException, ExecutionException {
+    throws TimeoutException, InterruptedException, ExecutionException {
 
     // delete about half of the partitions directly in hive
     QueryClient queryClient = new QueryClient(getClientConfig());
@@ -85,8 +84,7 @@ public class PartitionCorrectorTest extends AudiTestBase {
     validate(queryClient, 100);
   }
 
-  private void validate(QueryClient client, int expected)
-    throws ExecutionException, InterruptedException, ExploreException {
+  private void validate(QueryClient client, int expected) throws ExecutionException, InterruptedException {
 
     ExploreExecutionResult results = client.execute(TEST_NAMESPACE, "show partitions dataset_pfs").get();
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());

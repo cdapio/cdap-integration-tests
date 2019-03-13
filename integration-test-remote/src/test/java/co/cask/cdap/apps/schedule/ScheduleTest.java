@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2017-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -23,8 +23,6 @@ import co.cask.cdap.api.workflow.ScheduleProgramInfo;
 import co.cask.cdap.client.ScheduleClient;
 import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.common.utils.Tasks;
-import co.cask.cdap.examples.datacleansing.DataCleansing;
-import co.cask.cdap.examples.datacleansing.DataCleansingService;
 import co.cask.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
 import co.cask.cdap.internal.schedule.constraint.Constraint;
 import co.cask.cdap.proto.ProgramRunStatus;
@@ -43,10 +41,10 @@ import co.cask.cdap.security.spi.authorization.UnauthorizedException;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.common.http.HttpRequest;
-import co.cask.common.http.HttpResponse;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.cdap.common.http.HttpRequest;
+import io.cdap.common.http.HttpResponse;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -68,12 +66,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ScheduleTest extends AudiTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(ScheduleTest.class);
+  private static final String SERVICE_NAME = "DataCleansingService";
 
   @Before
   public void before() throws Exception {
     // Deploy DataCleansing app and start service
-    ApplicationManager dataCleansing = deployApplication(DataCleansing.class);
-    dataCleansing.getServiceManager(DataCleansingService.NAME).start();
+    // (CDAP-14914) ScheduleTest currently fails and isn't run as part of the regularly-scheduled integration tests
+    // ApplicationManager dataCleansing = deployApplication(DataCleansing.class);
+    // dataCleansing.getServiceManager(SERVICE_NAME).start();
     // Deploy AppWithDataPartitionSchedule
     deployApplication(AppWithDataPartitionSchedule.class);
   }
@@ -120,7 +120,7 @@ public class ScheduleTest extends AudiTestBase {
     // the number of runs and time before sending the trigger
     final int numRunsBeforeTrigger = workflowManager.getHistory().size();
     long timeBeforeTrigger = System.currentTimeMillis();
-    URL serviceUrl = dataCleansing.getServiceManager(DataCleansingService.NAME)
+    URL serviceUrl = dataCleansing.getServiceManager(SERVICE_NAME)
       .getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     triggerDataSchedule(serviceUrl);
 
@@ -129,12 +129,8 @@ public class ScheduleTest extends AudiTestBase {
     try {
       long timeAfterFirstTrigger = System.currentTimeMillis() - timeBeforeTrigger;
       // DELAY_WORKFLOW should only be launched after DELAY_MILLIS since the first trigger is fired
-      Tasks.waitFor(true, new Callable<Boolean>() {
-                      @Override
-                      public Boolean call() throws Exception {
-                        return delayWorkflowManager.getHistory().size() > numDelayWorkflowRuns;
-                      }
-                    }, AppWithDataPartitionSchedule.DELAY_MILLIS - timeAfterFirstTrigger, TimeUnit.MILLISECONDS,
+      Tasks.waitFor(true, () -> delayWorkflowManager.getHistory().size() > numDelayWorkflowRuns,
+                    AppWithDataPartitionSchedule.DELAY_MILLIS - timeAfterFirstTrigger, TimeUnit.MILLISECONDS,
                     500, TimeUnit.MILLISECONDS);
       Assert.fail(
         String.format("Workflow '%s' should not run within %d millis since the schedule is triggered.",
@@ -199,7 +195,7 @@ public class ScheduleTest extends AudiTestBase {
     ApplicationId appId = namespaceId.app(AppWithDataPartitionSchedule.NAME);
     // Get app managers, service URL and schedule client
     ApplicationManager dataCleansing = getApplicationManager(namespaceId.app("DataCleansing"));
-    URL serviceUrl = dataCleansing.getServiceManager(DataCleansingService.NAME)
+    URL serviceUrl = dataCleansing.getServiceManager("DataCleansingService")
       .getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     ApplicationManager appWithSchedule = getApplicationManager(appId);
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), getRestClient());
@@ -210,7 +206,7 @@ public class ScheduleTest extends AudiTestBase {
       new ScheduleDetail(onePartitionSchedule.getSchedule(), "one partition",
                          new ScheduleProgramInfo(SchedulableProgramType.WORKFLOW,
                                                  AppWithDataPartitionSchedule.TIME_TRIGGER_ONLY_WORKFLOW),
-                         ImmutableMap.<String, String>of(),
+                         ImmutableMap.of(),
                          new ProtoTrigger.PartitionTrigger(namespaceId.dataset("rawRecords"), 1),
                          ImmutableList.<Constraint>of(), TimeUnit.HOURS.toMillis(1));
     scheduleClient.add(onePartitionSchedule, onePartitionDetail);
@@ -308,7 +304,7 @@ public class ScheduleTest extends AudiTestBase {
     timeWorkflowManager.getSchedule(AppWithDataPartitionSchedule.TIME_SCHEDULE).resume();
     // Create enough new partitions satisfy CAN_FAIL_SCHEDULE's trigger
     final URL serviceUrl = getApplicationManager(namespaceId.app("DataCleansing"))
-      .getServiceManager(DataCleansingService.NAME)
+      .getServiceManager(SERVICE_NAME)
       .getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     triggerDataSchedule(serviceUrl);
     // Wait for a complete run for TIME_TRIGGER_ONLY_WORKFLOW launched by CAN_FAIL_SCHEDULE
@@ -441,16 +437,11 @@ public class ScheduleTest extends AudiTestBase {
     waitForStatusCode(path, expectedStatusCode);
   }
 
-  private void waitForStatusCode(final String path, final int expectedStatusCode)
-    throws Exception {
+  private void waitForStatusCode(final String path, final int expectedStatusCode) throws Exception {
     URL url = getClientConfig().resolveURLV3(path);
-    final HttpRequest request = HttpRequest.post(url).build();
-    Tasks.waitFor(expectedStatusCode, new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());
-        return response.getResponseCode();
-      }
-    }, 60, TimeUnit.SECONDS);
+    HttpRequest request = HttpRequest.post(url).build();
+    Tasks.waitFor(expectedStatusCode,
+                  () -> getRestClient().execute(request, getClientConfig().getAccessToken()).getResponseCode(),
+                  60, TimeUnit.SECONDS);
   }
 }

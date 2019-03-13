@@ -19,8 +19,6 @@ package co.cask.cdap.apps.fileset;
 import co.cask.cdap.api.app.AbstractApplication;
 import co.cask.cdap.api.dataset.lib.FileSet;
 import co.cask.cdap.api.dataset.lib.FileSetProperties;
-import co.cask.cdap.examples.fileset.FileSetService;
-import co.cask.cdap.examples.fileset.WordCount;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 

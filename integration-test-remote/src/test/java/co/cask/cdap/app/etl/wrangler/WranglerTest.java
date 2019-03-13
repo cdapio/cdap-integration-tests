@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017-2018 Cask Data, Inc.
+ * Copyright © 2017-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,7 +15,6 @@
  */
 
 package co.cask.cdap.app.etl.wrangler;
-
 
 import co.cask.cdap.api.Resources;
 import co.cask.cdap.api.common.Bytes;
@@ -44,13 +43,13 @@ import co.cask.cdap.test.DataSetManager;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkflowManager;
 import co.cask.cdap.test.suite.category.RequiresSpark;
-import co.cask.common.http.HttpMethod;
-import co.cask.common.http.HttpResponse;
-import co.cask.common.http.ObjectResponse;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import io.cdap.common.http.HttpMethod;
+import io.cdap.common.http.HttpResponse;
+import io.cdap.common.http.ObjectResponse;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -112,7 +111,7 @@ public class WranglerTest extends ETLTestBase {
                                             Schema.Field.of("number", Schema.of(Schema.Type.STRING)));
 
     //properties for the wranglerTransformStage
-    ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder();
+    ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
     Joiner directives = Joiner.on("\n");
     String wranglerDirectives = directives.join("drop ts", "drop headers", "parse-as-csv body ,", "drop body",
                                                 "rename body_1 id", "rename body_2 name", "rename body_3 street",
