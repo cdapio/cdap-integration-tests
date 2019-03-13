@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package co.cask.cdap.app.etl;
 
 import co.cask.cdap.api.common.Bytes;
@@ -20,12 +21,12 @@ import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.proto.ProgramRunStatus;
 import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.WorkflowManager;
-import co.cask.common.http.HttpRequest;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.cdap.common.http.HttpRequest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;

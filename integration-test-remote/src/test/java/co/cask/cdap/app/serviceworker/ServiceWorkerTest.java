@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Cask Data, Inc.
+ * Copyright © 2015-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -31,20 +31,17 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.AudiTestBase;
 import co.cask.cdap.test.ServiceManager;
 import co.cask.cdap.test.WorkerManager;
-import co.cask.common.ContentProvider;
-import co.cask.common.http.HttpRequest;
-import co.cask.common.http.HttpResponse;
-import com.amazonaws.util.Throwables;
+import com.google.common.base.Throwables;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import io.cdap.common.http.HttpRequest;
+import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -119,12 +116,7 @@ public class ServiceWorkerTest extends AudiTestBase {
                                          "cdap-data-streams",
                                          new ArtifactVersion("4.3.0-SNAPSHOT"),
                                          new ArtifactVersion("10.0.0-SNAPSHOT")));
-    artifactClient.add(artifactId, parentArtifacts, new ContentProvider<InputStream>() {
-      @Override
-      public InputStream getInput() throws IOException {
-        return new FileInputStream(directiveJar);
-      }
-    });
+    artifactClient.add(artifactId, parentArtifacts, () -> new FileInputStream(directiveJar));
 
     serviceManager = applicationManager.getServiceManager(ServiceApplication.ARTIFACT_SERVICE_NAME).start();
     serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);

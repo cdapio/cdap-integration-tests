@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016-2018 Cask Data, Inc.
+ * Copyright © 2016-2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -20,9 +20,9 @@ import co.cask.cdap.client.config.ClientConfig;
 import co.cask.cdap.client.util.RESTClient;
 import co.cask.cdap.internal.guava.reflect.TypeToken;
 import co.cask.cdap.test.AudiTestBase;
-import co.cask.common.http.HttpMethod;
-import co.cask.common.http.HttpResponse;
 import com.google.gson.Gson;
+import io.cdap.common.http.HttpMethod;
+import io.cdap.common.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.junit.Assert;
 import org.junit.Test;

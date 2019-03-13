@@ -40,6 +40,7 @@
     <hydrator.version>2.2.0-SNAPSHOT</hydrator.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
+    <cdap.common.version>0.12.0</cdap.common.version>
     <junit.version>4.12</junit.version>
     <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
@@ -68,41 +69,15 @@
       <artifactId>guava</artifactId>
       <version>20.0</version>
     </dependency>
-     <!--Use provided scope for example jars that pulled in for testing-->
     <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>HelloWorld</artifactId>
-      <version>${cdap.examples.version}</version>
+      <groupId>io.cdap.common</groupId>
+      <artifactId>common-http</artifactId>
+      <version>${cdap.common.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>FileSetExample</artifactId>
-      <version>${cdap.examples.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>Purchase</artifactId>
-      <version>${cdap.examples.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>SparkPageRank</artifactId>
-      <version>${cdap.examples.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>WordCount</artifactId>
-      <version>${cdap.examples.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>WikipediaPipeline</artifactId>
-      <version>${cdap.examples.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>co.cask.cdap</groupId>
-      <artifactId>DataCleansing</artifactId>
-      <version>${cdap.examples.version}</version>
+      <groupId>io.cdap.common</groupId>
+      <artifactId>common-cli</artifactId>
+      <version>${cdap.common.version}</version>
     </dependency>
 
     <dependency>
