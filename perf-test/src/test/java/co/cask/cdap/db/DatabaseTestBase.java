@@ -17,7 +17,6 @@
 package co.cask.cdap.db;
 
 import co.cask.cdap.app.etl.ETLTestBase;
-import co.cask.cdap.common.UnauthenticatedException;
 import co.cask.cdap.datapipeline.SmartWorkflow;
 import co.cask.cdap.etl.proto.v2.ETLBatchConfig;
 import co.cask.cdap.etl.proto.v2.ETLStage;
@@ -28,9 +27,7 @@ import co.cask.cdap.test.ApplicationManager;
 import co.cask.cdap.test.WorkflowManager;
 import com.google.common.collect.ImmutableMap;
 
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.Map;
@@ -38,35 +35,24 @@ import java.util.concurrent.TimeUnit;
 
 public abstract class DatabaseTestBase extends ETLTestBase {
 
-  protected static PrintStream out;
+  protected PrintStream out;
 
-  static {
-    try {
-      String property = System.getProperty("database.metrics.file");
+  public void writeMetrics(Map<String, String> tags) throws Exception {
 
-      out = property == null ? System.out : new PrintStream(new FileOutputStream(property, false));
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    }
-  }
-
-
-  public void writeMetrics(Map<String, String> tags) throws IOException, UnauthenticatedException {
+    String property = System.getProperty("database.metrics.file");
+    out = property == null ? System.out : new PrintStream(new FileOutputStream(property, false));
 
     StringBuilder metrics = new StringBuilder();
-    List<String> strings = getMetricsClient().searchMetrics(tags);
-    strings.forEach(s -> {
-      try {
-      metrics.append(s);
-      metrics.append("=");
-      metrics.append(getMetricValue(tags, s));
-      metrics.append("\n");
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
+    List<String> metricsList = getMetricsClient().searchMetrics(tags);
 
-      out.println(metrics.toString());
-    });
+    for (String metric : metricsList) {
+      metrics.append(metric);
+      metrics.append("=");
+      metrics.append(getMetricValue(tags, metric));
+      metrics.append("\n");
+    }
+
+    out.println(metrics.toString());
   }
 
   public void testRun() throws Exception {

@@ -24,19 +24,23 @@ import co.cask.hydrator.common.Constants;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
-public class DBBaseTest extends DatabaseTestBase {
+public class DBSpecificTest extends DatabaseTestBase {
+
 
   @Test
-  public void databaseGenericPerfTest() throws Exception {
+  public void databaseTest() throws Exception {
     testRun();
   }
 
+  @Override
   protected ETLStage createSource() {
     return new ETLStage("source",
-                        new ETLPlugin("Database",
+                        new ETLPlugin(System.getProperty("database.pluginName"),
                                       BatchSource.PLUGIN_TYPE,
                                       ImmutableMap.<String, String>builder()
-                                        .put("connectionString", System.getProperty("database.connectionString"))
+                                        .put("host", System.getProperty("database.host"))
+                                        .put("port", System.getProperty("database.port"))
+                                        .put("database", System.getProperty("database.database"))
                                         .put("importQuery", System.getProperty("database.importQuery"))
                                         .put("jdbcPluginName", System.getProperty("database.driverName"))
                                         .put("numSplits", "1")
@@ -47,12 +51,15 @@ public class DBBaseTest extends DatabaseTestBase {
                                       null));
   }
 
+  @Override
   protected ETLStage createSink() {
     return new ETLStage("sink",
-                        new ETLPlugin("Database",
+                        new ETLPlugin(System.getProperty("database.pluginName"),
                                       BatchSink.PLUGIN_TYPE,
                                       ImmutableMap.<String, String>builder()
-                                        .put("connectionString", System.getProperty("database.connectionString"))
+                                        .put("host", System.getProperty("database.host"))
+                                        .put("port", System.getProperty("database.port"))
+                                        .put("database", System.getProperty("database.database"))
                                         .put("tableName", System.getProperty("database.sinkTable"))
                                         .put("jdbcPluginName", System.getProperty("database.driverName"))
                                         .put("user", System.getProperty("database.user"))

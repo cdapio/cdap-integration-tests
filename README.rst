@@ -92,6 +92,15 @@ To run selected single/multiple tests under longrunning package::
 Here, ``-Dlong.test`` is used to specify multiple comma separated tests.
 ``-Dlong.running.namespace`` is used to specify namespace name for all long running tests. If not specified, 'Default' namespace will be used.
 
+CDAP perf-tests
+------------------
+```
+mvn clean test -P perf-tests -Dtest=DBBaseTest -Ddatabase.connectionString="jdbc:mysql://localhost:3306/demo" \
+-Ddatabase.importQuery="SELECT * FROM my_table3 WHERE $CONDITIONS" \
+-Ddatabase.driverName=mysql -Ddatabase.user=root -Ddatabase.password=mysql \
+-Ddatabase.sinkTable=my_table2 \
+-Ddatabase.pluginName=Database
+```
 
 Chaos Monkey in ITN
 ------------------
