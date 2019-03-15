@@ -30,6 +30,7 @@
     <module>upgrade-test</module>
     <module>long-running-test</module>
     <module>integration-test-core</module>
+    <module>perf-test</module>
   </modules>
   <packaging>pom</packaging>
 
