@@ -30,6 +30,7 @@
     <module>upgrade-test</module>
     <module>long-running-test</module>
     <module>integration-test-core</module>
+    <module>perf-test</module>
   </modules>
   <packaging>pom</packaging>
 
@@ -50,6 +51,7 @@
     <skip.remote.test>true</skip.remote.test>
     <skip.standalone.test>true</skip.standalone.test>
     <skip.upgrade.test>true</skip.upgrade.test>
+    <skip.performance.test>true</skip.performance.test>
     <skip.long.running.test>true</skip.long.running.test>
   </properties>
 
@@ -248,7 +250,7 @@
                 <exclude>**/*.state</exclude>
                 <exclude>**/*.json</exclude>
                 <exclude>**/*.csv</exclude>
-                <exclude>**/*.conf</exclude>>
+                <exclude>**/*.conf</exclude>
               </excludes>
             </configuration>
           </execution>
@@ -268,6 +270,12 @@
       </properties>
     </profile>
 
+    <profile>
+      <id>perf-tests</id>
+      <properties>
+        <skip.performance.test>false</skip.performance.test>
+      </properties>
+    </profile>
     <profile>
       <id>standalone-test</id>
       <properties>
