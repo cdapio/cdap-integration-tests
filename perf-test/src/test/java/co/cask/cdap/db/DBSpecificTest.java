@@ -24,8 +24,10 @@ import co.cask.hydrator.common.Constants;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
+/**
+ * Performs read from source to sink for database specific plugin.
+ */
 public class DBSpecificTest extends DatabaseTestBase {
-
 
   @Test
   public void databaseTest() throws Exception {

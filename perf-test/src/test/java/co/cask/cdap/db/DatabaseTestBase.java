@@ -33,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Base class for testing measuring database source and sink.
+ */
 public abstract class DatabaseTestBase extends ETLTestBase {
 
   protected PrintStream out;
@@ -72,7 +75,6 @@ public abstract class DatabaseTestBase extends ETLTestBase {
                       co.cask.cdap.common.conf.Constants.Metrics.Tag.APP, appId.getEntityName());
 
     writeMetrics(tags);
-
   }
 
   protected ETLBatchConfig createETLBatchConfig(ETLStage source, ETLStage sink) {
@@ -86,5 +88,4 @@ public abstract class DatabaseTestBase extends ETLTestBase {
   protected abstract ETLStage createSource();
 
   protected abstract ETLStage createSink();
-
 }

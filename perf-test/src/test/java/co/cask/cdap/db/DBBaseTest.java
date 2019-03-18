@@ -24,6 +24,9 @@ import co.cask.hydrator.common.Constants;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
+/**
+ * Performs read from source to sink for generic database plugin.
+ */
 public class DBBaseTest extends DatabaseTestBase {
 
   @Test
