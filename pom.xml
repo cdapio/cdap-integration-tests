@@ -51,7 +51,7 @@
     <skip.remote.test>true</skip.remote.test>
     <skip.standalone.test>true</skip.standalone.test>
     <skip.upgrade.test>true</skip.upgrade.test>
-    <skip.performance.test>false</skip.performance.test>
+    <skip.performance.test>true</skip.performance.test>
     <skip.long.running.test>true</skip.long.running.test>
   </properties>
 
@@ -272,9 +272,6 @@
 
     <profile>
       <id>perf-tests</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
       <properties>
         <skip.performance.test>false</skip.performance.test>
       </properties>
