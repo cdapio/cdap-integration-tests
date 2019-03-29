@@ -47,6 +47,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.cdap.common.http.HttpMethod;
+import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
 import org.junit.Before;
@@ -156,7 +157,9 @@ public abstract class ETLTestBase extends AudiTestBase {
     String caskMarketURL = cdapConfig.get("market.base.url").getValue();
     URL pluginJsonURL = new URL(String.format("%s/packages/%s/%s/%s-%s.json",
                                               caskMarketURL, packageName, version, pluginName, version));
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, pluginJsonURL, getClientConfig().getAccessToken());
+    // Avoid passing in an authentication token, which results in an auth failure when making requests to
+    // the CDAP Hub. The CDAP Hub is available without any authentication.
+    HttpResponse response = getRestClient().execute(HttpRequest.get(pluginJsonURL).build());
     Assert.assertEquals(200, response.getResponseCode());
 
     // get the artifact 'parents' from the plugin json
