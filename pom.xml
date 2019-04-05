@@ -20,7 +20,7 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>co.cask.cdap.test</groupId>
+  <groupId>io.cdap.cdap.test</groupId>
   <artifactId>integration-test</artifactId>
   <name>integration-test</name>
   <version>1.0.0</version>
@@ -38,7 +38,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <cdap.pre.version>5.1.2</cdap.pre.version>
     <cdap.version>6.0.0-SNAPSHOT</cdap.version>
-    <hydrator.version>2.2.0-SNAPSHOT</hydrator.version>
+    <cdap.plugin.version>2.2.0-SNAPSHOT</cdap.plugin.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
     <cdap.common.version>0.12.0</cdap.common.version>
@@ -83,24 +83,24 @@
     </dependency>
 
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-api</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency> <!-- ETLBatchConfig -->
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-data-pipeline</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-program-report</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.hydrator</groupId>
+      <groupId>io.cdap.plugin</groupId>
       <artifactId>core-plugins</artifactId>
-      <version>${hydrator.version}</version>
+      <version>${cdap.plugin.version}</version>
       <exclusions>
         <exclusion>
           <groupId>*</groupId>
@@ -109,10 +109,10 @@
       </exclusions>
     </dependency>
     <dependency>
-      <!-- co.cask.hydrator.common.Constants -->
-      <groupId>co.cask.hydrator</groupId>
+      <!-- io.cdap.plugin.common.Constants -->
+      <groupId>io.cdap.plugin</groupId>
       <artifactId>hydrator-common</artifactId>
-      <version>${hydrator.version}</version>
+      <version>${cdap.plugin.version}</version>
       <exclusions>
         <exclusion>
           <groupId>*</groupId>
@@ -121,7 +121,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-common</artifactId>
       <version>${cdap.version}</version>
     </dependency>
@@ -143,17 +143,17 @@
       <version>${snappy.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-integration-test</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.chaosmonkey</groupId>
+      <groupId>io.cdap.chaosmonkey</groupId>
       <artifactId>chaos-monkey-standalone</artifactId>
       <version>${chaosmonkey.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.chaosmonkey</groupId>
+      <groupId>io.cdap.chaosmonkey</groupId>
       <artifactId>chaos-monkey-proto</artifactId>
       <version>${chaosmonkey.version}</version>
     </dependency>

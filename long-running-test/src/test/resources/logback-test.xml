@@ -31,8 +31,8 @@
     <logger name="org.apache.hadoop" level="WARN"/>
     <logger name="org.apache.hive" level="WARN"/>
     <logger name="org.quartz.core" level="WARN"/>
-    <logger name="co.cask.cdap" level="INFO" />
-    <logger name="co.cask.chaosmonkey" level="DEBUG" />
+    <logger name="io.cdap.cdap" level="INFO" />
+    <logger name="io.cdap.chaosmonkey" level="DEBUG" />
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
