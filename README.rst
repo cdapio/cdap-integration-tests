@@ -4,7 +4,7 @@ CDAP Integration Tests
 Writing Tests
 -------------
 New test cases should be written in the ``integration-test-remote`` module, alongside the existing test cases.
-They can be within their own package, as long as it is a "sub-package" of ``co.cask.cdap.apps``.
+They can be within their own package, as long as it is a "sub-package" of ``io.cdap.cdap.apps``.
 
 When writing an integration test, the same APIs are available as in CDAP unit tests.
 Note that some APIs are not available, such as the ``TestManager`` methods ``deployTemplate``, ``addTemplatePlugins``,
@@ -124,7 +124,7 @@ Additional properties include::
   ssh.passphrase - private key passphrase, if applicable
   ssh.private.key - path to the private key, will check common key spots like ~/.ssh/id_rsa if not provided
 
-To run a test using DisruptionTestBase against a non-Coopr cluster, refer to https://github.com/caskdata/chaos-monkey for steps in cluster information collector setup
+To run a test using DisruptionTestBase against a non-Coopr cluster, refer to https://github.com/cdapio/chaos-monkey for steps in cluster information collector setup
 
 To run a disruption test on bamboo, add the test to DisruptionTests in DisruptionTestSuite and manually launch a run from Integration Tests - Disruption
 

@@ -20,7 +20,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>integration-test</artifactId>
-    <groupId>co.cask.cdap.test</groupId>
+    <groupId>io.cdap.cdap.test</groupId>
     <version>1.0.0</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -32,13 +32,13 @@
 
   <dependencies>
     <dependency>
-      <groupId>co.cask.cdap.test</groupId>
+      <groupId>io.cdap.cdap.test</groupId>
       <artifactId>integration-test-remote</artifactId>
       <version>${project.version}</version>
     </dependency>
 
     <dependency>
-      <groupId>co.cask.cdap.test</groupId>
+      <groupId>io.cdap.cdap.test</groupId>
       <artifactId>integration-test-remote</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
@@ -169,7 +169,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-standalone</artifactId>
       <version>${cdap.version}</version>
       <type>test-jar</type>

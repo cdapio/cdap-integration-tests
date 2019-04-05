@@ -20,7 +20,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>integration-test</artifactId>
-    <groupId>co.cask.cdap.test</groupId>
+    <groupId>io.cdap.cdap.test</groupId>
     <version>1.0.0</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -30,29 +30,29 @@
   <properties>
     <hadoop.version>2.3.0</hadoop.version>
     <sentry.version>1.7.0</sentry.version>
-    <cdap.sentry.extn.version>0.6.0</cdap.sentry.extn.version>
+    <cdap.sentry.extn.version>0.9.0-SNAPSHOT</cdap.sentry.extn.version>
     <ranger.version>0.7.0</ranger.version>
-    <cdap.ranger.version>0.1.0</cdap.ranger.version>
+    <cdap.ranger.version>0.9.0-SNAPSHOT</cdap.ranger.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-sentry-model</artifactId>
       <version>${cdap.sentry.extn.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-sentry-binding</artifactId>
       <version>${cdap.sentry.extn.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-sentry-policy</artifactId>
       <version>${cdap.sentry.extn.version}</version>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap.test</groupId>
+      <groupId>io.cdap.cdap.test</groupId>
       <artifactId>integration-test-core</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -63,7 +63,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>co.cask.cdap</groupId>
+      <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-ranger-common</artifactId>
       <version>${cdap.ranger.version}</version>
     </dependency>

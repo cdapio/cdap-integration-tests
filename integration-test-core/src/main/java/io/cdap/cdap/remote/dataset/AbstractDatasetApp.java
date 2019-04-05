@@ -1,0 +1,83 @@
+/*
+ * Copyright © 2015-2016 Cask Data, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
+package io.cdap.cdap.remote.dataset;
+
+import io.cdap.cdap.api.Config;
+import io.cdap.cdap.api.app.AbstractApplication;
+import io.cdap.cdap.api.dataset.Dataset;
+import io.cdap.cdap.api.service.AbstractService;
+import io.cdap.cdap.api.service.http.HttpServiceHandler;
+
+/**
+ * Abstract base class for Applications with Service to interact with Datasets.
+ */
+public abstract class AbstractDatasetApp extends AbstractApplication<AbstractDatasetApp.DatasetConfig> {
+
+  /**
+   * Application's Config which determines the name of the dataset to interact with.
+   */
+  public static class DatasetConfig extends Config {
+    private final String datasetName;
+
+    public DatasetConfig(String datasetName) {
+      this.datasetName = datasetName;
+    }
+
+    public String getDatasetName() {
+      return datasetName;
+    }
+  }
+
+  /**
+   * @return The Class of the Dataset being served by the App.
+   */
+  protected abstract Class<? extends Dataset> getDatasetClass();
+
+  /**
+   * @param datasetName the name of the Dataset to serve.
+   * @return An HttpServiceHandler which is responsible for serving the Dataset.
+   */
+  protected abstract HttpServiceHandler getDatasetHttpHandler(String datasetName);
+
+  @Override
+  public void configure() {
+    String datasetName = getConfig().getDatasetName();
+
+    // set the name of the application to be the same as the dataset, to avoid conflicting with other datasets' apps
+    setName(datasetName);
+    addService(new DatasetService(datasetName));
+    createDataset(datasetName, getDatasetClass());
+  }
+
+  /**
+   * Dataset service.
+   */
+  public class DatasetService extends AbstractService {
+
+    private final String datasetName;
+
+    public DatasetService(String datasetName) {
+      this.datasetName = datasetName;
+    }
+
+    @Override
+    protected void configure() {
+      addHandler(getDatasetHttpHandler(datasetName));
+    }
+  }
+
+}
