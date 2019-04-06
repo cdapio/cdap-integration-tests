@@ -8,7 +8,7 @@
         "dataset.executor.container.memory.mb": "1024",
         "messaging.container.memory.mb": "1024"
       },
-      "version": "4.1.0-1"
+      "version": "6.0.0-1"
     },
     "hadoop": {
       "core_site": {
