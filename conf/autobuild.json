@@ -6,12 +6,6 @@
         "repos": {
           "hydrator-plugins": {
             "branch": "release/2.2"
-          },
-          "mmds": {
-            "branch": "release/1.2"
-          },
-          "dre": {
-            "branch": "release/1.2"
           }
         }
       }
