@@ -73,7 +73,7 @@ public class HivePluginTest extends ETLTestBase {
 
   @Test
   public void testHivePlugins() throws Exception {
-    installPluginFromMarket("hydrator-plugin-hive", "hive-plugins", "1.7.2-1.1.0");
+    installPluginFromMarket("hydrator-plugin-hive", "hive-plugins", "1.8.0-1.1.0");
 
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
     ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
