@@ -36,7 +36,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <cdap.pre.version>6.0.0-SNAPSHOT</cdap.pre.version>
+    <cdap.pre.version>6.0.0</cdap.pre.version>
     <cdap.version>6.1.0-SNAPSHOT</cdap.version>
     <cdap.plugin.version>2.3.0-SNAPSHOT</cdap.plugin.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
