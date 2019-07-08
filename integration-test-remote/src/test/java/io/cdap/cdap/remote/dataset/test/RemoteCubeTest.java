@@ -139,7 +139,7 @@ public class RemoteCubeTest extends AudiTestBase {
     // 60-sec resolution
     data = myCube.query(new CubeQuery(null, tsInSec - 60, tsInSec + 60, 60, 100,
                                       ImmutableMap.of("count", AggregationFunction.SUM),
-                                      ImmutableMap.of("action", "click"), new ArrayList<String>(), null));
+                                      ImmutableMap.of("action", "click"), new ArrayList<String>(), null, null));
     Assert.assertEquals(1, data.size());
     series = data.iterator().next();
     timeValues = series.getTimeValues();
