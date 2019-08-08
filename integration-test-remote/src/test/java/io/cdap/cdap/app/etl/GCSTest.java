@@ -70,8 +70,14 @@ public class GCSTest extends DataprocETLTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(GCSTest.class);
   private static final String INPUT_BLOB_NAME = "data/input/customers.csv";
   private static final String OUTPUT_BLOB_NAME = "data/output";
+  private static final String GCS_BUCKET_DELETE_PLUGIN_NAME = "GCSBucketDelete";
+  private static final String GCS_BUCKET_CREATE_PLUGIN_NAME = "GCSBucketCreate";
+  private static final String GCS_MOVE_PLUGIN_NAME = "GCSMove";
+  private static final String GCS_COPY_PLUGIN_NAME = "GCSCopy";
+  private static final String SINK_PLUGIN_NAME = "GCS";
+  private static final String SOURCE_PLUGIN_NAME = "GCSFile";
   private static Storage storage;
-  private List<Bucket> createdBuckets;
+  private List<String> markedForDeleteBuckets;
 
   @BeforeClass
   public static void testClassSetup() throws IOException {
@@ -96,16 +102,19 @@ public class GCSTest extends DataprocETLTestBase {
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
-    createdBuckets = new ArrayList<>();
+    markedForDeleteBuckets = new ArrayList<>();
   }
 
   @Override
   protected void innerTearDown() {
-    for (Bucket bucket : createdBuckets) {
+    for (String bucketName : markedForDeleteBuckets) {
       try {
-        deleteBucket(bucket);
+        Bucket bucket = storage.get(bucketName);
+        if (bucket != null) {
+          deleteBucket(bucket);
+        }
       } catch (RuntimeException e) {
-        LOG.error("Unable to delete GCS bucket {}", bucket.getName(), e);
+        LOG.error("Unable to delete GCS bucket {}", bucketName, e);
       }
     }
   }
@@ -117,7 +126,7 @@ public class GCSTest extends DataprocETLTestBase {
     LOG.info("Creating bucket {}", name);
     Bucket bucket = storage.create(BucketInfo.of(name));
     LOG.info("Created bucket {}", name);
-    createdBuckets.add(bucket);
+    markedForDeleteBuckets.add(name);
     return bucket;
   }
 
@@ -128,6 +137,10 @@ public class GCSTest extends DataprocETLTestBase {
     }
     LOG.info("Deleting bucket {}", bucket);
     bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
+  }
+
+  private void markBucketNameForDelete(String bucketName) {
+    markedForDeleteBuckets.add(bucketName);
   }
 
   private String createPath(Bucket bucket, String blobName) {
@@ -225,7 +238,7 @@ public class GCSTest extends DataprocETLTestBase {
                                    String.format("%s/dir4", bucket4Name), true);
 
     // deploy the pipeline
-    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
       .addStage(cp2)
       .addStage(cp3)
@@ -297,14 +310,183 @@ public class GCSTest extends DataprocETLTestBase {
     assertGCSContents(bucket4, "dir4/listings/2018-02-01/l2.txt", l2Content);
   }
 
+  @Test
+  public void testGCSMoveNonRecursive() throws Exception {
+    String prefix = "cdap-gcs-mv-rec";
+    String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
+    String bucket3Name = String.format("%s-3-%s", prefix, UUID.randomUUID());
+    String bucket4Name = String.format("%s-4-%s", prefix, UUID.randomUUID());
+
+    Bucket bucket1 = createBucket(bucket1Name);
+    Bucket bucket2 = createBucket(bucket2Name);
+
+    bucket1.create("dir/1/1.txt", "1-1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/1/2.txt", "1-2".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/2/1.txt", "2-1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/2/2.txt", "2-2".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("1.txt", "1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("2.txt", "2".getBytes(StandardCharsets.UTF_8));
+
+    ETLStage cp1 = createMoveStage("mv1", bucket1Name, bucket2Name, false);
+
+    // deploy the pipeline
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(cp1)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTest");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // start the pipeline and wait for it to finish
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    /*
+        bucket2 must have only items from bucket1 root
+     */
+    assertNotExists(bucket2, "dir/1/1.txt");
+    assertNotExists(bucket2, "dir/1/2.txt");
+    assertNotExists(bucket2, "dir/2/1.txt");
+    assertNotExists(bucket2, "dir/2/2.txt");
+    assertGCSContents(bucket2, "1.txt", "1");
+    assertGCSContents(bucket2, "2.txt", "2");
+  }
+
+  @Test
+  public void testGCSMoveRecursive() throws Exception {
+    String prefix = "cdap-gcs-mv-nonrec";
+    String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
+
+    Bucket bucket1 = createBucket(bucket1Name);
+    Bucket bucket2 = createBucket(bucket2Name);
+
+    bucket1.create("dir/1/1.txt", "1-1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/1/2.txt", "1-2".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/2/1.txt", "2-1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/2/2.txt", "2-2".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("1.txt", "1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("2.txt", "2".getBytes(StandardCharsets.UTF_8));
+
+    ETLStage cp1 = createMoveStage("mv1", bucket1Name, bucket2Name, true);
+
+    // deploy the pipeline
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(cp1)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTestRecursive");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // start the pipeline and wait for it to finish
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    /*
+        bucket2 must have exactly same content as bucket1
+     */
+    assertGCSContents(bucket2, "dir/1/1.txt", "1-1");
+    assertGCSContents(bucket2, "dir/1/2.txt", "1-2");
+    assertGCSContents(bucket2, "dir/2/1.txt", "2-1");
+    assertGCSContents(bucket2, "dir/2/2.txt", "2-2");
+    assertGCSContents(bucket2, "1.txt", "1");
+    assertGCSContents(bucket2, "2.txt", "2");
+  }
+
+  @Test
+  public void testGSCCreate() throws Exception {
+    String prefix = "cdap-gcs-create-test";
+    String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    String path = String.format("gs://%s/testFolder,gs://%s/testFolder2", bucket1Name, bucket1Name);
+    ETLStage cp1 = new ETLStage("gcs-create", new ETLPlugin(GCS_BUCKET_CREATE_PLUGIN_NAME, Action.PLUGIN_TYPE,
+                                                            ImmutableMap.of("projectId", getProjectId(),
+                                                                            "paths", path,
+                                                                            "failIfExists", String.valueOf(true))));
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(cp1)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSCreateTest");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // mark possibly created in future bucket for deletion
+    markBucketNameForDelete(bucket1Name);
+    // start the pipeline and wait for it to finish
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    Bucket bucket1 = storage.get(bucket1Name);
+    Assert.assertNotNull(String.format("bucket %s does not exist", bucket1Name), bucket1);
+
+    assertExists(bucket1, "testFolder/");
+    assertExists(bucket1, "testFolder2/");
+  }
+
+  @Test
+  public void testGSCDelete() throws Exception {
+    String prefix = "cdap-gcs-delete-test";
+    String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
+
+    Bucket bucket1 = createBucket(bucket1Name);
+
+    bucket1.create("dir/1.txt", "1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/2.txt", "2".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/3.txt", "3".getBytes(StandardCharsets.UTF_8));
+
+    String paths = String.join(",",
+                               createPath(bucket1, "dir/1.txt"),
+                               createPath(bucket1, "dir/3.txt"));
+
+
+    ETLStage cp1 = new ETLStage("gcs-delete", new ETLPlugin(GCS_BUCKET_DELETE_PLUGIN_NAME, Action.PLUGIN_TYPE,
+                                                            ImmutableMap.of("projectId", getProjectId(),
+                                                                            "paths", paths)));
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(cp1)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTest");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // start the pipeline and wait for it to finish
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    assertNotExists(bucket1, "dir/1.txt");
+    assertNotExists(bucket1, "dir/3.txt");
+    assertGCSContents(bucket1, "dir/2.txt", "2");
+  }
+
+
   private void assertGCSContents(Bucket bucket, String blobName, String content) {
     Blob blob = bucket.get(blobName);
     Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
     Assert.assertEquals(content, new String(blob.getContent(), StandardCharsets.UTF_8));
   }
 
+  private void assertNotExists(Bucket bucket, String blobName) {
+    Blob blob = bucket.get(blobName);
+    if (blob != null) {
+      Assert.assertFalse(String.format("%s in %s exists but must not", blobName, bucket.getName()), blob.exists());
+    }
+  }
+
+  private void assertExists(Bucket bucket, String blobName) {
+    Blob blob = bucket.get(blobName);
+    Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
+  }
+
   private ETLStage createCopyStage(String name, String src, String dest, boolean recursive) {
-    return new ETLStage(name, new ETLPlugin("GCSCopy", Action.PLUGIN_TYPE,
+    return new ETLStage(name, new ETLPlugin(GCS_COPY_PLUGIN_NAME, Action.PLUGIN_TYPE,
+                                            ImmutableMap.of("projectId", getProjectId(),
+                                                            "sourcePath", src,
+                                                            "destPath", dest,
+                                                            "recursive", String.valueOf(recursive))));
+  }
+
+  private ETLStage createMoveStage(String name, String src, String dest, boolean recursive) {
+    return new ETLStage(name, new ETLPlugin(GCS_MOVE_PLUGIN_NAME, Action.PLUGIN_TYPE,
                                             ImmutableMap.of("projectId", getProjectId(),
                                                             "sourcePath", src,
                                                             "destPath", dest,
@@ -329,22 +511,24 @@ public class GCSTest extends DataprocETLTestBase {
     String sourceSchema = "{\"type\":\"record\",\"name\":\"etlSchemaBody\"," +
       "\"fields\":[{\"name\":\"offset\",\"type\":\"long\"},{\"name\":\"body\",\"type\":\"string\"}]}";
     ETLStage source = new ETLStage("GCSSourceStage",
-                                   new ETLPlugin("File",
+                                   new ETLPlugin(SOURCE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
                                                  ImmutableMap.of(
                                                    "schema", sourceSchema,
                                                    "format", "text",
                                                    "referenceName", "gcs-input",
+                                                   "projectId", getProjectId(),
                                                    "path", createPath(bucket, INPUT_BLOB_NAME))));
 
-    ETLStage sink = new ETLStage("FileSinkStage", new ETLPlugin("File",
+    ETLStage sink = new ETLStage("FileSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
                                                                 BatchSink.PLUGIN_TYPE,
                                                                 ImmutableMap.of(
                                                                   "path", createPath(bucket, OUTPUT_BLOB_NAME),
                                                                   "format", "delimited",
+                                                                  "projectId", getProjectId(),
                                                                   "referenceName", "gcs-output")));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
