@@ -58,8 +58,13 @@
   <dependencies>
     <dependency>
       <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-pubsub</artifactId>
+      <version>1.36.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-storage</artifactId>
-      <version>1.26.0</version>
+      <version>1.36.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
@@ -90,6 +95,11 @@
     <dependency> <!-- ETLBatchConfig -->
       <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-data-pipeline</artifactId>
+      <version>${cdap.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.cdap.cdap</groupId>
+      <artifactId>cdap-data-streams</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>

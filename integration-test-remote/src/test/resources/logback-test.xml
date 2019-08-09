@@ -31,6 +31,7 @@
     <logger name="org.apache.hadoop" level="WARN"/>
     <logger name="org.apache.hive" level="WARN"/>
     <logger name="org.quartz.core" level="WARN"/>
+    <logger name="io.grpc" level="WARN"/>
     <logger name="io.cdap.cdap" level="DEBUG" />
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
