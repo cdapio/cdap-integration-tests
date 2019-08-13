@@ -99,7 +99,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   protected void startWorkFlow(ApplicationManager appManager, ProgramRunStatus expectedStatus) throws Exception {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.startAndWaitForRun(Collections.singletonMap("system.profile.name", getProfileName()),
-                                       expectedStatus, 10, TimeUnit.MINUTES);
+                                       expectedStatus, 15, TimeUnit.MINUTES);
   }
 
   protected static String getServiceAccountCredentials() {
