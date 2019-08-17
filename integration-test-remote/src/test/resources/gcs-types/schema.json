@@ -1,0 +1,103 @@
+{
+  "type": "record",
+  "name": "etlSchemaBody",
+  "fields": [
+    {
+      "name": "string",
+      "type": "string"
+    },
+    {
+      "name": "boolean",
+      "type": "boolean"
+    },
+    {
+      "name": "double",
+      "type": "double"
+    },
+    {
+      "name": "long",
+      "type": "long"
+    },
+    {
+      "name": "float",
+      "type": "float"
+    },
+    {
+      "name": "int",
+      "type": "int"
+    },
+    {
+      "name": "bytes",
+      "type": "bytes"
+    },
+    {
+      "name": "decimal",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 4,
+        "scale": 2
+      }
+    },
+    {
+      "name": "array",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    },
+    {
+      "name": "map",
+      "type": {
+        "type": "map",
+        "keys": "string",
+        "values": "string"
+      }
+    },
+    {
+      "name": "union",
+      "type": [
+        "int",
+        "string"
+      ]
+    },
+    {
+      "name": "record",
+      "type": {
+        "type": "record",
+        "name": "a35f8f6931545452cb38b299bbb60aa32",
+        "fields": [
+          {
+            "name": "a",
+            "type": "string"
+          },
+          {
+            "name": "b",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "date",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    },
+    {
+      "name": "time",
+      "type": {
+        "type": "long",
+        "logicalType": "time-micros"
+      }
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-micros"
+      }
+    }
+  ]
+}
