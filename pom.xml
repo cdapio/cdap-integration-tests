@@ -36,6 +36,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <bigtable.version>1.8.0</bigtable.version>
     <cdap.pre.version>6.0.0-SNAPSHOT</cdap.pre.version>
     <cdap.version>6.1.0-SNAPSHOT</cdap.version>
     <cdap.plugin.version>2.3.0-SNAPSHOT</cdap.plugin.version>
@@ -70,6 +71,17 @@
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-datastore</artifactId>
       <version>1.61.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.bigtable</groupId>
+      <artifactId>bigtable-hbase-1.x-shaded</artifactId>
+      <version>${bigtable.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>
