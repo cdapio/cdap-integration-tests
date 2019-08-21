@@ -26,9 +26,9 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.common.io.Resources;
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.common.ArtifactNotFoundException;
@@ -57,13 +57,19 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Tests reading from GCS (Google Cloud Storage) and writing to GCS from within a Dataproc cluster.
@@ -503,14 +509,9 @@ public class GCSTest extends DataprocETLTestBase {
     String inputBlobName = "gcs-types/test.avro";
     String outputBlobName = "output/gcs-types/json";
 
-    try (InputStream is = new FileInputStream("src/test/resources/gcs-types/test.avro")) {
-      bucket.create(inputBlobName, is);
-    }
+    bucket.create(inputBlobName, Resources.toByteArray(Resources.getResource("gcs-types/test.avro")));
 
-    String schema;
-    try (InputStream is = new FileInputStream("src/test/resources/gcs-types/schema.json")) {
-      schema = CharStreams.toString(new InputStreamReader(is, Charsets.UTF_8));
-    }
+    String schema = Resources.toString(Resources.getResource("gcs-types/schema.json"), Charsets.UTF_8);
 
     ETLStage source = new ETLStage("GCSSourceStage",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
@@ -542,61 +543,49 @@ public class GCSTest extends DataprocETLTestBase {
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    List<JsonObject> resultingObjects = new ArrayList<>();
-    JsonParser jsonParser = new JsonParser();
-    for (Blob blob : getResultBlobs(bucket, outputBlobName)) {
-      byte[] content = blob.getContent();
-      String contentString = Preconditions.checkNotNull(Bytes.toString(content));
-      if (!contentString.isEmpty()) {
-        for (String line : contentString.split("\\r?\\n")) {
-          resultingObjects.add(jsonParser.parse(line).getAsJsonObject());
-        }
-      }
-    }
+    Gson gson = new Gson();
+    List<DataTypesRecord> resultingObjects = getResultBlobsContent(bucket, outputBlobName).stream()
+      .flatMap(content -> Arrays.stream(content.split("\\r?\\n"))
+        .map(record -> gson.fromJson(record, DataTypesRecord.class)))
+      .sorted(Comparator.comparing(o -> o.string))
+      .collect(Collectors.toList());
 
     Assert.assertEquals(2, resultingObjects.size());
 
-    JsonObject object1;
-    JsonObject object2;
-    if (resultingObjects.get(0).get("string").getAsString().equals("object1")) {
-      object1 = resultingObjects.get(0);
-      object2 = resultingObjects.get(1);
-    } else {
-      object1 = resultingObjects.get(1);
-      object2 = resultingObjects.get(0);
-    }
+    DataTypesRecord object1 = resultingObjects.get(0);
+    DataTypesRecord object2 = resultingObjects.get(1);
 
-    Assert.assertFalse(object1.get("boolean").getAsBoolean());
-    Assert.assertTrue(object2.get("boolean").getAsBoolean());
+    Assert.assertFalse(object1.booleanField);
+    Assert.assertTrue(object2.booleanField);
 
-    Assert.assertArrayEquals("abc".getBytes(), jsonArrayToByteArray(object1.get("bytes").getAsJsonArray()));
-    Assert.assertArrayEquals("cbd".getBytes(), jsonArrayToByteArray(object2.get("bytes").getAsJsonArray()));
+    Assert.assertArrayEquals("abc".getBytes(), object1.bytes);
+    Assert.assertArrayEquals("cbd".getBytes(), object2.bytes);
 
-    Assert.assertEquals(123, object1.get("int").getAsInt());
-    Assert.assertEquals(321, object2.get("int").getAsInt());
+    // we can use BigInteger here, scale not important here since it is stored in schema.
+    Assert.assertArrayEquals(new BigInteger("11234").toByteArray(), object1.decimal);
+    Assert.assertArrayEquals(new BigInteger("43211").toByteArray(), object2.decimal);
 
-    Assert.assertEquals(123.123, object1.get("double").getAsDouble(), 0.00001);
-    Assert.assertEquals(321.321, object2.get("double").getAsDouble(), 0.00001);
-    Assert.assertEquals(123.123f, object1.get("float").getAsFloat(), 0.00001);
-    Assert.assertEquals(321.321f, object2.get("float").getAsFloat(), 0.00001);
-    Assert.assertEquals(123456789L, object1.get("long").getAsLong());
-    Assert.assertEquals(987654321L, object2.get("long").getAsLong());
+    Assert.assertEquals(123, object1.intField);
+    Assert.assertEquals(321, object2.intField);
 
-    Assert.assertEquals("string union value", object1.get("union").getAsString());
-    Assert.assertEquals(123, object2.get("union").getAsInt());
+    Assert.assertEquals(123.123, object1.doubleField, 0.00001);
+    Assert.assertEquals(321.321, object2.doubleField, 0.00001);
+    Assert.assertEquals(123.123f, object1.floatField, 0.00001);
+    Assert.assertEquals(321.321f, object2.floatField, 0.00001);
+    Assert.assertEquals(123456789L, object1.longField);
+    Assert.assertEquals(987654321L, object2.longField);
 
-    Assert.assertEquals("value1", object1.getAsJsonObject("map").get("key1").getAsString());
-    Assert.assertEquals("value2", object1.getAsJsonObject("map").get("key2").getAsString());
-    Assert.assertEquals("a value", object1.getAsJsonObject("record").get("a").getAsString());
-    Assert.assertEquals("b value", object1.getAsJsonObject("record").get("b").getAsString());
-  }
+    Assert.assertEquals("string union value", object1.union);
+    // Gson by default deserializing numbers to double
+    Assert.assertEquals(123d, (double) object2.union, 0.00001);
 
-  private byte[] jsonArrayToByteArray(JsonArray array) {
-    byte[] result = new byte[array.size()];
-    for (int i = 0; i < array.size(); i++) {
-      result[i] = array.get(i).getAsByte();
-    }
-    return result;
+    Assert.assertEquals("value1", object1.map.get("key1"));
+    Assert.assertEquals("value2", object1.map.get("key2"));
+    Assert.assertEquals("a value", object1.record.a);
+    Assert.assertEquals("b value", object1.record.b);
+
+    Assert.assertTrue(object1.array.contains("element1"));
+    Assert.assertTrue(object1.array.contains("element2"));
   }
 
   @Test
@@ -655,34 +644,81 @@ public class GCSTest extends DataprocETLTestBase {
     String successFile = OUTPUT_BLOB_NAME + "/_SUCCESS";
     Assert.assertNotNull(bucket.get(successFile));
 
-    List<Blob> outputBlobs = getResultBlobs(bucket, OUTPUT_BLOB_NAME);
-    Map<String, String> retrievedIdToRowMap = new HashMap<>();
-    for (Blob blob : outputBlobs) {
-      byte[] content = blob.getContent();
-      String contentString = Preconditions.checkNotNull(Bytes.toString(content));
-      if (!contentString.isEmpty()) {
-        // The way that the content is parsed, it assumes that there is only one output split with content.
-        // This is because the first row of the content is skipped, because it contains the headers.
-        retrievedIdToRowMap.putAll(parseIdToRow(contentString, true));
-      }
-    }
+    Map<String, String> retrievedIdToRowMap = getResultBlobsContent(bucket, OUTPUT_BLOB_NAME).stream()
+      .flatMap(content -> parseIdToRow(content, true).entrySet().stream())
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    LOG.debug("Output blobs: {}", outputBlobs);
     // check that the output content is equivalent to the input content. Output content files are not guaranteed to be
     // split the same way, so we put the data into a map before checking equality.
     Assert.assertEquals(idToRowMap, retrievedIdToRowMap);
   }
 
-  private List<Blob> getResultBlobs(Bucket bucket, String path) {
+  static class DataTypesRecord {
+    static class NestedRecord {
+      String a;
+      String b;
+    }
+
+    String string;
+
+    @SerializedName("boolean")
+    boolean booleanField;
+
+    @SerializedName("double")
+    double doubleField;
+
+    @SerializedName("long")
+    long longField;
+
+    @SerializedName("float")
+    float floatField;
+
+    @SerializedName("int")
+    int intField;
+
+    byte[] bytes;
+
+    // decimal field written as bytes to json
+    byte[] decimal;
+
+    List<String> array;
+
+    Map<String, String> map;
+
+    Object union;
+
+    NestedRecord record;
+
+    int date;
+    long time;
+    long timestamp;
+  }
+
+  /**
+   * Checks if given path contains _SUCCESS marker of successfully finished pipeline and returns list of content
+   * of every artifact in path.
+   */
+  private List<String> getResultBlobsContent(Bucket bucket, String path) {
     String successFile = path + "/_SUCCESS";
     assertExists(bucket, successFile);
-    List<Blob> outputBlobs = new ArrayList<>();
-    for (Blob blob : bucket.list().iterateAll()) {
-      if (blob.getName().startsWith(path + "/") && !successFile.equals(blob.getName())) {
-        outputBlobs.add(blob);
-      }
+
+    return StreamSupport.stream(bucket.list().iterateAll().spliterator(), false)
+      .filter(blob -> blob.getName().startsWith(path + "/") && !successFile.equals(blob.getName()))
+      .map(GCSTest::blobContentToString)
+      .filter(Objects::nonNull)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Reads content of Blob to String.
+   */
+  private static String blobContentToString(Blob blob) {
+    byte[] content = blob.getContent();
+    String contentString = Preconditions.checkNotNull(Bytes.toString(content));
+    if (!contentString.isEmpty()) {
+      return contentString;
     }
-    return outputBlobs;
+    return null;
   }
 
   /**
