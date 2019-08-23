@@ -120,6 +120,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("timestamp_value", LegacySQLTypeName.TIMESTAMP).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("date_value", LegacySQLTypeName.DATE).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("bytes_value", LegacySQLTypeName.BYTES).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("time_value", LegacySQLTypeName.TIME).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("datetime_value", LegacySQLTypeName.DATETIME).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("string_array", LegacySQLTypeName.STRING).setMode(Field.Mode.REPEATED).build(),
@@ -461,6 +462,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "numeric_value": 123.456
    *  "timestamp_value": "2014-08-01 12:41:35.220000+00:00"
    *  "date_value": "2014-08-01"
+   *  "bytes_value": "MTE1"
    *  "time_value": "01:41:35.220000",
    *  "datetime_value": "2014-08-01 01:41:35.220000"
    *  "string_array": ["a_string_1", "a_string_2"]}
@@ -1177,6 +1179,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   private static JsonObject getFullSource() {
     JsonObject json = getUpdateSource();
+    json.addProperty("bytes_value", "MTE1");
     json.addProperty("time_value", "01:41:35.220000");
     json.addProperty("datetime_value", "2014-08-01 01:41:35.220000");
     JsonArray array = new JsonArray();
@@ -1301,6 +1304,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                 Schema.Field.of("timestamp_value", Schema.nullableOf(Schema.of(
                   Schema.LogicalType.TIMESTAMP_MICROS))),
                 Schema.Field.of("date_value", Schema.nullableOf(Schema.of(Schema.LogicalType.DATE))),
+                Schema.Field.of("bytes_value", Schema.nullableOf(Schema.of(Schema.Type.BYTES))),
                 Schema.Field.of("time_value", Schema.nullableOf(Schema.of(Schema.LogicalType.TIME_MICROS))),
                 Schema.Field.of("datetime_value", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
                 Schema.Field.of("string_array", Schema.arrayOf(Schema.of(Schema.Type.STRING))),
