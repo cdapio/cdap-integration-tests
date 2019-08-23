@@ -26,8 +26,12 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
+import com.google.common.io.Files;
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.common.Bytes;
+import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.common.utils.Tasks;
@@ -43,24 +47,42 @@ import io.cdap.cdap.proto.artifact.PluginSummary;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.DatumWriter;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Tests reading from GCS (Google Cloud Storage) and writing to GCS from within a Dataproc cluster.
@@ -76,6 +98,31 @@ public class GCSTest extends DataprocETLTestBase {
   private static final String GCS_COPY_PLUGIN_NAME = "GCSCopy";
   private static final String SINK_PLUGIN_NAME = "GCS";
   private static final String SOURCE_PLUGIN_NAME = "GCSFile";
+  private static final Schema ALL_DT_SCHEMA = Schema.recordOf(
+    "record",
+    Schema.Field.of("string", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("boolean", Schema.of(Schema.Type.BOOLEAN)),
+    Schema.Field.of("double", Schema.of(Schema.Type.DOUBLE)),
+    Schema.Field.of("long", Schema.of(Schema.Type.LONG)),
+    Schema.Field.of("float", Schema.of(Schema.Type.FLOAT)),
+    Schema.Field.of("int", Schema.of(Schema.Type.INT)),
+    Schema.Field.of("bytes", Schema.of(Schema.Type.BYTES)),
+    Schema.Field.of("decimal", Schema.decimalOf(5, 4)),
+    Schema.Field.of("array", Schema.arrayOf(Schema.of(Schema.Type.STRING))),
+    Schema.Field.of("map", Schema.mapOf(Schema.of(Schema.Type.STRING), Schema.of(Schema.Type.STRING))),
+    Schema.Field.of("union", Schema.unionOf(Schema.of(Schema.Type.INT), Schema.of(Schema.Type.STRING))),
+    Schema.Field.of("record", Schema.recordOf(
+      "nested",
+      Schema.Field.of("a", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("b", Schema.of(Schema.Type.STRING)))
+    ),
+    Schema.Field.of("date", Schema.of(Schema.LogicalType.DATE)),
+    Schema.Field.of("time", Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)),
+    Schema.Field.of("timestamp", Schema.of(Schema.LogicalType.TIMESTAMP_MICROS))
+  );
+  @ClassRule
+  public static TemporaryFolder temporaryFolder = new TemporaryFolder();
+
   private static Storage storage;
   private List<String> markedForDeleteBuckets;
 
@@ -494,6 +541,163 @@ public class GCSTest extends DataprocETLTestBase {
   }
 
   @Test
+  public void testAllTypes() throws Exception {
+    String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
+    Bucket bucket = createBucket(bucketName);
+    String inputBlobName = "gcs-types/test.avro";
+    String outputBlobName = "output/gcs-types/json";
+
+    String schema = ALL_DT_SCHEMA.toString();
+
+    LocalDate date = LocalDate.now();
+    int dateExpected = Math.toIntExact(date.toEpochDay());
+    LocalTime time = LocalTime.now();
+    long timeExpected = TimeUnit.NANOSECONDS.toMicros(time.toNanoOfDay());
+    ZonedDateTime timestamp = ZonedDateTime.now();
+    long timestampExpected = Math.addExact(
+      TimeUnit.SECONDS.toMicros(timestamp.toInstant().getEpochSecond()),
+      TimeUnit.NANOSECONDS.toMicros(timestamp.toInstant().getNano())
+    );
+
+    org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser().parse(schema);
+    org.apache.avro.Schema childSchema = avroSchema.getField("record").schema();
+
+    GenericRecord childRecord = new GenericData.Record(childSchema);
+    childRecord.put("a", "a value");
+    childRecord.put("b", "b value");
+
+
+    GenericRecord record1 = new GenericData.Record(avroSchema);
+    record1.put("string", "object1");
+    record1.put("boolean", false);
+    record1.put("bytes", ByteBuffer.wrap("abc".getBytes()));
+    record1.put("int", 123);
+    record1.put("double", 123.123);
+    record1.put("float", 123.123f);
+    record1.put("long", 123456789L);
+    record1.put("decimal", ByteBuffer.wrap(new BigInteger("11234").toByteArray()));
+    record1.put("array", Arrays.asList("element1", "element2"));
+    record1.put("map", new HashMap<String, String>() {{
+      put("key1", "value1");
+      put("key2", "value2");
+    }});
+    record1.put("union", "string union value");
+    record1.put("record", childRecord);
+    record1.put("date", dateExpected);
+    record1.put("time", timeExpected);
+    record1.put("timestamp", timestampExpected);
+
+    GenericRecord record2 = new GenericData.Record(avroSchema);
+    record2.put("string", "object2");
+    record2.put("boolean", true);
+    record2.put("bytes", ByteBuffer.wrap("cbd".getBytes()));
+    record2.put("int", 321);
+    record2.put("double", 321.321);
+    record2.put("float", 321.321f);
+    record2.put("long", 987654321L);
+    record2.put("decimal", ByteBuffer.wrap(new BigInteger("43211").toByteArray()));
+    record2.put("array", Arrays.asList("element1", "element2"));
+    record2.put("map", new HashMap<String, String>() {{
+      put("key1", "value1");
+      put("key2", "value2");
+    }});
+    record2.put("union", 123);
+    record2.put("record", childRecord);
+    record2.put("date", dateExpected);
+    record2.put("time", timeExpected);
+    record2.put("timestamp", timestampExpected);
+
+    File avroFile = temporaryFolder.newFile();
+    DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(avroSchema);
+    DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter);
+    dataFileWriter.create(avroSchema, avroFile);
+    dataFileWriter.append(record1);
+    dataFileWriter.append(record2);
+    dataFileWriter.close();
+
+    bucket.create(inputBlobName, Files.toByteArray(avroFile));
+
+    ETLStage source = new ETLStage("GCSSourceStage",
+                                   new ETLPlugin(SOURCE_PLUGIN_NAME,
+                                                 BatchSource.PLUGIN_TYPE,
+                                                 ImmutableMap.of(
+                                                   "schema", schema,
+                                                   "format", "avro",
+                                                   "referenceName", "gcs-input",
+                                                   "projectId", getProjectId(),
+                                                   "path", createPath(bucket, inputBlobName))));
+
+    ETLStage sink = new ETLStage("GCSSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
+                                                               BatchSink.PLUGIN_TYPE,
+                                                               ImmutableMap.of(
+                                                                 "path", createPath(bucket, outputBlobName),
+                                                                 "format", "json",
+                                                                 "projectId", getProjectId(),
+                                                                 "referenceName", "gcs-output")));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS");
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    Gson gson = new Gson();
+    List<DataTypesRecord> resultingObjects = getResultBlobsContent(bucket, outputBlobName).stream()
+      .flatMap(content -> Arrays.stream(content.split("\\r?\\n"))
+        .map(record -> gson.fromJson(record, DataTypesRecord.class)))
+      .sorted(Comparator.comparing(o -> o.string))
+      .collect(Collectors.toList());
+
+    Assert.assertEquals(2, resultingObjects.size());
+
+    DataTypesRecord object1 = resultingObjects.get(0);
+    DataTypesRecord object2 = resultingObjects.get(1);
+
+    Assert.assertFalse(object1.booleanField);
+    Assert.assertTrue(object2.booleanField);
+
+    Assert.assertArrayEquals("abc".getBytes(), object1.bytes);
+    Assert.assertArrayEquals("cbd".getBytes(), object2.bytes);
+
+    // we can use BigInteger here, scale not important here since it is stored in schema.
+    Assert.assertArrayEquals(new BigInteger("11234").toByteArray(), object1.decimal);
+    Assert.assertArrayEquals(new BigInteger("43211").toByteArray(), object2.decimal);
+
+    Assert.assertEquals(123, object1.intField);
+    Assert.assertEquals(321, object2.intField);
+
+    Assert.assertEquals(123.123, object1.doubleField, 0.00001);
+    Assert.assertEquals(321.321, object2.doubleField, 0.00001);
+    Assert.assertEquals(123.123f, object1.floatField, 0.00001);
+    Assert.assertEquals(321.321f, object2.floatField, 0.00001);
+    Assert.assertEquals(123456789L, object1.longField);
+    Assert.assertEquals(987654321L, object2.longField);
+
+    Assert.assertEquals("string union value", object1.union);
+    // Gson by default deserializing numbers to double
+    Assert.assertEquals(123d, (double) object2.union, 0.00001);
+
+    Assert.assertEquals("value1", object1.map.get("key1"));
+    Assert.assertEquals("value2", object1.map.get("key2"));
+    Assert.assertEquals("a value", object1.record.a);
+    Assert.assertEquals("b value", object1.record.b);
+
+    Assert.assertTrue(object1.array.contains("element1"));
+    Assert.assertTrue(object1.array.contains("element2"));
+
+    // it is okay to compare values ignoring logical type
+    Assert.assertEquals(dateExpected, object1.date);
+    Assert.assertEquals(timestampExpected, object1.timestamp);
+    Assert.assertEquals(timeExpected, object1.time);
+  }
+
+  @Test
   public void testGCSToGCS() throws Exception {
     String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
     Bucket bucket = createBucket(bucketName);
@@ -549,25 +753,81 @@ public class GCSTest extends DataprocETLTestBase {
     String successFile = OUTPUT_BLOB_NAME + "/_SUCCESS";
     Assert.assertNotNull(bucket.get(successFile));
 
-    List<Blob> outputBlobs = new ArrayList<>();
-    Map<String, String> retrievedIdToRowMap = new HashMap<>();
-    for (Blob blob : bucket.list().iterateAll()) {
-      if (blob.getName().startsWith(OUTPUT_BLOB_NAME + "/") && !successFile.equals(blob.getName())) {
-        outputBlobs.add(blob);
-        byte[] content = blob.getContent();
-        String contentString = Preconditions.checkNotNull(Bytes.toString(content));
-        if (!contentString.isEmpty()) {
-          // The way that the content is parsed, it assumes that there is only one output split with content.
-          // This is because the first row of the content is skipped, because it contains the headers.
-          retrievedIdToRowMap.putAll(parseIdToRow(contentString, true));
-        }
-      }
-    }
+    Map<String, String> retrievedIdToRowMap = getResultBlobsContent(bucket, OUTPUT_BLOB_NAME).stream()
+      .flatMap(content -> parseIdToRow(content, true).entrySet().stream())
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    LOG.debug("Output blobs: {}", outputBlobs);
     // check that the output content is equivalent to the input content. Output content files are not guaranteed to be
     // split the same way, so we put the data into a map before checking equality.
     Assert.assertEquals(idToRowMap, retrievedIdToRowMap);
+  }
+
+  static class DataTypesRecord {
+    static class NestedRecord {
+      String a;
+      String b;
+    }
+
+    String string;
+
+    @SerializedName("boolean")
+    boolean booleanField;
+
+    @SerializedName("double")
+    double doubleField;
+
+    @SerializedName("long")
+    long longField;
+
+    @SerializedName("float")
+    float floatField;
+
+    @SerializedName("int")
+    int intField;
+
+    byte[] bytes;
+
+    // decimal field written as bytes to json
+    byte[] decimal;
+
+    List<String> array;
+
+    Map<String, String> map;
+
+    Object union;
+
+    NestedRecord record;
+
+    int date;
+    long time;
+    long timestamp;
+  }
+
+  /**
+   * Checks if given path contains _SUCCESS marker of successfully finished pipeline and returns list of content
+   * of every artifact in path.
+   */
+  private List<String> getResultBlobsContent(Bucket bucket, String path) {
+    String successFile = path + "/_SUCCESS";
+    assertExists(bucket, successFile);
+
+    return StreamSupport.stream(bucket.list().iterateAll().spliterator(), false)
+      .filter(blob -> blob.getName().startsWith(path + "/") && !successFile.equals(blob.getName()))
+      .map(GCSTest::blobContentToString)
+      .filter(Objects::nonNull)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Reads content of Blob to String.
+   */
+  private static String blobContentToString(Blob blob) {
+    byte[] content = blob.getContent();
+    String contentString = Preconditions.checkNotNull(Bytes.toString(content));
+    if (!contentString.isEmpty()) {
+      return contentString;
+    }
+    return null;
   }
 
   /**
