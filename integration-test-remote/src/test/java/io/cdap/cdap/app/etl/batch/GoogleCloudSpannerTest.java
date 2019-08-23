@@ -63,6 +63,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,6 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   private static final String SOURCE_TABLE_NAME = "source";
   private static final String SINK_TABLE_NAME = "sink";
 
-  // todo CDAP-14233 - add support for array
   private static final String TABLE_FORMAT = "CREATE TABLE %s (" +
     "ID INT64," +
     "STRING_COL STRING(MAX)," +
@@ -93,6 +93,13 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     "FLOAT_COL FLOAT64," +
     "TIMESTAMP_COL TIMESTAMP," +
     "NOT_IN_THE_SCHEMA_COL STRING(MAX)," +
+    "ARRAY_INT_COL ARRAY<INT64>," +
+    "ARRAY_BOOL_COL ARRAY<BOOL>," +
+    "ARRAY_FLOAT_COL ARRAY<FLOAT64>," +
+    "ARRAY_STRING_COL ARRAY<STRING(MAX)>," +
+    "ARRAY_BYTES_COL ARRAY<BYTES(MAX)>," +
+    "ARRAY_TIMESTAMP_COL ARRAY<TIMESTAMP>," +
+    "ARRAY_DATE_COL ARRAY<DATE>" +
     ") PRIMARY KEY (ID)";
 
   private static final Schema SCHEMA = Schema.recordOf(
@@ -103,7 +110,14 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Schema.Field.of("BYTES_COL", Schema.nullableOf(Schema.of(Schema.Type.BYTES))),
     Schema.Field.of("DATE_COL", Schema.nullableOf(Schema.of(Schema.LogicalType.DATE))),
     Schema.Field.of("FLOAT_COL", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
-    Schema.Field.of("TIMESTAMP_COL", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
+    Schema.Field.of("TIMESTAMP_COL", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS))),
+    Schema.Field.of("ARRAY_INT_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.LONG)))),
+    Schema.Field.of("ARRAY_STRING_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.STRING)))),
+    Schema.Field.of("ARRAY_BOOL_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN)))),
+    Schema.Field.of("ARRAY_FLOAT_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.DOUBLE)))),
+    Schema.Field.of("ARRAY_BYTES_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.BYTES)))),
+    Schema.Field.of("ARRAY_TIMESTAMP_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))),
+    Schema.Field.of("ARRAY_DATE_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.LogicalType.DATE))))
   );
 
   private static final ZonedDateTime NOW = ZonedDateTime.now();
@@ -121,6 +135,28 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .set("FLOAT_COL").to(Double.MIN_VALUE) // FLOAT64 can be used to store Double.MIN_VALUE
       .set("TIMESTAMP_COL").to(Timestamp.ofTimeSecondsAndNanos(NOW.toEpochSecond(), NOW.getNano()))
       .set("NOT_IN_THE_SCHEMA_COL").to("some string")
+      .set("ARRAY_INT_COL").toInt64Array(Arrays.asList(1L, 2L, 3L))
+      .set("ARRAY_STRING_COL").toStringArray(Arrays.asList("value1", "value2", "value3"))
+      .set("ARRAY_BOOL_COL").toBoolArray(Arrays.asList(true, false, true))
+      .set("ARRAY_FLOAT_COL").toFloat64Array(Arrays.asList(1.1, 2.2, 3.3))
+      .set("ARRAY_BYTES_COL").toBytesArray(
+      Arrays.asList(
+        ByteArray.copyFrom("some value".getBytes()),
+        ByteArray.copyFrom("some value".getBytes()),
+        ByteArray.copyFrom("some value".getBytes()))
+    )
+      .set("ARRAY_TIMESTAMP_COL").toTimestampArray(
+      Arrays.asList(
+        Timestamp.ofTimeSecondsAndNanos(NOW.toEpochSecond(), NOW.getNano()),
+        Timestamp.ofTimeSecondsAndNanos(NOW.toEpochSecond() + 1, NOW.getNano()),
+        Timestamp.ofTimeSecondsAndNanos(NOW.toEpochSecond() + 2, NOW.getNano()))
+    )
+      .set("ARRAY_DATE_COL").toDateArray(
+      Arrays.asList(
+        Date.fromYearMonthDay(NOW.getYear(), NOW.getMonthValue(), NOW.getDayOfMonth()),
+        Date.fromYearMonthDay(NOW.getYear() + 1, NOW.getMonthValue(), NOW.getDayOfMonth()),
+        Date.fromYearMonthDay(NOW.getYear() + 2, NOW.getMonthValue(), NOW.getDayOfMonth()))
+    )
       .build()
   );
 
@@ -326,6 +362,13 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Assert.assertEquals(secondRowExpected.get("DATE_COL").getDate(), resultSet.getDate("DATE_COL"));
     Assert.assertEquals(secondRowExpected.get("FLOAT_COL").getFloat64(), resultSet.getDouble("FLOAT_COL"), 0.00001);
     Assert.assertEquals(secondRowExpected.get("TIMESTAMP_COL").getTimestamp(), resultSet.getTimestamp("TIMESTAMP_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_INT_COL").getInt64Array(), resultSet.getLongList("ARRAY_INT_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_STRING_COL").getStringArray(), resultSet.getStringList("ARRAY_STRING_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_BOOL_COL").getBoolArray(), resultSet.getBooleanList("ARRAY_BOOL_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_FLOAT_COL").getFloat64Array(), resultSet.getDoubleList("ARRAY_FLOAT_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_BYTES_COL").getBytesArray(), resultSet.getBytesList("ARRAY_BYTES_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_TIMESTAMP_COL").getTimestampArray(), resultSet.getTimestampList("ARRAY_TIMESTAMP_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_DATE_COL").getDateArray(), resultSet.getDateList("ARRAY_DATE_COL"));
   }
 
   private boolean isSpannerPluginExists(ArtifactId dataPipelineId, String pluginType) throws Exception {
