@@ -26,11 +26,12 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharStreams;
-import com.google.common.io.Resources;
+import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.common.Bytes;
+import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.common.utils.Tasks;
@@ -46,19 +47,31 @@ import io.cdap.cdap.proto.artifact.PluginSummary;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.DatumWriter;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -85,6 +98,31 @@ public class GCSTest extends DataprocETLTestBase {
   private static final String GCS_COPY_PLUGIN_NAME = "GCSCopy";
   private static final String SINK_PLUGIN_NAME = "GCS";
   private static final String SOURCE_PLUGIN_NAME = "GCSFile";
+  private static final Schema ALL_DT_SCHEMA = Schema.recordOf(
+    "record",
+    Schema.Field.of("string", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("boolean", Schema.of(Schema.Type.BOOLEAN)),
+    Schema.Field.of("double", Schema.of(Schema.Type.DOUBLE)),
+    Schema.Field.of("long", Schema.of(Schema.Type.LONG)),
+    Schema.Field.of("float", Schema.of(Schema.Type.FLOAT)),
+    Schema.Field.of("int", Schema.of(Schema.Type.INT)),
+    Schema.Field.of("bytes", Schema.of(Schema.Type.BYTES)),
+    Schema.Field.of("decimal", Schema.decimalOf(5, 4)),
+    Schema.Field.of("array", Schema.arrayOf(Schema.of(Schema.Type.STRING))),
+    Schema.Field.of("map", Schema.mapOf(Schema.of(Schema.Type.STRING), Schema.of(Schema.Type.STRING))),
+    Schema.Field.of("union", Schema.unionOf(Schema.of(Schema.Type.INT), Schema.of(Schema.Type.STRING))),
+    Schema.Field.of("record", Schema.recordOf(
+      "nested",
+      Schema.Field.of("a", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("b", Schema.of(Schema.Type.STRING)))
+    ),
+    Schema.Field.of("date", Schema.of(Schema.LogicalType.DATE)),
+    Schema.Field.of("time", Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)),
+    Schema.Field.of("timestamp", Schema.of(Schema.LogicalType.TIMESTAMP_MICROS))
+  );
+  @ClassRule
+  public static TemporaryFolder temporaryFolder = new TemporaryFolder();
+
   private static Storage storage;
   private List<String> markedForDeleteBuckets;
 
@@ -509,9 +547,75 @@ public class GCSTest extends DataprocETLTestBase {
     String inputBlobName = "gcs-types/test.avro";
     String outputBlobName = "output/gcs-types/json";
 
-    bucket.create(inputBlobName, Resources.toByteArray(Resources.getResource("gcs-types/test.avro")));
+    String schema = ALL_DT_SCHEMA.toString();
 
-    String schema = Resources.toString(Resources.getResource("gcs-types/schema.json"), Charsets.UTF_8);
+    LocalDate date = LocalDate.now();
+    int dateExpected = Math.toIntExact(date.toEpochDay());
+    LocalTime time = LocalTime.now();
+    long timeExpected = TimeUnit.NANOSECONDS.toMicros(time.toNanoOfDay());
+    ZonedDateTime timestamp = ZonedDateTime.now();
+    long timestampExpected = Math.addExact(
+      TimeUnit.SECONDS.toMicros(timestamp.toInstant().getEpochSecond()),
+      TimeUnit.NANOSECONDS.toMicros(timestamp.toInstant().getNano())
+    );
+
+    org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser().parse(schema);
+    org.apache.avro.Schema childSchema = avroSchema.getField("record").schema();
+
+    GenericRecord childRecord = new GenericData.Record(childSchema);
+    childRecord.put("a", "a value");
+    childRecord.put("b", "b value");
+
+
+    GenericRecord record1 = new GenericData.Record(avroSchema);
+    record1.put("string", "object1");
+    record1.put("boolean", false);
+    record1.put("bytes", ByteBuffer.wrap("abc".getBytes()));
+    record1.put("int", 123);
+    record1.put("double", 123.123);
+    record1.put("float", 123.123f);
+    record1.put("long", 123456789L);
+    record1.put("decimal", ByteBuffer.wrap(new BigInteger("11234").toByteArray()));
+    record1.put("array", Arrays.asList("element1", "element2"));
+    record1.put("map", new HashMap<String, String>() {{
+      put("key1", "value1");
+      put("key2", "value2");
+    }});
+    record1.put("union", "string union value");
+    record1.put("record", childRecord);
+    record1.put("date", dateExpected);
+    record1.put("time", timeExpected);
+    record1.put("timestamp", timestampExpected);
+
+    GenericRecord record2 = new GenericData.Record(avroSchema);
+    record2.put("string", "object2");
+    record2.put("boolean", true);
+    record2.put("bytes", ByteBuffer.wrap("cbd".getBytes()));
+    record2.put("int", 321);
+    record2.put("double", 321.321);
+    record2.put("float", 321.321f);
+    record2.put("long", 987654321L);
+    record2.put("decimal", ByteBuffer.wrap(new BigInteger("43211").toByteArray()));
+    record2.put("array", Arrays.asList("element1", "element2"));
+    record2.put("map", new HashMap<String, String>() {{
+      put("key1", "value1");
+      put("key2", "value2");
+    }});
+    record2.put("union", 123);
+    record2.put("record", childRecord);
+    record2.put("date", dateExpected);
+    record2.put("time", timeExpected);
+    record2.put("timestamp", timestampExpected);
+
+    File avroFile = temporaryFolder.newFile();
+    DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(avroSchema);
+    DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter);
+    dataFileWriter.create(avroSchema, avroFile);
+    dataFileWriter.append(record1);
+    dataFileWriter.append(record2);
+    dataFileWriter.close();
+
+    bucket.create(inputBlobName, Files.toByteArray(avroFile));
 
     ETLStage source = new ETLStage("GCSSourceStage",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
@@ -586,6 +690,11 @@ public class GCSTest extends DataprocETLTestBase {
 
     Assert.assertTrue(object1.array.contains("element1"));
     Assert.assertTrue(object1.array.contains("element2"));
+
+    // it is okay to compare values ignoring logical type
+    Assert.assertEquals(dateExpected, object1.date);
+    Assert.assertEquals(timestampExpected, object1.timestamp);
+    Assert.assertEquals(timeExpected, object1.time);
   }
 
   @Test
