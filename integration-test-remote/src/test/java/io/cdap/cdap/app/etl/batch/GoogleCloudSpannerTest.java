@@ -116,7 +116,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Schema.Field.of("ARRAY_BOOL_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN)))),
     Schema.Field.of("ARRAY_FLOAT_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.DOUBLE)))),
     Schema.Field.of("ARRAY_BYTES_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.Type.BYTES)))),
-    Schema.Field.of("ARRAY_TIMESTAMP_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))),
+    Schema.Field.of("ARRAY_TIMESTAMP_COL",
+                    Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))),
     Schema.Field.of("ARRAY_DATE_COL", Schema.arrayOf(Schema.nullableOf(Schema.of(Schema.LogicalType.DATE))))
   );
 
@@ -360,12 +361,18 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Assert.assertEquals(secondRowExpected.get("FLOAT_COL").getFloat64(), resultSet.getDouble("FLOAT_COL"), 0.00001);
     Assert.assertEquals(secondRowExpected.get("TIMESTAMP_COL").getTimestamp(), resultSet.getTimestamp("TIMESTAMP_COL"));
     Assert.assertEquals(secondRowExpected.get("ARRAY_INT_COL").getInt64Array(), resultSet.getLongList("ARRAY_INT_COL"));
-    Assert.assertEquals(secondRowExpected.get("ARRAY_STRING_COL").getStringArray(), resultSet.getStringList("ARRAY_STRING_COL"));
-    Assert.assertEquals(secondRowExpected.get("ARRAY_BOOL_COL").getBoolArray(), resultSet.getBooleanList("ARRAY_BOOL_COL"));
-    Assert.assertEquals(secondRowExpected.get("ARRAY_FLOAT_COL").getFloat64Array(), resultSet.getDoubleList("ARRAY_FLOAT_COL"));
-    Assert.assertEquals(secondRowExpected.get("ARRAY_BYTES_COL").getBytesArray(), resultSet.getBytesList("ARRAY_BYTES_COL"));
-    Assert.assertEquals(secondRowExpected.get("ARRAY_TIMESTAMP_COL").getTimestampArray(), resultSet.getTimestampList("ARRAY_TIMESTAMP_COL"));
-    Assert.assertEquals(secondRowExpected.get("ARRAY_DATE_COL").getDateArray(), resultSet.getDateList("ARRAY_DATE_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_STRING_COL").getStringArray(),
+                        resultSet.getStringList("ARRAY_STRING_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_BOOL_COL").getBoolArray(),
+                        resultSet.getBooleanList("ARRAY_BOOL_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_FLOAT_COL").getFloat64Array(),
+                        resultSet.getDoubleList("ARRAY_FLOAT_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_BYTES_COL").getBytesArray(),
+                        resultSet.getBytesList("ARRAY_BYTES_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_TIMESTAMP_COL").getTimestampArray(),
+                        resultSet.getTimestampList("ARRAY_TIMESTAMP_COL"));
+    Assert.assertEquals(secondRowExpected.get("ARRAY_DATE_COL").getDateArray(),
+                        resultSet.getDateList("ARRAY_DATE_COL"));
   }
 
   private boolean isSpannerPluginExists(ArtifactId dataPipelineId, String pluginType) throws Exception {
