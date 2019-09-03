@@ -180,7 +180,20 @@ public abstract class ETLTestBase extends AudiTestBase {
     ConnectionConfig connConfig = getClientConfig().getConnectionConfig();
     String uiPort = connConfig.isSSLEnabled() ?
       cdapConfig.get("dashboard.ssl.bind.port").getValue() : cdapConfig.get("dashboard.bind.port").getValue();
+
+    // get sessionToken from UI
     String url =
+            String.format("%s://%s:%s/sessionToken",
+                    connConfig.isSSLEnabled() ? "https" : "http",
+                    connConfig.getHostname(), // just assume that UI is colocated with Router
+                    uiPort);
+
+    response = getRestClient().execute(HttpMethod.GET, new URL(url), getClientConfig().getAccessToken());
+    Assert.assertEquals(200, response.getResponseCode());
+    String sessionToken = response.getResponseBodyAsString();
+
+    // use sessionToken and forward plugin from market to CDAP
+    url =
       String.format("%s://%s:%s/forwardMarketToCdap?source=%s&target=%s",
                     connConfig.isSSLEnabled() ? "https" : "http",
                     connConfig.getHostname(), // just assume that UI is colocated with Router
@@ -189,7 +202,8 @@ public abstract class ETLTestBase extends AudiTestBase {
 
     Map<String, String> headers =
       ImmutableMap.of("Artifact-Extends", Joiner.on("/").join(parentStrings),
-                      "Artifact-Version", version);
+                      "Artifact-Version", version,
+                      "session-token", sessionToken);
     response = getRestClient().execute(HttpMethod.GET, new URL(url), headers, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
   }
