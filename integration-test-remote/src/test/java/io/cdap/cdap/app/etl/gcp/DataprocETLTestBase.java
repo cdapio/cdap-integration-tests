@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.cdap.app.etl;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -22,7 +22,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.cdap.cdap.api.common.Bytes;
+import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
+import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.WorkflowManager;
@@ -52,6 +54,8 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
 
   private static String projectId;
   private static String serviceAccountCredentials;
+  protected static final ArtifactSelectorConfig GOOGLE_CLOUD_ARTIFACT =
+    new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
 
   @BeforeClass
   public static void testDataprocClassSetup() throws IOException {

@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.cdap.app.etl;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.rpc.ApiException;
@@ -40,13 +40,11 @@ import com.google.pubsub.v1.ProjectTopicName;
 import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.PushConfig;
 import io.cdap.cdap.api.artifact.ArtifactScope;
-import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.datastreams.DataStreamsSparkLauncher;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
-import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.etl.proto.v2.DataStreamsConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
@@ -88,7 +86,6 @@ public class PubSubTest extends DataprocETLTestBase {
   private static SubscriptionAdminClient subscriptionAdmin;
   private ArrayList<ProjectTopicName> topicsToDelete;
   private ArrayList<ProjectSubscriptionName> subscriptionsToDelete;
-  private String googleCloudVersion;
 
   @BeforeClass
   public static void testClassSetup() throws IOException {
@@ -127,20 +124,10 @@ public class PubSubTest extends DataprocETLTestBase {
   }
 
   @Override
-  public void innerSetup() throws Exception {
+  public void innerSetup() {
     ImmutableList.of(ImmutableList.of(GOOGLE_SUBSCRIBER_PLUGIN_NAME, StreamingSource.PLUGIN_TYPE, "cdap-data-streams"),
                      ImmutableList.of(GOOGLE_PUBLISHER_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, "cdap-data-pipeline"))
       .forEach((pluginInfo) -> checkPluginExists(pluginInfo.get(0), pluginInfo.get(1), pluginInfo.get(2)));
-
-    ArtifactSummary googleCloudArtifact = artifactClient
-      .listVersions(TEST_NAMESPACE, "google-cloud", ArtifactScope.SYSTEM)
-      .stream().findFirst().orElse(null);
-
-    if (googleCloudArtifact != null) {
-      googleCloudVersion = googleCloudArtifact.getVersion();
-    } else {
-      throw new ArtifactNotFoundException(TEST_NAMESPACE.getNamespace(), "google-cloud");
-    }
 
     topicsToDelete = new ArrayList<>();
     subscriptionsToDelete = new ArrayList<>();
@@ -277,22 +264,18 @@ public class PubSubTest extends DataprocETLTestBase {
   }
 
   private ETLStage createSubscriberStage(String topicName, String subscription) {
-    ArtifactSelectorConfig artifact = new ArtifactSelectorConfig(ArtifactScope.SYSTEM.toString(),
-                                                                 "google-cloud", googleCloudVersion);
     return new ETLStage(topicName, new ETLPlugin(GOOGLE_SUBSCRIBER_PLUGIN_NAME, StreamingSource.PLUGIN_TYPE,
                                                  ImmutableMap.of("project", getProjectId(),
                                                                  "topic", topicName,
                                                                  "referenceName", "pubsub-input",
-                                                                 "subscription", subscription), artifact));
+                                                                 "subscription", subscription), GOOGLE_CLOUD_ARTIFACT));
   }
 
   private ETLStage createPublisherStage(String topicName) {
-    ArtifactSelectorConfig artifact = new ArtifactSelectorConfig(ArtifactScope.SYSTEM.toString(),
-                                                                 "google-cloud", googleCloudVersion);
     return new ETLStage(topicName, new ETLPlugin(GOOGLE_PUBLISHER_PLUGIN_NAME, BatchSink.PLUGIN_TYPE,
                                                  ImmutableMap.of("project", getProjectId(),
                                                                  "referenceName", "pubsub-output",
-                                                                 "topic", topicName), artifact));
+                                                                 "topic", topicName), GOOGLE_CLOUD_ARTIFACT));
   }
 
   private static class TestMessageReceiver implements MessageReceiver {

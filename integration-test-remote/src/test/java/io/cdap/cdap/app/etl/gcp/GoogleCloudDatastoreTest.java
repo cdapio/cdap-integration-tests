@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.cdap.cdap.app.etl.batch;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.Timestamp;
@@ -38,12 +38,12 @@ import com.google.cloud.datastore.Value;
 import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.app.etl.DataprocETLTestBase;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
+import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
@@ -92,14 +92,16 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     gcdNamespace1 = "it-ns-1-" + UUID.randomUUID().toString();
     gcdNamespace2 = "it-ns-2-" + UUID.randomUUID().toString();
 
+    GoogleCredentials credentials;
     try (InputStream inputStream = new ByteArrayInputStream(
       getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))) {
-      datastore = DatastoreOptions.newBuilder()
-        .setProjectId(getProjectId())
-        .setCredentials(GoogleCredentials.fromStream(inputStream))
-        .build()
-        .getService();
+      credentials = GoogleCredentials.fromStream(inputStream);
     }
+    datastore = DatastoreOptions.newBuilder()
+      .setProjectId(getProjectId())
+      .setCredentials(credentials)
+      .build()
+      .getService();
   }
 
   @Override
@@ -136,6 +138,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore using filter id = 1 without key, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_1)
       .put("filters", "id|1")
@@ -147,6 +150,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // insert data into new Kind within the same Namespace using Auto-generated key and custom indexes
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_2)
       .put("keyType", "Auto-generated key")
@@ -223,6 +227,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore using filter id = 2, include Url-safe key, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_1)
       .put("filters", "id|2")
@@ -235,6 +240,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // update existing record (remove some fields) in Cloud Datastore using Url-safe key
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_1)
       .put("keyType", "Url-safe key")
@@ -311,6 +317,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore with ancestor key(aKind, 'aName'), include Key literal, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_1)
       .put("ancestor", "key(aKind, 'aName')")
@@ -323,6 +330,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // insert data into different Namespace using Key literal
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace2)
       .put("kind", GCD_KIND_1)
       .put("keyType", "Key literal")
@@ -371,6 +379,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore with any filters, not including key
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_1)
       .put("numSplits", "2")
@@ -381,6 +390,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // insert data into new Kind within the same Namespace using custom key with ancestor
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
+      .put("project", getProjectId())
       .put("namespace", gcdNamespace1)
       .put("kind", GCD_KIND_2)
       .put("keyType", "Custom name")
@@ -438,10 +448,12 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     ETLStage source = new ETLStage("DatastoreSourceStage",
                                    new ETLPlugin(GCD_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
-                                                 sourceProperties));
+                                                 sourceProperties,
+                                                 GOOGLE_CLOUD_ARTIFACT));
     ETLStage sink = new ETLStage("DatastoreSinkStage", new ETLPlugin(GCD_PLUGIN_NAME,
                                                                      BatchSink.PLUGIN_TYPE,
-                                                                     sinkProperties));
+                                                                     sinkProperties,
+                                                                     GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)

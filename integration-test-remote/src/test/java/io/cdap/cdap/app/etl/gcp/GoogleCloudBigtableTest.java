@@ -14,16 +14,21 @@
  * the License.
  */
 
-package io.cdap.cdap.app.etl.batch;
+package io.cdap.cdap.app.etl.gcp;
 
+import com.google.bigtable.repackaged.com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.bigtable.repackaged.com.google.auth.oauth2.GoogleCredentials;
+import com.google.bigtable.repackaged.com.google.bigtable.admin.v2.ProjectName;
+import com.google.bigtable.repackaged.com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminClient;
+import com.google.bigtable.repackaged.com.google.cloud.bigtable.admin.v2.BigtableInstanceAdminSettings;
+import com.google.bigtable.repackaged.com.google.cloud.bigtable.admin.v2.models.CreateInstanceRequest;
+import com.google.bigtable.repackaged.com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.hbase.BigtableConfiguration;
 import com.google.cloud.bigtable.hbase.BigtableOptionsFactory;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.app.etl.DataprocETLTestBase;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -52,9 +57,13 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
@@ -70,17 +79,34 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
   private static final String SINK_TABLE_NEW_NAME = SINK_TABLE_NAME_TEMPLATE + "new";
 
   private static String instanceId;
+  private static BigtableInstanceAdminClient instanceAdmin;
 
   @BeforeClass
   public static void testGoogleBigtableSetup() throws IOException {
-    instanceId = Preconditions.checkNotNull(System.getProperty("google.application.bigtable.instance"),
-                                            "The instance for google bigtable is not set.");
+    instanceId = "cdap-itn-" + System.currentTimeMillis();
+
+    GoogleCredentials credentials;
+    try (InputStream is = new ByteArrayInputStream(getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))) {
+      credentials = GoogleCredentials.fromStream(is);
+    }
+    BigtableInstanceAdminSettings.Builder adminSettings = BigtableInstanceAdminSettings.newBuilder()
+      .setProjectName(ProjectName.of(getProjectId()));
+    adminSettings.stubSettings()
+      .setCredentialsProvider(FixedCredentialsProvider.create(credentials));
+    instanceAdmin = BigtableInstanceAdminClient.create(adminSettings.build());
+    instanceAdmin.createInstance(CreateInstanceRequest.of(instanceId)
+                                   .addCluster(instanceId + "-c1", "us-central1-c", 3, StorageType.HDD));
 
     try (Connection connection = connect(getProjectId(), instanceId, getServiceAccountCredentials())) {
       dropTables(connection);
       createTables(connection);
       populateData(connection);
     }
+  }
+
+  @AfterClass
+  public static void teardownTest() {
+    instanceAdmin.deleteInstance(instanceId);
   }
 
   private static void createTables(Connection connection) throws IOException {
@@ -253,15 +279,15 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
                                               Map<String, String> sinkProperties,
                                               String applicationName) throws Exception {
     ArtifactSelectorConfig artifact = new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
-    ETLStage source = new ETLStage("DatastoreSourceStage",
+    ETLStage source = new ETLStage("BigtableSourceStage",
                                    new ETLPlugin(BIG_TABLE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
                                                  sourceProperties,
                                                  artifact));
-    ETLStage sink = new ETLStage("DatastoreSinkStage", new ETLPlugin(BIG_TABLE_PLUGIN_NAME,
-                                                                     BatchSink.PLUGIN_TYPE,
-                                                                     sinkProperties,
-                                                                     artifact));
+    ETLStage sink = new ETLStage("BigtableSinkStage", new ETLPlugin(BIG_TABLE_PLUGIN_NAME,
+                                                                    BatchSink.PLUGIN_TYPE,
+                                                                    sinkProperties,
+                                                                    artifact));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
