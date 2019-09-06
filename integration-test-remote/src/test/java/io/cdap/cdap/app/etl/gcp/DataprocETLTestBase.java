@@ -123,8 +123,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     JsonArray properties = new JsonArray();
     properties.add(ofProperty("accountKey", getServiceAccountCredentials()));
     properties.add(ofProperty("network", "default"));
-    properties.add(ofProperty("region", "global"));
-    properties.add(ofProperty("zone", "us-central1-a"));
+    properties.add(ofProperty("region", "us-central1"));
     properties.add(ofProperty("projectId", getProjectId()));
 
     properties.add(ofProperty("masterNumNodes", "1"));
