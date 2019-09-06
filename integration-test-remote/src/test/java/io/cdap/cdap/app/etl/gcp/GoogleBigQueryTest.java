@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.cdap.cdap.app.etl.batch;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
@@ -44,12 +44,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.app.etl.DataprocETLTestBase;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
-import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
@@ -80,6 +78,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -515,7 +514,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Assert.assertTrue(exists(destinationTableName));
 
     assertSchemaEquals(sourceTableName, destinationTableName);
-    assertTableEquals(sourceTableName, destinationTableName);
+    assertTableEquals(sourceTableName, destinationTableName, Collections.singleton("datetime_value"));
   }
 
   /* Test check the Update operation without updating destination table schema.
@@ -1008,9 +1007,12 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       Field expected = expectedFieldList.get(i);
       Field actual = actualFieldList.get(i);
       String fieldName = expected.getName();
-      String message = String.format("Values differ for field '%s'. Expected '%s' but was '%s'.", fieldName,
-                                     expected, actual);
-      Assert.assertEquals(message, expected, actual);
+      String message = String.format("Values differ for field '%s'.", fieldName);
+      if (expected.getType() == LegacySQLTypeName.DATETIME) {
+        Assert.assertEquals(message, actual.getType(), LegacySQLTypeName.STRING);
+      } else {
+        Assert.assertEquals(message, expected, actual);
+      }
     });
   }
 
@@ -1040,6 +1042,10 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
   }
 
   private void assertTableEquals(String expectedTableName, String actualTableName) {
+    assertTableEquals(expectedTableName, actualTableName, Collections.emptySet());
+  }
+
+  private void assertTableEquals(String expectedTableName, String actualTableName, Set<String> datetimeFields) {
     TableId expectedTableId = TableId.of(bigQueryDataset, expectedTableName);
     TableId actualTableId = TableId.of(bigQueryDataset, actualTableName);
 
@@ -1058,9 +1064,15 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
         .forEach(fieldName -> {
           FieldValue expected = expectedFieldValueList.get(fieldName);
           FieldValue actual = actualFieldValueList.get(fieldName);
-          String message = String.format("Values differ for field '%s'. Expected '%s' but was '%s'.", fieldName,
-                                         expected, actual);
-          Assert.assertEquals(message, expected, actual);
+          if (datetimeFields.contains(fieldName)) {
+            // precision is lost in CDAP, which only goes to micros and not nanos
+            String message = String.format("Values differ for field '%s'. Expected = '%s', actual = '%s'", fieldName,
+                                           expected, actual);
+            Assert.assertTrue(message, expected.getStringValue().startsWith(actual.getStringValue()));
+          } else {
+            String message = String.format("Values differ for field '%s'.", fieldName);
+            Assert.assertEquals(message, expected, actual);
+          }
         });
     }
   }
@@ -1074,13 +1086,12 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                                                                  Map<String, String> sinkProperties,
                                                                  String applicationName) throws Exception {
 
-    ArtifactSelectorConfig artifact = new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
     ETLStage source = new ETLStage("BigQuerySourceStage",
                                    new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties,
-                                                 artifact));
+                                                 GOOGLE_CLOUD_ARTIFACT));
     ETLStage sink = new ETLStage("BigQuerySinkStage",
                                  new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, sinkProperties,
-                                               artifact));
+                                               GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)

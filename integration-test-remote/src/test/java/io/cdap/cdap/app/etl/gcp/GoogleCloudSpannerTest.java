@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package io.cdap.cdap.app.etl.batch;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ByteArray;
@@ -35,7 +35,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.app.etl.DataprocETLTestBase;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -220,6 +219,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   public void testReadAndStoreInNewTable() throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", SOURCE_TABLE_NAME)
@@ -229,6 +229,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_sink")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", nonExistentSinkTableName)
@@ -248,6 +249,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   public void testReadAndStore() throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", SOURCE_TABLE_NAME)
@@ -256,6 +258,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_sink")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", SINK_TABLE_NAME)
@@ -278,6 +281,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   @Test
   public void testReadAndStoreInNewTableWithNoSourceSchema() throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
+      .put("project", getProjectId())
       .put("referenceName", "spanner_source")
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
@@ -287,6 +291,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_sink")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", nonExistentSinkTableName)
@@ -306,6 +311,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   public void testReadAndStoreWithNoSourceSchema() throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", SOURCE_TABLE_NAME)
@@ -313,6 +319,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_sink")
+      .put("project", getProjectId())
       .put("instance", instance.getId().getInstance())
       .put("database", database.getId().getDatabase())
       .put("table", SINK_TABLE_NAME)
@@ -416,9 +423,10 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
                                                Map<String, String> sinkProperties,
                                                String applicationName) throws Exception {
 
-    ArtifactSelectorConfig artifact = new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
-    ETLPlugin sourcePlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties, artifact);
-    ETLPlugin sinkPlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, sinkProperties, artifact);
+    ETLPlugin sourcePlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties,
+                                           GOOGLE_CLOUD_ARTIFACT);
+    ETLPlugin sinkPlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, sinkProperties,
+                                         GOOGLE_CLOUD_ARTIFACT);
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(new ETLStage(SPANNER_SOURCE_STAGE_NAME, sourcePlugin))

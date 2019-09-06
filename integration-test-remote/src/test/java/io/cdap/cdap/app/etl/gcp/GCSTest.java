@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.cdap.app.etl;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
@@ -447,9 +447,10 @@ public class GCSTest extends DataprocETLTestBase {
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String path = String.format("gs://%s/testFolder,gs://%s/testFolder2", bucket1Name, bucket1Name);
     ETLStage cp1 = new ETLStage("gcs-create", new ETLPlugin(GCS_BUCKET_CREATE_PLUGIN_NAME, Action.PLUGIN_TYPE,
-                                                            ImmutableMap.of("projectId", getProjectId(),
+                                                            ImmutableMap.of("project", getProjectId(),
                                                                             "paths", path,
-                                                                            "failIfExists", String.valueOf(true))));
+                                                                            "failIfExists", String.valueOf(true)),
+                                                            GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
       .build();
@@ -487,8 +488,9 @@ public class GCSTest extends DataprocETLTestBase {
 
 
     ETLStage cp1 = new ETLStage("gcs-delete", new ETLPlugin(GCS_BUCKET_DELETE_PLUGIN_NAME, Action.PLUGIN_TYPE,
-                                                            ImmutableMap.of("projectId", getProjectId(),
-                                                                            "paths", paths)));
+                                                            ImmutableMap.of("project", getProjectId(),
+                                                                            "paths", paths),
+                                                            GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
       .build();
@@ -526,18 +528,20 @@ public class GCSTest extends DataprocETLTestBase {
 
   private ETLStage createCopyStage(String name, String src, String dest, boolean recursive) {
     return new ETLStage(name, new ETLPlugin(GCS_COPY_PLUGIN_NAME, Action.PLUGIN_TYPE,
-                                            ImmutableMap.of("projectId", getProjectId(),
+                                            ImmutableMap.of("project", getProjectId(),
                                                             "sourcePath", src,
                                                             "destPath", dest,
-                                                            "recursive", String.valueOf(recursive))));
+                                                            "recursive", String.valueOf(recursive)),
+                                            GOOGLE_CLOUD_ARTIFACT));
   }
 
   private ETLStage createMoveStage(String name, String src, String dest, boolean recursive) {
     return new ETLStage(name, new ETLPlugin(GCS_MOVE_PLUGIN_NAME, Action.PLUGIN_TYPE,
-                                            ImmutableMap.of("projectId", getProjectId(),
+                                            ImmutableMap.of("project", getProjectId(),
                                                             "sourcePath", src,
                                                             "destPath", dest,
-                                                            "recursive", String.valueOf(recursive))));
+                                                            "recursive", String.valueOf(recursive)),
+                                            GOOGLE_CLOUD_ARTIFACT));
   }
 
   @Test
@@ -624,16 +628,18 @@ public class GCSTest extends DataprocETLTestBase {
                                                    "schema", schema,
                                                    "format", "avro",
                                                    "referenceName", "gcs-input",
-                                                   "projectId", getProjectId(),
-                                                   "path", createPath(bucket, inputBlobName))));
+                                                   "project", getProjectId(),
+                                                   "path", createPath(bucket, inputBlobName)),
+                                                 GOOGLE_CLOUD_ARTIFACT));
 
     ETLStage sink = new ETLStage("GCSSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
                                                                BatchSink.PLUGIN_TYPE,
                                                                ImmutableMap.of(
                                                                  "path", createPath(bucket, outputBlobName),
                                                                  "format", "json",
-                                                                 "projectId", getProjectId(),
-                                                                 "referenceName", "gcs-output")));
+                                                                 "project", getProjectId(),
+                                                                 "referenceName", "gcs-output"),
+                                                               GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
@@ -721,16 +727,18 @@ public class GCSTest extends DataprocETLTestBase {
                                                    "schema", sourceSchema,
                                                    "format", "text",
                                                    "referenceName", "gcs-input",
-                                                   "projectId", getProjectId(),
-                                                   "path", createPath(bucket, INPUT_BLOB_NAME))));
+                                                   "project", getProjectId(),
+                                                   "path", createPath(bucket, INPUT_BLOB_NAME)),
+                                                 GOOGLE_CLOUD_ARTIFACT));
 
     ETLStage sink = new ETLStage("FileSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
                                                                 BatchSink.PLUGIN_TYPE,
                                                                 ImmutableMap.of(
                                                                   "path", createPath(bucket, OUTPUT_BLOB_NAME),
                                                                   "format", "delimited",
-                                                                  "projectId", getProjectId(),
-                                                                  "referenceName", "gcs-output")));
+                                                                  "project", getProjectId(),
+                                                                  "referenceName", "gcs-output"),
+                                                                GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
