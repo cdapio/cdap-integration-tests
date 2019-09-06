@@ -72,7 +72,7 @@ public class AudiTestBase extends IntegrationTestBase {
 
   // Used for starting/stop await timeout.
   protected static final int PROGRAM_START_STOP_TIMEOUT_SECONDS =
-    Integer.valueOf(System.getProperty("programTimeout", "60"));
+    Integer.valueOf(System.getProperty("programTimeout", "120"));
   // Amount of time to wait for a program (i.e. Service, or Worker) to process its first event (upon startup).
   // For now, make it same as PROGRAM_START_STOP_TIMEOUT_SECONDS.
   protected static final int PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
