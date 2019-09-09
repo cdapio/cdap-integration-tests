@@ -54,6 +54,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
 
   private static String projectId;
   private static String serviceAccountCredentials;
+  private static String network;
   protected static final ArtifactSelectorConfig GOOGLE_CLOUD_ARTIFACT =
     new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
 
@@ -73,6 +74,8 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
 
     JsonObject serviceAccountJson = new JsonParser().parse(serviceAccountCredentials).getAsJsonObject();
     projectId = serviceAccountJson.get("project_id").getAsString();
+
+    network = System.getProperty("google.dataproc.network", "default");
   }
 
   @Before
@@ -122,7 +125,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Gson gson = new Gson();
     JsonArray properties = new JsonArray();
     properties.add(ofProperty("accountKey", getServiceAccountCredentials()));
-    properties.add(ofProperty("network", "default"));
+    properties.add(ofProperty("network", network));
     properties.add(ofProperty("region", "us-central1"));
     properties.add(ofProperty("projectId", getProjectId()));
 
