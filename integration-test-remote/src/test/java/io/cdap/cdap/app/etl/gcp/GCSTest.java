@@ -22,10 +22,8 @@ import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.BucketInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
-import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
@@ -33,7 +31,6 @@ import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
-import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.action.Action;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -62,10 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -90,7 +84,6 @@ import java.util.stream.StreamSupport;
 public class GCSTest extends DataprocETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSTest.class);
-  private static final String INPUT_BLOB_NAME = "data/input/customers.csv";
   private static final String OUTPUT_BLOB_NAME = "data/output";
   private static final String GCS_BUCKET_DELETE_PLUGIN_NAME = "GCSBucketDelete";
   private static final String GCS_BUCKET_CREATE_PLUGIN_NAME = "GCSBucketCreate";
@@ -362,8 +355,6 @@ public class GCSTest extends DataprocETLTestBase {
     String prefix = "cdap-gcs-mv-rec";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
-    String bucket3Name = String.format("%s-3-%s", prefix, UUID.randomUUID());
-    String bucket4Name = String.format("%s-4-%s", prefix, UUID.randomUUID());
 
     Bucket bucket1 = createBucket(bucket1Name);
     Bucket bucket2 = createBucket(bucket2Name);
@@ -704,70 +695,122 @@ public class GCSTest extends DataprocETLTestBase {
   }
 
   @Test
-  public void testGCSToGCS() throws Exception {
-    String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
+  public void testGcsSourceFormats() throws Exception {
+    String bucketName = "cask-gcs-formats-" + UUID.randomUUID().toString();
     Bucket bucket = createBucket(bucketName);
 
-    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
-      bucket.create(INPUT_BLOB_NAME, is);
-    }
+    Schema schema = Schema.recordOf("customer",
+                                    Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+                                    Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
+                                    Schema.Field.of("email", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
+    String line1 = "1,Marilyn Hawkins,mhawkins0@example.com";
+    String line2 = "2,Terry Perez,tperez1@example.com";
+    String line3 = "3,Jack Ferguson,jferguson2@example.com";
+    String inputPath = "input";
+    bucket.create(inputPath, String.join("\n", Arrays.asList(line1, line2, line3)).getBytes(StandardCharsets.UTF_8));
 
-    Map<String, String> idToRowMap;
-    try (InputStream is = new FileInputStream("src/test/resources/customers.csv")) {
-      String result = CharStreams.toString(new InputStreamReader(is, Charsets.UTF_8));
-      idToRowMap = parseIdToRow(result, false);
-    }
+    String suffix = UUID.randomUUID().toString();
+    /*
+      First pipeline reads from GCS and writes to one GCS sink per format
 
-    String sourceSchema = "{\"type\":\"record\",\"name\":\"etlSchemaBody\"," +
-      "\"fields\":[{\"name\":\"offset\",\"type\":\"long\"},{\"name\":\"body\",\"type\":\"string\"}]}";
-    ETLStage source = new ETLStage("GCSSourceStage",
+                  |--> avro
+        source ---|
+                  |--> blob
+                  |
+                  ...
+                  |
+                  |--> tsv
+     */
+    ETLStage source = new ETLStage("source",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
                                                  ImmutableMap.of(
-                                                   "schema", sourceSchema,
-                                                   "format", "text",
+                                                   "schema", schema.toString(),
+                                                   "format", "csv",
                                                    "referenceName", "gcs-input",
                                                    "project", getProjectId(),
-                                                   "path", createPath(bucket, INPUT_BLOB_NAME)),
+                                                   "path", createPath(bucket, inputPath)),
                                                  GOOGLE_CLOUD_ARTIFACT));
 
-    ETLStage sink = new ETLStage("FileSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
-                                                                BatchSink.PLUGIN_TYPE,
-                                                                ImmutableMap.of(
-                                                                  "path", createPath(bucket, OUTPUT_BLOB_NAME),
-                                                                  "format", "delimited",
-                                                                  "project", getProjectId(),
-                                                                  "referenceName", "gcs-output"),
-                                                                GOOGLE_CLOUD_ARTIFACT));
+    List<String> formats = Arrays.asList("avro", "csv", "delimited", "json", "parquet", "tsv");
+    ETLBatchConfig.Builder pipelineConfig = ETLBatchConfig.builder().addStage(source);
+    for (String format : formats) {
+      String path = String.format("%s/%s/%s", createPath(bucket, OUTPUT_BLOB_NAME), format, suffix);
+      ETLStage sink = new ETLStage(format, createSinkPlugin(format, path, schema));
+      pipelineConfig.addStage(sink).addConnection(source.getName(), sink.getName());
+    }
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
-      .addStage(source)
-      .addStage(sink)
-      .addConnection(source.getName(), sink.getName())
-      .build();
-
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig.build());
+    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+    /*
+      The second pipeline reads from each of those formats and writes to GCS.
 
-    checkMetric(tags, "user." + source.getName() + ".records.out", 101, 10);
-    checkMetric(tags, "user." + sink.getName() + ".records.in", 101, 10);
+      avro --|
+             |
+      csv ---|
+             |---> sink
+      ...    |
+             |
+      tsv ---|
 
-    String successFile = OUTPUT_BLOB_NAME + "/_SUCCESS";
-    Assert.assertNotNull(bucket.get(successFile));
+      data looks like
+      id,first,last,email,address,city,state,zip
+      1,Marilyn,Hawkins,mhawkins0@ted.com,238 Melvin Way,Palo Alto,CA,94302
+     */
+    ETLStage sink = new ETLStage("sink", createSinkPlugin("csv", createPath(bucket, "output"), schema));
+    pipelineConfig = ETLBatchConfig.builder().addStage(sink);
+    for (String format : formats) {
+      String path = String.format("%s/%s", createPath(bucket, OUTPUT_BLOB_NAME), format);
+      source = createSourceStage(format, path, String.format(".*/%s/.*", suffix), schema);
+      pipelineConfig.addStage(source).addConnection(source.getName(), sink.getName());
+    }
 
-    Map<String, String> retrievedIdToRowMap = getResultBlobsContent(bucket, OUTPUT_BLOB_NAME).stream()
-      .flatMap(content -> parseIdToRow(content, true).entrySet().stream())
-      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    appRequest = getBatchAppRequestV2(pipelineConfig.build());
+    appId = TEST_NAMESPACE.app("GCSFormatSources");
+    appManager = deployApplication(appId, appRequest);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    // check that the output content is equivalent to the input content. Output content files are not guaranteed to be
-    // split the same way, so we put the data into a map before checking equality.
-    Assert.assertEquals(idToRowMap, retrievedIdToRowMap);
+    Map<String, Integer> lineCounts = new HashMap<>();
+    List<String> results = getResultBlobsContent(bucket, "output");
+    for (String result : results) {
+      for (String line : result.split("\n")) {
+        lineCounts.putIfAbsent(line, 0);
+        lineCounts.put(line, lineCounts.get(line) + 1);
+      }
+    }
+    Map<String, Integer> expected = new HashMap<>();
+    expected.put(line1, formats.size());
+    expected.put(line2, formats.size());
+    expected.put(line3, formats.size());
+    Assert.assertEquals(expected, lineCounts);
+  }
+
+  private ETLStage createSourceStage(String format, String path, String regex, Schema schema) {
+    return new ETLStage(format, new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE,
+                                              new ImmutableMap.Builder<String, String>()
+                                                .put("path", path)
+                                                .put("format", format)
+                                                .put("project", getProjectId())
+                                                .put("referenceName", format)
+                                                .put("fileRegex", regex)
+                                                .put("recursive", "true")
+                                                .put("schema", schema.toString()).build(),
+                                              GOOGLE_CLOUD_ARTIFACT));
+  }
+
+  private ETLPlugin createSinkPlugin(String format, String path, Schema schema) {
+    return new ETLPlugin(SINK_PLUGIN_NAME, BatchSink.PLUGIN_TYPE,
+                         ImmutableMap.of(
+                           "path", path,
+                           "format", format,
+                           "project", getProjectId(),
+                           "referenceName", format,
+                           "schema", schema.toString()),
+                         GOOGLE_CLOUD_ARTIFACT);
   }
 
   static class DataTypesRecord {
@@ -838,27 +881,4 @@ public class GCSTest extends DataprocETLTestBase {
     return null;
   }
 
-  /**
-   * Parses a string, whose content is a newline-separated list of rows.
-   * The rows are comma-separated, where the first value is the id.
-   * The first column may represent file offset, in which case we will skip it.
-   */
-  private Map<String, String> parseIdToRow(String content, boolean skipFirstColumn) {
-    Map<String, String> idToRowMap = new HashMap<>();
-    String[] rows = content.split("\n");
-
-    // we skip the first row, because it is the column headers
-    for (int idx = 1; idx < rows.length; idx++) {
-      String row = rows[idx];
-      if (row.isEmpty()) {
-        continue;
-      }
-      if (skipFirstColumn) {
-        row = row.split(",", 2)[1];
-      }
-      String[] rowSplit = row.split(",", 2);
-      idToRowMap.put(rowSplit[0], row);
-    }
-    return idToRowMap;
-  }
 }
