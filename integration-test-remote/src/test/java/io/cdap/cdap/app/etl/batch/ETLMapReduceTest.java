@@ -22,12 +22,10 @@ import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.dataset.lib.KeyValueTable;
 import io.cdap.cdap.api.dataset.table.Put;
-import io.cdap.cdap.api.dataset.table.Row;
 import io.cdap.cdap.api.dataset.table.Table;
 import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.client.QueryClient;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
-import io.cdap.cdap.etl.api.ErrorTransform;
 import io.cdap.cdap.etl.api.Transform;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
@@ -532,114 +530,6 @@ public class ETLMapReduceTest extends ETLTestBase {
     public String toString() {
       return String.format("Rowkey : %s, userId : %s, item : %s, rewards : %s ", rowKey, userId, item, rewards);
     }
-  }
-
-
-  @SuppressWarnings("ConstantConditions")
-  @Test
-  public void testTableToTableWithValidations() throws Exception {
-
-    Schema schema = purchaseSchema;
-    ETLStage source = new ETLStage("TableSource", new ETLPlugin("Table",
-                                                                BatchSource.PLUGIN_TYPE,
-                                                                ImmutableMap.of(
-                                                                  Properties.BatchReadableWritable.NAME, "inputTable",
-                                                                  Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey",
-                                                                  Properties.Table.PROPERTY_SCHEMA, schema.toString()),
-                                                                null));
-
-    String validationScript = "function isValid(input) {  " +
-      "var errCode = 0; var errMsg = 'none'; var isValid = true;" +
-      "if (!coreValidator.maxLength(input.userId, 6)) " +
-      "{ errCode = 10; errMsg = 'userId greater than 6 characters'; isValid = false; }; " +
-      "return {'isValid': isValid, 'errorCode': errCode, 'errorMsg': errMsg}; " +
-      "};";
-    ETLStage transform =
-      new ETLStage("ValidatorTransform", new ETLPlugin("Validator",
-                                                       Transform.PLUGIN_TYPE,
-                                                       ImmutableMap.of(
-                                                         "validators", "core", "validationScript", validationScript),
-                                                       null));
-
-    ETLStage sink1 = new ETLStage("sink1", new ETLPlugin("Table",
-                                                         BatchSink.PLUGIN_TYPE,
-                                                         ImmutableMap.of(
-                                                           Properties.BatchReadableWritable.NAME, "outputTable",
-                                                           Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey")));
-
-    ETLStage sink2 = new ETLStage("sink2", new ETLPlugin("Table",
-                                                         BatchSink.PLUGIN_TYPE,
-                                                         ImmutableMap.of(
-                                                           Properties.BatchReadableWritable.NAME, "keyErrors",
-                                                           Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "rowkey")));
-
-    ETLStage errors = new ETLStage("errors", new ETLPlugin("ErrorCollector",
-                                                           ErrorTransform.PLUGIN_TYPE,
-                                                           ImmutableMap.of()));
-
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
-      .addStage(source)
-      .addStage(sink1)
-      .addStage(sink2)
-      .addStage(transform)
-      .addStage(errors)
-      .addConnection(source.getName(), transform.getName())
-      .addConnection(transform.getName(), sink1.getName())
-      .addConnection(transform.getName(), errors.getName())
-      .addConnection(errors.getName(), sink2.getName())
-      .build();
-
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app("TableToTable");
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-
-    // add some data to the input table
-    DataSetManager<Table> inputManager = getTableDataset("inputTable");
-    Table inputTable = inputManager.get();
-
-    // valid record, userId "samuel" is 6 chars long
-    Put put = new Put(Bytes.toBytes("row1"));
-    put.add("userId", "samuel");
-    put.add("count", 5);
-    put.add("price", 123.45);
-    put.add("item", "scotch");
-    inputTable.put(put);
-    inputManager.flush();
-
-    // valid record, userId "jackson" is > 6 characters
-    put = new Put(Bytes.toBytes("row2"));
-    put.add("userId", "jackson");
-    put.add("count", 10);
-    put.add("price", 123456789d);
-    put.add("item", "island");
-    inputTable.put(put);
-    inputManager.flush();
-
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
-
-    DataSetManager<Table> outputManager = getTableDataset("outputTable");
-    Table outputTable = outputManager.get();
-
-    Row row = outputTable.get(Bytes.toBytes("row1"));
-    Assert.assertEquals("samuel", row.getString("userId"));
-    Assert.assertEquals(5, (int) row.getInt("count"));
-    Assert.assertTrue(Math.abs(123.45 - row.getDouble("price")) < 0.000001);
-    Assert.assertEquals("scotch", row.getString("item"));
-
-    row = outputTable.get(Bytes.toBytes("row2"));
-    Assert.assertTrue(row.isEmpty());
-
-    DataSetManager<Table> errorManager = getTableDataset("keyErrors");
-    Table errorTable = errorManager.get();
-
-    Assert.assertTrue(errorTable.get(Bytes.toBytes("row1")).isEmpty());
-    row = errorTable.get(Bytes.toBytes("row2"));
-    Assert.assertEquals("jackson", row.getString("userId"));
-    Assert.assertEquals(10, (int) row.getInt("count"));
-    Assert.assertTrue(Math.abs(123456789d - row.getDouble("price")) < 0.000001);
-    Assert.assertEquals("island", row.getString("item"));
   }
 
   private void verifyRewardResults(List<QueryResult> queryResults, Set<Rewards> expected, String type) {
