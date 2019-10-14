@@ -43,7 +43,6 @@ import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
-import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
@@ -65,6 +64,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -138,25 +138,25 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore using filter id = 1 without key, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_1)
-      .put("filters", "id|1")
-      .put("numSplits", "2")
-      .put("keyType", "None")
+      .put("project", "${project}")
+      .put("namespace", "${namespace}")
+      .put("kind", "${srcKind}")
+      .put("filters", "${filters}")
+      .put("numSplits", "${numSplits}")
+      .put("keyType", "${srcKeyType}")
       .put("schema", sourceSchema.toString())
       .build();
 
     // insert data into new Kind within the same Namespace using Auto-generated key and custom indexes
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_2)
-      .put("keyType", "Auto-generated key")
+      .put("project", "${project}")
+      .put("namespace", "${namespace}")
+      .put("kind", "${dstKind}")
+      .put("keyType", "${dstKeyType}")
       .put("indexStrategy", "Custom")
-      .put("indexedProperties", String.join(",", indexedProperties))
-      .put("batchSize", "25")
+      .put("indexedProperties", "${indexedProperties}")
+      .put("batchSize", "${batchSize}")
       .build();
 
     // insert initial dataset to Cloud Datastore
@@ -167,7 +167,18 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
       GCD_PLUGIN_NAME + "-filterAndInsertWithAutoGenKey");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("namespace", gcdNamespace1);
+    args.put("srcKind", GCD_KIND_1);
+    args.put("dstKind", GCD_KIND_2);
+    args.put("filters", "id|1");
+    args.put("numSplits", "2");
+    args.put("srcKeyType", "None");
+    args.put("dstKeyType", "Auto-generated key");
+    args.put("indexedProperties", String.join(",", indexedProperties));
+    args.put("batchSize", "25");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -227,26 +238,26 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore using filter id = 2, include Url-safe key, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_1)
-      .put("filters", "id|2")
-      .put("numSplits", "1")
-      .put("keyType", "Url-safe key")
-      .put("keyAlias", "key")
+      .put("project", "${project}")
+      .put("namespace", "${namespace}")
+      .put("kind", "${srcKind}")
+      .put("filters", "${filters}")
+      .put("numSplits", "${numSplits}")
+      .put("keyType", "${keyType}")
+      .put("keyAlias", "${keyAlias}")
       .put("schema", sourceSchema.toString())
       .build();
 
     // update existing record (remove some fields) in Cloud Datastore using Url-safe key
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_1)
-      .put("keyType", "Url-safe key")
-      .put("keyAlias", "key")
+      .put("project", "${project}")
+      .put("namespace", "${namespace}")
+      .put("kind", "${dstKind}")
+      .put("keyType", "${keyType}")
+      .put("keyAlias", "${keyAlias}")
       .put("indexStrategy", "All")
-      .put("batchSize", "25")
+      .put("batchSize", "${batchSize}")
       .build();
 
     // insert initial dataset to Cloud Datastore
@@ -257,7 +268,17 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
       GCD_PLUGIN_NAME + "-filterAndUpdateUsingUrlSafeKey");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("namespace", gcdNamespace1);
+    args.put("srcKind", GCD_KIND_1);
+    args.put("dstKind", GCD_KIND_1);
+    args.put("filters", "id|2");
+    args.put("numSplits", "1");
+    args.put("keyType", "Url-safe key");
+    args.put("keyAlias", "key");
+    args.put("batchSize", "25");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -317,26 +338,26 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore with ancestor key(aKind, 'aName'), include Key literal, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_1)
-      .put("ancestor", "key(aKind, 'aName')")
-      .put("numSplits", "1")
-      .put("keyType", "Key literal")
-      .put("keyAlias", "key")
+      .put("project", "${project}")
+      .put("namespace", "${namespace1}")
+      .put("kind", "${kind}")
+      .put("ancestor", "${ancestor}")
+      .put("numSplits", "${numSplits}")
+      .put("keyType", "${keyType}")
+      .put("keyAlias", "${keyAlias}")
       .put("schema", sourceSchema.toString())
       .build();
 
     // insert data into different Namespace using Key literal
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace2)
-      .put("kind", GCD_KIND_1)
-      .put("keyType", "Key literal")
-      .put("keyAlias", "key")
+      .put("project", "${project}")
+      .put("namespace", "${namespace2}")
+      .put("kind", "${kind}")
+      .put("keyType", "${keyType}")
+      .put("keyAlias", "${keyAlias}")
       .put("indexStrategy", "All")
-      .put("batchSize", "25")
+      .put("batchSize", "${batchSize}")
       .build();
 
     // insert initial dataset to Cloud Datastore
@@ -347,7 +368,17 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
       GCD_PLUGIN_NAME + "-ancestorFilterAndKeyLiteralInsert");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("namespace1", gcdNamespace1);
+    args.put("namespace2", gcdNamespace2);
+    args.put("kind", GCD_KIND_1);
+    args.put("ancestor", "key(aKind, 'aName')");
+    args.put("numSplits", "1");
+    args.put("keyType", "Key literal");
+    args.put("keyAlias", "key");
+    args.put("batchSize", "25");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -379,10 +410,10 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // read data from Cloud Datastore with any filters, not including key
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-input")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_1)
-      .put("numSplits", "2")
+      .put("project", "${project}")
+      .put("namespace", "${namespace}")
+      .put("kind", "${srcKind}")
+      .put("numSplits", "${numSplits}")
       .put("keyType", "None")
       .put("schema", sourceSchema.toString())
       .build();
@@ -390,14 +421,14 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // insert data into new Kind within the same Namespace using custom key with ancestor
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "datastore-output")
-      .put("project", getProjectId())
-      .put("namespace", gcdNamespace1)
-      .put("kind", GCD_KIND_2)
-      .put("keyType", "Custom name")
-      .put("keyAlias", "string_field")
-      .put("ancestor", "key(aKind, 'aName')")
+      .put("project", "${project}")
+      .put("namespace", "${namespace}")
+      .put("kind", "${dstKind}")
+      .put("keyType", "${keyType}")
+      .put("keyAlias", "${keyAlias}")
+      .put("ancestor", "${ancestor}")
       .put("indexStrategy", "All")
-      .put("batchSize", "25")
+      .put("batchSize", "${batchSize}")
       .build();
 
     // insert initial dataset to Cloud Datastore
@@ -406,7 +437,17 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
       GCD_PLUGIN_NAME + "-customKeyAndAncestor");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("namespace", gcdNamespace1);
+    args.put("srcKind", GCD_KIND_1);
+    args.put("dstKind", GCD_KIND_2);
+    args.put("numSplits", "2");
+    args.put("keyType", "Custom name");
+    args.put("keyAlias", "string_field");
+    args.put("ancestor", "key(aKind, 'aName')");
+    args.put("batchSize", "25");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
