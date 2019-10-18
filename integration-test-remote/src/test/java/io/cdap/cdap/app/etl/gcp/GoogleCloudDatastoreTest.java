@@ -39,7 +39,6 @@ import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
-import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
@@ -180,14 +179,6 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     args.put("batchSize", "25");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
-    ApplicationId appId = deploymentDetails.getAppId();
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-                                               Constants.Metrics.Tag.APP, appId.getEntityName());
-
-    // check number of rows in and out
-    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
-    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
-
     // get inserted Data from Cloud Datastore and check that 1 entity is returned
     List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, GCD_KIND_2);
     Assert.assertEquals(expectedCount, resultingDataset.size());
@@ -263,8 +254,6 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     // insert initial dataset to Cloud Datastore
     List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, GCD_KIND_1));
 
-    int expectedCount = 1;
-
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
       GCD_PLUGIN_NAME + "-filterAndUpdateUsingUrlSafeKey");
@@ -279,14 +268,6 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     args.put("keyAlias", "key");
     args.put("batchSize", "25");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
-
-    ApplicationId appId = deploymentDetails.getAppId();
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-      Constants.Metrics.Tag.APP, appId.getEntityName());
-
-    // check number of rows in and out
-    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
-    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
 
     // get Data from Cloud Datastore and check that number of records are same as was initially inserted
     List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, GCD_KIND_1);
@@ -380,14 +361,6 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     args.put("batchSize", "25");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
-    ApplicationId appId = deploymentDetails.getAppId();
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-      Constants.Metrics.Tag.APP, appId.getEntityName());
-
-    // check number of rows in and out
-    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
-    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
-
     // get Data from Cloud Datastore and check that only 1 entity is returned
     List<Entity> resultingDataset = getResultingDataset(gcdNamespace2, GCD_KIND_1);
     Assert.assertEquals(expectedCount, resultingDataset.size());
@@ -448,14 +421,6 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     args.put("ancestor", "key(aKind, 'aName')");
     args.put("batchSize", "25");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
-
-    ApplicationId appId = deploymentDetails.getAppId();
-    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-      Constants.Metrics.Tag.APP, appId.getEntityName());
-
-    // check number of rows in and out
-    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", initialDataset.size(), 10);
-    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", initialDataset.size(), 10);
 
     // get Data from Cloud Datastore and check that number of records are same as was initially inserted
     List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, GCD_KIND_2);
