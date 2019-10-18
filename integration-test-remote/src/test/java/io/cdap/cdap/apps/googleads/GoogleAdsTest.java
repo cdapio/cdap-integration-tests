@@ -1,5 +1,5 @@
 /*
- * Copyright © 2017 Cask Data, Inc.
+ * Copyright © 2019 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,7 +17,6 @@
 package io.cdap.cdap.apps.googleads;
 
 import com.google.common.base.Strings;
-import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -40,9 +39,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class GoogleAdsTest extends ETLTestBase {
@@ -87,36 +84,23 @@ public class GoogleAdsTest extends ETLTestBase {
     FileUtils.deleteDirectory(new File(TMP_TESTFILE));
   }
 
+  @Test(expected = IOException.class)
+  public void testSingleReportFailed() throws Exception {
+    Map<String, String> sourceProps = getSingleReportPresetConfigs();
+    sourceProps.put("clientId", "invalid");
+    sourceProps.put("clientSecret", "invalid");
+    Map<String, String> sinkProp = getFileSinkProp();
+    String batchSourceName = "GoogleAdsBatchSource";
+    runPipeline(sourceProps, sinkProp, batchSourceName, ProgramRunStatus.FAILED);
+  }
+
   @Test
   public void testSingleReport() throws Exception {
-    Map<String, String> sourceProps = getSingleReportConfigs();
+    Map<String, String> sourceProps = getSingleReportPresetConfigs();
     Map<String, String> sinkProp = getFileSinkProp();
+    String batchSourceName = "GoogleAdsBatchSource";
 
-    // kv table to kv table pipeline
-    ETLStage source = new ETLStage("GoogleAdsBatchSource",
-                                   new ETLPlugin("GoogleAdsBatchSource",
-                                                 BatchSource.PLUGIN_TYPE,
-                                                 sourceProps,
-                                                 GOOGLE_ADS_ARTIFACT));
-
-    ETLStage sink = new ETLStage("sink",
-                                 new ETLPlugin("File",
-                                               BatchSink.PLUGIN_TYPE,
-                                               sinkProp));
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
-      .addStage(source)
-      .addStage(sink)
-      .addConnection(source.getName(), sink.getName())
-      .build();
-
-    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app("testapp");
-    ApplicationManager applicationManager = deployApplication(appId, appRequest);
-
-
-    WorkflowManager workflowManager = applicationManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    runPipeline(sourceProps, sinkProp, batchSourceName, ProgramRunStatus.COMPLETED);
 
     File file = new File(TMP_TESTFILE);
     Assert.assertTrue(file.isDirectory());
@@ -130,13 +114,67 @@ public class GoogleAdsTest extends ETLTestBase {
   }
 
   @Test
+  public void testKeywordsPerformanceReport() throws Exception {
+    Map<String, String> sourceProps = getSingleReportKeywordsPerformanceConfigs();
+    Map<String, String> sinkProp = getFileSinkProp();
+    String batchSourceName = "GoogleAdsBatchSource";
+
+    runPipeline(sourceProps, sinkProp, batchSourceName, ProgramRunStatus.COMPLETED);
+
+    File tmpdir = new File(TMP_TESTFILE);
+    Assert.assertTrue(tmpdir.isDirectory());
+    File[] files = tmpdir.listFiles();
+    Assert.assertEquals(1, files.length);
+    File resultDir = files[0];
+    Assert.assertTrue(resultDir.isDirectory());
+    Assert.assertTrue(new File(resultDir, "_SUCCESS").exists());
+    File[] resulFiles = resultDir.listFiles();
+    Assert.assertEquals(4, resulFiles.length); // (1 report + 1 _SUCCESS ) * 2 .crc = 4 files
+  }
+
+  @Test
   public void testMultiReport() throws Exception {
     Map<String, String> sourceProps = getMultiReportConfigs();
     Map<String, String> sinkProp = getFileSinkProp();
+    String batchSourceName = "GoogleAdsMultiReportBatchSource";
 
-    // kv table to kv table pipeline
-    ETLStage source = new ETLStage("GoogleAdsMultiReportBatchSource",
-                                   new ETLPlugin("GoogleAdsMultiReportBatchSource",
+    runPipeline(sourceProps, sinkProp, batchSourceName, ProgramRunStatus.COMPLETED);
+
+    File file = new File(TMP_TESTFILE);
+    Assert.assertTrue(file.isDirectory());
+    File[] files = file.listFiles();
+    Assert.assertEquals(1, files.length);
+    File resultDir = files[0];
+    Assert.assertTrue(resultDir.isDirectory());
+    Assert.assertTrue(new File(resultDir, "_SUCCESS").exists());
+    File[] resulFiles = resultDir.listFiles();
+    Assert.assertEquals(176, resulFiles.length); // (87 reports + 1 _SUCCESS ) * 2 .crc = 176 files
+  }
+
+  @Test
+  public void testMultiReportWithoutHeaders() throws Exception {
+    Map<String, String> sourceProps = getMultiReportConfigs();
+    sourceProps.put("includeReportHeader", "false");
+    sourceProps.put("includeColumnHeader", "false");
+    Map<String, String> sinkProp = getFileSinkProp();
+    String batchSourceName = "GoogleAdsMultiReportBatchSource";
+
+    runPipeline(sourceProps, sinkProp, batchSourceName, ProgramRunStatus.COMPLETED);
+
+    File file = new File(TMP_TESTFILE);
+    Assert.assertTrue(file.isDirectory());
+    File[] files = file.listFiles();
+    Assert.assertEquals(1, files.length);
+    File resultDir = files[0];
+    Assert.assertTrue(resultDir.isDirectory());
+    Assert.assertTrue(new File(resultDir, "_SUCCESS").exists());
+    File[] resulFiles = resultDir.listFiles();
+    Assert.assertEquals(176, resulFiles.length); // (87 reports + 1 _SUCCESS ) * 2 .crc = 176 files
+  }
+
+  private void runPipeline(Map<String, String> sourceProps, Map<String, String> sinkProp, String batchSourceName, ProgramRunStatus status) throws Exception {
+    ETLStage source = new ETLStage(batchSourceName,
+                                   new ETLPlugin(batchSourceName,
                                                  BatchSource.PLUGIN_TYPE,
                                                  sourceProps,
                                                  GOOGLE_ADS_ARTIFACT));
@@ -155,20 +193,9 @@ public class GoogleAdsTest extends ETLTestBase {
     ApplicationId appId = TEST_NAMESPACE.app("testapp");
     ApplicationManager applicationManager = deployApplication(appId, appRequest);
 
-
     WorkflowManager workflowManager = applicationManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
-
-    File file = new File(TMP_TESTFILE);
-    Assert.assertTrue(file.isDirectory());
-    File[] files = file.listFiles();
-    Assert.assertEquals(1, files.length);
-    File resultDir = files[0];
-    Assert.assertTrue(resultDir.isDirectory());
-    Assert.assertTrue(new File(resultDir, "_SUCCESS").exists());
-    File[] resulFiles = resultDir.listFiles();
-    Assert.assertEquals(176, resulFiles.length); // (87 reports + 1 _SUCCESS ) * 2 .crc = 176 files
+    workflowManager.waitForRun(status, 5, TimeUnit.MINUTES);
   }
 
   public Map<String, String> getSourceMinimalDefaultConfigs() {
@@ -197,13 +224,6 @@ public class GoogleAdsTest extends ETLTestBase {
   }
 
   public Map<String, String> getFileSinkProp() {
-
-    Set<Schema.Field> schemaFields = new HashSet<>();
-    schemaFields.add(Schema.Field.of("report_name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    schemaFields.add(Schema.Field.of("report", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    Schema fileSchema = Schema.recordOf(
-      "GoogleAdsReports",
-      schemaFields);
     Map<String, String> properties = new HashMap<>();
     properties.put("suffix", "yyyy-MM-dd-HH-mm");
     properties.put("path", TMP_TESTFILE);
@@ -212,9 +232,17 @@ public class GoogleAdsTest extends ETLTestBase {
     return properties;
   }
 
-  public Map<String, String> getSingleReportConfigs() {
+  public Map<String, String> getSingleReportPresetConfigs() {
     Map<String, String> sourceProps = getSourceMinimalDefaultConfigs();
     sourceProps.put("reportType", "Account Performance Report: Customer table");
+    return sourceProps;
+  }
+
+  public Map<String, String> getSingleReportKeywordsPerformanceConfigs() {
+    Map<String, String> sourceProps = getSourceMinimalDefaultConfigs();
+    sourceProps.put("reportType", "KEYWORDS_PERFORMANCE_REPORT");
+    sourceProps.put("reportFields", "AbsoluteTopImpressionPercentage,AccountCurrencyCode," +
+      "AccountDescriptiveName,AccountTimeZone,ActiveViewCpm");
     return sourceProps;
   }
 }
