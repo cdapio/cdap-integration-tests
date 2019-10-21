@@ -1121,7 +1121,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       .put("table", destinationTableName)
       .put("operation", "UPSERT")
       .put("relationTableKey", "string_value")
-      .put("dedupeBy", "int_value ASC")
+      .put("dedupeBy", "float_value DESC")
       .put("allowSchemaRelaxation", "false")
       .build();
 
@@ -1151,9 +1151,9 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     listValues.add(
       FieldValueList.of(
         Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
-                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
-                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
-                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
         SIMPLE_FIELDS_SCHEMA));
     listValues.add(
       FieldValueList.of(
