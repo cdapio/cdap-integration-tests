@@ -992,6 +992,180 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     assertActualTable(destinationTableName, listValues, SIMPLE_UPDATE_FIELDS_SCHEMA);
   }
 
+  /* Test check the Update operation with dedupe source data.
+   * Input data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":2,"float_value":0.2,"boolean_value":false}
+   * Destination table:
+   *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":10,"float_value":1.1,"boolean_value":false}
+   * Starting sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":2,"float_value":0.2,"boolean_value":false}
+   * Expected ending sink data:
+   *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   */
+  @Test
+  public void testUpdateOperationWithDedupeSourceData() throws Exception {
+    String testId = getUUID();
+
+    String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
+    String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
+
+    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    insertData(bigQueryDataset, sourceTableName, getOperationUpdateSourceStringWithDupe());
+
+    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithoutUpdateString());
+
+    Schema sourceSchema = getSimpleTableSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source")
+      .put("project", getProjectId())
+      .put("dataset", bigQueryDataset)
+      .put("table", sourceTableName)
+      .put("schema", sourceSchema.toString())
+      .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_sink")
+      .put("project", getProjectId())
+      .put("dataset", bigQueryDataset)
+      .put("table", destinationTableName)
+      .put("operation", "UPDATE")
+      .put("relationTableKey", "string_value")
+      .put("dedupeBy", "int_value ASC")
+      .put("allowSchemaRelaxation", "false")
+      .build();
+
+    int expectedCount = 2;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithDedupeSourceData");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
+    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
+
+    assertSchemaEquals(sourceTableName, destinationTableName);
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_0"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.0"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
+
+    assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
+  }
+
+  /* Test check the Upsert operation without updating destination table schema.
+   * Input data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Destination table:
+   *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":10,"float_value":1.1,"boolean_value":false}
+   * Starting sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Expected ending sink data:
+   *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   */
+  @Test
+  public void testUpsertOperationWithDedupeSourceData() throws Exception {
+    String testId = getUUID();
+
+    String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
+    String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
+
+    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    insertData(bigQueryDataset, sourceTableName, getOperationUpsertSourceStringWithDupe());
+
+    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithoutUpdateString());
+
+    Schema sourceSchema = getSimpleTableSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source")
+      .put("project", getProjectId())
+      .put("dataset", bigQueryDataset)
+      .put("table", sourceTableName)
+      .put("schema", sourceSchema.toString())
+      .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_sink")
+      .put("project", getProjectId())
+      .put("dataset", bigQueryDataset)
+      .put("table", destinationTableName)
+      .put("operation", "UPSERT")
+      .put("relationTableKey", "string_value")
+      .put("dedupeBy", "float_value DESC")
+      .put("allowSchemaRelaxation", "false")
+      .build();
+
+    int expectedCount = 3;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithDedupeSourceData");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
+    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
+
+    assertSchemaEquals(sourceTableName, destinationTableName);
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_0"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.0"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+
+    assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
+  }
+
   private void assertSchemaEquals(String expectedTableName, String actualTableName) {
     TableId expectedTableId = TableId.of(bigQueryDataset, expectedTableName);
     TableId actualTableId = TableId.of(bigQueryDataset, actualTableName);
@@ -1274,6 +1448,48 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     json = new JsonObject();
     json.addProperty("id", 101);
     json.addProperty("string_value", "string_1");
+    json.addProperty("boolean_value", false);
+    list.add(json);
+
+    return list;
+  }
+
+  private List<JsonObject> getOperationUpdateSourceStringWithDupe() {
+    JsonObject json = new JsonObject();
+    json.addProperty("string_value", "string_1");
+    json.addProperty("int_value", 1);
+    json.addProperty("float_value", 0.1);
+    json.addProperty("boolean_value", true);
+    List<JsonObject> list = new ArrayList<>();
+    list.add(json);
+    json = new JsonObject();
+    json.addProperty("string_value", "string_1");
+    json.addProperty("int_value", 2);
+    json.addProperty("float_value", 0.2);
+    json.addProperty("boolean_value", false);
+    list.add(json);
+
+    return list;
+  }
+
+  private List<JsonObject> getOperationUpsertSourceStringWithDupe() {
+    JsonObject json = new JsonObject();
+    json.addProperty("string_value", "string_1");
+    json.addProperty("int_value", 1);
+    json.addProperty("float_value", 0.1);
+    json.addProperty("boolean_value", true);
+    List<JsonObject> list = new ArrayList<>();
+    list.add(json);
+    json = new JsonObject();
+    json.addProperty("string_value", "string_1");
+    json.addProperty("int_value", 2);
+    json.addProperty("float_value", 0.2);
+    json.addProperty("boolean_value", false);
+    list.add(json);
+    json = new JsonObject();
+    json.addProperty("string_value", "string_3");
+    json.addProperty("int_value", 3);
+    json.addProperty("float_value", 0.3);
     json.addProperty("boolean_value", false);
     list.add(json);
 
