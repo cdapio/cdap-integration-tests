@@ -1,6 +1,8 @@
 CDAP Integration Tests
 ======================
 
+CDAP integration tests run against an existing CDAP instance.
+
 Writing Tests
 -------------
 New test cases should be written in the ``integration-test-remote`` module, alongside the existing test cases.
@@ -24,12 +26,15 @@ instantiated in a similar manner::
   ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
   appClient.list(new NamespaceId("myns"));
 
+If the artifacts being tested are under development, they should be loaded into the target CDAP instance prior to starting the test.
 
 Running Tests
 -------------
 To run integration tests against a remote CDAP instance, execute::
 
   mvn clean test -DinstanceUri=<HostAndPort>
+ 
+For local development, ``HostAndPort`` should be ``http://localhost:11015``, which is the default root url for the CDAP API.
 
 Note that the CDAP instance against which the integration tests are run must have unrecoverable reset enabled.
 
@@ -51,6 +56,14 @@ To configure the namespace used for the tests, use::
 To run against a secure cluster with basic authentication, use::
 
   -Dcdap.username=<username> -Dcdap.password=<password>
+  
+Note the entire integration test takes a long time to run, to run specific tests, use::
+
+  -Dtest=<TestName>
+  
+If the test has dependencies on GCP components, add the following property::
+
+  -Dgoogle.application.credentials.path=<PathToCredentialFile>
 
 
 CDAP Upgrade Tests
