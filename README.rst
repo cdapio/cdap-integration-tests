@@ -65,6 +65,14 @@ If the test has dependencies on GCP components, add the following property::
 
   -Dgoogle.application.credentials.path=<PathToCredentialFile>
 
+Troubleshooting Tests
+-------------
+
+If the test fails, calling ``http://localhost:11015/v3/namespaces/<namespace>/apps/<app-id>/versions/<version>/workflows/DataPipelineWorkflow/runs`` will return the run id, use this to see the application logs at ``<HostAndPort>>/v3/namespaces/<namespace>/apps/<app-id>>/workflows/DataPipelineWorkflow/runs/<run-id>>/logs``.
+
+See here_ for API reference.
+
+.. _here: https://docs.cask.co/cdap/6.0.0/en/reference-manual/http-restful-api/logging.html
 
 CDAP Upgrade Tests
 ------------------
