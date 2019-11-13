@@ -57,6 +57,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   private static String network;
   protected static final ArtifactSelectorConfig GOOGLE_CLOUD_ARTIFACT =
     new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
+  protected static final String DEFAULT_REGION = "us-central1";
 
   @BeforeClass
   public static void testDataprocClassSetup() throws IOException {
@@ -126,7 +127,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     JsonArray properties = new JsonArray();
     properties.add(ofProperty("accountKey", getServiceAccountCredentials()));
     properties.add(ofProperty("network", network));
-    properties.add(ofProperty("region", "us-central1"));
+    properties.add(ofProperty("region", DEFAULT_REGION));
     properties.add(ofProperty("projectId", getProjectId()));
 
     properties.add(ofProperty("masterNumNodes", "1"));

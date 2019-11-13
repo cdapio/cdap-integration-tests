@@ -31,7 +31,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.cdap.cdap.api.artifact.ArtifactScope;
-import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -120,12 +119,13 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     this.credentials.refresh();
     this.client = new CloudHealthcare.Builder(new NetHttpTransport(), new GsonFactory(), new HttpCredentialsAdapter(credentials)).build();
     LOG.info("Start setting up FHIR Stores for test.");
-    setupFhirStores("danielye-test", "us-central1");
+    setupFhirStores();
     LOG.info("Finished setting up FHIR Stores for test.");
   }
 
-  private void setupFhirStores(String project, String location) throws Exception {
-    String locationUrl = String.format(LOCATION_URL_PATTERN, project, location);
+  private void setupFhirStores() throws Exception {
+    String project = getProjectId();
+    String locationUrl = String.format(LOCATION_URL_PATTERN, project, DEFAULT_REGION);
     Dataset dataset = new Dataset();
 
     Datasets.Create request = client.projects().locations().datasets().create(locationUrl, dataset);
@@ -151,7 +151,7 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
       ex.printStackTrace(System.out);
     }
 
-    String datasetName = String.format(DATASET_URL_PATTERN, project, location, TEST_DATASET_NAME);
+    String datasetName = String.format(DATASET_URL_PATTERN, project, DEFAULT_REGION, TEST_DATASET_NAME);
     FhirStore content = new FhirStore();
     FhirStores.Create createSrcStoreRequest = client.projects().locations().datasets().fhirStores().create(datasetName, content).setFhirStoreId(TEST_SOURCE_STORE);
 
@@ -165,7 +165,7 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
 
     LOG.info("Adding dummy resource to source FHIR store.");
     StringEntity requestEntity = new StringEntity("{\"resourceType\":\"Patient\", \"language\":\"en\"}");
-    String sourceStoreName = String.format(FHIRSTORE_URL_PATTERN, project, location, TEST_DATASET_NAME, TEST_SOURCE_STORE);
+    String sourceStoreName = String.format(FHIRSTORE_URL_PATTERN, project, DEFAULT_REGION, TEST_DATASET_NAME, TEST_SOURCE_STORE);
     String uri = String.format("%sv1beta1/%s/fhir/Patient", client.getRootUrl(), sourceStoreName);
     URIBuilder uriBuilder = new URIBuilder(uri).setParameter("access_token", credentials.getAccessToken().getTokenValue());
     HttpUriRequest createResourceRequest = RequestBuilder.post().setUri(uriBuilder.build()).setEntity(requestEntity).addHeader("Content-Type", "application/fhir+json")
@@ -176,6 +176,7 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     HttpResponse createResourceResponse = httpClient.execute(createResourceRequest);
     if (createResourceResponse.getStatusLine().getStatusCode() != HttpStatus.SC_CREATED) {
       LOG.error("Failed to create new resource in source store");
+      innerTearDown();
       throw new RuntimeException();
     }
     LOG.info(String.format("Dummy FHIR resource created: %s.", EntityUtils.toString(createResourceResponse.getEntity())));
@@ -190,7 +191,7 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
   @Override
   protected void innerTearDown() {
     LOG.info("Starting tear down.");
-    String datasetName = String.format(DATASET_URL_PATTERN, "danielye-test", "us-central1", TEST_DATASET_NAME);
+    String datasetName = String.format(DATASET_URL_PATTERN, getProjectId(), DEFAULT_REGION, TEST_DATASET_NAME);
     try {
       Datasets.Delete request = client.projects().locations().datasets().delete(datasetName);
     } catch (IOException ex) {
@@ -204,8 +205,8 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     Map<String, String> sourceProperties = new ImmutableMap.Builder()
         .put(Reference.REFERENCE_NAME, "mockFhirSource")
         .put("tag", "Batch")
-        .put("project", "danielye-test")
-        .put("location", "us-central1")
+        .put("project", getProjectId())
+        .put("location", DEFAULT_REGION)
         .put("dataset", TEST_DATASET_NAME)
         .put("fhirStore", TEST_SOURCE_STORE)
         .build();
@@ -214,8 +215,8 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     Map<String, String> sinkProperties = new ImmutableMap.Builder()
         .put(Reference.REFERENCE_NAME, "mockFhirSink")
         .put("tag", "Batch")
-        .put("project", "danielye-test")
-        .put("location", "us-central1")
+        .put("project", getProjectId())
+        .put("location", DEFAULT_REGION)
         .put("dataset", TEST_DATASET_NAME)
         .put("fhirStore", TEST_DESTINATION_STORE)
         .put("inputField", "body")
@@ -253,7 +254,7 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
   }
 
   private void verifyDestinationStoreContent() throws Exception {
-    String destinationStoreName = String.format(FHIRSTORE_URL_PATTERN, getProjectId(), "us-central1", TEST_DATASET_NAME, TEST_DESTINATION_STORE);
+    String destinationStoreName = String.format(FHIRSTORE_URL_PATTERN, getProjectId(), DEFAULT_REGION, TEST_DATASET_NAME, TEST_DESTINATION_STORE);
     String uri = String.format("%sv1beta1/%s/fhir/Patient", client.getRootUrl(), destinationStoreName);
 
     URIBuilder uriBuilder = new URIBuilder(uri)
