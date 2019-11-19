@@ -194,6 +194,8 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     String datasetName = String.format(DATASET_URL_PATTERN, getProjectId(), DEFAULT_REGION, TEST_DATASET_NAME);
     try {
       Datasets.Delete request = client.projects().locations().datasets().delete(datasetName);
+      request.execute();
+      LOG.info(String.format("Dataset %s deleted.", TEST_DATASET_NAME));
     } catch (IOException ex) {
       LOG.error("Failed to delete dataset.", ex);
     }
@@ -243,10 +245,10 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
-    // start the pipeline and wait for it to finish
+    // Start the pipeline and wait for it to finish
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     workflowManager.startAndWaitForRun(Collections.singletonMap("system.profile.name", getProfileName()),
-        ProgramRunStatus.COMPLETED, 20, TimeUnit.MINUTES);
+        ProgramRunStatus.COMPLETED, 30, TimeUnit.MINUTES);
 
     // Check FHIR Store contents and record count.
     LOG.info("Pipeline completed, verifying results.");
@@ -280,5 +282,55 @@ public class FhirBatchConnectorsTest extends DataprocETLTestBase {
     }
     JsonObject jsonResponse = jsonParser.parse(EntityUtils.toString(responseEntity)).getAsJsonObject();
     Assert.assertEquals(1, jsonResponse.get("total").getAsInt());
+  }
+
+  @Test
+  public void fhirSourceToFhirSink_BadFhirStoreUrl() throws Exception {
+    // Configs for FHIR Store source.
+    Map<String, String> sourceProperties = new ImmutableMap.Builder()
+        .put(Reference.REFERENCE_NAME, "mockFhirSource")
+        .put("tag", "Batch")
+        .put("project", getProjectId())
+        .put("location", "fake_region")
+        .put("dataset", "fake_dataset")
+        .put("fhirStore", TEST_SOURCE_STORE)
+        .build();
+
+    // Configs for FHIR Store sink.
+    Map<String, String> sinkProperties = new ImmutableMap.Builder()
+        .put(Reference.REFERENCE_NAME, "mockFhirSink")
+        .put("tag", "Batch")
+        .put("project", getProjectId())
+        .put("location", "fake_region")
+        .put("dataset", TEST_DATASET_NAME)
+        .put("fhirStore", TEST_DESTINATION_STORE)
+        .put("inputField", "body")
+        .put("contentStructure", "RESOURCE")
+        .build();
+
+    // FHIR Store Source -> FHIR Store Sink in batch mode.
+    ETLStage source =
+        new ETLStage(
+            "FhirStoreSource",
+            new ETLPlugin("FhirStoreSource", BatchSource.PLUGIN_TYPE, sourceProperties, CLOUD_HEALTHCARE_ARTIFACT));
+    ETLStage sink =
+        new ETLStage(
+            "FhirStoreSink",
+            new ETLPlugin("FhirStoreSink", BatchSink.PLUGIN_TYPE, sinkProperties, CLOUD_HEALTHCARE_ARTIFACT));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
+        .addStage(source)
+        .addStage(sink)
+        .addConnection(source.getName(), sink.getName())
+        .setTimeSchedule("* * * * *")
+        .build();
+    ApplicationId appId = NamespaceId.DEFAULT.app("FhirBatchConnector-Test");
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // start the pipeline and wait for it to finish
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    workflowManager.startAndWaitForRun(Collections.singletonMap("system.profile.name", getProfileName()),
+        ProgramRunStatus.FAILED, 10, TimeUnit.MINUTES);
   }
 }
