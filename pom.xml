@@ -48,6 +48,7 @@
     <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
     <chaosmonkey.version>0.1.0-SNAPSHOT</chaosmonkey.version>
+    <sheets-api.version>v4-rev581-1.25.0</sheets-api.version>
 
     <!-- Skip all test cases by default. The different test cases are enabled in the profiles defined below -->
     <skip.remote.test>true</skip.remote.test>
@@ -104,6 +105,11 @@
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-drive</artifactId>
       <version>${drive-api.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-sheets</artifactId>
+      <version>${sheets-api.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

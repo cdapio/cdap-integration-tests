@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.cdap.app.etl.google.drive;
+package io.cdap.cdap.app.etl.google;
 
 import org.junit.BeforeClass;
 
