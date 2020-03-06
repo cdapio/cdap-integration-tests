@@ -33,8 +33,10 @@ public final class MarketPlugins {
   private static ArtifactRange parseArtifactString(String parentString) {
     String namespace = parentString.substring(0, parentString.indexOf(":"));
     int firstRangeIndex = parentString.indexOf("[");
-    if (firstRangeIndex == -1) firstRangeIndex = parentString.indexOf("(");
-    String name = parentString.substring(namespace.length()+1, firstRangeIndex);
+    if (firstRangeIndex == -1) {
+      firstRangeIndex = parentString.indexOf("(");
+    }
+    String name = parentString.substring(namespace.length() + 1, firstRangeIndex);
     String versionString = parentString.substring(firstRangeIndex);
 
     try {
