@@ -42,6 +42,10 @@ import java.util.stream.Collectors;
  * Utilities for market plugins.
  */
 public final class MarketPlugins {
+
+  public static final String PACKAGES_JSON_URL = "https://hub-cdap-io.storage.googleapis.com/v2/packages.json";
+  public static final String PLUGIN_RESOURCE_BASE_URL = "https://hub-cdap-io.storage.googleapis.com/v2/packages/%s/%s/%s-%s";
+
   private MarketPlugins() {
 
   }
@@ -65,7 +69,7 @@ public final class MarketPlugins {
   /**
    * Load a market plugin into this instance for integration testing.
    * @param artifactClient the artifact client available in all ETLTestBase subclasses
-   * @param pluginName full name of the plugin
+   * @param pluginName full name of the plugin used in the hub
    * @param pluginShortName shortname of the plugin (note that the jarfile is to be named shortname-version.jar)
    * @throws UnauthenticatedException
    * @throws BadRequestException
@@ -77,7 +81,7 @@ public final class MarketPlugins {
     throws UnauthenticatedException, BadRequestException, ArtifactRangeNotFoundException,
     ArtifactAlreadyExistsException, IOException {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-      HttpGet packagesJsonRequest = new HttpGet("https://hub-cdap-io.storage.googleapis.com/v2/packages.json");
+      HttpGet packagesJsonRequest = new HttpGet(PACKAGES_JSON_URL);
 
       try (CloseableHttpResponse packagesJsonResponse = httpClient.execute(packagesJsonRequest)) {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -86,12 +90,15 @@ public final class MarketPlugins {
 
         for (Map<?, ?> pluginMap : list) {
           if (pluginName.equals(pluginMap.get("name"))) {
-            String baseUrl = String.format("https://hub-cdap-io.storage.googleapis.com/v2/packages/%s/%s/%s-%s",
+            String baseUrl = String.format(PLUGIN_RESOURCE_BASE_URL,
               pluginName, pluginMap.get("version"), pluginShortName, pluginMap.get("version"));
             String jarUrl = baseUrl + ".jar";
             String jsonUrl = baseUrl + ".json";
 
             HttpGet pluginJsonRequest = new HttpGet(jsonUrl);
+
+            // We need to also request the plugin.json file to get the parent plugin names. This is required for the
+            // artifactClient to load the plugin; it can't do so without knowing the list of parents.
             try (CloseableHttpResponse pluginJsonResponse = httpClient.execute(pluginJsonRequest)) {
               Map<?, ?> metadata = objectMapper.readValue(
                 EntityUtils.toString(pluginJsonResponse.getEntity()), Map.class);
