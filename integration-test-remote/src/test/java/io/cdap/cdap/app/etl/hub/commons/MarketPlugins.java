@@ -71,13 +71,16 @@ public final class MarketPlugins {
    * @param artifactClient the artifact client available in all ETLTestBase subclasses
    * @param pluginName full name of the plugin used in the hub
    * @param pluginShortName shortname of the plugin (note that the jarfile is to be named shortname-version.jar)
+   * @param namespaceName the namespace in which to load the plugin (can be default)
    * @throws UnauthenticatedException
    * @throws BadRequestException
    * @throws ArtifactRangeNotFoundException
    * @throws ArtifactAlreadyExistsException
    * @throws IOException
+   * @return the ArtifactID that was loaded, or null if the artifact was not found
    */
-  public static void loadPlugin(ArtifactClient artifactClient, String pluginName, String pluginShortName)
+  public static ArtifactId loadPlugin(ArtifactClient artifactClient, String pluginName, String pluginVersion,
+    String pluginShortName, String namespaceName)
     throws UnauthenticatedException, BadRequestException, ArtifactRangeNotFoundException,
     ArtifactAlreadyExistsException, IOException {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -89,9 +92,9 @@ public final class MarketPlugins {
           EntityUtils.toString(packagesJsonResponse.getEntity()), List.class);
 
         for (Map<?, ?> pluginMap : list) {
-          if (pluginName.equals(pluginMap.get("name"))) {
+          if (pluginName.equals(pluginMap.get("name")) && pluginVersion.equals(pluginMap.get("version"))) {
             String baseUrl = String.format(PLUGIN_RESOURCE_BASE_URL,
-              pluginName, pluginMap.get("version"), pluginShortName, pluginMap.get("version"));
+              pluginName, pluginVersion, pluginShortName, pluginVersion);
             String jarUrl = baseUrl + ".jar";
             String jsonUrl = baseUrl + ".json";
 
@@ -109,16 +112,15 @@ public final class MarketPlugins {
               HttpGet pluginJarRequest = new HttpGet(jarUrl);
               try (CloseableHttpResponse jarResponse = httpClient.execute(pluginJarRequest)) {
                 byte[] array = EntityUtils.toByteArray(jarResponse.getEntity());
-                artifactClient.add(new ArtifactId("default",
-                  pluginShortName + "-" + pluginMap.get("version") + ".jar"), parents,
-                  () -> new ByteArrayInputStream(array));
+                ArtifactId artifactId = new ArtifactId(namespaceName, pluginShortName + "-" + pluginVersion + ".jar");
+                artifactClient.add(artifactId, parents, () -> new ByteArrayInputStream(array));
+                return artifactId;
               }
             }
-
-            break;
           }
         }
       }
     }
+    return null;
   }
 }

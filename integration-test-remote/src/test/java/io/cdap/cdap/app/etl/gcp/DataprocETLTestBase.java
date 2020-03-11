@@ -88,13 +88,6 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     projectId = serviceAccountJson.get("project_id").getAsString();
 
     network = System.getProperty("google.dataproc.network", "default");
-
-    storage = StorageOptions.newBuilder()
-      .setProjectId(DataprocETLTestBase.getProjectId())
-      .setCredentials(GoogleCredentials.fromStream(
-        new ByteArrayInputStream(DataprocETLTestBase.getServiceAccountCredentials()
-          .getBytes(StandardCharsets.UTF_8))))
-      .build().getService();
   }
 
   @Before
@@ -117,16 +110,27 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
       LOG.error("Failed to delete profile", e);
     }
     innerTearDown();
-    for (String bucketName : markedForDeleteBuckets) {
-      try {
-        Bucket bucket = storage.get(bucketName);
-        if (bucket != null) {
-          deleteBucket(bucket);
+    if (storage != null) {
+      for (String bucketName : markedForDeleteBuckets) {
+        try {
+          Bucket bucket = storage.get(bucketName);
+          if (bucket != null) {
+            deleteBucket(bucket);
+          }
+        } catch (RuntimeException e) {
+          LOG.error("Unable to delete GCS bucket {}", bucketName, e);
         }
-      } catch (RuntimeException e) {
-        LOG.error("Unable to delete GCS bucket {}", bucketName, e);
       }
     }
+  }
+
+  protected void initializeGCS() throws IOException {
+    storage = StorageOptions.newBuilder()
+        .setProjectId(DataprocETLTestBase.getProjectId())
+        .setCredentials(GoogleCredentials.fromStream(
+            new ByteArrayInputStream(DataprocETLTestBase.getServiceAccountCredentials()
+                .getBytes(StandardCharsets.UTF_8))))
+        .build().getService();
   }
 
   /**

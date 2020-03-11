@@ -33,6 +33,7 @@ import io.cdap.cdap.etl.proto.v2.ETLStage;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.id.ApplicationId;
+import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,15 +48,20 @@ import java.util.UUID;
 public class DLPTest extends DataprocETLTestBase {
 
   private String testCSVInput;
+  private ArtifactId pluginArtifactId;
+  private Bucket bucket;
+  private ETLStage gcsSourceStage, wranglerTransformStage;
 
   @Override
   protected void innerSetup() throws Exception {
-    MarketPlugins.loadPlugin(artifactClient, "plugin-dlp-redact-filter", "dlp");
+    initializeGCS();
+    pluginArtifactId = MarketPlugins.loadPlugin(artifactClient, "plugin-dlp-redact-filter", "1.0.2", "dlp",
+      "default");
   }
 
   @Override
   protected void innerTearDown() throws Exception {
-
+    artifactClient.delete(pluginArtifactId);
   }
 
   @Before
@@ -64,20 +70,21 @@ public class DLPTest extends DataprocETLTestBase {
         "0,alice,alice@example.com\n"
       + "1,bob,bob@example.com\n"
       + "2,craig,craig@example.com");
-  }
 
-  @Test
-  public void testRedaction() throws Exception {
-    String prefix = "cdap-dlp-redact-test";
+    String prefix = "cdap-dlp-test";
     String bucketName = String.format("%s-%s", prefix, UUID.randomUUID());
-    Bucket bucket = createBucket(bucketName);
-
+    bucket = createBucket(bucketName);
     bucket.create("test-input-ashau.csv", testCSVInput.getBytes(StandardCharsets.UTF_8));
 
     Schema sourceSchema = Schema.recordOf("etlSchemaBody",
       Schema.Field.of("offset", Schema.of(Schema.Type.LONG)),
       Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
-    ETLStage gcsSourceStage =
+    Schema wranglerSchema = Schema.recordOf("etlSchemaBody",
+      Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("number", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("email", Schema.of(Schema.Type.STRING)));
+
+    gcsSourceStage =
       new ETLStage("GCS",
         new ETLPlugin("GCSFile",
           BatchSource.PLUGIN_TYPE,
@@ -89,10 +96,6 @@ public class DLPTest extends DataprocETLTestBase {
             .put("referenceName", "load-user-data")
             .put("path", createPath(bucket, "test-input-ashau.csv")).build(), null));
 
-    Schema wranglerSchema = Schema.recordOf("etlSchemaBody",
-      Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("number", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("email", Schema.of(Schema.Type.STRING)));
     Joiner directives = Joiner.on("\n");
     String wranglerDirectives = directives.join(
       "parse-as-csv :body ',' false",
@@ -101,7 +104,7 @@ public class DLPTest extends DataprocETLTestBase {
       "rename body_3 email",
       "drop body");
 
-    ETLStage wranglerTransformStage =
+    wranglerTransformStage =
       new ETLStage("Wrangler",
         new ETLPlugin("Wrangler", Transform.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
           .put("field", "body")
@@ -109,7 +112,10 @@ public class DLPTest extends DataprocETLTestBase {
           .put("threshold", "1")
           .put("schema", wranglerSchema.toString())
           .put("directives", wranglerDirectives).build(), null));
+  }
 
+  @Test
+  public void testRedaction() throws Exception {
     ObjectMapper objectMapper = new ObjectMapper();
     String fieldsToTransform = objectMapper.writeValueAsString(Collections.singletonList(
       objectMapper.writeValueAsString(new ImmutableMap.Builder<String, Object>()
@@ -140,7 +146,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-redaction")
-        .put("path", createPath(bucket, "test-output-ashau.csv")).build(), null));
+        .put("path", createPath(bucket, "test-output-ashau")).build(), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -159,7 +165,7 @@ public class DLPTest extends DataprocETLTestBase {
     // start the pipeline and wait for it to finish
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    assertGCSContents(bucket, "test-output-ashau.csv/part-m-00000",
+    assertGCSContents(bucket, "test-output-ashau/part-m-00000",
       "alice,0,#################\n"
         + "bob,1,###############\n"
         + "craig,2,#################\n");
@@ -167,48 +173,6 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Test
   public void testFilter() throws Exception {
-    String prefix = "cdap-dlp-filter-test";
-    String bucketName = String.format("%s-%s", prefix, UUID.randomUUID());
-    Bucket bucket = createBucket(bucketName);
-
-    bucket.create("test-input-ashau.csv", testCSVInput.getBytes(StandardCharsets.UTF_8));
-
-    Schema sourceSchema = Schema.recordOf("etlSchemaBody",
-      Schema.Field.of("offset", Schema.of(Schema.Type.LONG)),
-      Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
-    ETLStage gcsSourceStage =
-      new ETLStage("GCS",
-        new ETLPlugin("GCSFile",
-          BatchSource.PLUGIN_TYPE,
-          new ImmutableMap.Builder<String, String>()
-            .put("project", getProjectId())
-            .put("format", "text")
-            .put("serviceFilePath", "auto-detect")
-            .put("schema", sourceSchema.toString())
-            .put("referenceName", "load-user-data")
-            .put("path", createPath(bucket, "test-input-ashau.csv")).build(), null));
-
-    Schema wranglerSchema = Schema.recordOf("etlSchemaBody",
-      Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("number", Schema.of(Schema.Type.STRING)),
-      Schema.Field.of("email", Schema.of(Schema.Type.STRING)));
-    Joiner directives = Joiner.on("\n");
-    String wranglerDirectives = directives.join(
-      "parse-as-csv :body ',' false",
-      "rename body_1 number",
-      "rename body_2 name",
-      "rename body_3 email",
-      "drop body");
-
-    ETLStage wranglerTransformStage =
-      new ETLStage("Wrangler",
-        new ETLPlugin("Wrangler", Transform.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
-          .put("field", "body")
-          .put("precondition", "false")
-          .put("threshold", "1")
-          .put("schema", wranglerSchema.toString())
-          .put("directives", wranglerDirectives).build(), null));
-
     ETLStage filterStage =
       new ETLStage("PII Filter",
         new ETLPlugin("SensitiveRecordFilter", SplitterTransform.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -225,7 +189,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-filter")
-        .put("path", createPath(bucket, "test-output-ashau-sensitive.csv")).build(), null));
+        .put("path", createPath(bucket, "test-output-ashau-sensitive")).build(), null));
 
     ETLStage sinkStage2 =
       new ETLStage("copy of GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -234,7 +198,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-filter")
-        .put("path", createPath(bucket, "test-output-ashau-nonsensitive.csv")).build(), null));
+        .put("path", createPath(bucket, "test-output-ashau-nonsensitive")).build(), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -255,10 +219,10 @@ public class DLPTest extends DataprocETLTestBase {
     // start the pipeline and wait for it to finish
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    assertGCSContents(bucket, "test-output-ashau-sensitive.csv/part-m-00000",
+    assertGCSContents(bucket, "test-output-ashau-sensitive/part-m-00000",
       "alice,0,alice@example.com\n"
         + "bob,1,bob@example.com\n"
         + "craig,2,craig@example.com\n");
-    assertNotExists(bucket, "test-output-ashau-nonsensitive.csv/part-m-00000");
+    assertNotExists(bucket, "test-output-ashau-nonsensitive/part-m-00000");
   }
 }

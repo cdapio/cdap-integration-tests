@@ -111,6 +111,7 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Override
   protected void innerSetup() throws Exception {
+    initializeGCS();
     // wait for artifact containing GCSCopy to load
     Tasks.waitFor(true, () -> {
       try {
