@@ -47,7 +47,6 @@ import java.util.UUID;
  */
 public class DLPTest extends DataprocETLTestBase {
 
-  private String testCSVInput;
   private ArtifactId pluginArtifactId;
   private Bucket bucket;
   private ETLStage gcsSourceStage, wranglerTransformStage;
@@ -66,7 +65,9 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Before
   public void setUp() throws Exception {
-    testCSVInput = (
+    super.setUp();
+
+    String testCSVInput = (
         "0,alice,alice@example.com\n"
       + "1,bob,bob@example.com\n"
       + "2,craig,craig@example.com");
