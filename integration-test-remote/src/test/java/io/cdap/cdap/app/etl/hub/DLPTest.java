@@ -193,13 +193,14 @@ public class DLPTest extends DataprocETLTestBase {
         .put("path", createPath(bucket, "test-output-ashau-sensitive")).build(), null));
 
     ETLStage sinkStage2 =
-      new ETLStage("copy of GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
-        .put("project", getProjectId())
-        .put("format", "csv")
-        .put("serviceFilePath", "auto-detect")
-        .put("location", "us")
-        .put("referenceName", "sink-emails-with-filter")
-        .put("path", createPath(bucket, "test-output-ashau-nonsensitive")).build(), null));
+      new ETLStage("copy of GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE,
+        new ImmutableMap.Builder<String, String>()
+          .put("project", getProjectId())
+          .put("format", "csv")
+          .put("serviceFilePath", "auto-detect")
+          .put("location", "us")
+          .put("referenceName", "sink-emails-with-filter")
+          .put("path", createPath(bucket, "test-output-ashau-nonsensitive")).build(), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)

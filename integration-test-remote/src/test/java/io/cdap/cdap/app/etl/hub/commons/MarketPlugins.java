@@ -44,7 +44,8 @@ import java.util.stream.Collectors;
 public final class MarketPlugins {
 
   public static final String PACKAGES_JSON_URL = "https://hub-cdap-io.storage.googleapis.com/v2/packages.json";
-  public static final String PLUGIN_RESOURCE_BASE_URL = "https://hub-cdap-io.storage.googleapis.com/v2/packages/%s/%s/%s-%s";
+  public static final String PLUGIN_RESOURCE_BASE_URL =
+    "https://hub-cdap-io.storage.googleapis.com/v2/packages/%s/%s/%s-%s";
 
   private MarketPlugins() {
 
