@@ -235,8 +235,13 @@ public class PubSubTest extends DataprocETLTestBase {
 
       subscriber.stopAsync().awaitTerminated();
     } finally {
-      sparkManager.stop();
-      sparkManager.waitForRun(ProgramRunStatus.KILLED, 10, TimeUnit.MINUTES);
+      try {
+        sparkManager.stop();
+        sparkManager.waitForStopped(5, TimeUnit.MINUTES);
+      } catch (Exception e) {
+        // don't treat this as a test failure, but log a warning
+        LOG.warn("Pipeline failed to stop gracefully", e);
+      }
     }
   }
 
