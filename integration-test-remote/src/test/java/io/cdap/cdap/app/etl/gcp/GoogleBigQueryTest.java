@@ -75,6 +75,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -237,26 +238,33 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "INSERT")
-      .put("allowSchemaRelaxation", "false")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInNewTable");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "false");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -305,26 +313,34 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "INSERT")
-      .put("allowSchemaRelaxation", "false")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
+
 
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInExistingTable");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "false");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -392,26 +408,33 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "INSERT")
-      .put("allowSchemaRelaxation", "true")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeWithUpdateTableSchema");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "true");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -483,26 +506,33 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "INSERT")
-      .put("allowSchemaRelaxation", "false")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-allBigQueryTypes");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "false");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -550,27 +580,35 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "UPDATE")
-      .put("relationTableKey", "string_value")
-      .put("allowSchemaRelaxation", "false")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("relationTableKey", "${key}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithoutSchemaUpdate");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "UPDATE");
+    args.put("relax", "false");
+    args.put("key", "string_value");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -635,27 +673,35 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "UPSERT")
-      .put("relationTableKey", "string_value")
-      .put("allowSchemaRelaxation", "false")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("relationTableKey", "${key}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithoutSchemaUpdate");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "UPSERT");
+    args.put("relax", "false");
+    args.put("key", "string_value");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -735,26 +781,33 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "INSERT")
-      .put("allowSchemaRelaxation", "true")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-insertWithSchemaUpdate");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "true");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -841,27 +894,35 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "UPDATE")
-      .put("relationTableKey", "string_value")
-      .put("allowSchemaRelaxation", "true")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("relationTableKey", "${key}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithSchemaUpdate");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "UPDATE");
+    args.put("key", "string_value");
+    args.put("relax", "true");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -926,27 +987,35 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
       .put("schema", sourceSchema.toString())
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
-      .put("operation", "UPSERT")
-      .put("relationTableKey", "string_value")
-      .put("allowSchemaRelaxation", "true")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("relationTableKey", "${key}")
+      .put("allowSchemaRelaxation", "${relax}")
       .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithSchemaUpdate");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "UPSERT");
+    args.put("key", "string_value");
+    args.put("relax", "true");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
