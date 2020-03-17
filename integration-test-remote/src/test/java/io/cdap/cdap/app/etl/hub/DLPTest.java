@@ -68,15 +68,12 @@ public class DLPTest extends DataprocETLTestBase {
   private static final String INSPECT_TEMPLATE_NAME = "test-dlp-template";
 
   private static InspectTemplate createInspectTemplate(String projectId) throws IOException {
-    GoogleCredentials credentials;
-    try (InputStream is = new ByteArrayInputStream(getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))) {
-      credentials = GoogleCredentials.fromStream(is);
-    }
-
     dlpServiceClient = DlpServiceClient.create(
       DlpServiceSettings
         .newBuilder()
-        .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+        .setCredentialsProvider(FixedCredentialsProvider.create(GoogleCredentials.fromStream(
+          new ByteArrayInputStream(
+            getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8)))))
         .build());
 
     List<InfoType> infoTypes =
@@ -181,7 +178,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
           .put("fieldsToTransform", fieldsToTransform)
-          .put("templateId", templateName.substring(templateName.lastIndexOf('/')+1)).build(), null));
+          .put("templateId", templateName.substring(templateName.lastIndexOf('/') + 1)).build(), null));
 
     ETLStage sinkStage =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -223,7 +220,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("on-error", "stop-on-error")
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
-          .put("template-id", templateName.substring(templateName.lastIndexOf('/')+1)).build(), null));
+          .put("template-id", templateName.substring(templateName.lastIndexOf('/') + 1)).build(), null));
 
     ETLStage sinkStage1 =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
