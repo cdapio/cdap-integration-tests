@@ -67,8 +67,8 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   private static String network;
   protected static final ArtifactSelectorConfig GOOGLE_CLOUD_ARTIFACT =
     new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
-  public static Storage storage;
-  protected List<String> markedForDeleteBuckets;
+  static Storage storage;
+  private static List<String> markedForDeleteBuckets;
 
   @BeforeClass
   public static void testDataprocClassSetup() throws IOException {
@@ -88,13 +88,13 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     projectId = serviceAccountJson.get("project_id").getAsString();
 
     network = System.getProperty("google.dataproc.network", "default");
+    markedForDeleteBuckets = new ArrayList<>();
   }
 
   @Before
   public void testSetup() throws Exception {
     createProfile(getProfileName());
     innerSetup();
-    markedForDeleteBuckets = new ArrayList<>();
   }
 
   @After
@@ -110,6 +110,9 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
       LOG.error("Failed to delete profile", e);
     }
     innerTearDown();
+  }
+
+  protected static void deleteMarkedBuckets() {
     if (storage != null) {
       for (String bucketName : markedForDeleteBuckets) {
         try {
@@ -124,19 +127,22 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     }
   }
 
-  protected void initializeGCS() throws IOException {
+  protected static void initializeGCS() throws IOException {
     storage = StorageOptions.newBuilder()
-        .setProjectId(DataprocETLTestBase.getProjectId())
-        .setCredentials(GoogleCredentials.fromStream(
-            new ByteArrayInputStream(DataprocETLTestBase.getServiceAccountCredentials()
-                .getBytes(StandardCharsets.UTF_8))))
-        .build().getService();
+      .setProjectId(DataprocETLTestBase.getProjectId())
+      .setCredentials(GoogleCredentials.fromStream(
+        new ByteArrayInputStream(getServiceAccountCredentials()
+          .getBytes(StandardCharsets.UTF_8))))
+      .build().getService();
   }
 
   /**
    * Create a bucket that will be automatically deleted when the test completes.
    */
-  protected Bucket createBucket(String name) {
+  protected static Bucket createBucket(String name) throws IOException {
+    if (storage == null) {
+      initializeGCS();
+    }
     LOG.info("Creating bucket {}", name);
     Bucket bucket = storage.create(BucketInfo.of(name));
     LOG.info("Created bucket {}", name);
@@ -144,7 +150,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     return bucket;
   }
 
-  protected void deleteBucket(Bucket bucket) {
+  protected static void deleteBucket(Bucket bucket) {
     for (Blob blob : bucket.list().iterateAll()) {
       LOG.info("Deleting blob {}", blob);
       blob.delete();
@@ -153,11 +159,11 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
   }
 
-  protected void markBucketNameForDelete(String bucketName) {
+  protected static void markBucketNameForDelete(String bucketName) {
     markedForDeleteBuckets.add(bucketName);
   }
 
-  protected String createPath(Bucket bucket, String blobName) {
+  protected static String createPath(Bucket bucket, String blobName) {
     return String.format("gs://%s/%s", bucket.getName(), blobName);
   }
 
@@ -165,6 +171,17 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Blob blob = bucket.get(blobName);
     Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
     Assert.assertEquals(content, new String(blob.getContent(), StandardCharsets.UTF_8));
+  }
+
+  protected void assertGCSContentsMatch(Bucket bucket, String blobNamePrefix, String contentRegex) {
+    for (Blob blob : bucket.list(Storage.BlobListOption.prefix(blobNamePrefix)).iterateAll()) {
+      if (new String(blob.getContent(), StandardCharsets.UTF_8).matches(contentRegex)) {
+        return;
+      }
+    }
+    if (!contentRegex.isEmpty()) {
+      Assert.fail();
+    }
   }
 
   protected void assertNotExists(Bucket bucket, String blobName) {
@@ -189,11 +206,11 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
                                        expectedStatus, 15, TimeUnit.MINUTES);
   }
 
-  public static String getServiceAccountCredentials() {
+  protected static String getServiceAccountCredentials() {
     return serviceAccountCredentials;
   }
 
-  public static String getProjectId() {
+  protected static String getProjectId() {
     return projectId;
   }
 

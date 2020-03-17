@@ -45,6 +45,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -128,6 +129,11 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Override
   protected void innerTearDown() {
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    DataprocETLTestBase.deleteMarkedBuckets();
   }
 
   @Test

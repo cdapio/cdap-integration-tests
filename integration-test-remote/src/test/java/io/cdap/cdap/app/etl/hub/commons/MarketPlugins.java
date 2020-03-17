@@ -24,12 +24,15 @@ import io.cdap.cdap.common.ArtifactAlreadyExistsException;
 import io.cdap.cdap.common.ArtifactRangeNotFoundException;
 import io.cdap.cdap.common.BadRequestException;
 import io.cdap.cdap.common.UnauthenticatedException;
+import io.cdap.cdap.proto.artifact.ArtifactRanges;
 import io.cdap.cdap.proto.id.ArtifactId;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -43,28 +46,13 @@ import java.util.stream.Collectors;
  */
 public final class MarketPlugins {
 
-  public static final String PACKAGES_JSON_URL = "https://hub-cdap-io.storage.googleapis.com/v2/packages.json";
-  public static final String PLUGIN_RESOURCE_BASE_URL =
+  private static final Logger LOG = LoggerFactory.getLogger(MarketPlugins.class);
+  private static final String PACKAGES_JSON_URL = "https://hub-cdap-io.storage.googleapis.com/v2/packages.json";
+  private static final String PLUGIN_RESOURCE_BASE_URL =
     "https://hub-cdap-io.storage.googleapis.com/v2/packages/%s/%s/%s-%s";
 
   private MarketPlugins() {
 
-  }
-
-  private static ArtifactRange parseArtifactString(String parentString) {
-    String namespace = parentString.substring(0, parentString.indexOf(":"));
-    int firstRangeIndex = parentString.indexOf("[");
-    if (firstRangeIndex == -1) {
-      firstRangeIndex = parentString.indexOf("(");
-    }
-    String name = parentString.substring(namespace.length() + 1, firstRangeIndex);
-    String versionString = parentString.substring(firstRangeIndex);
-
-    try {
-      return new ArtifactRange(namespace, name, ArtifactRange.parse(versionString));
-    } catch (InvalidArtifactRangeException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /**
@@ -80,22 +68,22 @@ public final class MarketPlugins {
    * @throws IOException
    * @return the ArtifactID that was loaded, or null if the artifact was not found
    */
-  public static ArtifactId loadPlugin(ArtifactClient artifactClient, String pluginName, String pluginVersion,
+  public static ArtifactId ensurePluginLoaded(ArtifactClient artifactClient, String pluginName, String pluginVersion,
     String pluginShortName, String namespaceName)
     throws UnauthenticatedException, BadRequestException, ArtifactRangeNotFoundException,
-    ArtifactAlreadyExistsException, IOException {
+           ArtifactAlreadyExistsException, IOException {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       HttpGet packagesJsonRequest = new HttpGet(PACKAGES_JSON_URL);
 
       try (CloseableHttpResponse packagesJsonResponse = httpClient.execute(packagesJsonRequest)) {
         ObjectMapper objectMapper = new ObjectMapper();
-        List<Map<?, ?>> list = objectMapper.readValue(
-          EntityUtils.toString(packagesJsonResponse.getEntity()), List.class);
+        List<Map<?, ?>> list = objectMapper.readValue(EntityUtils.toString(packagesJsonResponse.getEntity()),
+                                                      List.class);
 
         for (Map<?, ?> pluginMap : list) {
           if (pluginName.equals(pluginMap.get("name")) && pluginVersion.equals(pluginMap.get("version"))) {
             String baseUrl = String.format(PLUGIN_RESOURCE_BASE_URL,
-              pluginName, pluginVersion, pluginShortName, pluginVersion);
+                                           pluginName, pluginVersion, pluginShortName, pluginVersion);
             String jarUrl = baseUrl + ".jar";
             String jsonUrl = baseUrl + ".json";
 
@@ -104,17 +92,26 @@ public final class MarketPlugins {
             // We need to also request the plugin.json file to get the parent plugin names. This is required for the
             // artifactClient to load the plugin; it can't do so without knowing the list of parents.
             try (CloseableHttpResponse pluginJsonResponse = httpClient.execute(pluginJsonRequest)) {
-              Map<?, ?> metadata = objectMapper.readValue(
-                EntityUtils.toString(pluginJsonResponse.getEntity()), Map.class);
+              Map<?, ?> metadata = objectMapper.readValue(EntityUtils.toString(pluginJsonResponse.getEntity()),
+                                                          Map.class);
               List<String> parentsList = (List<String>) metadata.get("parents");
-              Set<ArtifactRange> parents = parentsList.stream().map(MarketPlugins::parseArtifactString)
-                .collect(Collectors.toSet());
+              Set<ArtifactRange> parents = parentsList.stream().map(parentString -> {
+                try {
+                  return ArtifactRanges.parseArtifactRange(parentString);
+                } catch (InvalidArtifactRangeException e) {
+                  throw new RuntimeException(e);
+                }
+              }).collect(Collectors.toSet());
 
               HttpGet pluginJarRequest = new HttpGet(jarUrl);
               try (CloseableHttpResponse jarResponse = httpClient.execute(pluginJarRequest)) {
                 byte[] array = EntityUtils.toByteArray(jarResponse.getEntity());
                 ArtifactId artifactId = new ArtifactId(namespaceName, pluginShortName + "-" + pluginVersion + ".jar");
-                artifactClient.add(artifactId, parents, () -> new ByteArrayInputStream(array));
+                try {
+                  artifactClient.add(artifactId, parents, () -> new ByteArrayInputStream(array));
+                } catch (ArtifactAlreadyExistsException e) {
+                  LOG.warn(String.format("Plugin %s already loaded.", artifactId.toString()));
+                }
                 return artifactId;
               }
             }
