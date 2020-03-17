@@ -51,7 +51,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -201,9 +203,16 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   }
 
   protected void startWorkFlow(ApplicationManager appManager, ProgramRunStatus expectedStatus) throws Exception {
+    startWorkFlow(appManager, expectedStatus, Collections.emptyMap());
+  }
+
+  protected void startWorkFlow(ApplicationManager appManager, ProgramRunStatus expectedStatus,
+    Map<String, String> args) throws Exception {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.startAndWaitForRun(Collections.singletonMap("system.profile.name", getProfileName()),
-                                       expectedStatus, 15, TimeUnit.MINUTES);
+    Map<String, String> fullArgs = new HashMap<>();
+    fullArgs.put("system.profile.name", getProfileName());
+    fullArgs.putAll(args);
+    workflowManager.startAndWaitForRun(fullArgs, expectedStatus, 15, TimeUnit.MINUTES);
   }
 
   protected static String getServiceAccountCredentials() {
