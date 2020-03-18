@@ -90,6 +90,18 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <!--TODO: remove gax-grpc once cloud-dlp API is compatible with latest version -->
+    <dependency>
+      <groupId>com.google.api</groupId>
+      <artifactId>gax-grpc</artifactId>
+      <version>1.54.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-dlp</artifactId>
+      <version>1.0.1</version>
+    </dependency>
   </dependencies>
 
   <build>
