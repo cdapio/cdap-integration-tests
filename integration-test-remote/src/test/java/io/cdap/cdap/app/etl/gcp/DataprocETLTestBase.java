@@ -16,12 +16,6 @@
 
 package io.cdap.cdap.app.etl.gcp;
 
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.BucketInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -36,23 +30,19 @@ import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.WorkflowManager;
 import io.cdap.common.http.HttpRequest;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -69,8 +59,6 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   private static String network;
   protected static final ArtifactSelectorConfig GOOGLE_CLOUD_ARTIFACT =
     new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
-  static Storage storage;
-  private static List<String> markedForDeleteBuckets;
 
   @BeforeClass
   public static void testDataprocClassSetup() throws IOException {
@@ -90,7 +78,6 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     projectId = serviceAccountJson.get("project_id").getAsString();
 
     network = System.getProperty("google.dataproc.network", "default");
-    markedForDeleteBuckets = new ArrayList<>();
   }
 
   @Before
@@ -114,90 +101,6 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     innerTearDown();
   }
 
-  protected static void deleteMarkedBuckets() {
-    if (storage != null) {
-      for (String bucketName : markedForDeleteBuckets) {
-        try {
-          Bucket bucket = storage.get(bucketName);
-          if (bucket != null) {
-            deleteBucket(bucket);
-          }
-        } catch (RuntimeException e) {
-          LOG.error("Unable to delete GCS bucket {}", bucketName, e);
-        }
-      }
-    }
-  }
-
-  protected static void initializeGCS() throws IOException {
-    storage = StorageOptions.newBuilder()
-      .setProjectId(DataprocETLTestBase.getProjectId())
-      .setCredentials(GoogleCredentials.fromStream(
-        new ByteArrayInputStream(getServiceAccountCredentials()
-          .getBytes(StandardCharsets.UTF_8))))
-      .build().getService();
-  }
-
-  /**
-   * Create a bucket that will be automatically deleted when the test completes.
-   */
-  protected static Bucket createBucket(String name) throws IOException {
-    if (storage == null) {
-      initializeGCS();
-    }
-    LOG.info("Creating bucket {}", name);
-    Bucket bucket = storage.create(BucketInfo.of(name));
-    LOG.info("Created bucket {}", name);
-    markedForDeleteBuckets.add(name);
-    return bucket;
-  }
-
-  protected static void deleteBucket(Bucket bucket) {
-    for (Blob blob : bucket.list().iterateAll()) {
-      LOG.info("Deleting blob {}", blob);
-      blob.delete();
-    }
-    LOG.info("Deleting bucket {}", bucket);
-    bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
-  }
-
-  protected static void markBucketNameForDelete(String bucketName) {
-    markedForDeleteBuckets.add(bucketName);
-  }
-
-  protected static String createPath(Bucket bucket, String blobName) {
-    return String.format("gs://%s/%s", bucket.getName(), blobName);
-  }
-
-  protected void assertGCSContents(Bucket bucket, String blobName, String content) {
-    Blob blob = bucket.get(blobName);
-    Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
-    Assert.assertEquals(content, new String(blob.getContent(), StandardCharsets.UTF_8));
-  }
-
-  protected void assertGCSContentsMatch(Bucket bucket, String blobNamePrefix, String contentRegex) {
-    for (Blob blob : bucket.list(Storage.BlobListOption.prefix(blobNamePrefix)).iterateAll()) {
-      if (new String(blob.getContent(), StandardCharsets.UTF_8).matches(contentRegex)) {
-        return;
-      }
-    }
-    if (!contentRegex.isEmpty()) {
-      Assert.fail();
-    }
-  }
-
-  protected void assertNotExists(Bucket bucket, String blobName) {
-    Blob blob = bucket.get(blobName);
-    if (blob != null) {
-      Assert.assertFalse(String.format("%s in %s exists but must not", blobName, bucket.getName()), blob.exists());
-    }
-  }
-
-  protected void assertExists(Bucket bucket, String blobName) {
-    Blob blob = bucket.get(blobName);
-    Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
-  }
-
   protected String getProfileName() {
     return PROFILE_NAME;
   }
@@ -207,7 +110,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   }
 
   protected void startWorkFlow(ApplicationManager appManager, ProgramRunStatus expectedStatus,
-    Map<String, String> args) throws Exception {
+                               Map<String, String> args) throws Exception {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
     Map<String, String> fullArgs = new HashMap<>();
     fullArgs.put("system.profile.name", getProfileName());

@@ -16,8 +16,12 @@
 
 package io.cdap.cdap.app.etl.gcp;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.BucketInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
@@ -45,21 +49,24 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
-import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -109,10 +116,20 @@ public class GCSTest extends DataprocETLTestBase {
   @ClassRule
   public static TemporaryFolder temporaryFolder = new TemporaryFolder();
 
+  private static Storage storage;
+  private List<String> markedForDeleteBuckets;
+
+  @BeforeClass
+  public static void testClassSetup() throws IOException {
+    storage = StorageOptions.newBuilder()
+      .setProjectId(getProjectId())
+      .setCredentials(GoogleCredentials.fromStream(
+        new ByteArrayInputStream(getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))))
+      .build().getService();
+  }
 
   @Override
   protected void innerSetup() throws Exception {
-    initializeGCS();
     // wait for artifact containing GCSCopy to load
     Tasks.waitFor(true, () -> {
       try {
@@ -125,15 +142,49 @@ public class GCSTest extends DataprocETLTestBase {
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
+    markedForDeleteBuckets = new ArrayList<>();
   }
 
   @Override
   protected void innerTearDown() {
+    for (String bucketName : markedForDeleteBuckets) {
+      try {
+        Bucket bucket = storage.get(bucketName);
+        if (bucket != null) {
+          deleteBucket(bucket);
+        }
+      } catch (RuntimeException e) {
+        LOG.error("Unable to delete GCS bucket {}", bucketName, e);
+      }
+    }
   }
 
-  @AfterClass
-  public static void tearDownClass() {
-    DataprocETLTestBase.deleteMarkedBuckets();
+  /**
+   * Create a bucket that will be automatically deleted when the test completes.
+   */
+  private Bucket createBucket(String name) {
+    LOG.info("Creating bucket {}", name);
+    Bucket bucket = storage.create(BucketInfo.of(name));
+    LOG.info("Created bucket {}", name);
+    markedForDeleteBuckets.add(name);
+    return bucket;
+  }
+
+  private void deleteBucket(Bucket bucket) {
+    for (Blob blob : bucket.list().iterateAll()) {
+      LOG.info("Deleting blob {}", blob);
+      blob.delete();
+    }
+    LOG.info("Deleting bucket {}", bucket);
+    bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
+  }
+
+  private void markBucketNameForDelete(String bucketName) {
+    markedForDeleteBuckets.add(bucketName);
+  }
+
+  private String createPath(Bucket bucket, String blobName) {
+    return String.format("gs://%s/%s", bucket.getName(), blobName);
   }
 
   @Test
@@ -448,6 +499,23 @@ public class GCSTest extends DataprocETLTestBase {
   }
 
 
+  private void assertGCSContents(Bucket bucket, String blobName, String content) {
+    Blob blob = bucket.get(blobName);
+    Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
+    Assert.assertEquals(content, new String(blob.getContent(), StandardCharsets.UTF_8));
+  }
+
+  private void assertNotExists(Bucket bucket, String blobName) {
+    Blob blob = bucket.get(blobName);
+    if (blob != null) {
+      Assert.assertFalse(String.format("%s in %s exists but must not", blobName, bucket.getName()), blob.exists());
+    }
+  }
+
+  private void assertExists(Bucket bucket, String blobName) {
+    Blob blob = bucket.get(blobName);
+    Assert.assertNotNull(String.format("%s in %s does not exist", blobName, bucket.getName()), blob);
+  }
 
   private ETLStage createCopyStage(String name, String src, String dest, boolean recursive) {
     return new ETLStage(name, new ETLPlugin(GCS_COPY_PLUGIN_NAME, Action.PLUGIN_TYPE,

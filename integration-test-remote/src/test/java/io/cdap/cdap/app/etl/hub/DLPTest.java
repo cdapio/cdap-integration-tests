@@ -21,8 +21,13 @@ import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.cloud.dlp.v2.DlpServiceSettings;
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.BucketInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.privacy.dlp.v2.CreateInspectTemplateRequest;
 import com.google.privacy.dlp.v2.DeleteInspectTemplateRequest;
 import com.google.privacy.dlp.v2.InfoType;
@@ -31,6 +36,7 @@ import com.google.privacy.dlp.v2.InspectTemplate;
 import com.google.privacy.dlp.v2.ProjectName;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.app.etl.gcp.DataprocETLTestBase;
+import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.etl.api.SplitterTransform;
 import io.cdap.cdap.etl.api.Transform;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -42,13 +48,15 @@ import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.test.ApplicationManager;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
@@ -61,13 +69,66 @@ import java.util.stream.Stream;
  */
 public class DLPTest extends DataprocETLTestBase {
 
+  private static Storage storage;
   private static Bucket bucket;
   private static ETLStage gcsSourceStage;
   private static InspectTemplate inspectTemplate;
   private static DlpServiceClient dlpServiceClient;
+  private static String templateId;
   private static final String INSPECT_TEMPLATE_NAME = "test-dlp-template";
 
-  private static InspectTemplate createInspectTemplate(String projectId) throws IOException {
+  @Override
+  protected void innerSetup() throws Exception {
+    try {
+      artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("dlp", "1.0.2"),
+                                        Transform.PLUGIN_TYPE);
+    } catch (ArtifactNotFoundException e) {
+      installPluginFromHub("plugin-dlp-redact-filter", "dlp", "1.0.2");
+    }
+  }
+
+  @Override
+  protected void innerTearDown() throws Exception {
+  }
+
+  private static String createPath(Bucket bucket, String blobName) {
+    return String.format("gs://%s/%s", bucket.getName(), blobName);
+  }
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
+    storage = StorageOptions.newBuilder()
+      .setProjectId(DataprocETLTestBase.getProjectId())
+      .setCredentials(GoogleCredentials.fromStream(
+        new ByteArrayInputStream(getServiceAccountCredentials()
+                                   .getBytes(StandardCharsets.UTF_8))))
+      .build().getService();
+
+    String testCSVInput =
+        "0,alice,alice@example.com\n"
+      + "1,bob,bob@example.com\n"
+      + "2,craig,craig@example.com";
+
+    String prefix = "cdap-dlp-test";
+    String bucketName = String.format("%s-%s", prefix, UUID.randomUUID());
+    bucket = storage.create(BucketInfo.of(bucketName));
+    bucket.create("test-input.csv", testCSVInput.getBytes(StandardCharsets.UTF_8));
+
+    Schema sourceSchema = Schema.recordOf("etlSchemaBody",
+      Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
+
+    gcsSourceStage =
+      new ETLStage("GCS",
+        new ETLPlugin("GCSFile",
+          BatchSource.PLUGIN_TYPE,
+          new ImmutableMap.Builder<String, String>()
+            .put("project", getProjectId())
+            .put("format", "text")
+            .put("serviceFilePath", "auto-detect")
+            .put("schema", sourceSchema.toString())
+            .put("referenceName", "load-user-data")
+            .put("path", createPath(bucket, "test-input.csv")).build(), null));
+
     dlpServiceClient = DlpServiceClient.create(
       DlpServiceSettings
         .newBuilder()
@@ -83,7 +144,7 @@ public class DLPTest extends DataprocETLTestBase {
 
     InspectConfig inspectConfig = InspectConfig.newBuilder().addAllInfoTypes(infoTypes).build();
 
-    InspectTemplate inspectTemplate =
+    inspectTemplate =
       InspectTemplate.newBuilder()
         .setName(INSPECT_TEMPLATE_NAME)
         .setInspectConfig(inspectConfig)
@@ -91,53 +152,14 @@ public class DLPTest extends DataprocETLTestBase {
 
     CreateInspectTemplateRequest createInspectTemplateRequest =
       CreateInspectTemplateRequest.newBuilder()
-        .setParent(ProjectName.of(projectId).toString())
+        .setParent(ProjectName.of(getProjectId()).toString())
         .setInspectTemplate(inspectTemplate)
         .build();
 
-    return dlpServiceClient.createInspectTemplate(createInspectTemplateRequest);
-  }
+    inspectTemplate = dlpServiceClient.createInspectTemplate(createInspectTemplateRequest);
 
-  @Override
-  protected void innerSetup() throws Exception {
-    installPluginFromHub("plugin-dlp-redact-filter", "dlp", "1.0.2");
-  }
-
-  @Override
-  protected void innerTearDown() throws Exception {
-  }
-
-  @BeforeClass
-  public static void setUpClass() throws Exception {
-    initializeGCS();
-
-    String testCSVInput =
-        "0,alice,alice@example.com\n"
-      + "1,bob,bob@example.com\n"
-      + "2,craig,craig@example.com";
-
-    String prefix = "cdap-dlp-test";
-    String bucketName = String.format("%s-%s", prefix, UUID.randomUUID());
-    bucket = createBucket(bucketName);
-    bucket.create("test-input.csv", testCSVInput.getBytes(StandardCharsets.UTF_8));
-
-    Schema sourceSchema = Schema.recordOf("etlSchemaBody",
-      Schema.Field.of("offset", Schema.of(Schema.Type.LONG)),
-      Schema.Field.of("body", Schema.of(Schema.Type.STRING)));
-
-    gcsSourceStage =
-      new ETLStage("GCS",
-        new ETLPlugin("GCSFile",
-          BatchSource.PLUGIN_TYPE,
-          new ImmutableMap.Builder<String, String>()
-            .put("project", getProjectId())
-            .put("format", "text")
-            .put("serviceFilePath", "auto-detect")
-            .put("schema", sourceSchema.toString())
-            .put("referenceName", "load-user-data")
-            .put("path", createPath(bucket, "test-input.csv")).build(), null));
-
-    inspectTemplate = createInspectTemplate(getProjectId());
+    String templateName = inspectTemplate.getName();
+    templateId = templateName.substring(templateName.lastIndexOf('/') + 1);
   }
 
   @AfterClass
@@ -151,12 +173,24 @@ public class DLPTest extends DataprocETLTestBase {
 
     dlpServiceClient.close();
 
-    DataprocETLTestBase.deleteMarkedBuckets();
+    for (Blob blob : bucket.list().iterateAll()) {
+      blob.delete();
+    }
+    bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
+  }
+
+  protected void assertGCSContentsMatch(Bucket bucket, String blobNamePrefix, String content) {
+    Set<String> expected = new HashSet<>(Arrays.asList(content.trim().split("\n")));
+    String actualContent =
+      Lists.newArrayList(bucket.list(Storage.BlobListOption.prefix(blobNamePrefix)).iterateAll())
+        .stream().map(blob -> new String(blob.getContent(), StandardCharsets.UTF_8))
+        .collect(Collectors.joining());
+    Set<String> actual = new HashSet<>(Arrays.asList(actualContent.trim().split("\n")));
+    Assert.assertEquals(expected, actual);
   }
 
   @Test
   public void testRedaction() throws Exception {
-    String templateName = inspectTemplate.getName();
     ObjectMapper objectMapper = new ObjectMapper();
     String fieldsToTransform = objectMapper.writeValueAsString(Collections.singletonList(
       objectMapper.writeValueAsString(new ImmutableMap.Builder<String, Object>()
@@ -178,7 +212,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
           .put("fieldsToTransform", fieldsToTransform)
-          .put("templateId", templateName.substring(templateName.lastIndexOf('/') + 1)).build(), null));
+          .put("templateId", templateId).build(), null));
 
     ETLStage sinkStage =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -205,14 +239,13 @@ public class DLPTest extends DataprocETLTestBase {
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     assertGCSContentsMatch(bucket, "test-output/",
-      ".*,0,alice,#*\n"
-        + ".*,1,bob,#*\n"
-        + ".*,2,craig,#*\n");
+      "0,alice,#################\n"
+        + "1,bob,###############\n"
+        + "2,craig,#################\n");
   }
 
   @Test
   public void testFilter() throws Exception {
-    String templateName = inspectTemplate.getName();
     ETLStage filterStage =
       new ETLStage("PII Filter",
         new ETLPlugin("SensitiveRecordFilter", SplitterTransform.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -220,7 +253,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("on-error", "stop-on-error")
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
-          .put("template-id", templateName.substring(templateName.lastIndexOf('/') + 1)).build(), null));
+          .put("template-id", templateId).build(), null));
 
     ETLStage sinkStage1 =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -259,9 +292,9 @@ public class DLPTest extends DataprocETLTestBase {
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     assertGCSContentsMatch(bucket, "test-output-sensitive/",
-      ".*,0,alice,alice@example.com\n"
-        + ".*,1,bob,bob@example.com\n"
-        + ".*,2,craig,craig@example.com\n");
+      "0,alice,alice@example.com\n"
+        + "1,bob,bob@example.com\n"
+        + "2,craig,craig@example.com\n");
     assertGCSContentsMatch(bucket, "test-output-nonsensitive/", "");
   }
 }
