@@ -16,7 +16,6 @@
 
 package io.cdap.cdap.app.etl.hub;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.dlp.v2.DlpServiceClient;
@@ -28,6 +27,8 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.google.gson.Gson;
 import com.google.privacy.dlp.v2.CreateInspectTemplateRequest;
 import com.google.privacy.dlp.v2.DeleteInspectTemplateRequest;
 import com.google.privacy.dlp.v2.InfoType;
@@ -52,6 +53,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -69,7 +72,8 @@ import java.util.stream.Stream;
  */
 public class DLPTest extends DataprocETLTestBase {
 
-  private static Storage storage;
+  private static final Logger LOG = LoggerFactory.getLogger(DLPTest.class);
+  private static final Gson GSON = new Gson();
   private static Bucket bucket;
   private static ETLStage gcsSourceStage;
   private static InspectTemplate inspectTemplate;
@@ -97,11 +101,10 @@ public class DLPTest extends DataprocETLTestBase {
 
   @BeforeClass
   public static void setUpClass() throws Exception {
-    storage = StorageOptions.newBuilder()
+    Storage storage = StorageOptions.newBuilder()
       .setProjectId(DataprocETLTestBase.getProjectId())
       .setCredentials(GoogleCredentials.fromStream(
-        new ByteArrayInputStream(getServiceAccountCredentials()
-                                   .getBytes(StandardCharsets.UTF_8))))
+        new ByteArrayInputStream(getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))))
       .build().getService();
 
     String testCSVInput =
@@ -164,14 +167,19 @@ public class DLPTest extends DataprocETLTestBase {
 
   @AfterClass
   public static void tearDownClass() {
-    DeleteInspectTemplateRequest deleteInspectTemplateRequest =
-      DeleteInspectTemplateRequest.newBuilder()
-        .setName(inspectTemplate.getName())
-        .build();
+    try {
+      DeleteInspectTemplateRequest deleteInspectTemplateRequest =
+        DeleteInspectTemplateRequest.newBuilder()
+          .setName(inspectTemplate.getName())
+          .build();
 
-    dlpServiceClient.deleteInspectTemplate(deleteInspectTemplateRequest);
+      dlpServiceClient.deleteInspectTemplate(deleteInspectTemplateRequest);
 
-    dlpServiceClient.close();
+    } catch (Exception e) {
+      LOG.warn("Exception was thrown", e);
+    } finally {
+      dlpServiceClient.close();
+    }
 
     for (Blob blob : bucket.list().iterateAll()) {
       blob.delete();
@@ -179,8 +187,7 @@ public class DLPTest extends DataprocETLTestBase {
     bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
   }
 
-  protected void assertGCSContentsMatch(Bucket bucket, String blobNamePrefix, String content) {
-    Set<String> expected = new HashSet<>(Arrays.asList(content.trim().split("\n")));
+  protected void assertGCSContentsMatch(Bucket bucket, String blobNamePrefix, Set<String> expected) {
     String actualContent =
       Lists.newArrayList(bucket.list(Storage.BlobListOption.prefix(blobNamePrefix)).iterateAll())
         .stream().map(blob -> new String(blob.getContent(), StandardCharsets.UTF_8))
@@ -191,9 +198,8 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Test
   public void testRedaction() throws Exception {
-    ObjectMapper objectMapper = new ObjectMapper();
-    String fieldsToTransform = objectMapper.writeValueAsString(Collections.singletonList(
-      objectMapper.writeValueAsString(new ImmutableMap.Builder<String, Object>()
+    String fieldsToTransform = GSON.toJson(Collections.singletonList(
+      GSON.toJson(new ImmutableMap.Builder<String, Object>()
         .put("fields", "body")
         .put("transform", "MASKING")
         .put("filters", "NONE")
@@ -239,9 +245,10 @@ public class DLPTest extends DataprocETLTestBase {
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     assertGCSContentsMatch(bucket, "test-output/",
-      "0,alice,#################\n"
-        + "1,bob,###############\n"
-        + "2,craig,#################\n");
+      Sets.newHashSet(
+        "0,alice,#################",
+        "1,bob,###############",
+        "2,craig,#################"));
   }
 
   @Test
@@ -292,9 +299,10 @@ public class DLPTest extends DataprocETLTestBase {
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
     assertGCSContentsMatch(bucket, "test-output-sensitive/",
-      "0,alice,alice@example.com\n"
-        + "1,bob,bob@example.com\n"
-        + "2,craig,craig@example.com\n");
-    assertGCSContentsMatch(bucket, "test-output-nonsensitive/", "");
+      Sets.newHashSet(
+        "0,alice,alice@example.com",
+        "1,bob,bob@example.com",
+        "2,craig,craig@example.com"));
+    assertGCSContentsMatch(bucket, "test-output-nonsensitive/", Sets.newHashSet());
   }
 }
