@@ -56,6 +56,7 @@ import io.cdap.cdap.test.suite.category.RequiresSpark2;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -87,6 +88,8 @@ public class ReportGenerationAppTest extends AudiTestBase {
   private static final String PROGRAM_STATUS_PROCESSED = "user." + Constants.Metrics.RECORDS_PROCESSED_METRIC;
   private static final String LATEST_SYNC_TIME_METRIC = "user." + Constants.Metrics.SYNC_INTERVAL_TIME_MILLIS_METRIC;
 
+  // TODO: (CDAP-14746) fix and un-ignore
+  @Ignore
   @Test
   public void testGenerateApp() throws Exception {
 
@@ -107,21 +110,21 @@ public class ReportGenerationAppTest extends AudiTestBase {
     runtimeArgs.put("task.client.system.resources.memory", "1024");
     runtimeArgs.put("task.client.system.resources.reserved.memory.override", "512");
 
-    reportSpark.start(runtimeArgs);
-    reportSpark.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(reportSpark, ProgramRunStatus.RUNNING, runtimeArgs);
 
     // start the service
     // TODO: CDAP-14746 Migrate ReportGenerationAppTest to use an application that doesn't have flows.
     ApplicationManager applicationManager = null; // deployApplication(PurchaseApp.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager("PurchaseHistoryService").start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager serviceManager = applicationManager.getServiceManager("PurchaseHistoryService");
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     // make sure the spark app has started to process program status records
     checkMetricAtLeast(reportAppTags, PROGRAM_STATUS_PROCESSED, previousProcessed + 1,
                        PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS);
 
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+                               POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
 
     // at least 3 states starting->running->killed for PurchaseHistoryService program is expected to be processed

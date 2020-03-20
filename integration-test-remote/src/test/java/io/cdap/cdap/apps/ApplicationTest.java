@@ -38,8 +38,8 @@ public class ApplicationTest extends AudiTestBase {
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
-    ServiceManager fileSetService = applicationManager.getServiceManager(FileSetService.class.getSimpleName()).start();
-    fileSetService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager fileSetService = applicationManager.getServiceManager(FileSetService.class.getSimpleName());
+    startAndWaitForRun(fileSetService, ProgramRunStatus.RUNNING);
 
     // should not delete application when programs are running
     ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());

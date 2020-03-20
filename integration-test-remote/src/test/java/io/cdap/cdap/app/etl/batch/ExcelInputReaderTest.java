@@ -65,8 +65,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     ApplicationManager applicationManager = deployApplication(UploadFile.class);
     String fileSetName = UploadFile.FileSetService.class.getSimpleName();
     ServiceManager serviceManager = applicationManager.getServiceManager(fileSetName);
-    serviceManager.start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
     URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL url = new URL(serviceURL, "excelreader/create");
@@ -140,8 +139,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
 
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();
@@ -210,8 +208,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
 
     // manually trigger the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(outputDatasetName);
     Table outputTable = outputManager.get();

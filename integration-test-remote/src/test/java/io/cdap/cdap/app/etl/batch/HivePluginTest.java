@@ -76,8 +76,8 @@ public class HivePluginTest extends ETLTestBase {
     installPluginFromHub("hydrator-plugin-hive", "hive-plugins", "1.8.0-1.1.0");
 
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
-    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
-    fileSetService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService");
+    startAndWaitForRun(fileSetService, ProgramRunStatus.RUNNING);
     URL serviceURL = fileSetService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     DatasetProperties datasetProperties = FileSetProperties.builder()
@@ -130,8 +130,8 @@ public class HivePluginTest extends ETLTestBase {
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
     ApplicationId appId = TEST_NAMESPACE.app("HiveImportApp");
     ApplicationManager appManager = deployApplication(appId, appRequest);
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME).start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     // query the outputDataset to ensure that the data was written by the pipeline
     QueryClient queryClient = new QueryClient(getClientConfig());

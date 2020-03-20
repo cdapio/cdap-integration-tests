@@ -127,8 +127,7 @@ public class NormalizeTest extends ETLTestBase {
   private void startWorkFlow(ApplicationManager appManager) throws TimeoutException, InterruptedException,
     ExecutionException {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
   }
 
   private void putData(int rowId, byte[] custId, byte[] itemId, byte[] itemCost, byte[] date, Table targetTable) {

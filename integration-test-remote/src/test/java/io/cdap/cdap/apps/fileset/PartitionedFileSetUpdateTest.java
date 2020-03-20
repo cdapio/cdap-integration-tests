@@ -59,8 +59,8 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PFSApp.class);
 
-    ServiceManager pfsService = applicationManager.getServiceManager("PFSService").start();
-    pfsService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager pfsService = applicationManager.getServiceManager("PFSService");
+    startAndWaitForRun(pfsService, ProgramRunStatus.RUNNING);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, "1")).build(),
@@ -107,9 +107,8 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     validate(client, "i", "j", 3, 4);
 
     // run the partition corrector. This should bring all partitions to use delimiter :
-    WorkerManager pfsWorker = applicationManager
-      .getWorkerManager("PartitionWorker").start(ImmutableMap.of("dataset.name", "pfs"));
-    pfsWorker.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker");
+    startAndWaitForRun(pfsWorker, ProgramRunStatus.COMPLETED, ImmutableMap.of("dataset.name", "pfs"));
 
     validate(client, "i", "j", 0, 4);
   }

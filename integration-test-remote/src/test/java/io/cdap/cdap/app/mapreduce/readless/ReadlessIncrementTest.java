@@ -60,13 +60,11 @@ public class ReadlessIncrementTest extends AudiTestBase {
     ApplicationManager appManager = deployApplication(ReadlessApp.class);
 
     ServiceManager serviceManager = appManager.getServiceManager(ReadlessApp.SERVICE_NAME);
-    serviceManager.start();
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     MapReduceManager mapReduceManager = appManager.getMapReduceManager(ReadlessApp.MAPREDUCE_NAME);
-    mapReduceManager.start();
-    mapReduceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(mapReduceManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.SECONDS);
     URL url = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS), "get");
     HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken(),
                                                     HttpURLConnection.HTTP_OK);

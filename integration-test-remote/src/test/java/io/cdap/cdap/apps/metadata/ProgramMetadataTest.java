@@ -92,8 +92,7 @@ public class ProgramMetadataTest extends AudiTestBase {
 
     MapReduceManager mapReduceManager =
       applicationManager.getMapReduceManager(PROGRAM.getProgram());
-    mapReduceManager.start();
-    mapReduceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(mapReduceManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     List<RunRecord> runRecords = getRunRecords(1, programClient, PROGRAM,
                                                ProgramRunStatus.COMPLETED.name(), 0, endTime);

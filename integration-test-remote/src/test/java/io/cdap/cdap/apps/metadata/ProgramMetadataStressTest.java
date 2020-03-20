@@ -24,6 +24,7 @@ import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.MapReduceManager;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,7 +41,6 @@ public class ProgramMetadataStressTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(ProgramMetadataStressApp.class);
     MapReduceManager mapReduceManager =
       applicationManager.getMapReduceManager(PROGRAM.getProgram());
-    mapReduceManager.start();
-    mapReduceManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(mapReduceManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
   }
 }

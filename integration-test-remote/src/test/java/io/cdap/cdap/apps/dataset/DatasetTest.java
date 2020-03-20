@@ -94,8 +94,8 @@ public class DatasetTest extends AudiTestBase {
     datasetClient.delete(testDatasetinstance);
     Assert.assertEquals(appDatasetsCount, datasetClient.list(TEST_NAMESPACE).size());
 
-    ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME).start();
-    wordCountService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager wordCountService = applicationManager.getServiceManager(RetrieveCounts.SERVICE_NAME);
+    startAndWaitForRun(wordCountService, ProgramRunStatus.RUNNING);
 
     ingestData();
 

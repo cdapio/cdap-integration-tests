@@ -139,9 +139,8 @@ public class WranglerServiceTest extends ETLTestBase {
 
     ServiceManager serviceManager = appManager.getServiceManager("service");
     if (!serviceManager.isRunning()) {
-      serviceManager.start();
+      startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
     }
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, 5, TimeUnit.MINUTES);
     return serviceManager;
   }
 

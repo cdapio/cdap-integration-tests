@@ -41,7 +41,6 @@ import io.cdap.plugin.common.Properties;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -103,7 +102,7 @@ public class ValueMapperTest extends ETLTestBase {
                                                 Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "name",
                                                 Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()), null));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(transform)
       .addStage(sink)
@@ -134,14 +133,7 @@ public class ValueMapperTest extends ETLTestBase {
     inputManager.flush();
 
     WorkflowManager mrManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    mrManager.start();
-    mrManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
-
-    Map<String, String> nameDesignationMap = new HashMap<>();
-    nameDesignationMap.put("John", "DEFAULTID");
-    nameDesignationMap.put("Kerry", "SSE");
-    nameDesignationMap.put("Mathew", "DEFAULTID");
-    nameDesignationMap.put("Allie", "DEFAULTID");
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> tableManager = getTableDataset(sinkTable);
     Table table = tableManager.get();

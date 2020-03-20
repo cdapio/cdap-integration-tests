@@ -35,10 +35,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Tests {@link KVTableSource} and {@link Properties.ProjectionTransform} convert function
+ * Tests {@link KVTableSource} and ProjectionTransform convert function
  */
 public class KVTableWithProjectionTest extends ETLTestBase {
 
@@ -67,7 +68,7 @@ public class KVTableWithProjectionTest extends ETLTestBase {
                                       new ETLPlugin("Projection", Transform.PLUGIN_TYPE,
                                                     ImmutableMap.of("convert", "ticker:bytes,price:bytes"),
                                                     null));
-    ETLBatchConfig etlBatchConfig = ETLBatchConfig.builder("*/10 * * * *")
+    ETLBatchConfig etlBatchConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(sink)
       .addStage(transform)
@@ -79,8 +80,7 @@ public class KVTableWithProjectionTest extends ETLTestBase {
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     byte[] result = getKVTableDataset(KVTABLE_NAME).get().read("AAPL");
     Assert.assertNotNull(result);

@@ -48,8 +48,8 @@ public class HangingWorkerTest extends AudiTestBase {
     ApplicationManager applicationManager = deployApplication(HangingWorkerApp.class);
 
     // start the worker
-    WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME).start();
-    workerManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    WorkerManager workerManager = applicationManager.getWorkerManager(HangingWorkerApp.WORKER_NAME);
+    startAndWaitForRun(workerManager, ProgramRunStatus.RUNNING);
 
     // the worker writes current time into workerDataset every HangingWorkerApp.WORKER_SLEEP_SECS secs
     final DataSetManager<KeyValueTable> workerDataset = getKVTableDataset(HangingWorkerApp.WORKER_DATASET_NAME);

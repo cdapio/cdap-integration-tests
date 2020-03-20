@@ -222,8 +222,8 @@ public class PubSubTest extends DataprocETLTestBase {
     SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
     try {
       // it takes time to spin-up dataproc cluster, lets wait a little bit
-      sparkManager.startAndWaitForRun(Collections.singletonMap("system.profile.name", getProfileName()),
-                                      ProgramRunStatus.RUNNING, 10, TimeUnit.MINUTES);
+      startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING,
+                         Collections.singletonMap("system.profile.name", getProfileName()), 10, TimeUnit.MINUTES);
 
       // wait and check for source subscription to be created
       ensureSubscriptionCreated(pipelineReadSubscriptionName, 10, TimeUnit.MINUTES);

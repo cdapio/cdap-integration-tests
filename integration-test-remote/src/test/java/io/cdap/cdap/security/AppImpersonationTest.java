@@ -106,19 +106,15 @@ public class AppImpersonationTest extends AudiTestBase {
     Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
     Assert.assertFalse(results.hasNext());
 
-    generatorWorkerManager.start();
-    generatorWorkerManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(generatorWorkerManager, ProgramRunStatus.RUNNING);
 
     TimeUnit.SECONDS.sleep(15);
 
     generatorWorkerManager.stop();
-    generatorWorkerManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    generatorWorkerManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+                                       POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
-    processorWorkflowManager.start();
-    processorWorkflowManager
-      .waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-    processorWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(processorWorkflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     // Ensure that there is at least one result
     results = new QueryClient(getClientConfig())
