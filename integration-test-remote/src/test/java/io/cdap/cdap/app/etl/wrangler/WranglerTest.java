@@ -162,8 +162,7 @@ public class WranglerTest extends ETLTestBase {
 
     // run the pipeline
     WorkflowManager workflowManager = testAppManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     // Deploy an application with a service to get partitionedFileset data for verification
     ApplicationManager appManager = deployApplication(DatasetAccessApp.class);
@@ -199,8 +198,7 @@ public class WranglerTest extends ETLTestBase {
   private ServiceManager startService(ApplicationManager appManager, String service) throws InterruptedException,
     ExecutionException, TimeoutException {
     ServiceManager serviceManager = appManager.getServiceManager(service);
-    serviceManager.start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
     return serviceManager;
   }
 

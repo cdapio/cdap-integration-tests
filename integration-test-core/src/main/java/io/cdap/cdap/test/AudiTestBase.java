@@ -59,10 +59,13 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Custom wrapper around IntegrationTestBase
@@ -73,6 +76,8 @@ public class AudiTestBase extends IntegrationTestBase {
   // Used for starting/stop await timeout.
   protected static final int PROGRAM_START_STOP_TIMEOUT_SECONDS =
     Integer.valueOf(System.getProperty("programTimeout", "120"));
+  protected static final int POLL_INTERVAL_SECONDS =
+    Integer.valueOf(System.getProperty("pollInterval", "5"));
   // Amount of time to wait for a program (i.e. Service, or Worker) to process its first event (upon startup).
   // For now, make it same as PROGRAM_START_STOP_TIMEOUT_SECONDS.
   protected static final int PROGRAM_FIRST_PROCESSED_TIMEOUT_SECONDS = PROGRAM_START_STOP_TIMEOUT_SECONDS;
@@ -150,13 +155,13 @@ public class AudiTestBase extends IntegrationTestBase {
   protected void checkMetricAtLeast(final Map<String, String> tags, final String metric,
                                     long expectedCount, int timeOutSeconds) throws Exception {
     Tasks.waitFor(true, () -> getMetricValue(tags, metric) >= expectedCount,
-                  timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+                  timeOutSeconds, TimeUnit.SECONDS, 2, TimeUnit.SECONDS);
   }
 
   protected void checkMetric(final Map<String, String> tags, final String metric,
                              long expectedCount, int timeOutSeconds) throws Exception {
     Tasks.waitFor(expectedCount, () -> getMetricValue(tags, metric),
-                  timeOutSeconds, TimeUnit.SECONDS, 500, TimeUnit.MILLISECONDS);
+                  timeOutSeconds, TimeUnit.SECONDS, 2, TimeUnit.SECONDS);
   }
 
   protected long getMetricValue(Map<String, String> tags, String metric) throws Exception {
@@ -249,6 +254,30 @@ public class AudiTestBase extends IntegrationTestBase {
                                getRestClient(), getClientConfig()));
   }
 
+  protected void startAndWaitForRun(ProgramManager<?> programManager, ProgramRunStatus runStatus)
+    throws InterruptedException, ExecutionException, TimeoutException {
+    startAndWaitForRun(programManager, runStatus, Collections.emptyMap());
+  }
+
+  protected void startAndWaitForRun(ProgramManager<?> programManager, ProgramRunStatus runStatus,
+                                    Map<String, String> runtimeArgs)
+    throws InterruptedException, ExecutionException, TimeoutException {
+    startAndWaitForRun(programManager, runStatus, runtimeArgs, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+  }
+
+  protected void startAndWaitForRun(ProgramManager<?> programManager, ProgramRunStatus runStatus,
+                                    long waitTime, TimeUnit waitUnit)
+    throws InterruptedException, ExecutionException, TimeoutException {
+    startAndWaitForRun(programManager, runStatus, Collections.emptyMap(), waitTime, waitUnit);
+  }
+
+  protected void startAndWaitForRun(ProgramManager<?> programManager, ProgramRunStatus runStatus,
+                                    Map<String, String> runtimeArgs, long waitTime, TimeUnit waitUnit)
+    throws InterruptedException, ExecutionException, TimeoutException {
+    programManager.startAndWaitForRun(runtimeArgs, runStatus, waitTime, waitUnit,
+                                      POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+  }
+
   // ensures that the Service for the dataset is deployed and running
   // returns its baseURL
   private URL deployServiceForDataset(NamespaceId namespace, Class<? extends Application> applicationClz,
@@ -267,9 +296,8 @@ public class AudiTestBase extends IntegrationTestBase {
 
     // start the service and wait until it becomes reachable
     if (!serviceManager.isRunning()) {
-      serviceManager.start();
+      startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
     }
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     return serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
   }
 

@@ -22,7 +22,6 @@ import io.cdap.cdap.client.QueryClient;
 import io.cdap.cdap.explore.client.ExploreExecutionResult;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.QueryStatus;
-import io.cdap.cdap.proto.RunRecord;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.ServiceManager;
@@ -33,7 +32,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.URL;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -48,8 +46,8 @@ public class PartitionCorrectorTest extends AudiTestBase {
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PFSApp.class);
 
-    ServiceManager pfsService = applicationManager.getServiceManager("PFSService").start();
-    pfsService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager pfsService = applicationManager.getServiceManager("PFSService");
+    startAndWaitForRun(pfsService, ProgramRunStatus.RUNNING);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     for (int i = 0; i < 100; i++) {
@@ -77,10 +75,9 @@ public class PartitionCorrectorTest extends AudiTestBase {
 
     // run the partition corrector. This should bring all partitions back
     WorkerManager pfsWorker = applicationManager.getWorkerManager("PartitionWorker");
-    List<RunRecord> history = pfsWorker.getHistory();
-    pfsWorker.start(ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build());
-    pfsWorker.waitForRuns(ProgramRunStatus.COMPLETED, history.size() + 1,
-                          PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
+    startAndWaitForRun(pfsWorker, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.<String, String>builder().put("dataset.name", "pfs").putAll(args).build(),
+                       PROGRAM_START_STOP_TIMEOUT_SECONDS + 100, TimeUnit.SECONDS);
     validate(queryClient, 100);
   }
 

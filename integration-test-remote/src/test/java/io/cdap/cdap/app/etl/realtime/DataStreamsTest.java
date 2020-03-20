@@ -72,8 +72,7 @@ public class DataStreamsTest extends ETLTestBase {
     ApplicationManager applicationManager = deployApplication(UploadFile.class);
     String fileSetName = UploadFile.FileSetService.class.getSimpleName();
     ServiceManager serviceManager = applicationManager.getServiceManager(fileSetName);
-    serviceManager.start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
     URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     URL url = new URL(serviceURL, "testFileSet/create");
@@ -127,8 +126,7 @@ public class DataStreamsTest extends ETLTestBase {
     AppRequest appRequest = getStreamingAppRequest(config);
     ApplicationManager appManager = deployApplication(appId, appRequest);
     SparkManager sparkManager = appManager.getSparkManager("DataStreamsSparkStreaming");
-    sparkManager.start();
-    sparkManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING);
 
     url = new URL(serviceURL, "testFileSet?path=test1.csv");
     //PUT request to upload the test1.csv file, sent in the request body
@@ -147,7 +145,8 @@ public class DataStreamsTest extends ETLTestBase {
     verifyOutput(table, "2", "Marshall", "Mathers");
 
     sparkManager.stop();
-    sparkManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    sparkManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+                             POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
   }
 
   private void verifyOutput(final Table table, final String id, String firstName, String lastName)

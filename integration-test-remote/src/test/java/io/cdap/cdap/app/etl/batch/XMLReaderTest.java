@@ -80,8 +80,7 @@ public class XMLReaderTest extends ETLTestBase {
     ApplicationManager applicationManager = deployApplication(UploadFile.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(UploadFile.
                                                                            FileSetService.class.getSimpleName());
-    serviceManager.start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "xmlreadersource/create");
@@ -147,8 +146,7 @@ public class XMLReaderTest extends ETLTestBase {
                              ProgramRunStatus expectedStatus) throws TimeoutException, InterruptedException,
     ExecutionException {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(expectedStatus, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, expectedStatus, 5, TimeUnit.MINUTES);
   }
 
   @Test

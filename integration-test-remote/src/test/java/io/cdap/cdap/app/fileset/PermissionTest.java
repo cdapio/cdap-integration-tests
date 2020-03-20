@@ -151,24 +151,22 @@ public class PermissionTest extends AudiTestBase {
     String secondPath = "second/path";
     String thirdPath = "third/path";
     String fourthPath = "fourth/path";
-    int runs = 0;
 
     MapReduceManager mrManager = applicationManager.getMapReduceManager(PermissionTestApp.MAPREDUCE);
 
     // 6. run the mapreduce three times, each writing to one dataset, then validate permissions
-    mrManager.start(ImmutableMap.of("path", firstPath)); // writes to file set
-    mrManager.waitForRuns(ProgramRunStatus.COMPLETED, ++runs, 300, TimeUnit.SECONDS);
-    mrManager.waitForStatus(false, 60, 1);
+    // writes to file set
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED, ImmutableMap.of("path", firstPath),
+                       300, TimeUnit.SECONDS);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, fsPerms, fsGroup);
 
-    mrManager.start(ImmutableMap.of("time", String.valueOf(firstTime))); // writes to TPFS
-    mrManager.waitForRuns(ProgramRunStatus.COMPLETED, ++runs, 300, TimeUnit.SECONDS);
-    mrManager.waitForStatus(false, 60, 1);
+    // writes to TPFS
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED, ImmutableMap.of("time", String.valueOf(firstTime)),
+                       300, TimeUnit.SECONDS);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.TPFS, tpfsPerms, tpfsGroup);
 
-    mrManager.start(ImmutableMap.of("key", "1")); // write to PFS with dynamic partitioning // dynamic output to PFS
-    mrManager.waitForRuns(ProgramRunStatus.COMPLETED, ++runs, 300, TimeUnit.SECONDS);
-    mrManager.waitForStatus(false, 60, 1);
+    // write to PFS with dynamic partitioning // dynamic output to PFS
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED, ImmutableMap.of("key", "1"), 300, TimeUnit.SECONDS);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, pfsPerms, pfsGroup);
 
     // 7. write to all datasets with multi-output. They should get the default permissions
@@ -183,9 +181,9 @@ public class PermissionTest extends AudiTestBase {
     int defaultPerms = FileUtils.parsePermissions(listing.getPermission());
     LOG.info("Default permissions are: {}", Integer.toOctalString(defaultPerms));
 
-    mrManager.start(ImmutableMap.of("key", "2", "path", secondPath, "time", String.valueOf(secondTime)));
-    mrManager.waitForRuns(ProgramRunStatus.COMPLETED, ++runs, 300, TimeUnit.SECONDS);
-    mrManager.waitForStatus(false, 60, 1);
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.of("key", "2", "path", secondPath, "time", String.valueOf(secondTime)),
+                       300, TimeUnit.SECONDS);
     // validate only the sub-paths written by this run
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, defaultPerms, fsGroup, "path=" + secondPath);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, defaultPerms, pfsGroup, "key=2");
@@ -193,10 +191,10 @@ public class PermissionTest extends AudiTestBase {
 
     // 8. write to all datasets with multi-output, this time with explicit umask
     int multiPerms = Integer.parseInt("700", 8);
-    mrManager.start(ImmutableMap.of("key", "3", "path", thirdPath, "time", String.valueOf(thirdTime),
-                                    "umask", "077"));
-    mrManager.waitForRuns(ProgramRunStatus.COMPLETED, ++runs, 300, TimeUnit.SECONDS);
-    mrManager.waitForStatus(false, 60, 1);
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.of("key", "3", "path", thirdPath, "time", String.valueOf(thirdTime),
+                                       "umask", "077"),
+                       300, TimeUnit.SECONDS);
     // validate only the sub-paths written by this run
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, multiPerms, fsGroup, "path=" + thirdPath);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, multiPerms, pfsGroup, "key=3");
@@ -204,10 +202,10 @@ public class PermissionTest extends AudiTestBase {
 
     // 9. write to all datasets with multi-output, this time configure permissions as runtime args
     int rtPerms = Integer.parseInt("777", 8);
-    mrManager.start(ImmutableMap.of("key", "4", "path", fourthPath, "time", String.valueOf(fourthTime),
-                                    FileSetProperties.PROPERTY_FILES_PERMISSIONS, Integer.toOctalString(rtPerms)));
-    mrManager.waitForRuns(ProgramRunStatus.COMPLETED, ++runs, 300, TimeUnit.SECONDS);
-    mrManager.waitForStatus(false, 60, 1);
+    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.of("key", "4", "path", fourthPath, "time", String.valueOf(fourthTime),
+                                       FileSetProperties.PROPERTY_FILES_PERMISSIONS, Integer.toOctalString(rtPerms)),
+                       300, TimeUnit.SECONDS);
     // validate only the sub-paths written by this run
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, rtPerms, fsGroup, "path=" + fourthPath);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, rtPerms, pfsGroup, "key=4");

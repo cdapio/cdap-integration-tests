@@ -102,8 +102,7 @@ public class ETLMapReduceTest extends ETLTestBase {
     table1.flush();
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     DataSetManager<KeyValueTable> table2 = getKVTableDataset("table2");
     KeyValueTable outputTable = table2.get();
@@ -188,9 +187,8 @@ public class ETLMapReduceTest extends ETLTestBase {
     ApplicationManager appManager = deployApplication(appId, appRequest);
     ingestPurchaseTestData(getTableDataset("input"));
 
-    final WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     QueryClient client = new QueryClient(getClientConfig());
 
@@ -441,9 +439,8 @@ public class ETLMapReduceTest extends ETLTestBase {
     ApplicationManager appManager = deployApplication(appId, appRequest);
     ingestPurchaseTestData(getTableDataset("input"));
 
-    final WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     ExploreExecutionResult result = retryQueryExecutionTillFinished(TEST_NAMESPACE,
                                                                     "select * from dataset_allRewards", 5);

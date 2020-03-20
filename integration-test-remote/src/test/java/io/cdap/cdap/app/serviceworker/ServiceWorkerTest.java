@@ -65,8 +65,8 @@ public class ServiceWorkerTest extends AudiTestBase {
     RESTClient restClient = getRestClient();
     ApplicationManager applicationManager = deployApplication(ServiceApplication.class);
 
-    ServiceManager serviceManager = applicationManager.getServiceManager(ServiceApplication.SERVICE_NAME).start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager serviceManager = applicationManager.getServiceManager(ServiceApplication.SERVICE_NAME);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
 
     URL serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -77,9 +77,9 @@ public class ServiceWorkerTest extends AudiTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_NO_CONTENT, response.getResponseCode());
 
     // start the worker
-    WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME).start();
+    WorkerManager workerManager = applicationManager.getWorkerManager(ServiceApplication.WORKER_NAME);
     // worker will stop automatically
-    workerManager.waitForRun(ProgramRunStatus.COMPLETED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(workerManager, ProgramRunStatus.COMPLETED);
 
     // check if the worker's write to the table was successful
     response = restClient.execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
@@ -98,7 +98,8 @@ public class ServiceWorkerTest extends AudiTestBase {
     }
 
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+                               POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
     // Now testing the artifact listing / class loading using the Artifact HTTP Service
     final File directiveJar =
@@ -118,8 +119,8 @@ public class ServiceWorkerTest extends AudiTestBase {
                                          new ArtifactVersion("10.0.0-SNAPSHOT")));
     artifactClient.add(artifactId, parentArtifacts, () -> new FileInputStream(directiveJar));
 
-    serviceManager = applicationManager.getServiceManager(ServiceApplication.ARTIFACT_SERVICE_NAME).start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager = applicationManager.getServiceManager(ServiceApplication.ARTIFACT_SERVICE_NAME);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
 
     serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -136,6 +137,7 @@ public class ServiceWorkerTest extends AudiTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+                               POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
   }
 }

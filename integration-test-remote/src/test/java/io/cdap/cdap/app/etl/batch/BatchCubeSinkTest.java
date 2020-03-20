@@ -104,8 +104,7 @@ public class BatchCubeSinkTest extends ETLTestBase {
     long startTs = System.currentTimeMillis() / 1000;
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     long endTs = System.currentTimeMillis() / 1000;
 

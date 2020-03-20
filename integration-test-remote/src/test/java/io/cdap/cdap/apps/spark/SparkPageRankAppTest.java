@@ -104,30 +104,13 @@ public class SparkPageRankAppTest extends AudiTestBase {
     ingestData();
 
     // Start service
-    ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getEntityName()).start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    Assert.assertTrue(serviceManager.isRunning());
+    ServiceManager serviceManager = applicationManager.getServiceManager(PAGE_RANK_SERVICE.getEntityName());
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     // Start Spark Page Rank and await completion
     SparkManager pageRankManager = applicationManager.getSparkManager(PAGE_RANK_PROGRAM.getEntityName());
     Map<String, String> runtimeArgs = ImmutableMap.of("task.client.system.resources.memory", "1024");
-    pageRankManager.start(runtimeArgs);
-
-    // wait until the spark program is running or completes. It completes too fast on standalone to rely on
-    // programManager#waitForStatus(true, ...)
-    Tasks.waitFor(true, new Callable<Boolean>() {
-      @Override
-      public Boolean call() throws Exception {
-        List<RunRecord> pageRankRuns =
-          programClient.getAllProgramRuns(PAGE_RANK_PROGRAM, 0, Long.MAX_VALUE, Integer.MAX_VALUE);
-        if (pageRankRuns.size() != 1) {
-          return false;
-        }
-        ProgramRunStatus status = pageRankRuns.get(0).getStatus();
-        return (status == ProgramRunStatus.RUNNING || status == ProgramRunStatus.COMPLETED);
-      }
-    }, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);
-    pageRankManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(pageRankManager, ProgramRunStatus.COMPLETED, runtimeArgs, 10, TimeUnit.MINUTES);
 
     List<RunRecord> sparkRanRecords =
       getRunRecords(1, programClient, PAGE_RANK_PROGRAM,
@@ -136,9 +119,9 @@ public class SparkPageRankAppTest extends AudiTestBase {
     // Start mapreduce and await completion
     MapReduceManager ranksCounterManager = applicationManager.getMapReduceManager(
       RANKS_COUNTER_PROGRAM.getEntityName());
-    ranksCounterManager.start(Collections.singletonMap("system.resources.memory", "1024"));
     // wait 10 minutes for the mapreduce to execute
-    ranksCounterManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(ranksCounterManager, ProgramRunStatus.COMPLETED,
+                       Collections.singletonMap("system.resources.memory", "1024"), 10, TimeUnit.MINUTES);
 
     List<RunRecord> mrRanRecords =
       getRunRecords(1, programClient, RANKS_COUNTER_PROGRAM,
@@ -162,7 +145,8 @@ public class SparkPageRankAppTest extends AudiTestBase {
     Assert.assertEquals(RANK, response.getResponseBodyAsString());
 
     serviceManager.stop();
-    serviceManager.waitForRun(ProgramRunStatus.KILLED, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    serviceManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
+                               POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
     List<RunRecord> serviceRanRecords =
       getRunRecords(1, programClient, PAGE_RANK_SERVICE,

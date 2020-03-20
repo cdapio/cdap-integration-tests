@@ -119,7 +119,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Map<String, String> fullArgs = new HashMap<>();
     fullArgs.put("system.profile.name", getProfileName());
     fullArgs.putAll(args);
-    workflowManager.startAndWaitForRun(fullArgs, expectedStatus, 15, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, expectedStatus, fullArgs, 15, TimeUnit.MINUTES);
   }
 
   protected static String getServiceAccountCredentials() {

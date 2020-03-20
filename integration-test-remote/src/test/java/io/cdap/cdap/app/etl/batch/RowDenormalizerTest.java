@@ -98,8 +98,7 @@ public class RowDenormalizerTest extends ETLTestBase {
     ApplicationManager appManager = deployApplication(appId, request);
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(DENORMALIZER_SINK);
     Table outputTable = outputManager.get();

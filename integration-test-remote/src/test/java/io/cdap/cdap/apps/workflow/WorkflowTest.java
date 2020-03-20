@@ -37,9 +37,7 @@ public class WorkflowTest extends AudiTestBase {
     WorkflowManager workflowManager =
       applicationManager.getWorkflowManager(WorkflowAppWithFork.WorkflowWithFork.class.getSimpleName());
 
-    workflowManager.start();
-
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
 
     Assert.assertEquals(
       Long.valueOf(

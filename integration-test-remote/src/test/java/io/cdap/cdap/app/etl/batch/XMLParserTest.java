@@ -82,7 +82,7 @@ public class XMLParserTest extends ETLTestBase {
                                                               Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
                                               null));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(transform)
       .addStage(sink)
@@ -109,16 +109,15 @@ public class XMLParserTest extends ETLTestBase {
     inputManager.flush();
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
 
     Row row = outputTable.get(Bytes.toBytes("cooking"));
     Assert.assertEquals("Everyday Italian", row.getString("title"));
-    Assert.assertEquals(null, row.getString("price"));
-    Assert.assertEquals(null, row.getString("year"));
+    Assert.assertNull(row.getString("price"));
+    Assert.assertNull(row.getString("year"));
     Assert.assertEquals("<subcategory><type>Continental</type></subcategory>", row.getString("subcategory"));
 
     row = outputTable.get(Bytes.toBytes("children"));
@@ -169,7 +168,7 @@ public class XMLParserTest extends ETLTestBase {
                                                               Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
                                               null));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(transform)
       .addStage(sink)
@@ -188,8 +187,7 @@ public class XMLParserTest extends ETLTestBase {
     inputManager.flush();
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -226,7 +224,7 @@ public class XMLParserTest extends ETLTestBase {
                                                               Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
                                               null));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(transform)
       .addStage(sink)
@@ -247,8 +245,7 @@ public class XMLParserTest extends ETLTestBase {
     inputManager.flush();
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
@@ -285,7 +282,7 @@ public class XMLParserTest extends ETLTestBase {
                                                               Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
                                               null));
 
-    ETLBatchConfig etlConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(transform)
       .addStage(sink)
@@ -305,16 +302,15 @@ public class XMLParserTest extends ETLTestBase {
     inputManager.flush();
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);
     Table outputTable = outputManager.get();
 
     Row row = outputTable.get(Bytes.toBytes("cooking"));
     Assert.assertEquals("Everyday Italian", row.getString("title"));
-    Assert.assertEquals(null, row.getString("price"));
-    Assert.assertEquals(null, row.getString("year"));
+    Assert.assertNull(row.getString("price"));
+    Assert.assertNull(row.getString("year"));
     Assert.assertNull(row.getString("subcategory"));
   }
 
@@ -350,7 +346,7 @@ public class XMLParserTest extends ETLTestBase {
                                                 Properties.Table.PROPERTY_SCHEMA, SINK_SCHEMA.toString()),
                                               null));
 
-    ETLBatchConfig etlBatchConfig = ETLBatchConfig.builder("* * * * *")
+    ETLBatchConfig etlBatchConfig = ETLBatchConfig.builder()
       .addStage(source)
       .addStage(sink)
       .addStage(transform)
@@ -373,8 +369,7 @@ public class XMLParserTest extends ETLTestBase {
     inputManager.flush();
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.KILLED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.KILLED, 10, TimeUnit.MINUTES);
     Assert.assertEquals(ProgramRunStatus.FAILED, workflowManager.getHistory().get(0).getStatus());
 
     DataSetManager<Table> outputManager = getTableDataset(xmlParserSink);

@@ -139,7 +139,8 @@ public class ScheduleTest extends AudiTestBase {
       // expected
     }
     // DELAY_WORKFLOW should run after DELAY_MILLIS and complete
-    delayWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 300, TimeUnit.SECONDS);
+    delayWorkflowManager.waitForRuns(ProgramRunStatus.COMPLETED, 1, 300, TimeUnit.SECONDS,
+                                     POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
     // TWO_ACTIONS_WORKFLOW should not have a new run because of one TWO_ACTIONS_WORKFLOW run is suspended
     // and the concurrency constraint requires only one run of TWO_ACTIONS_WORKFLOW
     Assert.assertEquals(numRunsBeforeTrigger, workflowManager.getHistory().size());
@@ -157,7 +158,7 @@ public class ScheduleTest extends AudiTestBase {
     // Wait for the TIME_TRIGGER_ONLY_WORKFLOW launched by CAN_FAIL_SCHEDULE, which was triggered
     // by new partitions created previously, so that after new partitions are created again, CAN_FAIL_SCHEDULE
     // can be triggered and launch TIME_TRIGGER_ONLY_WORKFLOW to have one more failed run
-    timeWorkflowManager.waitForRun(ProgramRunStatus.FAILED, 20, TimeUnit.SECONDS);
+    timeWorkflowManager.waitForRuns(ProgramRunStatus.FAILED, 1, 20, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
     // New partitions should not trigger the suspended schedule to launch workflow
     triggerDataSchedule(serviceUrl);
     // Sleep for 10 sec to make sure notifications are processed and TWO_ACTIONS_WORKFLOW is not launched after
@@ -169,7 +170,7 @@ public class ScheduleTest extends AudiTestBase {
     if (waitMillis > 0) {
       Thread.sleep(waitMillis);
       // Wait for TIME_TRIGGER_ONLY_WORKFLOW to complete
-      timeWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 20, TimeUnit.SECONDS);
+      timeWorkflowManager.waitForRuns(ProgramRunStatus.COMPLETED, 1, 20, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
     } else {
       // Wait for to complete at most 20 seconds after TIME_SCHEDULE is triggered so that TIME_TRIGGER_ONLY_WORKFLOW
       // can complete
@@ -180,11 +181,11 @@ public class ScheduleTest extends AudiTestBase {
     }
 
     // Wait for 2 failed runs since CAN_FAIL_SCHEDULE should be triggered twice by two calls to triggerDataSchedule
-    timeWorkflowManager.waitForRuns(ProgramRunStatus.FAILED, 2, 30L, TimeUnit.SECONDS);
+    timeWorkflowManager.waitForRuns(ProgramRunStatus.FAILED, 2, 30L, TimeUnit.SECONDS, 10, TimeUnit.SECONDS);
     // Wait for 1 completed run since TIME_SCHEDULE is triggered every 10 seconds but can only run
     // TIME_TRIGGER_ONLY_WORKFLOW after MIN_SINCE_LAST_RUN minutes since last
     // completed run of TIME_TRIGGER_ONLY_WORKFLOW
-    timeWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 30L, TimeUnit.SECONDS);
+    timeWorkflowManager.waitForRuns(ProgramRunStatus.COMPLETED, 1, 30L, TimeUnit.SECONDS, 10, TimeUnit.SECONDS);
     // Totally only 3 runs with no other status
     Assert.assertEquals(3, timeWorkflowManager.getHistory().size());
   }
@@ -252,7 +253,7 @@ public class ScheduleTest extends AudiTestBase {
     // before update is not counted after update
     createPartition(serviceUrl);
     try {
-      workflowManager.waitForRun(ProgramRunStatus.RUNNING, 30L, TimeUnit.SECONDS);
+      workflowManager.waitForRuns(ProgramRunStatus.RUNNING, 1, 30L, TimeUnit.SECONDS, 5, TimeUnit.SECONDS);
       Assert.fail(AppWithDataPartitionSchedule.CONCURRENCY_SCHEDULE + "'s trigger should not be satisfied " +
                     "with one new partition to launch workflow '" +
                     AppWithDataPartitionSchedule.TWO_ACTIONS_WORKFLOW + "'");
@@ -308,7 +309,7 @@ public class ScheduleTest extends AudiTestBase {
       .getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     triggerDataSchedule(serviceUrl);
     // Wait for a complete run for TIME_TRIGGER_ONLY_WORKFLOW launched by CAN_FAIL_SCHEDULE
-    timeWorkflowManager.waitForRun(ProgramRunStatus.COMPLETED, 60L, TimeUnit.SECONDS);
+    timeWorkflowManager.waitForRuns(ProgramRunStatus.COMPLETED, 1, 60L, TimeUnit.SECONDS, 10, TimeUnit.SECONDS);
 
     // Update CAN_FAIL_SCHEDULE to also have a time window constraint which will abort the job if not met
     ScheduleClient scheduleClient = new ScheduleClient(getClientConfig(), getRestClient());
@@ -381,8 +382,7 @@ public class ScheduleTest extends AudiTestBase {
   }
 
   private String startAndSuspendWorkflow(WorkflowManager workflowManager, WorkflowId workflowId) throws Exception {
-    workflowManager.start();
-    workflowManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.RUNNING);
     String runId = workflowManager.getHistory().get(0).getPid();
     suspendWorkflow(workflowId, runId, 200);
     return runId;

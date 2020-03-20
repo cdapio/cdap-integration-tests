@@ -61,9 +61,8 @@ public class FileSetTest extends AudiTestBase {
                           + new Gson().toJson(datasetSpecificationsList),
                         "lines".equals(datasetName) || "counts".equals(datasetName));
     }
-    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService").start();
-
-    fileSetService.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    ServiceManager fileSetService = applicationManager.getServiceManager("FileSetService");
+    startAndWaitForRun(fileSetService, ProgramRunStatus.RUNNING);
 
     URL serviceURL = fileSetService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "lines?path=myFile.txt");
@@ -88,12 +87,14 @@ public class FileSetTest extends AudiTestBase {
     Assert.assertEquals(400, response.getResponseCode());
 
 
-    MapReduceManager wordCountManager = applicationManager.getMapReduceManager("WordCount")
-      .start(ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
-                             "dataset.counts.output.path", "out.txt"));
+    MapReduceManager wordCountManager = applicationManager.getMapReduceManager("WordCount");
 
     // wait 5 minutes for mapreduce to complete
     wordCountManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
+    startAndWaitForRun(wordCountManager, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
+                                       "dataset.counts.output.path", "out.txt"),
+                       5, TimeUnit.MINUTES);
 
     url = new URL(serviceURL, "counts?path=out.txt/part-r-00000");
     response = getRestClient().execute(HttpMethod.GET, url, getClientConfig().getAccessToken());

@@ -73,8 +73,7 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
     // 1. Deploy an application with a service to get TPFS data for verification
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(TPFSService.class.getSimpleName());
-    serviceManager.start();
-    serviceManager.waitForRun(ProgramRunStatus.RUNNING, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     // 2. Ingest Data
     ingestData();
@@ -87,8 +86,9 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
 
     long timeInMillis = System.currentTimeMillis();
-    workflowManager.start(ImmutableMap.of("logical.start.time", String.valueOf(timeInMillis)));
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.of("logical.start.time", String.valueOf(timeInMillis)),
+                       10, TimeUnit.MINUTES);
 
     // 4. Run TPFS to TPFS pipeline where the source is the sink from the above pipeline
     ApplicationId tpfsToTPFSAppId = TEST_NAMESPACE.app("TPFSToTPFSWithProjection");
@@ -99,8 +99,9 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
 
     // add 10 minutes to the end time to make sure the newly added partition is included in the run.
     long endRange = timeInMillis + 600 * 1000;
-    workflowManager.start(ImmutableMap.of("logical.start.time", String.valueOf(endRange)));
-    workflowManager.waitForRun(ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED,
+                       ImmutableMap.of("logical.start.time", String.valueOf(endRange)),
+                       10, TimeUnit.MINUTES);
 
     // 5. Verify data in TPFS, add 10 minutes to the start of when the second pipeline runs to make sure the service
     //reads all partitions within the time range.
