@@ -90,7 +90,6 @@ public class FileSetTest extends AudiTestBase {
     MapReduceManager wordCountManager = applicationManager.getMapReduceManager("WordCount");
 
     // wait 5 minutes for mapreduce to complete
-    wordCountManager.waitForRun(ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
     startAndWaitForRun(wordCountManager, ProgramRunStatus.COMPLETED,
                        ImmutableMap.of("dataset.lines.input.paths", "myFile.txt",
                                        "dataset.counts.output.path", "out.txt"),
