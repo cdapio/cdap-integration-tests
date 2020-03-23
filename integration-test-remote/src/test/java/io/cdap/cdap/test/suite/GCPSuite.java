@@ -16,14 +16,27 @@
 
 package io.cdap.cdap.test.suite;
 
-import io.cdap.cdap.test.runner.AutoSuiteRunner;
+import io.cdap.cdap.app.etl.gcp.GCSTest;
+import io.cdap.cdap.app.etl.gcp.GoogleBigQueryTest;
+import io.cdap.cdap.app.etl.gcp.GoogleCloudBigtableTest;
+import io.cdap.cdap.app.etl.gcp.GoogleCloudDatastoreTest;
+import io.cdap.cdap.app.etl.gcp.GoogleCloudSpannerTest;
+import io.cdap.cdap.app.etl.gcp.PubSubTest;
 import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
 /**
  * Test suite for GCP related tests.
  */
-@RunWith(AutoSuiteRunner.class)
-@AutoSuiteRunner.Matches(packages = "io.cdap.cdap.app.etl.gcp")
+@RunWith(Suite.class)
+@Suite.SuiteClasses({
+  GCSTest.class,
+  GoogleBigQueryTest.class,
+  GoogleCloudBigtableTest.class,
+  GoogleCloudDatastoreTest.class,
+  GoogleCloudSpannerTest.class,
+  PubSubTest.class
+})
 public class GCPSuite {
 
 }
