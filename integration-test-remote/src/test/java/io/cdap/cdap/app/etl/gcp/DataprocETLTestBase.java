@@ -59,6 +59,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   private static String network;
   private static int workerCPUs;
   private static int workerMemMB;
+  private static int workerCount;
   protected static final ArtifactSelectorConfig GOOGLE_CLOUD_ARTIFACT =
     new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
 
@@ -82,6 +83,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     network = System.getProperty("google.dataproc.network", "default");
     workerCPUs = Integer.parseInt(System.getProperty("google.dataproc.worker.cpu", "4"));
     workerMemMB = 1024 * Integer.parseInt(System.getProperty("google.dataproc.worker.mem.gb", "15"));
+    workerCount = Integer.parseInt(System.getProperty("google.dataproc.worker.count", "3"));
   }
 
   @Before
@@ -146,7 +148,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     properties.add(ofProperty("masterCPUs", "1"));
     properties.add(ofProperty("masterMemoryMB", "4096"));
     properties.add(ofProperty("masterDiskGB", "100"));
-    properties.add(ofProperty("workerNumNodes", "2"));
+    properties.add(ofProperty("workerNumNodes", String.valueOf(workerCount)));
     properties.add(ofProperty("workerCPUs", String.valueOf(workerCPUs)));
     properties.add(ofProperty("workerMemoryMB", String.valueOf(workerMemMB)));
     properties.add(ofProperty("workerDiskGB", "100"));
