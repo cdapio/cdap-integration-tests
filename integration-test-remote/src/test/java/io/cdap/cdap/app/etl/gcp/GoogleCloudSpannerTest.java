@@ -57,7 +57,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -67,6 +66,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -164,7 +164,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   private static Database database;
 
   @BeforeClass
-  public static void testClassSetup() throws IOException {
+  public static void testClassSetup() throws Exception {
     try (InputStream inputStream = new ByteArrayInputStream(
       getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))) {
       spanner = SpannerOptions.newBuilder()
@@ -415,7 +415,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .anyMatch(pluginSummary -> SPANNER_PLUGIN_NAME.equals(pluginSummary.getName()));
   }
 
-  private static Instance createInstance() {
+  private static Instance createInstance() throws ExecutionException, InterruptedException {
     String instanceId = "spanner-test-instance-" + UUID.randomUUID().toString();
     InstanceInfo instanceInfo = InstanceInfo.newBuilder(InstanceId.of(getProjectId(), instanceId))
       .setDisplayName("spanner-test-instance")
@@ -426,22 +426,20 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     LOG.info("Creating instance {}", instanceId);
     Instance instance = spanner.getInstanceAdminClient()
       .createInstance(instanceInfo)
-      .waitFor()
-      .getResult();
+      .get();
     LOG.info("Created instance {}", instanceId);
 
     return instance;
   }
 
-  private static Database createDatabase(Instance instance) {
+  private static Database createDatabase(Instance instance) throws ExecutionException, InterruptedException {
     String databaseName = "spanner_test_database";
     LOG.info("Creating instance {}", databaseName);
     Database database = spanner.getDatabaseAdminClient()
       .createDatabase(instance.getId().getInstance(), databaseName, ImmutableList.of(
         String.format(TABLE_FORMAT, SOURCE_TABLE_NAME),
         String.format(TABLE_FORMAT, SINK_TABLE_NAME)))
-      .waitFor()
-      .getResult();
+      .get();
     LOG.info("Created instance {}", databaseName);
 
     return database;
