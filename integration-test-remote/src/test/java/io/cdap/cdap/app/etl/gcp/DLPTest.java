@@ -14,7 +14,7 @@
  * the License.
  */
 
-package io.cdap.cdap.app.etl.hub;
+package io.cdap.cdap.app.etl.gcp;
 
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -36,12 +36,12 @@ import com.google.privacy.dlp.v2.InspectConfig;
 import com.google.privacy.dlp.v2.InspectTemplate;
 import com.google.privacy.dlp.v2.ProjectName;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.cdap.app.etl.gcp.DataprocETLTestBase;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.etl.api.SplitterTransform;
 import io.cdap.cdap.etl.api.Transform;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
+import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
@@ -74,12 +74,14 @@ public class DLPTest extends DataprocETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DLPTest.class);
   private static final Gson GSON = new Gson();
+  private static final String INSPECT_TEMPLATE_NAME = "test-dlp-template";
+  private static final ArtifactSelectorConfig DLP_ARTIFACT =
+    new ArtifactSelectorConfig("user", "dlp", "[0.0.0,100.0.0]");
   private static Bucket bucket;
   private static ETLStage gcsSourceStage;
   private static InspectTemplate inspectTemplate;
   private static DlpServiceClient dlpServiceClient;
   private static String templateId;
-  private static final String INSPECT_TEMPLATE_NAME = "test-dlp-template";
 
   @Override
   protected void innerSetup() throws Exception {
@@ -130,7 +132,7 @@ public class DLPTest extends DataprocETLTestBase {
             .put("serviceFilePath", "auto-detect")
             .put("schema", sourceSchema.toString())
             .put("referenceName", "load-user-data")
-            .put("path", createPath(bucket, "test-input.csv")).build(), null));
+            .put("path", createPath(bucket, "test-input.csv")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     dlpServiceClient = DlpServiceClient.create(
       DlpServiceSettings
@@ -218,7 +220,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
           .put("fieldsToTransform", fieldsToTransform)
-          .put("templateId", templateId).build(), null));
+          .put("templateId", templateId).build(), DLP_ARTIFACT));
 
     ETLStage sinkStage =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -227,7 +229,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-redaction")
-        .put("path", createPath(bucket, "test-output")).build(), null));
+        .put("path", createPath(bucket, "test-output")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -260,7 +262,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("on-error", "stop-on-error")
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
-          .put("template-id", templateId).build(), null));
+          .put("template-id", templateId).build(), DLP_ARTIFACT));
 
     ETLStage sinkStage1 =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -269,7 +271,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-filter")
-        .put("path", createPath(bucket, "test-output-sensitive")).build(), null));
+        .put("path", createPath(bucket, "test-output-sensitive")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLStage sinkStage2 =
       new ETLStage("copy of GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE,
@@ -279,7 +281,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("serviceFilePath", "auto-detect")
           .put("location", "us")
           .put("referenceName", "sink-emails-with-filter")
-          .put("path", createPath(bucket, "test-output-nonsensitive")).build(), null));
+          .put("path", createPath(bucket, "test-output-nonsensitive")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)

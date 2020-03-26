@@ -1092,17 +1092,17 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
-      .put("schema", sourceSchema.toString())
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", "${srcSchema}")
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
       .put("operation", "UPDATE")
       .put("relationTableKey", "string_value")
       .put("dedupeBy", "int_value ASC")
@@ -1111,9 +1111,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     int expectedCount = 2;
 
+    Map<String, String> runtimeArgs = new HashMap<>();
+    runtimeArgs.put("project", getProjectId());
+    runtimeArgs.put("dataset", bigQueryDataset);
+    runtimeArgs.put("srcTable", sourceTableName);
+    runtimeArgs.put("srcSchema", sourceSchema.toString());
+    runtimeArgs.put("dstTable", destinationTableName);
+
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithDedupeSourceData");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
@@ -1177,17 +1184,17 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_source")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", sourceTableName)
-      .put("schema", sourceSchema.toString())
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", "${srcSchema}")
       .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "bigQuery_sink")
-      .put("project", getProjectId())
-      .put("dataset", bigQueryDataset)
-      .put("table", destinationTableName)
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
       .put("operation", "UPSERT")
       .put("relationTableKey", "string_value")
       .put("dedupeBy", "float_value DESC")
@@ -1196,9 +1203,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     int expectedCount = 3;
 
+    Map<String, String> runtimeArgs = new HashMap<>();
+    runtimeArgs.put("project", getProjectId());
+    runtimeArgs.put("dataset", bigQueryDataset);
+    runtimeArgs.put("srcTable", sourceTableName);
+    runtimeArgs.put("srcSchema", sourceSchema.toString());
+    runtimeArgs.put("dstTable", destinationTableName);
+
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithDedupeSourceData");
-    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
