@@ -60,7 +60,6 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -190,11 +189,12 @@ public class DLPTest extends DataprocETLTestBase {
   }
 
   protected void assertGCSContentsMatch(Bucket bucket, String blobNamePrefix, Set<String> expected) {
-    String actualContent =
-      Lists.newArrayList(bucket.list(Storage.BlobListOption.prefix(blobNamePrefix)).iterateAll())
-        .stream().map(blob -> new String(blob.getContent(), StandardCharsets.UTF_8))
-        .collect(Collectors.joining());
-    Set<String> actual = new HashSet<>(Arrays.asList(actualContent.trim().split("\n")));
+    Set<String> actual =
+      Lists.newArrayList(bucket.list(Storage.BlobListOption.prefix(blobNamePrefix)).iterateAll()).stream()
+        .filter(blob -> blob.getSize() != null && blob.getSize() > 0)
+        .map(blob -> new String(blob.getContent(), StandardCharsets.UTF_8))
+        .flatMap(content -> Arrays.stream(content.trim().split("\n")))
+        .collect(Collectors.toSet());
     Assert.assertEquals(expected, actual);
   }
 
