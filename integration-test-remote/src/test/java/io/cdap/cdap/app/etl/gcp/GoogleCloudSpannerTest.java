@@ -370,8 +370,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   private void checkMetrics(String applicationName, int expectedCount) throws Exception {
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, TEST_NAMESPACE.getNamespace(),
                                                Constants.Metrics.Tag.APP, applicationName);
-    checkMetric(tags, "user." + SPANNER_SOURCE_STAGE_NAME + ".records.out", expectedCount, 10);
-    checkMetric(tags, "user." + SPANNER_SINK_STAGE_NAME + ".records.in", expectedCount, 10);
+    checkMetric(tags, "user." + SPANNER_SOURCE_STAGE_NAME + ".records.out", expectedCount, 60);
+    checkMetric(tags, "user." + SPANNER_SINK_STAGE_NAME + ".records.in", expectedCount, 60);
   }
 
   private void verifySinkData(String tableName) {
