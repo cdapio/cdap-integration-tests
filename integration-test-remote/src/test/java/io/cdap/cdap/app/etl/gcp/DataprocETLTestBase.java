@@ -152,6 +152,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     properties.add(ofProperty("workerCPUs", String.valueOf(workerCPUs)));
     properties.add(ofProperty("workerMemoryMB", String.valueOf(workerMemMB)));
     properties.add(ofProperty("workerDiskGB", "100"));
+    properties.add(ofProperty("preferExternalIP", "true"));
 
     JsonObject provisioner = new JsonObject();
     provisioner.addProperty("name", "gcp-dataproc");
