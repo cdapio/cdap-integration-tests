@@ -231,7 +231,7 @@ public class PubSubTest extends DataprocETLTestBase {
       // send some messages...
       publishMessages(sourceTopicNamePTN, "message1", "message3", "message2");
       // ... and ensure they are passed through pipeline to our subscriber
-      receiver.assertRetrievedMessagesContain(10, TimeUnit.MINUTES, "message1", "message3", "message2");
+      receiver.assertRetrievedMessagesContain(30, TimeUnit.MINUTES, "message1", "message3", "message2");
 
       subscriber.stopAsync().awaitTerminated();
     } finally {
