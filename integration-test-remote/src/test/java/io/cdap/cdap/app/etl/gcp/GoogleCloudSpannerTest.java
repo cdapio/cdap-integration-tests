@@ -248,8 +248,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     args.put("keys", "ID");
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
-    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
     verifySinkData(nonExistentSinkTableName);
+    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
   }
 
   @Test
@@ -283,13 +283,13 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     args.put("keys", "ID");
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
-    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
 
     ResultSet resultSet = spanner.getDatabaseClient(database.getId())
       .singleUse()
       .executeQuery(Statement.of(String.format("select * from %s;", SINK_TABLE_NAME)));
     verifySinkData(resultSet);
     Assert.assertTrue(resultSet.isNull("NOT_IN_THE_SCHEMA_COL"));
+    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
   }
 
   //TODO:(CDAP-16040) re-enable once plugin is fixed
@@ -324,8 +324,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     args.put("dstTable", nonExistentSinkTableName);
     args.put("keys", "ID");
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
-    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
     verifySinkData(nonExistentSinkTableName);
+    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
   }
 
   //TODO:(CDAP-16040) re-enable once plugin is fixed
@@ -358,20 +358,20 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     args.put("dstTable", SINK_TABLE_NAME);
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
-    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
 
     ResultSet resultSet = spanner.getDatabaseClient(database.getId())
       .singleUse()
       .executeQuery(Statement.of(String.format("select * from %s;", SINK_TABLE_NAME)));
     verifySinkData(resultSet);
     Assert.assertTrue(resultSet.isNull("NOT_IN_THE_SCHEMA_COL"));
+    checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
   }
 
   private void checkMetrics(String applicationName, int expectedCount) throws Exception {
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, TEST_NAMESPACE.getNamespace(),
                                                Constants.Metrics.Tag.APP, applicationName);
-    checkMetric(tags, "user." + SPANNER_SOURCE_STAGE_NAME + ".records.out", expectedCount, 60);
-    checkMetric(tags, "user." + SPANNER_SINK_STAGE_NAME + ".records.in", expectedCount, 60);
+    checkMetric(tags, "user." + SPANNER_SOURCE_STAGE_NAME + ".records.out", expectedCount, 120);
+    checkMetric(tags, "user." + SPANNER_SINK_STAGE_NAME + ".records.in", expectedCount, 120);
   }
 
   private void verifySinkData(String tableName) {
