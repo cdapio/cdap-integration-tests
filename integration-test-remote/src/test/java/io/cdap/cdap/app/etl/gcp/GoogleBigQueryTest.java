@@ -15,34 +15,19 @@
  */
 package io.cdap.cdap.app.etl.gcp;
 
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Dataset;
-import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.DatasetInfo;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.FormatOptions;
-import com.google.cloud.bigquery.Job;
-import com.google.cloud.bigquery.JobId;
 import com.google.cloud.bigquery.LegacySQLTypeName;
-import com.google.cloud.bigquery.StandardTableDefinition;
-import com.google.cloud.bigquery.TableDataWriteChannel;
-import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableInfo;
-import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.bigquery.WriteChannelConfiguration;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.ByteStreams;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
@@ -63,17 +48,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -82,7 +59,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -170,14 +146,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
   public static void testClassSetup() throws IOException {
     UUID uuid = UUID.randomUUID();
     bigQueryDataset = "bq_dataset_" + uuid.toString().replaceAll("-", "_");
-    try (InputStream inputStream = new ByteArrayInputStream(
-      getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))) {
-      bq = BigQueryOptions.newBuilder()
-        .setProjectId(getProjectId())
-        .setCredentials(GoogleCredentials.fromStream(inputStream))
-        .build()
-        .getService();
-    }
+    bq = GoogleBigQueryUtils.getBigQuery(getProjectId(), getServiceAccountCredentials());
     createDataset();
   }
 
@@ -191,10 +160,12 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Tasks.waitFor(true, () -> {
       try {
         final ArtifactId dataPipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
-        if (!bigQueryPluginExists(dataPipelineId, BatchSource.PLUGIN_TYPE)) {
+        if (!GoogleBigQueryUtils
+          .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSource.PLUGIN_TYPE, BIG_QUERY_PLUGIN_NAME)) {
           return false;
         }
-        return bigQueryPluginExists(dataPipelineId, BatchSink.PLUGIN_TYPE);
+        return GoogleBigQueryUtils
+            .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSink.PLUGIN_TYPE, BIG_QUERY_PLUGIN_NAME);
       } catch (ArtifactNotFoundException e) {
         return false;
       }
@@ -224,15 +195,15 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testReadDataAndStoreInNewTable() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, Collections.singletonList(getSimpleSource()));
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, Collections.singletonList(getSimpleSource()));
 
-    Assert.assertFalse(exists(destinationTableName));
+    Assert.assertFalse(dataset.get(destinationTableName) != null);
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -273,7 +244,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
     checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
 
-    Assert.assertTrue(exists(destinationTableName));
+    Assert.assertTrue(dataset.get(destinationTableName) != null);
     assertSchemaEquals(sourceTableName, destinationTableName);
     assertTableEquals(sourceTableName, destinationTableName);
   }
@@ -297,17 +268,17 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testReadDataAndStoreInExistingTable() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, Collections.singletonList(getSimpleSource()));
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, Collections.singletonList(getSimpleSource()));
 
-    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
 
-    Assert.assertTrue(exists(destinationTableName));
+    Assert.assertTrue(dataset.get(destinationTableName) != null);
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -394,15 +365,15 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testReadDataAndStoreWithUpdateTableSchema() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, UPDATED_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, Collections.singletonList(getUpdateSource()));
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, UPDATED_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, Collections.singletonList(getUpdateSource()));
 
-    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
 
     Schema sourceSchema = getUpdatedTableSchema();
 
@@ -494,13 +465,13 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testProcessingAllBigQuerySupportTypes() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, FULL_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, Collections.singletonList(getFullSource()));
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, FULL_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, Collections.singletonList(getFullSource()));
 
     Schema sourceSchema = getFullTableSchema();
 
@@ -541,7 +512,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
     checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
 
-    Assert.assertTrue(exists(destinationTableName));
+    Assert.assertTrue(dataset.get(destinationTableName) != null);
 
     assertSchemaEquals(sourceTableName, destinationTableName);
     assertTableEquals(sourceTableName, destinationTableName, Collections.singleton("datetime_value"));
@@ -565,16 +536,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testUpdateOperationWithoutSchemaUpdate() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationSourceString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
 
-    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithoutUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithoutUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -658,16 +629,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testUpsertOperationWithoutSchemaUpdate() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationSourceString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
 
-    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithoutUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithoutUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -766,16 +737,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testInsertOperationWithSchemaUpdate() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationSourceString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
 
-    createTestTable(bigQueryDataset, destinationTableName, UPDATE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, UPDATE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -879,16 +850,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testUpdateOperationWithSchemaUpdate() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationSourceString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
 
-    createTestTable(bigQueryDataset, destinationTableName, UPDATE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, UPDATE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -972,16 +943,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testUpsertOperationWithSchemaUpdate() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationSourceString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
 
-    createTestTable(bigQueryDataset, destinationTableName, UPDATE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, UPDATE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -1077,16 +1048,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testUpdateOperationWithDedupeSourceData() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationUpdateSourceStringWithDupe());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationUpdateSourceStringWithDupe());
 
-    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithoutUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithoutUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -1169,16 +1140,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testUpsertOperationWithDedupeSourceData() throws Exception {
-    String testId = getUUID();
+    String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
 
-    createTestTable(bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, sourceTableName, getOperationUpsertSourceStringWithDupe());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationUpsertSourceStringWithDupe());
 
-    createTestTable(bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
-    insertData(bigQueryDataset, destinationTableName, getOperationDestinationWithoutUpdateString());
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationDestinationWithoutUpdateString());
 
     Schema sourceSchema = getSimpleTableSchema();
 
@@ -1253,8 +1224,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     TableId expectedTableId = TableId.of(bigQueryDataset, expectedTableName);
     TableId actualTableId = TableId.of(bigQueryDataset, actualTableName);
 
-    com.google.cloud.bigquery.Schema expectedSchema = getTableSchema(expectedTableId);
-    com.google.cloud.bigquery.Schema actualSchema = getTableSchema(actualTableId);
+    com.google.cloud.bigquery.Schema expectedSchema = bq.getTable(expectedTableId).getDefinition().getSchema();
+    com.google.cloud.bigquery.Schema actualSchema = bq.getTable(actualTableId).getDefinition().getSchema();
 
     Assert.assertEquals(expectedSchema.getFields().size(), actualSchema.getFields().size());
 
@@ -1275,8 +1246,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   private void assertActualTable(String actualTableName, List<FieldValueList> expectedResult, Field[] schema) {
     TableId actualTableId = TableId.of(bigQueryDataset, actualTableName);
-    com.google.cloud.bigquery.Schema actualSchema = getTableSchema(actualTableId);
-    List<FieldValueList> actualResult = getResultTableData(actualTableId, actualSchema);
+    com.google.cloud.bigquery.Schema actualSchema = bq.getTable(actualTableId).getDefinition().getSchema();
+    List<FieldValueList> actualResult = GoogleBigQueryUtils.getResultTableData(bq, actualTableId, actualSchema);
 
     Assert.assertEquals(String.format("Expected row count '%d', actual row count '%d'.", expectedResult.size(),
                                       actualResult.size()), expectedResult.size(), actualResult.size());
@@ -1306,11 +1277,11 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     TableId expectedTableId = TableId.of(bigQueryDataset, expectedTableName);
     TableId actualTableId = TableId.of(bigQueryDataset, actualTableName);
 
-    com.google.cloud.bigquery.Schema expectedSchema = getTableSchema(expectedTableId);
-    com.google.cloud.bigquery.Schema actualSchema = getTableSchema(actualTableId);
+    com.google.cloud.bigquery.Schema expectedSchema = bq.getTable(expectedTableId).getDefinition().getSchema();
+    com.google.cloud.bigquery.Schema actualSchema = bq.getTable(actualTableId).getDefinition().getSchema();
 
-    List<FieldValueList> expectedResult = getResultTableData(expectedTableId, expectedSchema);
-    List<FieldValueList> actualResult = getResultTableData(actualTableId, actualSchema);
+    List<FieldValueList> expectedResult = GoogleBigQueryUtils.getResultTableData(bq, expectedTableId, expectedSchema);
+    List<FieldValueList> actualResult = GoogleBigQueryUtils.getResultTableData(bq, actualTableId, actualSchema);
     Assert.assertEquals(expectedResult.size(), actualResult.size());
 
     for (int i = 0; i < expectedResult.size(); i++) {
@@ -1332,11 +1303,6 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
           }
         });
     }
-  }
-
-  private boolean bigQueryPluginExists(ArtifactId dataPipelineId, String pluginType) throws Exception {
-    return artifactClient.getPluginSummaries(dataPipelineId, pluginType, ArtifactScope.SYSTEM).stream()
-      .anyMatch(pluginSummary -> BIG_QUERY_PLUGIN_NAME.equals(pluginSummary.getName()));
   }
 
   private GoogleBigQueryTest.DeploymentDetails deployApplication(Map<String, String> sourceProperties,
@@ -1363,69 +1329,18 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
   }
 
   private static void createDataset() {
-    DatasetInfo datasetInfo = DatasetInfo.newBuilder(bigQueryDataset).build();
     LOG.info("Creating dataset {}", bigQueryDataset);
+    DatasetInfo datasetInfo = DatasetInfo.newBuilder(bigQueryDataset).build();
     dataset = bq.create(datasetInfo);
     LOG.info("Created dataset {}", bigQueryDataset);
   }
 
-  private com.google.cloud.bigquery.Schema getTableSchema(TableId tableId) {
-    return bq.getTable(tableId).getDefinition().getSchema();
-  }
-
-  private static List<FieldValueList> getResultTableData(TableId tableId, com.google.cloud.bigquery.Schema schema) {
-    TableResult tableResult = bq.listTableData(tableId, schema);
-    List<FieldValueList> result = new ArrayList<>();
-    tableResult.iterateAll().forEach(result::add);
-    return result;
-  }
-
   private static void deleteDatasets() {
-    DatasetId datasetId = dataset.getDatasetId();
     LOG.info("Deleting dataset {}", bigQueryDataset);
-    boolean deleted = bq.delete(datasetId, BigQuery.DatasetDeleteOption.deleteContents());
+    boolean deleted = bq.delete(dataset.getDatasetId(), BigQuery.DatasetDeleteOption.deleteContents());
     if (deleted) {
       LOG.info("Deleted dataset {}", bigQueryDataset);
     }
-  }
-
-  private boolean exists(String tableId) {
-    return dataset.get(tableId) != null;
-  }
-
-  private void createTestTable(String datasetId, String tableId, Field[] fieldsSchema) {
-    TableId table = TableId.of(datasetId, tableId);
-
-    com.google.cloud.bigquery.Schema schema = com.google.cloud.bigquery.Schema.of(fieldsSchema);
-    TableDefinition tableDefinition = StandardTableDefinition.of(schema);
-    TableInfo.newBuilder(table, tableDefinition).build();
-    TableInfo tableInfo = TableInfo.newBuilder(table, tableDefinition).build();
-
-    bq.create(tableInfo);
-  }
-
-  private void insertData(String datasetId, String tableId, Collection<JsonObject> source)
-    throws IOException, InterruptedException {
-    TableId table = TableId.of(datasetId, tableId);
-
-    WriteChannelConfiguration writeChannelConfiguration =
-      WriteChannelConfiguration.newBuilder(table).setFormatOptions(FormatOptions.json()).build();
-
-    JobId jobId = JobId.newBuilder().setLocation(dataset.getLocation()).build();
-    TableDataWriteChannel writer = bq.writer(jobId, writeChannelConfiguration);
-
-    String sourceString = source.stream().map(JsonElement::toString).collect(Collectors.joining("\n"));
-    try (OutputStream outputStream = Channels.newOutputStream(writer);
-         InputStream inputStream = new ByteArrayInputStream(sourceString.getBytes(Charset.forName("UTF-8")))) {
-      ByteStreams.copy(inputStream, outputStream);
-    }
-
-    Job job = writer.getJob();
-    job.waitFor();
-  }
-
-  private String getUUID() {
-    return UUID.randomUUID().toString().replaceAll("-", "_");
   }
 
   private static JsonObject getSimpleSource() {
