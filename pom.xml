@@ -37,12 +37,12 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <bigtable.version>1.8.0</bigtable.version>
-    <cdap.pre.version>6.1.0-SNAPSHOT</cdap.pre.version>
-    <cdap.version>6.2.0-SNAPSHOT</cdap.version>
-    <cdap.plugin.version>2.4.0-SNAPSHOT</cdap.plugin.version>
+    <cdap.pre.version>6.2.1</cdap.pre.version>
+    <cdap.version>6.3.0-SNAPSHOT</cdap.version>
+    <cdap.plugin.version>2.5.0-SNAPSHOT</cdap.plugin.version>
     <!-- cdap.examples.version is overridden in the pre-stage of upgrade tests -->
     <cdap.examples.version>${cdap.version}</cdap.examples.version>
-    <cdap.common.version>0.12.0</cdap.common.version>
+    <cdap.common.version>0.13.0-SNAPSHOT</cdap.common.version>
     <junit.version>4.12</junit.version>
     <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
@@ -113,6 +113,13 @@
       <groupId>io.cdap.common</groupId>
       <artifactId>common-http</artifactId>
       <version>${cdap.common.version}</version>
+      <!-- Avoid conflict with asm-commons dependency in cdap-common (io.cdap.cdap)-->
+      <exclusions>
+        <exclusion>
+          <groupId>org.ow2.asm</groupId>
+          <artifactId>asm-all</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.cdap.common</groupId>
@@ -294,6 +301,7 @@
                 <exclude>**/*.json</exclude>
                 <exclude>**/*.csv</exclude>
                 <exclude>**/*.conf</exclude>
+                <exclude>**/*.iml</exclude>
               </excludes>
             </configuration>
           </execution>

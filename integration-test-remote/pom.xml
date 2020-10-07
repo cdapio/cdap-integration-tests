@@ -30,9 +30,9 @@
   <properties>
     <hadoop.version>2.3.0</hadoop.version>
     <sentry.version>1.7.0</sentry.version>
-    <cdap.sentry.extn.version>0.9.0-SNAPSHOT</cdap.sentry.extn.version>
+    <cdap.sentry.extn.version>0.12.0-SNAPSHOT</cdap.sentry.extn.version>
     <ranger.version>0.7.0</ranger.version>
-    <cdap.ranger.version>0.9.0-SNAPSHOT</cdap.ranger.version>
+    <cdap.ranger.version>0.12.0-SNAPSHOT</cdap.ranger.version>
   </properties>
 
   <dependencies>
