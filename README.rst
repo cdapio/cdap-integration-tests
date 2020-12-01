@@ -26,7 +26,12 @@ instantiated in a similar manner::
   ApplicationClient appClient = new ApplicationClient(getClientConfig(), getRestClient());
   appClient.list(new NamespaceId("myns"));
 
-If the artifacts being tested are under development, they should be loaded into the target CDAP instance prior to starting the test.
+If the artifacts being tested are under development, they should be loaded into the target CDAP instance prior to starting the test. If these artifacts are loaded into CDAP through the UI, they will exist under ``USER`` scope, so in the tests they should be referred to accordingly.
+
+Debugging in IntelliJ
+-------------
+
+Go to Run -> Edit Configurations -> JUnit Test, in VM Options add the options from the section below.  For example ``-DinstanceUri=http://localhost:11015 -DprogramTimeout=120``
 
 Running Tests
 -------------
@@ -65,6 +70,12 @@ If the test has dependencies on GCP components, add the following property::
 
   -Dgoogle.application.credentials.path=<PathToCredentialFile>
 
+Note that if you get a Timeout from ETLTestBase.setup, its likely that the plugins you are testing have not been loaded into the CDAP instance. To load the standard set of plugins, clone the Hydrator Plugins repo at https://github.com/cdapio/hydrator-plugins, then run::
+
+  git submodule update --init --recursive --remote
+  mvn clean package -DskipTests
+
+Once done, build the CDAP instance by adding ``-Dadditional.artifacts.dir=</path/to/plugins/dir>`` when packaging CDAP.
 
 CDAP Upgrade Tests
 ------------------
