@@ -5,7 +5,7 @@
         "local_user": "root",
         "repos": {
           "hydrator-plugins": {
-            "branch": "develop"
+            "branch": "release/2.5"
           }
         }
       }
