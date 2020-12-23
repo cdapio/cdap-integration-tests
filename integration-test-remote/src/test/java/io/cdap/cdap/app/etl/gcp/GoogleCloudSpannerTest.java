@@ -37,6 +37,7 @@ import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
+import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
@@ -52,6 +53,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -217,6 +219,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStoreInNewTable() throws Exception {
+    testReadAndStoreInNewTable(Engine.MAPREDUCE);
+    testReadAndStoreInNewTable(Engine.SPARK);
+  }
+
+  private void testReadAndStoreInNewTable(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -238,7 +245,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .build();
 
     String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTable";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
@@ -254,6 +262,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStore() throws Exception {
+    testReadAndStore(Engine.MAPREDUCE);
+    testReadAndStore(Engine.SPARK);
+  }
+
+  private void testReadAndStore(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -273,7 +286,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .build();
 
     String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStore";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
@@ -295,6 +309,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreInNewTableWithNoSourceSchema() throws Exception {
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE);
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK);
+  }
+
+  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -315,7 +334,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .build();
 
     String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTableWithNoSourceSchema";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
@@ -331,6 +351,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreWithNoSourceSchema() throws Exception {
+    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE);
+    testReadAndStoreWithNoSourceSchema(Engine.SPARK);
+  }
+
+  private void testReadAndStoreWithNoSourceSchema(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -349,7 +374,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .build();
 
     String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreWithNoSourceSchema";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
@@ -447,7 +473,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   private ApplicationManager deployApplication(Map<String, String> sourceProperties,
                                                Map<String, String> sinkProperties,
-                                               String applicationName) throws Exception {
+                                               String applicationName, Engine engine) throws Exception {
 
     ETLPlugin sourcePlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties,
                                            GOOGLE_CLOUD_ARTIFACT);
@@ -458,6 +484,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .addStage(new ETLStage(SPANNER_SOURCE_STAGE_NAME, sourcePlugin))
       .addStage(new ETLStage(SPANNER_SINK_STAGE_NAME, sinkPlugin))
       .addConnection(SPANNER_SOURCE_STAGE_NAME, SPANNER_SINK_STAGE_NAME)
+      .setEngine(engine)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);

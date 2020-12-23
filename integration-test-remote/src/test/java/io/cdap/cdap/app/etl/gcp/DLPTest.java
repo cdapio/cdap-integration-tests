@@ -37,6 +37,7 @@ import com.google.privacy.dlp.v2.InspectTemplate;
 import com.google.privacy.dlp.v2.ProjectName;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
+import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.SplitterTransform;
 import io.cdap.cdap.etl.api.Transform;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -200,6 +201,11 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Test
   public void testRedaction() throws Exception {
+    testRedaction(Engine.MAPREDUCE);
+    testRedaction(Engine.SPARK);
+  }
+
+  private void testRedaction(Engine engine) throws Exception {
     String fieldsToTransform = GSON.toJson(Collections.singletonList(
       GSON.toJson(new ImmutableMap.Builder<String, Object>()
         .put("fields", "body")
@@ -237,6 +243,7 @@ public class DLPTest extends DataprocETLTestBase {
       .addStage(sinkStage)
       .addConnection(gcsSourceStage.getName(), redactStage.getName())
       .addConnection(redactStage.getName(), sinkStage.getName())
+      .setEngine(engine)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
@@ -255,6 +262,11 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Test
   public void testFilter() throws Exception {
+    testFilter(Engine.MAPREDUCE);
+    testFilter(Engine.SPARK);
+  }
+
+  private void testFilter(Engine engine) throws Exception {
     ETLStage filterStage =
       new ETLStage("PII Filter",
         new ETLPlugin("SensitiveRecordFilter", SplitterTransform.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -291,6 +303,7 @@ public class DLPTest extends DataprocETLTestBase {
       .addConnection(gcsSourceStage.getName(), filterStage.getName())
       .addConnection(filterStage.getName(), sinkStage1.getName(), "Sensitive")
       .addConnection(filterStage.getName(), sinkStage2.getName(), "Non-Sensitive")
+      .setEngine(engine)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);

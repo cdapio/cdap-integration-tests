@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonObject;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
+import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
@@ -140,9 +141,15 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     bq.delete(dataset.getDatasetId(), BigQuery.DatasetDeleteOption.deleteContents());
   }
 
-  //Read from existing tables and store in two new tables
+
   @Test
   public void testStoreInTwoNewTables() throws Exception {
+    testStoreInTwoNewTables(Engine.MAPREDUCE);
+    testStoreInTwoNewTables(Engine.SPARK);
+  }
+
+  //Read from existing tables and store in two new tables
+  private void testStoreInTwoNewTables(Engine engine) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -172,7 +179,7 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     Map<String, String> destProps = getDestProps("bigQuery_multisink1");
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
-                           destProps);
+                           destProps, engine);
 
     //Destination tables should be created as part of the workflow.
     Assert.assertTrue(dataset.get(destinationTableName1) != null);
@@ -223,9 +230,14 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     verifyData(sourceTableName1, destinationTableName1, Collections.singleton("tablename"));
   }
 
-  //Read from source tables and write into two existing tables
   @Test
   public void testStoreInTwoExistingTables() throws Exception {
+    testStoreInTwoExistingTables(Engine.MAPREDUCE);
+    testStoreInTwoExistingTables(Engine.SPARK);
+  }
+
+  //Read from source tables and write into two existing tables
+  private void testStoreInTwoExistingTables(Engine engine) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -261,7 +273,7 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     Map<String, String> destProps = getDestProps("bigQuery_multisink_existing");
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
-                           destProps);
+                           destProps, engine);
 
     //Data should have been appended to the destination tables
     verifyDataIsAdded(sourceTableName1, destinationTableName1,
@@ -270,9 +282,14 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
                       Collections.singleton("tablename"), 1);
   }
 
-  //Read from source tables and write to destination tables with truncate flag set
   @Test
   public void testTruncateAndStoreInTwoExistingTables() throws Exception {
+    testTruncateAndStoreInTwoExistingTables(Engine.MAPREDUCE);
+    testTruncateAndStoreInTwoExistingTables(Engine.SPARK);
+  }
+
+  //Read from source tables and write to destination tables with truncate flag set
+  private void testTruncateAndStoreInTwoExistingTables(Engine engine) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -307,16 +324,21 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     Map<String, String> destProps = getDestProps("bigQuery_multisink_truncate", true, false);
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
-                           destProps);
+                           destProps, engine);
 
     //Data should match the source data tables
     verifyData(sourceTableName1, destinationTableName1, Collections.singleton("tablename"));
     verifyData(sourceTableName2, destinationTableName2, Collections.singleton("tablename"));
   }
 
-  //Read from source and write to two destination tables with truncate and update schema flags set.
   @Test
   public void testUpdateAndStoreInTwoExistingTables() throws Exception {
+    testUpdateAndStoreInTwoExistingTables(Engine.MAPREDUCE);
+    testUpdateAndStoreInTwoExistingTables(Engine.SPARK);
+  }
+
+  //Read from source and write to two destination tables with truncate and update schema flags set.
+  private void testUpdateAndStoreInTwoExistingTables(Engine engine) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -354,7 +376,7 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     Map<String, String> destProps = getDestProps("bigQuery_multisink_truncate", true, true);
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
-                           destProps);
+                           destProps, engine);
     // Verify that the destination schema got updated to reflect source schema
     verifySchema(destinationTableName1,
                  new String[]{"string_value", "int_value", "float_value", "boolean_value"},
@@ -369,7 +391,7 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
 
   private void createAndStartPipeline(String destinationTableName1, String destinationTableName2,
                                       Map<String, String> srcProps1, Map<String, String> srcProps2,
-                                      Map<String, String> destProps) throws Exception {
+                                      Map<String, String> destProps, Engine engine) throws Exception {
     ETLStage source1 = new ETLStage("BigQuerySourceStage1",
                                     new ETLPlugin("BigQueryTable", BatchSource.PLUGIN_TYPE, srcProps1,
                                                   GOOGLE_CLOUD_ARTIFACT));
@@ -386,6 +408,7 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
       .addStage(sink)
       .addConnection(source1.getName(), sink.getName())
       .addConnection(source2.getName(), sink.getName())
+      .setEngine(engine)
       .build();
 
     String multisink1 = String.format(MULTISINK_RUNTIME_ARG, destinationTableName1);
