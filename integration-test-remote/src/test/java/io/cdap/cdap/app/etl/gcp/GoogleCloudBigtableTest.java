@@ -31,6 +31,7 @@ import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.utils.Tasks;
+import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
 import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
@@ -148,26 +149,42 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
 
   @Test
   public void testReadDataAndStoreInExistingTable() throws Exception {
+    testReadDataAndStoreInExistingTable(Engine.MAPREDUCE);
+    testReadDataAndStoreInExistingTable(Engine.SPARK);
+  }
+
+  private void testReadDataAndStoreInExistingTable(Engine engine) throws Exception {
     String pluginName = BIG_TABLE_PLUGIN_NAME + "-testReadDataAndStoreInExistingTable";
     DeploymentDetails deploymentDetails = deployBigtableApplication(pluginName, SOURCE_TABLE_NAME,
-                                                                    SINK_TABLE_EXISTING_NAME);
+                                                                    SINK_TABLE_EXISTING_NAME, engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
     verifySinkData(SINK_TABLE_EXISTING_NAME);
   }
 
   @Test
   public void testReadDataAndStoreInNewTable() throws Exception {
+    testReadDataAndStoreInNewTable(Engine.MAPREDUCE);
+    testReadDataAndStoreInNewTable(Engine.SPARK);
+  }
+
+  private void testReadDataAndStoreInNewTable(Engine engine) throws Exception {
     String pluginName = BIG_TABLE_PLUGIN_NAME + "-testReadDataAndStoreInNewTable";
-    DeploymentDetails deploymentDetails = deployBigtableApplication(pluginName, SOURCE_TABLE_NAME, SINK_TABLE_NEW_NAME);
+    DeploymentDetails deploymentDetails = deployBigtableApplication(pluginName, SOURCE_TABLE_NAME,
+                                                                    SINK_TABLE_NEW_NAME, engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
     verifySinkData(SINK_TABLE_NEW_NAME);
   }
 
   @Test
   public void testReadDataFromNotExistingTable() throws Exception {
+    testReadDataFromNotExistingTable(Engine.MAPREDUCE);
+    testReadDataFromNotExistingTable(Engine.SPARK);
+  }
+
+  private void testReadDataFromNotExistingTable(Engine engine) throws Exception {
     String pluginName = BIG_TABLE_PLUGIN_NAME + "-testReadDataFromNotExistingTable";
     DeploymentDetails deploymentDetails = deployBigtableApplication(pluginName, SOURCE_TABLE_NOT_EXISTING_NAME,
-                                                                    SINK_TABLE_EXISTING_NAME);
+                                                                    SINK_TABLE_EXISTING_NAME, engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.FAILED);
   }
 
@@ -184,8 +201,8 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
   }
 
 
-  private DeploymentDetails deployBigtableApplication(String pluginName, String sourceTableName, String sinkTableName)
-    throws Exception {
+  private DeploymentDetails deployBigtableApplication(String pluginName, String sourceTableName,
+                                                      String sinkTableName, Engine engine) throws Exception {
     String sourceMappings = "cf1:boolean_column=boolean_column," +
       "cf2:bytes_column=bytes_column," +
       "cf1:double_column=double_column," +
@@ -238,7 +255,7 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
 
       .build();
 
-    return deployApplication(sourceProps, sinkProps, pluginName);
+    return deployApplication(sourceProps, sinkProps, pluginName, engine);
   }
 
   private void verifySinkData(String sinkTableName) throws IOException {
@@ -277,7 +294,7 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
 
   private DeploymentDetails deployApplication(Map<String, String> sourceProperties,
                                               Map<String, String> sinkProperties,
-                                              String applicationName) throws Exception {
+                                              String applicationName, Engine engine) throws Exception {
     ArtifactSelectorConfig artifact = new ArtifactSelectorConfig("SYSTEM", "google-cloud", "[0.0.0, 100.0.0)");
     ETLStage source = new ETLStage("BigtableSourceStage",
                                    new ETLPlugin(BIG_TABLE_PLUGIN_NAME,
@@ -293,6 +310,7 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
+      .setEngine(engine)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
