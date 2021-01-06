@@ -302,7 +302,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSCopyTest");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSCopyTest" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -387,7 +387,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTest");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTest" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -434,7 +434,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTestRecursive");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTestRecursive" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -472,7 +472,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSCreateTest");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSCreateTest" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // mark possibly created in future bucket for deletion
@@ -518,7 +518,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTest");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTest" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -575,8 +575,8 @@ public class GCSTest extends DataprocETLTestBase {
   private void testAllTypes(Engine engine) throws Exception {
     String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
     Bucket bucket = createBucket(bucketName);
-    String inputBlobName = "gcs-types/test.avro";
-    String outputBlobName = "output/gcs-types/json";
+    String inputBlobName = "gcs-types/" + engine + "/test.avro";
+    String outputBlobName = "output/" + engine + "/gcs-types/json";
 
     String schema = ALL_DT_SCHEMA.toString();
 
@@ -676,7 +676,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -785,7 +785,7 @@ public class GCSTest extends DataprocETLTestBase {
     pipelineConfig.setEngine(engine);
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig.build());
-    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks");
+    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -816,7 +816,7 @@ public class GCSTest extends DataprocETLTestBase {
     pipelineConfig.setEngine(engine);
 
     appRequest = getBatchAppRequestV2(pipelineConfig.build());
-    appId = TEST_NAMESPACE.app("GCSFormatSources");
+    appId = TEST_NAMESPACE.app("GCSFormatSources" + engine);
     appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
