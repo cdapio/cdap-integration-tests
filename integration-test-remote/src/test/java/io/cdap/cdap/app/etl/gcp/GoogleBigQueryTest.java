@@ -233,7 +233,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInNewTable", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-storeInNewTable", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -314,7 +314,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInExistingTable", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-storeInExistingTable", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -413,7 +413,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeWithUpdateTableSchema", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+                                                  engine + "-storeWithUpdateTableSchema", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -516,7 +517,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-allBigQueryTypes", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +  "-allBigQueryTypes", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -596,7 +597,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithoutSchemaUpdate", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+                                                  engine + "-updateWithoutSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -694,7 +696,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithoutSchemaUpdate", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                                                  "-upsertWithoutSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -806,7 +809,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-insertWithSchemaUpdate", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-insertWithSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -925,7 +928,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithSchemaUpdate", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                                                  "-updateWithSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -1023,7 +1027,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithSchemaUpdate", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                                                  "-upsertWithSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -1141,7 +1146,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     runtimeArgs.put("dstTable", destinationTableName);
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-updateWithDedupeSourceData", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                                                  "-updateWithDedupeSourceData", engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
@@ -1238,7 +1244,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     runtimeArgs.put("dstTable", destinationTableName);
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-upsertWithDedupeSourceData", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                                                  "-upsertWithDedupeSourceData", engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();

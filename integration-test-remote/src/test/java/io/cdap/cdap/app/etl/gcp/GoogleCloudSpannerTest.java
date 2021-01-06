@@ -244,7 +244,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTable";
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTable";
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
@@ -285,7 +285,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("schema", SCHEMA.toString())
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStore";
+    String sinkTable = SINK_TABLE_NAME + engine;
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStore";
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
@@ -293,14 +294,14 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
-    args.put("dstTable", SINK_TABLE_NAME);
+    args.put("dstTable", sinkTable);
     args.put("keys", "ID");
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
 
     ResultSet resultSet = spanner.getDatabaseClient(database.getId())
       .singleUse()
-      .executeQuery(Statement.of(String.format("select * from %s;", SINK_TABLE_NAME)));
+      .executeQuery(Statement.of(String.format("select * from %s;", sinkTable)));
     verifySinkData(resultSet);
     Assert.assertTrue(resultSet.isNull("NOT_IN_THE_SCHEMA_COL"));
     checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
@@ -333,7 +334,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTableWithNoSourceSchema";
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTableWithNoSourceSchema";
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
@@ -373,6 +374,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("schema", SCHEMA.toString())
       .build();
 
+    String sinkTable = SINK_TABLE_NAME + engine;
     String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreWithNoSourceSchema";
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
@@ -381,13 +383,13 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
-    args.put("dstTable", SINK_TABLE_NAME);
+    args.put("dstTable", sinkTable);
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
 
     ResultSet resultSet = spanner.getDatabaseClient(database.getId())
       .singleUse()
-      .executeQuery(Statement.of(String.format("select * from %s;", SINK_TABLE_NAME)));
+      .executeQuery(Statement.of(String.format("select * from %s;", sinkTable)));
     verifySinkData(resultSet);
     Assert.assertTrue(resultSet.isNull("NOT_IN_THE_SCHEMA_COL"));
     checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
@@ -464,7 +466,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Database database = spanner.getDatabaseAdminClient()
       .createDatabase(instance.getId().getInstance(), databaseName, ImmutableList.of(
         String.format(TABLE_FORMAT, SOURCE_TABLE_NAME),
-        String.format(TABLE_FORMAT, SINK_TABLE_NAME)))
+        String.format(TABLE_FORMAT, SINK_TABLE_NAME + Engine.MAPREDUCE),
+        String.format(TABLE_FORMAT, SINK_TABLE_NAME + Engine.SPARK)))
       .get();
     LOG.info("Created instance {}", databaseName);
 
