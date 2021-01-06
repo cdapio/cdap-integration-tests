@@ -235,7 +235,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-redaction")
-        .put("path", createPath(bucket, "test-output")).build(), GOOGLE_CLOUD_ARTIFACT));
+        .put("path", createPath(bucket, "test-output-" + engine)).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -247,13 +247,13 @@ public class DLPTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("DLPRedactTest");
+    ApplicationId appId = TEST_NAMESPACE.app("DLPRedactTest" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    assertGCSContentsMatch(bucket, "test-output/",
+    assertGCSContentsMatch(bucket, "test-output-" + engine + "/",
       Sets.newHashSet(
         "0,alice,#################",
         "1,bob,###############",
@@ -283,7 +283,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-filter")
-        .put("path", createPath(bucket, "test-output-sensitive")).build(), GOOGLE_CLOUD_ARTIFACT));
+        .put("path", createPath(bucket, "test-output-sensitive-" + engine)).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLStage sinkStage2 =
       new ETLStage("copy of GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE,
@@ -293,7 +293,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("serviceFilePath", "auto-detect")
           .put("location", "us")
           .put("referenceName", "sink-emails-with-filter")
-          .put("path", createPath(bucket, "test-output-nonsensitive")).build(), GOOGLE_CLOUD_ARTIFACT));
+          .put("path", createPath(bucket, "test-output-nonsensitive-" + engine)).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -307,17 +307,17 @@ public class DLPTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("DLPFilterTest");
+    ApplicationId appId = TEST_NAMESPACE.app("DLPFilterTest" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    assertGCSContentsMatch(bucket, "test-output-sensitive/",
+    assertGCSContentsMatch(bucket, "test-output-sensitive-" + engine + "/",
       Sets.newHashSet(
         "0,alice,alice@example.com",
         "1,bob,bob@example.com",
         "2,craig,craig@example.com"));
-    assertGCSContentsMatch(bucket, "test-output-nonsensitive/", Sets.newHashSet());
+    assertGCSContentsMatch(bucket, "test-output-nonsensitive-" + engine + "/", Sets.newHashSet());
   }
 }

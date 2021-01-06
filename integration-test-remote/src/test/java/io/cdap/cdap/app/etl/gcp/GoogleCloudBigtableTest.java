@@ -77,7 +77,12 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
   private static final String SOURCE_TABLE_NOT_EXISTING_NAME = SOURCE_TABLE_NAME + "_not_existing";
   private static final String SINK_TABLE_NAME_TEMPLATE = "test_sink_table_";
   private static final String SINK_TABLE_EXISTING_NAME = SINK_TABLE_NAME_TEMPLATE + "existing";
+  private static final String SINK_TABLE_EXISTING_NAME_MAPREDUCE = SINK_TABLE_EXISTING_NAME + Engine.MAPREDUCE;
+  private static final String SINK_TABLE_EXISTING_NAME_SPARK = SINK_TABLE_EXISTING_NAME + Engine.SPARK;
   private static final String SINK_TABLE_NEW_NAME = SINK_TABLE_NAME_TEMPLATE + "new";
+  private static final String SINK_TABLE_NEW_NAME_MAPREDUCE = SINK_TABLE_NEW_NAME + Engine.MAPREDUCE;
+  private static final String SINK_TABLE_NEW_NAME_SPARK = SINK_TABLE_NEW_NAME + Engine.SPARK;
+
 
   private static String instanceId;
   private static BigtableInstanceAdminClient instanceAdmin;
@@ -113,8 +118,10 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
   private static void createTables(Connection connection) throws IOException {
     List<String> families = ImmutableList.of("cf1", "cf2");
     createTable(connection, SOURCE_TABLE_NAME, families);
-    createTable(connection, SINK_TABLE_EXISTING_NAME, families);
-    dropTableIfExists(connection, SINK_TABLE_NEW_NAME);
+    createTable(connection, SINK_TABLE_EXISTING_NAME_MAPREDUCE, families);
+    createTable(connection, SINK_TABLE_EXISTING_NAME_SPARK, families);
+    dropTableIfExists(connection, SINK_TABLE_NEW_NAME_MAPREDUCE);
+    dropTableIfExists(connection, SINK_TABLE_NEW_NAME_SPARK);
     dropTableIfExists(connection, SOURCE_TABLE_NOT_EXISTING_NAME);
   }
 
@@ -155,10 +162,12 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
 
   private void testReadDataAndStoreInExistingTable(Engine engine) throws Exception {
     String pluginName = BIG_TABLE_PLUGIN_NAME + "-testReadDataAndStoreInExistingTable";
+    String sinkTableName = SINK_TABLE_EXISTING_NAME + engine;
     DeploymentDetails deploymentDetails = deployBigtableApplication(pluginName, SOURCE_TABLE_NAME,
-                                                                    SINK_TABLE_EXISTING_NAME, engine);
+                                                                    sinkTableName,
+                                                                    engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
-    verifySinkData(SINK_TABLE_EXISTING_NAME);
+    verifySinkData(sinkTableName);
   }
 
   @Test
@@ -169,10 +178,11 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
 
   private void testReadDataAndStoreInNewTable(Engine engine) throws Exception {
     String pluginName = BIG_TABLE_PLUGIN_NAME + "-testReadDataAndStoreInNewTable";
+    String sinkTableName = SINK_TABLE_NEW_NAME + engine;
     DeploymentDetails deploymentDetails = deployBigtableApplication(pluginName, SOURCE_TABLE_NAME,
-                                                                    SINK_TABLE_NEW_NAME, engine);
+                                                                    sinkTableName, engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED);
-    verifySinkData(SINK_TABLE_NEW_NAME);
+    verifySinkData(sinkTableName);
   }
 
   @Test
@@ -314,7 +324,7 @@ public class GoogleCloudBigtableTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app(applicationName);
+    ApplicationId appId = TEST_NAMESPACE.app(applicationName + engine);
     ApplicationManager applicationManager = deployApplication(appId, appRequest);
     return new DeploymentDetails(source, sink, appId, applicationManager);
   }
