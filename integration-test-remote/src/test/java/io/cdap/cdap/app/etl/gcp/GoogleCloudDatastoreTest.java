@@ -139,6 +139,8 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
                                                    "array_field");
 
     Schema sourceSchema = getInitialSchema();
+    String srcKind = GCD_KIND_1 + engine;
+    String sinkKind = GCD_KIND_2 + engine;
 
     // read data from Cloud Datastore using filter id = 1 without key, must read 1 record
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
@@ -165,18 +167,18 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
       .build();
 
     // insert initial dataset to Cloud Datastore
-    List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, GCD_KIND_1));
+    List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, srcKind));
 
     int expectedCount = 1;
 
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
-      GCD_PLUGIN_NAME + "-filterAndInsertWithAutoGenKey", engine);
+      GCD_PLUGIN_NAME + engine + "-filterAndInsertWithAutoGenKey", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("namespace", gcdNamespace1);
-    args.put("srcKind", GCD_KIND_1);
-    args.put("dstKind", GCD_KIND_2);
+    args.put("srcKind", srcKind);
+    args.put("dstKind", sinkKind);
     args.put("filters", "id|1");
     args.put("numSplits", "2");
     args.put("srcKeyType", "None");
@@ -186,7 +188,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     // get inserted Data from Cloud Datastore and check that 1 entity is returned
-    List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, GCD_KIND_2);
+    List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, sinkKind);
     Assert.assertEquals(expectedCount, resultingDataset.size());
 
     // find expected entity in the initial dataset
@@ -232,6 +234,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(initialSchema.getField("id"));
     fields.add(initialSchema.getField("string_field"));
+    String kind = GCD_KIND_1 + engine;
 
     // add key field
     fields.add(Schema.Field.of("key", Schema.of(Schema.Type.STRING)));
@@ -263,16 +266,16 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
       .build();
 
     // insert initial dataset to Cloud Datastore
-    List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, GCD_KIND_1));
+    List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, kind));
 
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
-      GCD_PLUGIN_NAME + "-filterAndUpdateUsingUrlSafeKey", engine);
+      GCD_PLUGIN_NAME + engine + "-filterAndUpdateUsingUrlSafeKey", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("namespace", gcdNamespace1);
-    args.put("srcKind", GCD_KIND_1);
-    args.put("dstKind", GCD_KIND_1);
+    args.put("srcKind", kind);
+    args.put("dstKind", kind);
     args.put("filters", "id|2");
     args.put("numSplits", "1");
     args.put("keyType", "Url-safe key");
@@ -281,7 +284,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     // get Data from Cloud Datastore and check that number of records are same as was initially inserted
-    List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, GCD_KIND_1);
+    List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, kind);
     Assert.assertEquals(initialDataset.size(), resultingDataset.size());
 
     for (Entity entity : resultingDataset) {
@@ -309,6 +312,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
 
     // prepare schema
     Schema initialSchema = getInitialSchema();
+    String kind = GCD_KIND_1 + engine;
     List<Schema.Field> initialFields = initialSchema.getFields();
     Assert.assertNotNull(initialFields);
 
@@ -317,7 +321,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     fields.add(Schema.Field.of("key", Schema.of(Schema.Type.STRING)));
     Schema sourceSchema = Schema.recordOf("schema", fields);
 
-    List<FullEntity<IncompleteKey>> sourceDataset = getInitialDataset(gcdNamespace1, GCD_KIND_1);
+    List<FullEntity<IncompleteKey>> sourceDataset = getInitialDataset(gcdNamespace1, kind);
 
     // add ancestor to the entity with id = 3, other entities will be without ancestor
     List<FullEntity<IncompleteKey>> updatedDataset = sourceDataset.stream()
@@ -364,12 +368,12 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
 
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
-      GCD_PLUGIN_NAME + "-ancestorFilterAndKeyLiteralInsert", engine);
+      GCD_PLUGIN_NAME + engine + "-ancestorFilterAndKeyLiteralInsert", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("namespace1", gcdNamespace1);
     args.put("namespace2", gcdNamespace2);
-    args.put("kind", GCD_KIND_1);
+    args.put("kind", kind);
     args.put("ancestor", "key(aKind, 'aName')");
     args.put("numSplits", "1");
     args.put("keyType", "Key literal");
@@ -378,7 +382,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     // get Data from Cloud Datastore and check that only 1 entity is returned
-    List<Entity> resultingDataset = getResultingDataset(gcdNamespace2, GCD_KIND_1);
+    List<Entity> resultingDataset = getResultingDataset(gcdNamespace2, kind);
     Assert.assertEquals(expectedCount, resultingDataset.size());
 
     // check that returned entity has expected ancestors
@@ -398,6 +402,8 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
 
     // prepare schema
     Schema sourceSchema = getInitialSchema();
+    String srcKind = GCD_KIND_1 + engine;
+    String sinkKind = GCD_KIND_2 + engine;
     List<Schema.Field> initialFields = sourceSchema.getFields();
     Assert.assertNotNull(initialFields);
 
@@ -426,16 +432,16 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
       .build();
 
     // insert initial dataset to Cloud Datastore
-    List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, GCD_KIND_1));
+    List<Entity> initialDataset = insertEntities(getInitialDataset(gcdNamespace1, srcKind));
 
     // deploy application and run pipeline
     DeploymentDetails deploymentDetails = deployApplication(sourceProps, sinkProps,
-      GCD_PLUGIN_NAME + "-customKeyAndAncestor", engine);
+      GCD_PLUGIN_NAME + engine + "-customKeyAndAncestor", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("namespace", gcdNamespace1);
-    args.put("srcKind", GCD_KIND_1);
-    args.put("dstKind", GCD_KIND_2);
+    args.put("srcKind", srcKind);
+    args.put("dstKind", sinkKind);
     args.put("numSplits", "2");
     args.put("keyType", "Custom name");
     args.put("keyAlias", "string_field");
@@ -444,7 +450,7 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     // get Data from Cloud Datastore and check that number of records are same as was initially inserted
-    List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, GCD_KIND_2);
+    List<Entity> resultingDataset = getResultingDataset(gcdNamespace1, sinkKind);
     Assert.assertEquals(initialDataset.size(), resultingDataset.size());
 
     // since one field was used as custom key, resulting number of fields must be less by 1 from initial
@@ -512,7 +518,8 @@ public class GoogleCloudDatastoreTest extends DataprocETLTestBase {
 
   private void deleteDatasets() {
     for (String namespace : Arrays.asList(gcdNamespace1, gcdNamespace2)) {
-      for (String kind : Arrays.asList(GCD_KIND_1, GCD_KIND_2)) {
+      for (String kind : Arrays.asList(GCD_KIND_1 + Engine.MAPREDUCE, GCD_KIND_1 + Engine.SPARK,
+                                       GCD_KIND_2 + Engine.MAPREDUCE, GCD_KIND_2 + Engine.SPARK)) {
         try {
           KeyQuery keyQuery = Query.newKeyQueryBuilder().setNamespace(namespace).setKind(kind).build();
           QueryResults<Key> keys = datastore.run(keyQuery);
