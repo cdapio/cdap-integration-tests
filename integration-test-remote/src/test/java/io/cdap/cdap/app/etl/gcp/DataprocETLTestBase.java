@@ -145,14 +145,16 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     properties.add(ofProperty("projectId", getProjectId()));
 
     properties.add(ofProperty("masterNumNodes", "1"));
-    properties.add(ofProperty("masterCPUs", "1"));
-    properties.add(ofProperty("masterMemoryMB", "4096"));
-    properties.add(ofProperty("masterDiskGB", "100"));
+    properties.add(ofProperty("masterCPUs", "2"));
+    properties.add(ofProperty("masterMemoryMB", "8192"));
+    properties.add(ofProperty("masterDiskGB", "1000"));
     properties.add(ofProperty("workerNumNodes", String.valueOf(workerCount)));
     properties.add(ofProperty("workerCPUs", String.valueOf(workerCPUs)));
     properties.add(ofProperty("workerMemoryMB", String.valueOf(workerMemMB)));
-    properties.add(ofProperty("workerDiskGB", "100"));
+    properties.add(ofProperty("workerDiskGB", "500"));
     properties.add(ofProperty("preferExternalIP", "true"));
+    properties.add(ofProperty("stackdriverLoggingEnabled", "true"));
+    properties.add(ofProperty("stackdriverMonitoringEnabled", "true"));
 
     JsonObject provisioner = new JsonObject();
     provisioner.addProperty("name", "gcp-dataproc");
