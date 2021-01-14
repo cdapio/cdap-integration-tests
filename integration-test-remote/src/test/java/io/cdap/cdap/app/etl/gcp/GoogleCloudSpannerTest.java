@@ -37,6 +37,7 @@ import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
+import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
@@ -52,6 +53,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -217,6 +219,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStoreInNewTable() throws Exception {
+    testReadAndStoreInNewTable(Engine.MAPREDUCE);
+    testReadAndStoreInNewTable(Engine.SPARK);
+  }
+
+  private void testReadAndStoreInNewTable(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -237,8 +244,9 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTable";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTable";
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
@@ -254,6 +262,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStore() throws Exception {
+    testReadAndStore(Engine.MAPREDUCE);
+    testReadAndStore(Engine.SPARK);
+  }
+
+  private void testReadAndStore(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -272,14 +285,16 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("schema", SCHEMA.toString())
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStore";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    String sinkTable = SINK_TABLE_NAME + engine;
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStore";
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
-    args.put("dstTable", SINK_TABLE_NAME);
+    args.put("dstTable", sinkTable);
     args.put("keys", "ID");
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
@@ -287,7 +302,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
     ResultSet resultSet = spanner.getDatabaseClient(database.getId())
       .singleUse()
-      .executeQuery(Statement.of(String.format("select * from %s;", SINK_TABLE_NAME)));
+      .executeQuery(Statement.of(String.format("select * from %s;", sinkTable)));
     verifySinkData(resultSet);
     Assert.assertTrue(resultSet.isNull("NOT_IN_THE_SCHEMA_COL"));
   }
@@ -295,6 +310,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreInNewTableWithNoSourceSchema() throws Exception {
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE);
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK);
+  }
+
+  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -314,8 +334,9 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTableWithNoSourceSchema";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTableWithNoSourceSchema";
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
@@ -331,6 +352,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreWithNoSourceSchema() throws Exception {
+    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE);
+    testReadAndStoreWithNoSourceSchema(Engine.SPARK);
+  }
+
+  private void testReadAndStoreWithNoSourceSchema(Engine engine) throws Exception {
     Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "spanner_source")
       .put("project", "${project}")
@@ -348,21 +374,23 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("schema", SCHEMA.toString())
       .build();
 
+    String sinkTable = SINK_TABLE_NAME + engine;
     String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreWithNoSourceSchema";
-    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties, applicationName);
+    ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
+                                                              applicationName, engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
-    args.put("dstTable", SINK_TABLE_NAME);
+    args.put("dstTable", sinkTable);
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
     checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
 
     ResultSet resultSet = spanner.getDatabaseClient(database.getId())
       .singleUse()
-      .executeQuery(Statement.of(String.format("select * from %s;", SINK_TABLE_NAME)));
+      .executeQuery(Statement.of(String.format("select * from %s;", sinkTable)));
     verifySinkData(resultSet);
     Assert.assertTrue(resultSet.isNull("NOT_IN_THE_SCHEMA_COL"));
   }
@@ -370,8 +398,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   private void checkMetrics(String applicationName, int expectedCount) throws Exception {
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, TEST_NAMESPACE.getNamespace(),
                                                Constants.Metrics.Tag.APP, applicationName);
-    checkMetric(tags, "user." + SPANNER_SOURCE_STAGE_NAME + ".records.out", expectedCount, 10);
-    checkMetric(tags, "user." + SPANNER_SINK_STAGE_NAME + ".records.in", expectedCount, 10);
+    checkMetric(tags, "user." + SPANNER_SOURCE_STAGE_NAME + ".records.out", expectedCount, 60);
+    checkMetric(tags, "user." + SPANNER_SINK_STAGE_NAME + ".records.in", expectedCount, 60);
   }
 
   private void verifySinkData(String tableName) {
@@ -439,7 +467,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Database database = spanner.getDatabaseAdminClient()
       .createDatabase(instance.getId().getInstance(), databaseName, ImmutableList.of(
         String.format(TABLE_FORMAT, SOURCE_TABLE_NAME),
-        String.format(TABLE_FORMAT, SINK_TABLE_NAME)))
+        String.format(TABLE_FORMAT, SINK_TABLE_NAME + Engine.MAPREDUCE),
+        String.format(TABLE_FORMAT, SINK_TABLE_NAME + Engine.SPARK)))
       .waitFor()
       .getResult();
     LOG.info("Created instance {}", databaseName);
@@ -449,7 +478,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   private ApplicationManager deployApplication(Map<String, String> sourceProperties,
                                                Map<String, String> sinkProperties,
-                                               String applicationName) throws Exception {
+                                               String applicationName, Engine engine) throws Exception {
 
     ETLPlugin sourcePlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties,
                                            GOOGLE_CLOUD_ARTIFACT);
@@ -460,6 +489,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .addStage(new ETLStage(SPANNER_SOURCE_STAGE_NAME, sourcePlugin))
       .addStage(new ETLStage(SPANNER_SINK_STAGE_NAME, sinkPlugin))
       .addConnection(SPANNER_SOURCE_STAGE_NAME, SPANNER_SINK_STAGE_NAME)
+      .setEngine(engine)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
