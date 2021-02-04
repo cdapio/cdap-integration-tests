@@ -36,6 +36,7 @@ import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.action.Action;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
+import io.cdap.cdap.etl.api.batch.PostAction;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
@@ -45,6 +46,7 @@ import io.cdap.cdap.proto.artifact.PluginSummary;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
+import io.cdap.plugin.common.batch.action.Condition;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -90,6 +92,7 @@ public class GCSTest extends DataprocETLTestBase {
   private static final String GCS_BUCKET_CREATE_PLUGIN_NAME = "GCSBucketCreate";
   private static final String GCS_MOVE_PLUGIN_NAME = "GCSMove";
   private static final String GCS_COPY_PLUGIN_NAME = "GCSCopy";
+  private static final String GCS_DONE_FILE_MARKER_PLUGIN_NAME = "GCSDoneFileMarker";
   private static final String SINK_PLUGIN_NAME = "GCS";
   private static final String SOURCE_PLUGIN_NAME = "GCSFile";
   private static final Schema ALL_DT_SCHEMA = Schema.recordOf(
@@ -452,6 +455,165 @@ public class GCSTest extends DataprocETLTestBase {
   }
 
   @Test
+  public void testCreateFileMarkerOnPipelineSuccess() throws Exception {
+    String appIdName = "CreateFileMarkerOnPipelineSuccess";
+    String sourceBucketPath = String.format("%s-%s", "source", UUID.randomUUID());
+    String destinationBucketPath = String.format("%s-%s", "destination", UUID.randomUUID());
+    String recursive = "true";
+    String markerFileBlobName = "__SUCCESS";
+    String markerFilePath = destinationBucketPath + "/" + markerFileBlobName;
+    String runCondition = Condition.SUCCESS.name();
+
+    // create buckets
+    Bucket sourceBucket = createBucket(sourceBucketPath);
+    Bucket destinationBucket = createBucket(destinationBucketPath); // same as marker filer bucket
+
+    // create blobs at the source bucket
+    sourceBucket.create("1.txt", "1".getBytes(StandardCharsets.UTF_8));
+    sourceBucket.create("2.txt", "2".getBytes(StandardCharsets.UTF_8));
+
+    // create move plugin
+    Map<String, String> movePluginProperties = new ImmutableMap.Builder<String, String>()
+      .put("project", "${project}")
+      .put("sourcePath", "${source_bucket_path}")
+      .put("destPath", "${destination_bucket_path}")
+      .put("recursive", "${recursive}")
+      .build();
+
+    ETLPlugin moveActionPlugin = new ETLPlugin(
+      GCS_MOVE_PLUGIN_NAME,
+      Action.PLUGIN_TYPE,
+      movePluginProperties,
+      GOOGLE_CLOUD_ARTIFACT
+    );
+
+    ETLStage moveStage = new ETLStage("move-action-plugin", moveActionPlugin);
+
+    // create marker file plugin
+    Map<String, String> markerFileActionProperties = new ImmutableMap.Builder<String, String>()
+      .put("project", "${project}")
+      .put("path", "${marker_file_path}")
+      .put("runCondition", runCondition)
+      .build();
+
+    ETLPlugin markerFilePostActionPlugin = new ETLPlugin(
+      GCS_DONE_FILE_MARKER_PLUGIN_NAME,
+      PostAction.PLUGIN_TYPE,
+      markerFileActionProperties,
+      GOOGLE_CLOUD_ARTIFACT
+    );
+
+    ETLStage markerFileStage = new ETLStage("marker-file-post-action-plugin", markerFilePostActionPlugin);
+
+    // deploy the pipeline
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(moveStage)
+      .addPostAction(markerFileStage)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app(appIdName);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // set parameters
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("source_bucket_path", sourceBucketPath);
+    args.put("destination_bucket_path", destinationBucketPath);
+    args.put("recursive", recursive);
+    args.put("marker_file_path", markerFilePath);
+
+    // start the pipeline and wait till it finishes
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED, args);
+
+    // the destinationBucket should have all the content from the sourceBucket plus the __SUCCESS file
+    assertGCSContents(destinationBucket, "1.txt", "1");
+    assertGCSContents(destinationBucket, "2.txt", "2");
+    assertExists(destinationBucket, markerFileBlobName);
+  }
+
+  @Test
+  public void testCreateFileMarkerOnPipelineFailure() throws Exception {
+    String appIdName = "CreateFileMarkerOnPipelineFailure";
+    String sourceBucketPath = String.format("%s-%s", "source", UUID.randomUUID());
+    String destinationBucketPath = String.format("%s-%s", "destination", UUID.randomUUID());
+    String recursive = "true";
+    String markerFileBlobName = "__FAILED";
+    String markerFilePath = destinationBucketPath + "/" + markerFileBlobName;
+    String runCondition = Condition.FAILURE.name();
+
+    // create buckets
+    Bucket sourceBucket = createBucket(sourceBucketPath);
+    Bucket destinationBucket = createBucket(destinationBucketPath); // same as marker filer bucket
+
+    // create blobs at the source bucket
+    sourceBucket.create("1.txt", "1".getBytes(StandardCharsets.UTF_8));
+    sourceBucket.create("2.txt", "2".getBytes(StandardCharsets.UTF_8));
+
+    // In order to test whether a __FAILED marker file will get created when the pipeline fails, we need to make this
+    // pipeline fail intentionally. To do so, we provide a non-existing-path to 'serviceFilePath' parameter.
+    Map<String, String> movePluginProperties = new ImmutableMap.Builder<String, String>()
+      .put("project", "${project}")
+      .put("sourcePath", "${source_bucket_path}")
+      .put("destPath", "${destination_bucket_path}")
+      .put("recursive", "${recursive}")
+      .put("serviceAccountType", "filePath")
+      // 'serviceFilePath' is provided intentionally wrong in order to make the pipeline fail
+      .put("serviceFilePath", "/this/path/does/not/exist.json")
+      .build();
+
+    ETLPlugin moveActionPlugin = new ETLPlugin(
+      GCS_MOVE_PLUGIN_NAME,
+      Action.PLUGIN_TYPE,
+      movePluginProperties,
+      GOOGLE_CLOUD_ARTIFACT
+    );
+
+    ETLStage moveStage = new ETLStage("move-action-plugin", moveActionPlugin);
+
+    // In contrast to the move-action-plugin, the marker-file-post-action-plugin should have the correct parameters.
+    // This enables creating the marker file successfully.
+    Map<String, String> markerFileActionProperties = new ImmutableMap.Builder<String, String>()
+      .put("project", "${project}")
+      .put("path", "${marker_file_path}")
+      .put("runCondition", runCondition)
+      .build();
+
+    ETLPlugin markerFilePostActionPlugin = new ETLPlugin(
+      GCS_DONE_FILE_MARKER_PLUGIN_NAME,
+      PostAction.PLUGIN_TYPE,
+      markerFileActionProperties,
+      GOOGLE_CLOUD_ARTIFACT
+    );
+
+    ETLStage markerFileStage = new ETLStage("marker-file-post-action-plugin", markerFilePostActionPlugin);
+
+    // deploy the pipeline
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(moveStage)
+      .addPostAction(markerFileStage)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app(appIdName);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // set parameters
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("source_bucket_path", sourceBucketPath);
+    args.put("destination_bucket_path", destinationBucketPath);
+    args.put("recursive", recursive);
+    args.put("marker_file_path", markerFilePath);
+
+    // start the pipeline and wait till it fails
+    startWorkFlow(appManager, ProgramRunStatus.FAILED, args);
+
+    // the destinationBucket should have only the __FAILED file
+    assertExists(destinationBucket, markerFileBlobName);
+  }
+
+  @Test
   public void testGSCCreate() throws Exception {
     testGSCCreate(Engine.MAPREDUCE);
     testGSCCreate(Engine.SPARK);
@@ -565,7 +727,7 @@ public class GCSTest extends DataprocETLTestBase {
                                                             "recursive", String.valueOf(recursive)),
                                             GOOGLE_CLOUD_ARTIFACT));
   }
-
+  
   @Test
   public void testAllTypes() throws Exception {
     testAllTypes(Engine.MAPREDUCE);
