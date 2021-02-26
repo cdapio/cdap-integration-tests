@@ -128,7 +128,7 @@ public class AudiTestBase extends IntegrationTestBase {
       if (name != null && password != null) {
         return fetchAccessToken(name, password);
       }
-    } catch (IOException|TimeoutException|InterruptedException e) {
+    } catch (IOException | TimeoutException | InterruptedException e) {
       Throwables.propagate(e);
     }
 
