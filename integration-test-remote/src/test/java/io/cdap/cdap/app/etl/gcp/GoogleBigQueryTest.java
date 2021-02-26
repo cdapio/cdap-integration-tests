@@ -51,6 +51,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,31 +75,31 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
   private static final String SOURCE_TABLE_NAME_TEMPLATE = "test_source_table_";
   private static final String SINK_TABLE_NAME_TEMPLATE = "test_sink_table_";
 
-  private static final Field[] SIMPLE_FIELDS_SCHEMA = new Field[] {
+  private static final Field[] SIMPLE_FIELDS_SCHEMA = new Field[]{
     Field.newBuilder("string_value", LegacySQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).setMode(Field.Mode.NULLABLE).build()
   };
 
-  private static final Field[] TIME_PARTITION_SCHEMA = new Field[] {
+  private static final Field[] TIME_PARTITION_SCHEMA = new Field[]{
     Field.newBuilder("string_value", LegacySQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("date_value", LegacySQLTypeName.DATE).setMode(Field.Mode.NULLABLE).build()
   };
 
-  private static final Field[] UPDATED_FIELDS_SCHEMA = new Field[] {
+  private static final Field[] UPDATED_FIELDS_SCHEMA = new Field[]{
     Field.newBuilder("string_value", LegacySQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
-      Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
-      Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
-      Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).setMode(Field.Mode.NULLABLE).build(),
-      Field.newBuilder("numeric_value", LegacySQLTypeName.NUMERIC).setMode(Field.Mode.NULLABLE).build(),
-      Field.newBuilder("timestamp_value", LegacySQLTypeName.TIMESTAMP).setMode(Field.Mode.NULLABLE).build(),
-      Field.newBuilder("date_value", LegacySQLTypeName.DATE).setMode(Field.Mode.NULLABLE).build()
+    Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("numeric_value", LegacySQLTypeName.NUMERIC).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("timestamp_value", LegacySQLTypeName.TIMESTAMP).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("date_value", LegacySQLTypeName.DATE).setMode(Field.Mode.NULLABLE).build()
   };
 
-  private static final Field[] FULL_FIELDS_SCHEMA = new Field[] {
+  private static final Field[] FULL_FIELDS_SCHEMA = new Field[]{
     Field.newBuilder("string_value", LegacySQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
@@ -140,7 +141,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).setMode(Field.Mode.NULLABLE).build()
   };
 
-  private static final Field[] SIMPLE_UPDATE_FIELDS_SCHEMA = new Field[] {
+  private static final Field[] SIMPLE_UPDATE_FIELDS_SCHEMA = new Field[]{
     Field.newBuilder("string_value", LegacySQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
@@ -175,7 +176,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
           return false;
         }
         return GoogleBigQueryUtils
-            .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSink.PLUGIN_TYPE, BIG_QUERY_PLUGIN_NAME);
+          .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSink.PLUGIN_TYPE, BIG_QUERY_PLUGIN_NAME);
       } catch (ArtifactNotFoundException e) {
         return false;
       }
@@ -319,7 +320,6 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       .put("allowSchemaRelaxation", "${relax}")
       .build();
 
-
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
@@ -423,7 +423,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
-                                                  engine + "-storeWithUpdateTableSchema", engine);
+        engine + "-storeWithUpdateTableSchema", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -526,7 +526,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +  "-allBigQueryTypes", engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-allBigQueryTypes", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -607,7 +607,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
-                                                  engine + "-updateWithoutSchemaUpdate", engine);
+        engine + "-updateWithoutSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -706,7 +706,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                                                  "-upsertWithoutSchemaUpdate", engine);
+        "-upsertWithoutSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -949,19 +949,19 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     args.put("srcTable", sourceTableName);
     args.put("dstTable", destinationTableName);
     args.put("operation", "INSERT");
-    args.put("partitionType","INTEGER");
-    args.put("rangeStart","2");
-    args.put("rangeEnd","3");
-    args.put("rangeInterval","1");
-    args.put("partitionByField","int_value");
+    args.put("partitionType", "INTEGER");
+    args.put("rangeStart", "2");
+    args.put("rangeEnd", "3");
+    args.put("rangeInterval", "1");
+    args.put("partitionByField", "int_value");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
                                                Constants.Metrics.Tag.APP, appId.getEntityName());
 
-    checkMetric(tags, String.format("user.%s.records.out",deploymentDetails.getSource().getName()), expectedCount, 10);
-    checkMetric(tags, String.format("user.%s.records.in",deploymentDetails.getSink().getName()), expectedCount, 10);
+    checkMetric(tags, String.format("user.%s.records.out", deploymentDetails.getSource().getName()), expectedCount, 10);
+    checkMetric(tags, String.format("user.%s.records.in", deploymentDetails.getSink().getName()), expectedCount, 10);
 
     List<FieldValueList> listValues = new ArrayList<>();
     listValues.add(
@@ -985,7 +985,6 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                       FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
                       FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
         SIMPLE_FIELDS_SCHEMA));
-
 
     assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
   }
@@ -1044,7 +1043,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       .setRangePartitioning(rangePartitioning)
       .build();
 
-    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName,standardTableDefinition);
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, standardTableDefinition);
     GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationSourceString());
 
     Schema sourceSchema = getSimpleTableSchema();
@@ -1074,18 +1073,18 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-insertInExistingTableWithPartitionInteger" , engine);
+        "-insertInExistingTableWithPartitionInteger", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
     args.put("srcTable", sourceTableName);
     args.put("dstTable", destinationTableName);
     args.put("operation", "INSERT");
-    args.put("partitionType","INTEGER");
-    args.put("rangeStart","2");
-    args.put("rangeEnd","3");
-    args.put("rangeInterval","1");
-    args.put("partitionByField","int_value");
+    args.put("partitionType", "INTEGER");
+    args.put("rangeStart", "2");
+    args.put("rangeEnd", "3");
+    args.put("rangeInterval", "1");
+    args.put("partitionByField", "int_value");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
@@ -1140,7 +1139,6 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                       FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
         SIMPLE_FIELDS_SCHEMA));
 
-
     assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
   }
 
@@ -1177,27 +1175,27 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Schema sourceSchema = getSimpleTableSchema();
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
-            .put("referenceName", "bigQuery_source")
-            .put("project", "${project}")
-            .put("dataset", "${dataset}")
-            .put("table", "${srcTable}")
-            .put("schema", sourceSchema.toString())
-            .build();
+      .put("referenceName", "bigQuery_source")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", sourceSchema.toString())
+      .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
-            .put("referenceName", "bigQuery_sink")
-            .put("project", "${project}")
-            .put("dataset", "${dataset}")
-            .put("table", "${dstTable}")
-            .put("operation", "${operation}")
-            .put("partitioningType", "${partitionType}")
-            .build();
+      .put("referenceName", "bigQuery_sink")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("partitioningType", "${partitionType}")
+      .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                    "-insertWithIngestionTimePartition" , engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+        "-insertWithIngestionTimePartition", engine);
 
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
@@ -1205,40 +1203,39 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     args.put("srcTable", sourceTableName);
     args.put("dstTable", destinationTableName);
     args.put("operation", "INSERT");
-    args.put("partitionType","TIME");
+    args.put("partitionType", "TIME");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-            Constants.Metrics.Tag.APP, appId.getEntityName());
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
 
     checkMetric(tags, String.format("user.%s.records.out", deploymentDetails.getSource().getName()), expectedCount,
-            10);
+                10);
     checkMetric(tags, String.format("user.%s.records.in", deploymentDetails.getSink().getName()), expectedCount, 10);
 
     List<FieldValueList> listValues = new ArrayList<>();
     listValues.add(
-            FieldValueList.of(
-                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
-                    SIMPLE_FIELDS_SCHEMA));
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
     listValues.add(
-            FieldValueList.of(
-                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
-                    SIMPLE_FIELDS_SCHEMA));
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
     listValues.add(
-            FieldValueList.of(
-                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
-                    SIMPLE_FIELDS_SCHEMA));
-
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
 
     assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
   }
@@ -1276,68 +1273,68 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Schema sourceSchema = getTimePartitionSchema();
 
     Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
-            .put("referenceName", "bigQuery_source")
-            .put("project", "${project}")
-            .put("dataset", "${dataset}")
-            .put("table", "${srcTable}")
-            .put("schema", sourceSchema.toString())
-            .build();
+      .put("referenceName", "bigQuery_source")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", sourceSchema.toString())
+      .build();
 
     Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
-            .put("referenceName", "bigQuery_sink")
-            .put("project", "${project}")
-            .put("dataset", "${dataset}")
-            .put("table", "${dstTable}")
-            .put("operation", "${operation}")
-            .put("partitioningType", "${partitionType}")
-            .put("partitionByField", "${partitionByField}")
-            .build();
+      .put("referenceName", "bigQuery_sink")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("partitioningType", "${partitionType}")
+      .put("partitionByField", "${partitionByField}")
+      .build();
 
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                    "-insertWithTimeColumnPartition" , engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+        "-insertWithTimeColumnPartition", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
     args.put("srcTable", sourceTableName);
     args.put("dstTable", destinationTableName);
     args.put("operation", "INSERT");
-    args.put("partitionType","TIME");
+    args.put("partitionType", "TIME");
     args.put("partitionByField", "date_value");
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
 
     ApplicationId appId = deploymentDetails.getAppId();
     Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
-            Constants.Metrics.Tag.APP, appId.getEntityName());
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
 
     checkMetric(tags, String.format("user.%s.records.out", deploymentDetails.getSource().getName()), expectedCount,
-            10);
+                10);
     checkMetric(tags, String.format("user.%s.records.in", deploymentDetails.getSink().getName()), expectedCount, 10);
 
     List<FieldValueList> listValues = new ArrayList<>();
     listValues.add(
-            FieldValueList.of(
-                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-19")),
-                    TIME_PARTITION_SCHEMA));
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-19")),
+        TIME_PARTITION_SCHEMA));
     listValues.add(
-            FieldValueList.of(
-                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-20")),
-                    TIME_PARTITION_SCHEMA));
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-20")),
+        TIME_PARTITION_SCHEMA));
     listValues.add(
-            FieldValueList.of(
-                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
-                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-21")),
-                    TIME_PARTITION_SCHEMA));
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-21")),
+        TIME_PARTITION_SCHEMA));
 
     assertActualTable(destinationTableName, listValues, TIME_PARTITION_SCHEMA);
   }
@@ -1394,7 +1391,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                                                  "-updateWithSchemaUpdate", engine);
+        "-updateWithSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -1493,7 +1490,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                                                  "-upsertWithSchemaUpdate", engine);
+        "-upsertWithSchemaUpdate", engine);
     Map<String, String> args = new HashMap<>();
     args.put("project", getProjectId());
     args.put("dataset", bigQueryDataset);
@@ -1612,7 +1609,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                                                  "-updateWithDedupeSourceData", engine);
+        "-updateWithDedupeSourceData", engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
@@ -1710,7 +1707,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-                                                  "-upsertWithDedupeSourceData", engine);
+        "-upsertWithDedupeSourceData", engine);
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
@@ -1781,7 +1778,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                                       actualResult.size()), expectedResult.size(), actualResult.size());
 
     actualResult.sort((o1, o2) ->
-                      o1.get("string_value").toString().compareToIgnoreCase(o2.get("string_value").toString()));
+                        o1.get("string_value").toString().compareToIgnoreCase(o2.get("string_value").toString()));
 
     for (int i = 0; i < expectedResult.size(); i++) {
       FieldValueList expectedFieldValueList = expectedResult.get(i);
@@ -2060,12 +2057,12 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   private Schema getTimePartitionSchema() {
     return Schema
-            .recordOf("dateTimeSchema",
-                    Schema.Field.of("string_value", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
-                    Schema.Field.of("int_value", Schema.nullableOf(Schema.of(Schema.Type.LONG))),
-                    Schema.Field.of("float_value", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
-                    Schema.Field.of("date_value", Schema.nullableOf(Schema.of(Schema.LogicalType.DATE)))
-            );
+      .recordOf("dateTimeSchema",
+                Schema.Field.of("string_value", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
+                Schema.Field.of("int_value", Schema.nullableOf(Schema.of(Schema.Type.LONG))),
+                Schema.Field.of("float_value", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
+                Schema.Field.of("date_value", Schema.nullableOf(Schema.of(Schema.LogicalType.DATE)))
+      );
   }
 
   private Schema getUpdatedTableSchema() {
@@ -2160,5 +2157,4 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       return appManager;
     }
   }
-
 }
