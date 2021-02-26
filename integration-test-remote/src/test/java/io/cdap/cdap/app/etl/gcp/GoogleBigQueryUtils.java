@@ -37,7 +37,6 @@ import com.google.gson.JsonObject;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.client.ArtifactClient;
 import io.cdap.cdap.proto.id.ArtifactId;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,10 +68,14 @@ public class GoogleBigQueryUtils {
 
   public static void createTestTable(BigQuery bq, String datasetId, String tableId,
                                      Field[] fieldsSchema) {
-    TableId table = TableId.of(datasetId, tableId);
-
     com.google.cloud.bigquery.Schema schema = com.google.cloud.bigquery.Schema.of(fieldsSchema);
     TableDefinition tableDefinition = StandardTableDefinition.of(schema);
+
+    createTestTable(bq, datasetId, tableId, tableDefinition);
+  }
+
+  public static void createTestTable(BigQuery bq, String datasetId, String tableId, TableDefinition tableDefinition) {
+    TableId table = TableId.of(datasetId, tableId);
     TableInfo.newBuilder(table, tableDefinition).build();
     TableInfo tableInfo = TableInfo.newBuilder(table, tableDefinition).build();
 

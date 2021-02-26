@@ -23,6 +23,8 @@ import com.google.cloud.bigquery.FieldList;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.LegacySQLTypeName;
+import com.google.cloud.bigquery.RangePartitioning;
+import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
@@ -77,6 +79,13 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
     Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).setMode(Field.Mode.NULLABLE).build()
+  };
+
+  private static final Field[] TIME_PARTITION_SCHEMA = new Field[] {
+    Field.newBuilder("string_value", LegacySQLTypeName.STRING).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("date_value", LegacySQLTypeName.DATE).setMode(Field.Mode.NULLABLE).build()
   };
 
   private static final Field[] UPDATED_FIELDS_SCHEMA = new Field[] {
@@ -877,6 +886,462 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     testUpdateOperationWithSchemaUpdate(Engine.SPARK);
   }
 
+  @Test
+  public void testInsertOperationWithIntegerPartition() throws Exception {
+    testInsertOperationWithIntegerPartition(Engine.MAPREDUCE);
+    testInsertOperationWithIntegerPartition(Engine.SPARK);
+  }
+
+  /* Test check the Insert operation with partition type Integer.
+   * Input data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Starting sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Expected ending sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   */
+  private void testInsertOperationWithIntegerPartition(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
+    String destinationTableName = String.format("%s%s", SINK_TABLE_NAME_TEMPLATE, testId);
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
+
+    Schema sourceSchema = getSimpleTableSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", sourceSchema.toString())
+      .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_sink")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("partitioningType", "${partitionType}")
+      .put("rangeStart", "${rangeStart}")
+      .put("rangeEnd", "${rangeEnd}")
+      .put("rangeInterval", "${rangeInterval}")
+      .put("partitionByField", "${partitionByField}")
+      .build();
+
+    int expectedCount = 3;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-insertWithPartitionInteger",
+                        engine);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("partitionType","INTEGER");
+    args.put("rangeStart","2");
+    args.put("rangeEnd","3");
+    args.put("rangeInterval","1");
+    args.put("partitionByField","int_value");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, String.format("user.%s.records.out",deploymentDetails.getSource().getName()), expectedCount, 10);
+    checkMetric(tags, String.format("user.%s.records.in",deploymentDetails.getSink().getName()), expectedCount, 10);
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+
+
+    assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
+  }
+
+  @Test
+  public void testInsertOperationWithIntegerPartitionInExistingTable() throws Exception {
+    testInsertOperationWithIntegerPartitionInExistingTable(Engine.MAPREDUCE);
+    testInsertOperationWithIntegerPartitionInExistingTable(Engine.SPARK);
+  }
+
+  /* Test check the Insert operation with partition type Integer and destination table exist.
+   * Input data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Destination table:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Starting sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Expected ending sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   */
+  private void testInsertOperationWithIntegerPartitionInExistingTable(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
+    String destinationTableName = String.format("%s%s", SINK_TABLE_NAME_TEMPLATE, testId);
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
+
+    RangePartitioning.Range range = RangePartitioning.Range.newBuilder()
+      .setStart(2L)
+      .setEnd(3L)
+      .setInterval(1L)
+      .build();
+
+    RangePartitioning rangePartitioning = RangePartitioning.newBuilder()
+      .setField("int_value")
+      .setRange(range)
+      .build();
+
+    com.google.cloud.bigquery.Schema schema = com.google.cloud.bigquery.Schema.of(SIMPLE_FIELDS_SCHEMA);
+
+    StandardTableDefinition standardTableDefinition = StandardTableDefinition.newBuilder()
+      .setSchema(schema)
+      .setRangePartitioning(rangePartitioning)
+      .build();
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName,standardTableDefinition);
+    GoogleBigQueryUtils.insertData(bq, dataset, destinationTableName, getOperationSourceString());
+
+    Schema sourceSchema = getSimpleTableSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", sourceSchema.toString())
+      .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_sink")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("partitioningType", "${partitionType}")
+      .put("rangeStart", "${rangeStart}")
+      .put("rangeEnd", "${rangeEnd}")
+      .put("rangeInterval", "${rangeInterval}")
+      .put("partitionByField", "${partitionByField}")
+      .build();
+
+    int expectedCount = 3;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+        "-insertInExistingTableWithPartitionInteger" , engine);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("partitionType","INTEGER");
+    args.put("rangeStart","2");
+    args.put("rangeEnd","3");
+    args.put("rangeInterval","1");
+    args.put("partitionByField","int_value");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, String.format("user.%s.records.out", deploymentDetails.getSource().getName()), expectedCount,
+                10);
+    checkMetric(tags, String.format("user.%s.records.in", deploymentDetails.getSink().getName()), expectedCount, 10);
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+        SIMPLE_FIELDS_SCHEMA));
+
+
+    assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
+  }
+
+  @Test
+  public void testInsertOperationWithIngestionTimePartition() throws Exception {
+    testInsertOperationWithIngestionTimePartition(Engine.MAPREDUCE);
+    testInsertOperationWithIngestionTimePartition(Engine.SPARK);
+  }
+
+  /* Test check the Insert operation with partition type Time (Ingestion Time).
+   * Tables are partitioned based on the data's ingestion (load) time or arrival time.
+   * Input data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Starting sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   * Expected ending sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
+   */
+  private void testInsertOperationWithIngestionTimePartition(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
+    String destinationTableName = String.format("%s%s", SINK_TABLE_NAME_TEMPLATE, testId);
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getOperationSourceString());
+
+    Schema sourceSchema = getSimpleTableSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+            .put("referenceName", "bigQuery_source")
+            .put("project", "${project}")
+            .put("dataset", "${dataset}")
+            .put("table", "${srcTable}")
+            .put("schema", sourceSchema.toString())
+            .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+            .put("referenceName", "bigQuery_sink")
+            .put("project", "${project}")
+            .put("dataset", "${dataset}")
+            .put("table", "${dstTable}")
+            .put("operation", "${operation}")
+            .put("partitioningType", "${partitionType}")
+            .build();
+
+    int expectedCount = 3;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                    "-insertWithIngestionTimePartition" , engine);
+
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("partitionType","TIME");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+            Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, String.format("user.%s.records.out", deploymentDetails.getSource().getName()), expectedCount,
+            10);
+    checkMetric(tags, String.format("user.%s.records.in", deploymentDetails.getSink().getName()), expectedCount, 10);
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+            FieldValueList.of(
+                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "true")),
+                    SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+            FieldValueList.of(
+                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+                    SIMPLE_FIELDS_SCHEMA));
+    listValues.add(
+            FieldValueList.of(
+                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "false")),
+                    SIMPLE_FIELDS_SCHEMA));
+
+
+    assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
+  }
+
+  @Test
+  public void testInsertOperationWithTimeColumnPartition() throws Exception {
+    testInsertOperationWithTimeColumnPartition(Engine.MAPREDUCE);
+    testInsertOperationWithTimeColumnPartition(Engine.SPARK);
+  }
+
+  /* Test check the Insert operation with partition type Time (Date/timestamp/datetime).
+   * Tables are partitioned based on a TIMESTAMP, DATE, or DATETIME column.
+   * Input data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"date_value":"2000-01-19"}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"date_value":"2000-01-20"}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"date_value":"2000-01-21"}
+   * Starting sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"date_value":"2000-01-19"}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"date_value":"2000-01-20"}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"date_value":"2000-01-21"}
+   * Expected ending sink data:
+   *  {"string_value":"string_1","int_value":1,"float_value":0.1,"date_value":"2000-01-19"}
+   *  {"string_value":"string_2","int_value":2,"float_value":0.2,"date_value":"2000-01-20"}
+   *  {"string_value":"string_3","int_value":3,"float_value":0.3,"date_value":"2000-01-21"}
+   */
+  private void testInsertOperationWithTimeColumnPartition(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
+    String destinationTableName = String.format("%s%s", SINK_TABLE_NAME_TEMPLATE, testId);
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, TIME_PARTITION_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, getTimePartitionOperationSourceString());
+
+    Schema sourceSchema = getTimePartitionSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+            .put("referenceName", "bigQuery_source")
+            .put("project", "${project}")
+            .put("dataset", "${dataset}")
+            .put("table", "${srcTable}")
+            .put("schema", sourceSchema.toString())
+            .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+            .put("referenceName", "bigQuery_sink")
+            .put("project", "${project}")
+            .put("dataset", "${dataset}")
+            .put("table", "${dstTable}")
+            .put("operation", "${operation}")
+            .put("partitioningType", "${partitionType}")
+            .put("partitionByField", "${partitionByField}")
+            .build();
+
+    int expectedCount = 3;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
+                    "-insertWithTimeColumnPartition" , engine);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("partitionType","TIME");
+    args.put("partitionByField", "date_value");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+            Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, String.format("user.%s.records.out", deploymentDetails.getSource().getName()), expectedCount,
+            10);
+    checkMetric(tags, String.format("user.%s.records.in", deploymentDetails.getSink().getName()), expectedCount, 10);
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+            FieldValueList.of(
+                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_1"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.1"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-19")),
+                    TIME_PARTITION_SCHEMA));
+    listValues.add(
+            FieldValueList.of(
+                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_2"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.2"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-20")),
+                    TIME_PARTITION_SCHEMA));
+    listValues.add(
+            FieldValueList.of(
+                    Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "string_3"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "3"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "0.3"),
+                            FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2000-01-21")),
+                    TIME_PARTITION_SCHEMA));
+
+    assertActualTable(destinationTableName, listValues, TIME_PARTITION_SCHEMA);
+  }
+
   /* Test check the Update operation with updating destination table schema.
    * Input data:
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
@@ -1483,6 +1948,30 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     return list;
   }
 
+  private List<JsonObject> getTimePartitionOperationSourceString() {
+    JsonObject json = new JsonObject();
+    json.addProperty("string_value", "string_1");
+    json.addProperty("int_value", 1);
+    json.addProperty("float_value", 0.1);
+    json.addProperty("date_value", "2000-01-19");
+    List<JsonObject> list = new ArrayList<>();
+    list.add(json);
+    json = new JsonObject();
+    json.addProperty("string_value", "string_2");
+    json.addProperty("int_value", 2);
+    json.addProperty("float_value", 0.2);
+    json.addProperty("date_value", "2000-01-20");
+    list.add(json);
+    json = new JsonObject();
+    json.addProperty("string_value", "string_3");
+    json.addProperty("int_value", 3);
+    json.addProperty("float_value", 0.3);
+    json.addProperty("date_value", "2000-01-21");
+    list.add(json);
+
+    return list;
+  }
+
   private List<JsonObject> getOperationDestinationWithoutUpdateString() {
     JsonObject json = new JsonObject();
     json.addProperty("string_value", "string_0");
@@ -1567,6 +2056,16 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                 Schema.Field.of("float_value", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
                 Schema.Field.of("boolean_value", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN)))
       );
+  }
+
+  private Schema getTimePartitionSchema() {
+    return Schema
+            .recordOf("dateTimeSchema",
+                    Schema.Field.of("string_value", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
+                    Schema.Field.of("int_value", Schema.nullableOf(Schema.of(Schema.Type.LONG))),
+                    Schema.Field.of("float_value", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
+                    Schema.Field.of("date_value", Schema.nullableOf(Schema.of(Schema.LogicalType.DATE)))
+            );
   }
 
   private Schema getUpdatedTableSchema() {
