@@ -78,16 +78,20 @@ public class NamespaceTest extends AudiTestBase {
     // shouldn't allow creation of default or system namespace
     try {
       namespaceClient.create(NamespaceMeta.DEFAULT);
+      Assert.fail();
     } catch (BadRequestException expected) {
-      Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     NamespaceId.DEFAULT.getNamespace())));
+      // Shouldnt asset on error message anymore since IVP masks the error messages
+//      Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
+//                                                                     NamespaceId.DEFAULT.getNamespace())));
     }
 
     try {
       namespaceClient.create(new NamespaceMeta.Builder().setName(NamespaceId.SYSTEM).build());
+      Assert.fail();
     } catch (BadRequestException expected) {
-      Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
-                                                                     NamespaceId.SYSTEM.getNamespace())));
+      // Shouldnt asset on error message anymore since IVP masks the error messages
+//      Assert.assertTrue(expected.getMessage().contains(String.format("'%s' is a reserved namespace",
+//                                                                     NamespaceId.SYSTEM.getNamespace())));
     }
 
     // zero out generation so that it's not used in comparison
