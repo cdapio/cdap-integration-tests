@@ -85,7 +85,8 @@ public class XMLReaderTest extends ETLTestBase {
     serviceURL = serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     URL url = new URL(serviceURL, "xmlreadersource/create");
     //POST request to create a new file set with name xmlreadersource.
-    HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    HttpResponse response = getRestClient()
+      .execute(HttpRequest.post(url).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     url = new URL(serviceURL, "xmlreadersource?path=catalog.xml");
     //PUT request to upload the catalog.xml file, sent in the request body
@@ -98,7 +99,7 @@ public class XMLReaderTest extends ETLTestBase {
 
     url = new URL(serviceURL, "xmlreadertarget/create");
     //POST request to create a new file set with name xmlreadertarget.
-    response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    response = getRestClient().execute(HttpRequest.post(url).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     //GET location of the fileset xmlreadersource on cluster.

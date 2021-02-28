@@ -51,8 +51,9 @@ public class PartitionCorrectorTest extends AudiTestBase {
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     for (int i = 0; i < 100; i++) {
-      HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, String.valueOf(i))).build(),
-                                                      getClientConfig().getAccessToken());
+      HttpResponse response = getRestClient()
+        .execute(HttpRequest.put(new URL(serviceURL, String.valueOf(i))).withBody("").build(),
+                 getClientConfig().getAccessToken());
       Assert.assertEquals(200, response.getResponseCode());
     }
 

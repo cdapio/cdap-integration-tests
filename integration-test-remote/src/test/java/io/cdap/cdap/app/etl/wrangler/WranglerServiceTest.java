@@ -33,6 +33,7 @@ import io.cdap.cdap.proto.id.NamespaceId;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.ServiceManager;
 import io.cdap.common.http.HttpMethod;
+import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
 import org.junit.Test;
@@ -146,8 +147,9 @@ public class WranglerServiceTest extends ETLTestBase {
 
   private void createAndUploadWorkspace(URL baseURL, List<String> lines) throws Exception {
     String workspacePath = String.format("contexts/%s/workspaces/%s", TEST_NAMESPACE.getNamespace(), WORKSPACE_NAME);
-    HttpResponse response = getRestClient().execute(HttpMethod.PUT, new URL(baseURL, workspacePath),
-                                                    getClientConfig().getAccessToken());
+    HttpResponse response = getRestClient()
+      .execute(HttpRequest.put(new URL(baseURL, workspacePath)).withBody("").build(),
+               getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
     String body = Joiner.on(URLEncoder.encode("\n", StandardCharsets.UTF_8.name())).join(lines);
