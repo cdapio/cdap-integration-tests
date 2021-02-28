@@ -94,7 +94,8 @@ public class ServiceWorkerTest extends AudiTestBase {
     } catch (Throwable expected) {
       expected = Throwables.getRootCause(expected);
       Assert.assertTrue(expected.getMessage().startsWith("409: "));
-      Assert.assertTrue(expected.getMessage().contains(ServiceApplication.SERVICE_NAME + " is already running"));
+      // Shouldnt asset on error message anymore since IVP masks the error messages
+//      Assert.assertTrue(expected.getMessage().contains(ServiceApplication.SERVICE_NAME + " is already running"));
     }
 
     serviceManager.stop();

@@ -70,7 +70,8 @@ public class ExcelInputReaderTest extends ETLTestBase {
 
     URL url = new URL(serviceURL, "excelreader/create");
     //POST request to create a new file set with name excelreadersource.
-    HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    HttpResponse response = getRestClient()
+      .execute(HttpRequest.post(url).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     url = new URL(serviceURL, "excelreader?path=civil_test_data_one.xlsx");
@@ -184,9 +185,9 @@ public class ExcelInputReaderTest extends ETLTestBase {
     String outputDatasetName = "output-batchsourcetest-testexcelreaderreprocessfalse";
 
     ETLStage sink = new ETLStage("TableSink", new ETLPlugin("Table", BatchSink.PLUGIN_TYPE, ImmutableMap.of(
-                                                Properties.BatchReadableWritable.NAME, outputDatasetName,
-                                                Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "A",
-                                                Properties.Table.PROPERTY_SCHEMA, schema.toString()), null));
+      Properties.BatchReadableWritable.NAME, outputDatasetName,
+      Properties.Table.PROPERTY_SCHEMA_ROW_FIELD, "A",
+      Properties.Table.PROPERTY_SCHEMA, schema.toString()), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
       .addStage(source)
@@ -202,7 +203,7 @@ public class ExcelInputReaderTest extends ETLTestBase {
     DataSetManager<KeyValueTable> dataSetManager = getKVTableDataset("trackmemorytablereprocessfalse");
     KeyValueTable keyValueTable = dataSetManager.get();
     String excelTestFileTwo = "civil_test_data_two.xlsx";
-    File testFile = new File(sourcePath , excelTestFileTwo);
+    File testFile = new File(sourcePath, excelTestFileTwo);
     keyValueTable.write(testFile.toURI().toString(), String.valueOf(System.currentTimeMillis()));
     dataSetManager.flush();
 

@@ -28,7 +28,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Tests functionality of Applications
@@ -48,7 +47,8 @@ public class ApplicationTest extends AudiTestBase {
       Assert.fail();
     } catch (IOException expected) {
       Assert.assertTrue(expected.getMessage().startsWith("409"));
-      Assert.assertTrue(expected.getMessage().contains("FileSetService"));
+      // Shouldnt asset on error message anymore since IVP masks the error messages
+//      Assert.assertTrue(expected.getMessage().contains("FileSetService"));
     }
 
     // should not delete non-existing application

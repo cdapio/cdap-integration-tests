@@ -77,7 +77,8 @@ public class DataStreamsTest extends ETLTestBase {
 
     URL url = new URL(serviceURL, "testFileSet/create");
     //POST request to create a new file set with name testFileSet.
-    HttpResponse response = getRestClient().execute(HttpMethod.POST, url, getClientConfig().getAccessToken());
+    HttpResponse response = getRestClient()
+      .execute(HttpRequest.post(url).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     URL pathServiceUrl = new URL(serviceURL, "testFileSet?path");
