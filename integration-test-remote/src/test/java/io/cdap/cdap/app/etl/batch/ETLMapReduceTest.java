@@ -44,6 +44,7 @@ import io.cdap.cdap.test.DataSetManager;
 import io.cdap.cdap.test.WorkflowManager;
 import io.cdap.plugin.common.Properties;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -111,6 +112,8 @@ public class ETLMapReduceTest extends ETLTestBase {
     }
   }
 
+  // TODO: (CDAP-17727) fix and un-ignore
+  @Ignore
   @Test
   public void testDAG() throws Exception {
     /*
@@ -325,6 +328,8 @@ public class ETLMapReduceTest extends ETLTestBase {
     deployApplication(appId, appRequest);
   }
 
+  // TODO: (CDAP-17727) fix and un-ignore
+  @Ignore
   @Test
   public void testDAGSchemaChanges() throws Exception {
 
