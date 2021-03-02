@@ -29,6 +29,7 @@ import io.cdap.cdap.test.WorkerManager;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.URL;
@@ -42,6 +43,8 @@ import java.util.concurrent.TimeoutException;
  */
 public class PartitionCorrectorTest extends AudiTestBase {
 
+  // Skip explore tests
+  @Ignore
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PFSApp.class);

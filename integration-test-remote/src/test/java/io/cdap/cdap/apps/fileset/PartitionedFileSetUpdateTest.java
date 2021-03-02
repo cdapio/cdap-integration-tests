@@ -36,6 +36,7 @@ import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,8 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(PartitionedFileSetUpdateTest.class);
 
+  // Skip explore tests
+  @Ignore
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(PFSApp.class);

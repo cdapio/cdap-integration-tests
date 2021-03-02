@@ -46,6 +46,7 @@ import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -71,6 +72,8 @@ public class HivePluginTest extends ETLTestBase {
     Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");
   private static final String DATA_UPLOAD = Joiner.on("\n").join(DATA_LIST);
 
+  // Skip explore tests
+  @Ignore
   @Test
   public void testHivePlugins() throws Exception {
     installPluginFromHub("hydrator-plugin-hive", "hive-plugins", "1.8.0-1.1.0");
