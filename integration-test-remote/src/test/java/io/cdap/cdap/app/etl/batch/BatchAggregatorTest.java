@@ -51,7 +51,6 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -67,7 +66,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tests GroupByAggregator
  */
-@Ignore
 public class BatchAggregatorTest extends ETLTestBase {
   public static final String SMARTWORKFLOW_NAME = SmartWorkflow.NAME;
   public static final String PURCHASE_SOURCE = "purchaseSource";

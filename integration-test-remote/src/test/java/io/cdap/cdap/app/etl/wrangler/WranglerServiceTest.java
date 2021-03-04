@@ -36,7 +36,6 @@ import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.HttpURLConnection;
@@ -52,7 +51,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Integration test for wrangler service.
  */
-@Ignore
 public class WranglerServiceTest extends ETLTestBase {
 
   private static final Gson GSON =
