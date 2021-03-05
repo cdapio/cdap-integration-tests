@@ -35,13 +35,12 @@ import io.cdap.cdap.test.ServiceManager;
 import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -152,9 +151,9 @@ public class WranglerServiceTest extends ETLTestBase {
                getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
-    String body = Joiner.on(URLEncoder.encode("\n", StandardCharsets.UTF_8.name())).join(lines);
+    String body = Joiner.on(StringEscapeUtils.unescapeJava("\\u001A")).join(lines);
     Map<String, String> headers = new HashMap<>();
-    headers.put("recorddelimiter", URLEncoder.encode("\n", StandardCharsets.UTF_8.name()));
+    headers.put("Content-Type", "application/data-prep");
     response = getRestClient().execute(HttpMethod.POST, new URL(baseURL, workspacePath + "/upload"),
                                        body, headers, getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
