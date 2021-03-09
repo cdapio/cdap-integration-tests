@@ -97,7 +97,9 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     try {
       // Disable the profile before deleting
       URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + getProfileName() + "/disable");
-      getRestClient().execute(HttpRequest.post(url).build(), getClientConfig().getAccessToken());
+      // Empty body string is needed to avoid a 411 error (content-length header not set for post request) from the
+      // new testing infrastructure. The empty string sets the content length header to 0 which avoids the issue
+      getRestClient().execute(HttpRequest.post(url).withBody("").build(), getClientConfig().getAccessToken());
 
       url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + getProfileName());
       getRestClient().execute(HttpRequest.delete(url).build(), getClientConfig().getAccessToken());
@@ -174,5 +176,4 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     jsonObject.addProperty("value", value);
     return jsonObject;
   }
-
 }
