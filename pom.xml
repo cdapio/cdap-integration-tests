@@ -246,8 +246,9 @@
             <output.state>${output.state}</output.state>
           </systemPropertyVariables>
           <forkCount>5</forkCount>
-          <reuseForks>true</reuseForks>
+          <reuseForks>false</reuseForks>
           <parallel>classes</parallel>
+          <threadCount>1</threadCount>
           <includes>
             <include>**/*Test.java</include>
             <include>**/*TestSuite.java</include>
