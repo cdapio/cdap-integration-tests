@@ -68,6 +68,7 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.directory.api.util.Strings;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -92,10 +93,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 /**
- * TODO: Follow up CDAP-17648
- * pubSubToPubSubCSVSink currently doesn't work because of the SINK which will write a memory address
- * instead of the actual content when the type is byte in CSV
- * Track https://cdap.atlassian.net/browse/CDAP-17648 for more details
+ * TODO: Follow up CDAP-17648 pubSubToPubSubCSVSink currently doesn't work because of the SINK which will write a memory
+ * address instead of the actual content when the type is byte in CSV Track https://cdap.atlassian.net/browse/CDAP-17648
+ * for more details
  */
 
 public class PubSubTest extends DataprocETLTestBase {
@@ -143,13 +143,31 @@ public class PubSubTest extends DataprocETLTestBase {
                                                                Schema.of(Schema.Type.STRING)))
     );
 
-
   @BeforeClass
   public static void testClassSetup() throws IOException {
     topicAdmin = TopicAdminClient.create(
       TopicAdminSettings.newBuilder().setCredentialsProvider(getCredentialProvider()).build());
     subscriptionAdmin = SubscriptionAdminClient.create(
       SubscriptionAdminSettings.newBuilder().setCredentialsProvider(getCredentialProvider()).build());
+  }
+
+  @AfterClass
+  public static void testClassTeardown() {
+    // Shutdown topic admin
+    try {
+      topicAdmin.shutdownNow();
+      topicAdmin.awaitTermination(1, TimeUnit.MINUTES);
+    } catch (InterruptedException e) {
+      LOG.warn("Failed to shutdown PubSub topic admin: {}", e.getMessage());
+    }
+
+    // Shutdown subscription admin
+    try {
+      subscriptionAdmin.shutdownNow();
+      subscriptionAdmin.awaitTermination(1, TimeUnit.MINUTES);
+    } catch (InterruptedException e) {
+      LOG.warn("Failed to shutdown PubSub subscription admin: {}", e.getMessage());
+    }
   }
 
   private static CredentialsProvider getCredentialProvider() {
@@ -322,7 +340,6 @@ public class PubSubTest extends DataprocETLTestBase {
     ByteString data = genericRecordToByteString(avroSchema, record);
     pubSubToPubSubTestFormats(AVRO, AVRO, null, data, data, new AvroAndParquetPublisherReceiver());
   }
-
 
   @Category({RequiresSpark.class})
   @Test
@@ -510,7 +527,8 @@ public class PubSubTest extends DataprocETLTestBase {
     SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
     try {
       // it takes time to spin-up dataproc cluster, lets wait a little bit
-      startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING, 10, TimeUnit.MINUTES);
+      startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING,
+                         Collections.singletonMap("system.profile.name", getProfileName()), 10, TimeUnit.MINUTES);
 
       // wait and check for source subscription to be created
       ensureSubscriptionCreated(pipelineReadSubscriptionName, 10, TimeUnit.MINUTES);
@@ -691,7 +709,6 @@ public class PubSubTest extends DataprocETLTestBase {
       } catch (IOException e) {
         Assert.fail(e.getMessage());
       }
-
     }
   }
 
