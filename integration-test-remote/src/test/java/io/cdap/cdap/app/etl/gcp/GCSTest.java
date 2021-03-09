@@ -494,6 +494,7 @@ public class GCSTest extends DataprocETLTestBase {
       .put("project", "${project}")
       .put("path", "${marker_file_path}")
       .put("runCondition", runCondition)
+      .put("serviceFilePath", "auto-detect")
       .build();
 
     ETLPlugin markerFilePostActionPlugin = new ETLPlugin(
