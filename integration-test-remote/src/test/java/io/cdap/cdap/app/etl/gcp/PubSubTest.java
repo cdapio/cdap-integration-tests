@@ -97,7 +97,7 @@ import java.util.concurrent.TimeUnit;
  * address instead of the actual content when the type is byte in CSV Track https://cdap.atlassian.net/browse/CDAP-17648
  * for more details
  */
-
+@Ignore
 public class PubSubTest extends DataprocETLTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(PubSubTest.class);
   private static final String GOOGLE_SUBSCRIBER_PLUGIN_NAME = "GoogleSubscriber";
