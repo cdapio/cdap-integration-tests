@@ -149,6 +149,13 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Field.newBuilder("id", LegacySQLTypeName.INTEGER).setMode(Field.Mode.NULLABLE).build()
   };
 
+  private static final Field[] NULL_MODE_FIELDS_SCHEMA = new Field[] {
+    Field.newBuilder("string_value", LegacySQLTypeName.STRING).build(),
+    Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).build(),
+    Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).build(),
+    Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).build()
+  };
+
   private static String bigQueryDataset;
   private static Dataset dataset;
   private static BigQuery bq;
@@ -1743,6 +1750,105 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
         SIMPLE_FIELDS_SCHEMA));
 
     assertActualTable(destinationTableName, listValues, SIMPLE_FIELDS_SCHEMA);
+  }
+
+  /* Test input schema fields mode match table schema fields mode on insert.
+   * Input data:
+   *  "string_value": "string_1"
+   *  "int_value": 1
+   *  "float_value":0.1
+   *  "boolean_value": true
+   * Starting sink data:
+   *  "string_value": "string_1"
+   *  "int_value": 1
+   *  "float_value": 0.1
+   *  "boolean_value": true
+   * Expected ending sink data:
+   *  "string_value": "string_1"
+   *  "int_value": 1
+   *  "float_value": 0.1
+   *  "boolean_value": true
+   */
+  @Test
+  public void testBigQueryNullMode() throws Exception {
+    testBigQueryNullMode(Engine.MAPREDUCE);
+    testBigQueryNullMode(Engine.SPARK);
+  }
+
+  private void testBigQueryNullMode(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
+    String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, Collections.singletonList(getSimpleSource()));
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, NULL_MODE_FIELDS_SCHEMA);
+
+    Assert.assertTrue(dataset.get(destinationTableName) != null);
+
+    Schema sourceSchema = getSimpleTableSchema();
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable}")
+      .put("schema", sourceSchema.toString())
+      .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_sink")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
+      .build();
+
+    int expectedCount = 1;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-storeInExistingTable", engine);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "false");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
+    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
+
+    assertSchemaEquals(destinationTableName, com.google.cloud.bigquery.Schema.of(NULL_MODE_FIELDS_SCHEMA));
+    assertTableEquals(sourceTableName, destinationTableName);
+  }
+
+  private void assertSchemaEquals(String tableName, com.google.cloud.bigquery.Schema expectedSchema) {
+    TableId tableId = TableId.of(bigQueryDataset, tableName);
+    com.google.cloud.bigquery.Schema actualSchema = bq.getTable(tableId).getDefinition().getSchema();
+    Assert.assertEquals(expectedSchema.getFields().size(), actualSchema.getFields().size());
+
+    FieldList expectedFieldList = expectedSchema.getFields();
+    FieldList actualFieldList = actualSchema.getFields();
+    IntStream.range(0, expectedFieldList.size()).forEach(i -> {
+      Field expected = expectedFieldList.get(i);
+      Field actual = actualFieldList.get(i);
+      String fieldName = expected.getName();
+      String message = String.format("Values differ for field '%s'.", fieldName);
+      if (expected.getType() == LegacySQLTypeName.DATETIME) {
+        Assert.assertEquals(message, actual.getType(), LegacySQLTypeName.STRING);
+      } else {
+        Assert.assertEquals(message, expected, actual);
+      }
+    });
   }
 
   private void assertSchemaEquals(String expectedTableName, String actualTableName) {
