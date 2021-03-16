@@ -1,0 +1,6 @@
+id;string_col;int_col;double_col1;double_col2;long_col
+6;washington dc;-200;20;20;400
+7;florida;-300;14;14;500
+8;hawaii;-400;40.05;40.05;-600000000000000
+9;michigan;0;-4000.3;-4000.3;1234567890123
+10;indiana;1;14.4;14.4;100
