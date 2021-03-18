@@ -42,7 +42,6 @@ import io.cdap.common.http.HttpResponse;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -65,8 +64,6 @@ import javax.annotation.Nullable;
   // inherited by the child.
   MapR5Incompatible.class
 })
-// TODO: (CDAP-17747) Re-enable this test once its been fixed
-@Ignore
 public class PermissionTest extends AudiTestBase {
 
   private static final Gson GSON = new Gson();
