@@ -183,6 +183,17 @@ public class GCSTest extends DataprocETLTestBase {
     bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
   }
 
+  private List<String> listBucket(Bucket bucket, String prefix) {
+    List<String> blobs = new ArrayList<>();
+    for (Blob b: bucket.list(Storage.BlobListOption.prefix(prefix)).iterateAll()) {
+      String blobName = b.getName();
+      if (!blobName.contains("_temp") && !blobName.contains("SUCCESS") && !blobName.endsWith("/")) {
+        blobs.add(b.getName());
+      }
+    }
+    return blobs;
+  }
+
   private void markBucketNameForDelete(String bucketName) {
     markedForDeleteBuckets.add(bucketName);
   }
@@ -700,6 +711,16 @@ public class GCSTest extends DataprocETLTestBase {
     Assert.assertEquals(content, new String(blob.getContent(), StandardCharsets.UTF_8));
   }
 
+  private void assertBlobContains(Bucket bucket, String blobName, String content) {
+    Blob blob = bucket.get(blobName);
+    Assert.assertTrue(new String(blob.getContent(), StandardCharsets.UTF_8).contains(content));
+  }
+
+  private void assertBlobNotContains(Bucket bucket, String blobName, String content) {
+    Blob blob = bucket.get(blobName);
+    Assert.assertFalse(new String(blob.getContent(), StandardCharsets.UTF_8).contains(content));
+  }
+
   private void assertNotExists(Bucket bucket, String blobName) {
     Blob blob = bucket.get(blobName);
     if (blob != null) {
@@ -997,6 +1018,268 @@ public class GCSTest extends DataprocETLTestBase {
     expected.put(line2, formats.size());
     expected.put(line3, formats.size());
     Assert.assertEquals(expected, lineCounts);
+  }
+
+  @Test
+  public void testSchemaDetectionOnSingleFile() throws Exception {
+    // source bucket
+    String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
+    Bucket sourceBucket = createBucket(sourceBucketName);
+    String blobSourcePath = createPath(sourceBucket, "authors.csv");
+
+    // sink bucket
+    String sinkBucketName = "sink-schema-detection-" + UUID.randomUUID().toString();
+    Bucket sinkBucket = createBucket(sinkBucketName);
+    String blobSinkPath = createPath(sinkBucket, "output");
+
+    // a single blob
+    String header = "Name;Surname;Age;BooksPublished";
+    String dataOne = "John;Doe;21;3";
+    String dataTwo = "Alice;Green;20;5";
+    String content = String.join("\n", Arrays.asList(header, dataOne, dataTwo));
+    sourceBucket.create("authors.csv", content.getBytes(StandardCharsets.UTF_8));
+
+    // Schema is not passed (ie. schema is null) in the GCS source plugin so the automatic schema detection is triggered
+    Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "source-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSourcePath)
+      .put("format", "delimited")
+      .put("delimiter", ";")
+      .put("sampleSize", "1000")
+      .put("skipHeader", "true")
+      .put("override", "BooksPublished:string")
+      .build();
+
+    ETLPlugin gcsSourcePlugin = new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, gcsSourcePluginParams,
+                                              GOOGLE_CLOUD_ARTIFACT);
+    ETLStage source = new ETLStage("source", gcsSourcePlugin);
+
+    // gcs sink plugin
+    Map<String, String> gcsSinkPluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "sink-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSinkPath)
+      .put("format", "json")
+      .build();
+
+    ETLPlugin gcsSinkPlugin = new ETLPlugin(SINK_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, gcsSinkPluginParams,
+                                            GOOGLE_CLOUD_ARTIFACT);
+
+    ETLStage sink = new ETLStage("sink", gcsSinkPlugin);
+    ETLBatchConfig pipelineConfig = ETLBatchConfig
+      .builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .setEngine(Engine.SPARK)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
+    String appName = "GCS_Source_Sink_" + UUID.randomUUID().toString().replace("-", "_");
+    ApplicationId appId = TEST_NAMESPACE.app(appName);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+    List<String> existingBlobNames = listBucket(sinkBucket, "output");
+
+    // Value 20 is of integer data type. Hence no quotes around the number.
+    Assert.assertTrue(existingBlobNames.size() > 0);
+    String authorsBlobName = existingBlobNames.get(0);
+    assertBlobContains(sinkBucket, authorsBlobName, "20");
+
+    // The BooksPublished data type is manually set to String. Thus it contains string values rather than integers.
+    assertBlobContains(sinkBucket, authorsBlobName, "\"3\"");
+  }
+
+  @Test
+  public void testSchemaDetectionOnMultipleFilesWithDifferentSchema() throws Exception {
+    /*
+    The CSV Automated Schema Detection plugin assumes that all files/blobs residing in a directory have the same
+    schema. When the plugin runs, only the first listed file will get investigated for schema detection. After the
+    schema gets detected, the plugin continues running (in this test case GCS Source Plugin sources the data from
+    the given bucket. The plugin will throw an error when reading the files with different schemas (due to schema
+    not matching the current file structure), hence this test case is destined to fail.
+     */
+
+    testSchemaDetectionOnMultipleFilesWithDifferentSchema("true");
+    testSchemaDetectionOnMultipleFilesWithDifferentSchema("false");
+  }
+
+  private void testSchemaDetectionOnMultipleFilesWithDifferentSchema(String skipHeader) throws Exception {
+    // source bucket
+    String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
+    Bucket sourceBucket = createBucket(sourceBucketName);
+    String sourcePath = createPath(sourceBucket, ""); // The whole path is scanned
+
+    // sink bucket
+    String sinkBucketName = "sink-schema-detection-" + UUID.randomUUID().toString();
+    Bucket sinkBucket = createBucket(sinkBucketName);
+    String blobSinkPath = createPath(sinkBucket, "output");
+
+    // The first blob
+    String authorHeaders = "Name;Surname;Age";
+    String author1 = "John;Doe;35";
+    String author2 = "Alice;Green;28";
+    String authorsBlobContent = String.join("\n", Arrays.asList(authorHeaders, author1, author2));
+    sourceBucket.create("authors.csv", authorsBlobContent.getBytes(StandardCharsets.UTF_8));
+
+    // The second blob with a different schema
+    String bookHeaders = "Title;Year;Price";
+    String book1 = "Year of Jupyter;2020;19.99";
+    String book2 = "The return of Avalon;17.99";
+    String booksBlobContent = String.join("\n", Arrays.asList(bookHeaders, book1, book2));
+    sourceBucket.create("books.csv", booksBlobContent.getBytes(StandardCharsets.UTF_8));
+
+    // gcs source plugin
+    Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "source-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", sourcePath)
+      .put("format", "delimited")
+      .put("delimiter", ";")
+      .put("sampleSize", "1000")
+      .put("skipHeader", skipHeader)
+      .build();
+
+    ETLPlugin gcsSourcePlugin = new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, gcsSourcePluginParams,
+                                              GOOGLE_CLOUD_ARTIFACT);
+    ETLStage source = new ETLStage("source", gcsSourcePlugin);
+
+    // gcs sink plugin
+    Map<String, String> gcsSinkPluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "sink-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSinkPath)
+      .put("format", "json")
+      .build();
+
+    ETLPlugin gcsSinkPlugin = new ETLPlugin(SINK_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, gcsSinkPluginParams,
+                                            GOOGLE_CLOUD_ARTIFACT);
+
+    ETLStage sink = new ETLStage("sink", gcsSinkPlugin);
+
+    ETLBatchConfig pipelineConfig = ETLBatchConfig
+      .builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .setEngine(Engine.SPARK)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
+    String appName = "GCS_Source_Sink_" + UUID.randomUUID().toString().replace("-", "_");
+    ApplicationId appId = TEST_NAMESPACE.app(appName);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+    startWorkFlow(appManager, ProgramRunStatus.FAILED); // the test is destined to fail
+
+    List<String> existingBlobNames = listBucket(sinkBucket, "output");
+
+    // Since the pipeline fails, no blobs will get written in the destination bucket
+    Assert.assertEquals(existingBlobNames.size(), 0);
+  }
+
+  @Test
+  public void testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided() throws Exception {
+    /*
+    In this test case, the plugin will filter out all the files from the source bucket that do not match the given file
+    filter regex ".+authors.*". So from authors-part-1.csv, authors-part-2.csv and books.csv, only
+    authors-part-1.csv and authors-part-2.csv will get further passed in the pipeline.
+     */
+
+    String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
+    Bucket sourceBucket = createBucket(sourceBucketName);
+
+    String sinkBucketName = "sink-schema-detection-" + UUID.randomUUID().toString();
+    Bucket sinkBucket = createBucket(sinkBucketName);
+
+    String sourcePath = createPath(sourceBucket, ""); // The whole path is scanned
+    String blobSinkPath = createPath(sinkBucket, "output");
+
+    // The first blob
+    String authorHeaders = "Name;Surname;Age";
+    String author1 = "John;Doe;35";
+    String author2 = "Alice;Green;28";
+    String authorsBlobContent = String.join("\n", Arrays.asList(authorHeaders, author1, author2));
+    sourceBucket.create("authors-part-1.csv", authorsBlobContent.getBytes(StandardCharsets.UTF_8));
+
+    // The second blob with the same schema as the first one
+    String otherAuthorHeaders = "Name;Surname;Age";
+    String otherAuthor1 = "Brian;Alexander;23";
+    String otherAuthor2 = "Sally;Richards;21";
+    String otherAuthorsBlobContent = String.join("\n", Arrays.asList(otherAuthorHeaders, otherAuthor1, otherAuthor2));
+    sourceBucket.create("authors-part-2.csv", otherAuthorsBlobContent.getBytes(StandardCharsets.UTF_8));
+
+    // The third blob with a different schema
+    String bookHeaders = "Title;Year;Price";
+    String book1 = "Year of Jupyter;2020;19.99";
+    String book2 = "The return of Avalon;17.99";
+    String booksBlobContent = String.join("\n", Arrays.asList(bookHeaders, book1, book2));
+    sourceBucket.create("books.csv", booksBlobContent.getBytes(StandardCharsets.UTF_8));
+
+    // Schema is not passed (ie. schema is null) in the GCS source plugin so the automatic schema detection is triggered
+    Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "source-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", sourcePath)
+      .put("format", "delimited")
+      .put("delimiter", ";")
+      .put("sampleSize", "1000")
+      .put("skipHeader", "true")
+      .put("fileRegex", ".+authors.*")
+      .build();
+
+    ETLPlugin gcsSourcePlugin = new ETLPlugin(
+      SOURCE_PLUGIN_NAME,
+      BatchSource.PLUGIN_TYPE,
+      gcsSourcePluginParams,
+      GOOGLE_CLOUD_ARTIFACT
+    );
+
+    ETLStage source = new ETLStage("source", gcsSourcePlugin);
+
+    // gcs sink plugin
+    Map<String, String> gcsSinkPluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "sink-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSinkPath)
+      .put("format", "json")
+      .build();
+
+    ETLPlugin gcsSinkPlugin = new ETLPlugin(
+      SINK_PLUGIN_NAME,
+      BatchSink.PLUGIN_TYPE,
+      gcsSinkPluginParams,
+      GOOGLE_CLOUD_ARTIFACT
+    );
+
+    ETLStage sink = new ETLStage("sink", gcsSinkPlugin);
+    ETLBatchConfig pipelineConfig = ETLBatchConfig
+      .builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .setEngine(Engine.SPARK)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
+    String appName = "GCS_Source_Sink_" + UUID.randomUUID().toString().replace("-", "_");
+    ApplicationId appId = TEST_NAMESPACE.app(appName);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    List<String> existingBlobNames = listBucket(sinkBucket, "output");
+    Assert.assertNotEquals(existingBlobNames.size(), 0);
+
+    // check if the sink bucket contains data from both authors-part-1.csv & authors-part-2.csv
+    assertBlobContains(sinkBucket, existingBlobNames.get(0), "John");
+    assertBlobContains(sinkBucket, existingBlobNames.get(0), "Sally");
+
+    // check if the books file is filtered out
+    assertBlobNotContains(sinkBucket, existingBlobNames.get(0), "Year of Jupyter");
+
+    // check if int data type was inferred properly
+    assertBlobContains(sinkBucket, existingBlobNames.get(0), "35");
+    assertBlobNotContains(sinkBucket, existingBlobNames.get(0), "\"35\"");
   }
 
   private ETLStage createSourceStage(String format, String path, String regex, Schema schema) {
