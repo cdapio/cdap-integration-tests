@@ -186,15 +186,16 @@ public class FileTest extends ETLTestBase {
 
     // The sink plugin
     String tableName = "DummyTable";
-    Schema outputSchema = Schema.recordOf("etlSchemaBody",
-                                          Schema.Field.of("id", Schema.of(Schema.Type.INT)),
-                                          Schema.Field.of("string_col", Schema.of(Schema.Type.STRING)),
-                                          Schema.Field.of("int_col", Schema.of(Schema.Type.INT)),
-                                          Schema.Field.of("double_col1", Schema.of(Schema.Type.DOUBLE)),
-                                          Schema.Field.of("double_col2", Schema.of(Schema.Type.STRING)),
-                                          Schema.Field.of("long_col", Schema.of(Schema.Type.LONG)),
-                                          Schema.Field.of("date_col", Schema.of(Schema.Type.STRING)),
-                                          Schema.Field.of("time_col", Schema.of(Schema.Type.STRING))
+    Schema outputSchema = Schema.recordOf(
+      "etlSchemaBody",
+      Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("string_col", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("int_col", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("double_col1", Schema.of(Schema.Type.DOUBLE)),
+      Schema.Field.of("double_col2", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("long_col", Schema.of(Schema.Type.LONG)),
+      Schema.Field.of("date_col", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("time_col", Schema.of(Schema.Type.STRING))
     );
 
     String rowKeyColumn = "id";
@@ -268,12 +269,14 @@ public class FileTest extends ETLTestBase {
 
     // The sink plugin
     String tableName = "DummyTable";
-    Schema outputSchema = Schema.recordOf("etlSchemaBody",
-                                          Schema.Field.of("body_0", Schema.of(Schema.Type.INT)),
-                                          Schema.Field.of("body_1", Schema.of(Schema.Type.STRING)),
-                                          Schema.Field.of("body_2", Schema.of(Schema.Type.INT)),
-                                          Schema.Field.of("body_3", Schema.of(Schema.Type.DOUBLE)),
-                                          Schema.Field.of("body_4", Schema.of(Schema.Type.LONG)));
+    Schema outputSchema = Schema.recordOf(
+      "etlSchemaBody",
+      Schema.Field.of("body_0", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("body_1", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("body_2", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("body_3", Schema.of(Schema.Type.DOUBLE)),
+      Schema.Field.of("body_4", Schema.of(Schema.Type.LONG))
+    );
 
     String rowKeyColumn = "body_0";
     ETLPlugin sinkTablePlugin = createTableSinkPlugin(outputSchema.toString(), rowKeyColumn, tableName);
@@ -392,5 +395,84 @@ public class FileTest extends ETLTestBase {
 
     // Assert that table has no records present
     Assert.assertEquals(0, table.get(Bytes.toBytes(1)).getColumns().size());
+  }
+
+  @Test
+  public void testFourthAutomaticSchemaDetectionWithMacros() throws Exception {
+    /*
+     *  - This test proves that the FileSource Plugin works as expected with the CSV Automatic Schema Detection Plugin
+     *    included and config properties provided as macros. Since the input schema is already provided, the FileSource
+     *    skips the automated schema detection step and takes the input schema provided.
+     */
+
+    String sourcePath = setupData(DirectoryType.MULTIPLE_FILES_WITH_HEADERS_AND_SIMILAR_SCHEMAS);
+
+    ETLPlugin fileSourcePlugin = createFileSourcePlugin(
+      "${input_schema}",
+      "${format}",
+      "${delimiter}",
+      "${sample_size}",
+      "${override}",
+      "File",
+      "${skip_headers}",
+      "${source_path}",
+      "${file_regex}");
+
+    ETLStage source = new ETLStage("FileBatchSource", fileSourcePlugin);
+
+    // The sink plugin
+    String tableName = "DummyTable";
+    Schema schema = Schema.recordOf(
+      "etlSchemaBody",
+      Schema.Field.of("id", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("string_col", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("int_col", Schema.of(Schema.Type.INT)),
+      Schema.Field.of("double_col1", Schema.of(Schema.Type.DOUBLE)),
+      Schema.Field.of("double_col2", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("long_col", Schema.of(Schema.Type.LONG)),
+      Schema.Field.of("date_col", Schema.of(Schema.Type.STRING)),
+      Schema.Field.of("time_col", Schema.of(Schema.Type.STRING))
+    );
+
+    String rowKeyColumn = "id";
+    ETLPlugin sinkTablePlugin = createTableSinkPlugin(schema.toString(), rowKeyColumn, tableName);
+    ETLStage sink = new ETLStage("TableSink", sinkTablePlugin);
+
+    // Pipeline
+    ETLBatchConfig pipelineConfig = ETLBatchConfig
+      .builder()
+      .addStage(source)
+      .addStage(sink)
+      .addConnection(source.getName(), sink.getName())
+      .setEngine(Engine.SPARK)
+      .build();
+
+    ApplicationId appId = TEST_NAMESPACE.app("Schema-Detection-Test");
+    AppRequest appRequest = getBatchAppRequestV2(pipelineConfig);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+    SparkManager sparkManager = appManager.getSparkManager("SchemaDetectionTest");
+
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+
+    Map<String, String> args = new HashMap<>();
+    args.put("input_schema", schema.toString());
+    args.put("format", "delimited");
+    args.put("delimiter", ";");
+    args.put("sample_size", "5");
+    args.put("override", "double_col2:string");
+    args.put("skip_headers", "true");
+    args.put("source_path", sourcePath);
+    args.put("file_regex", ".+1\\.csv");
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, args, 5, TimeUnit.MINUTES);
+
+    DataSetManager<Table> tableManager = getTableDataset(tableName);
+    Table table = tableManager.get();
+
+    Row firstRow = table.get(Bytes.toBytes(1));
+    Assert.assertEquals("colorado", firstRow.getString("string_col"));
+    Assert.assertEquals(new Integer(100), firstRow.getInt("int_col"));
+    Assert.assertEquals(new Double(0.001), firstRow.getDouble("double_col1"));
+    Assert.assertEquals("0.001", firstRow.getString("double_col2"));
+    Assert.assertEquals(new Long(1111111111111L), firstRow.getLong("long_col"));
   }
 }
