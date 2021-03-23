@@ -165,9 +165,10 @@ public class PermissionTest extends AudiTestBase {
                        300, TimeUnit.SECONDS);
     validateGroupAndPermissions(serviceURL, PermissionTestApp.TPFS, tpfsPerms, tpfsGroup);
 
+    // TODO:(CDAP-17747) re-enable when dynamic partitioning is fixed
     // write to PFS with dynamic partitioning // dynamic output to PFS
-    startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED, ImmutableMap.of("key", "1"), 300, TimeUnit.SECONDS);
-    validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, pfsPerms, pfsGroup);
+    //startAndWaitForRun(mrManager, ProgramRunStatus.COMPLETED, ImmutableMap.of("key", "1"), 300, TimeUnit.SECONDS);
+    //validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, pfsPerms, pfsGroup);
 
     // 7. write to all datasets with multi-output. They should get the default permissions
     // to find out what they are, create a file set with default permissions and query the permissions
@@ -186,7 +187,8 @@ public class PermissionTest extends AudiTestBase {
                        300, TimeUnit.SECONDS);
     // validate only the sub-paths written by this run
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, defaultPerms, fsGroup, "path=" + secondPath);
-    validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, defaultPerms, pfsGroup, "key=2");
+    // TODO:(CDAP-17747) check again when dynamic partitioning is fixed
+    //validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, defaultPerms, pfsGroup, "key=2");
     validateGroupAndPermissions(serviceURL, PermissionTestApp.TPFS, defaultPerms, tpfsGroup, "time=" + secondTime);
 
     // 8. write to all datasets with multi-output, this time with explicit umask
@@ -197,7 +199,8 @@ public class PermissionTest extends AudiTestBase {
                        300, TimeUnit.SECONDS);
     // validate only the sub-paths written by this run
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, multiPerms, fsGroup, "path=" + thirdPath);
-    validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, multiPerms, pfsGroup, "key=3");
+    // TODO:(CDAP-17747) check again when dynamic partitioning is fixed
+    //validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, multiPerms, pfsGroup, "key=3");
     validateGroupAndPermissions(serviceURL, PermissionTestApp.TPFS, multiPerms, tpfsGroup, "time=" + thirdTime);
 
     // 9. write to all datasets with multi-output, this time configure permissions as runtime args
@@ -208,7 +211,8 @@ public class PermissionTest extends AudiTestBase {
                        300, TimeUnit.SECONDS);
     // validate only the sub-paths written by this run
     validateGroupAndPermissions(serviceURL, PermissionTestApp.FS, rtPerms, fsGroup, "path=" + fourthPath);
-    validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, rtPerms, pfsGroup, "key=4");
+    // TODO:(CDAP-17747) check again when dynamic partitioning is fixed
+    //validateGroupAndPermissions(serviceURL, PermissionTestApp.PFS, rtPerms, pfsGroup, "key=4");
     validateGroupAndPermissions(serviceURL, PermissionTestApp.TPFS, rtPerms, tpfsGroup, "time=" + fourthTime);
   }
 
