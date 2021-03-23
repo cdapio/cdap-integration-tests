@@ -32,7 +32,6 @@ import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.ServiceManager;
 import io.cdap.cdap.test.WorkerManager;
-import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -63,12 +62,14 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     startAndWaitForRun(pfsService, ProgramRunStatus.RUNNING);
     URL serviceURL = pfsService.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
-    HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, "1")).build(),
+    HttpResponse response = getRestClient().execute(HttpRequest.put(new URL(serviceURL, "1")).withBody("").build(),
                                                     getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
-    response = getRestClient().execute(HttpMethod.PUT, new URL(serviceURL, "2"), getClientConfig().getAccessToken());
+    response = getRestClient()
+      .execute(HttpRequest.put(new URL(serviceURL, "2")).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
-    response = getRestClient().execute(HttpMethod.PUT, new URL(serviceURL, "3"), getClientConfig().getAccessToken());
+    response = getRestClient()
+      .execute(HttpRequest.put(new URL(serviceURL, "3")).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
     DatasetClient datasetClient = new DatasetClient(getClientConfig(), getRestClient());
@@ -101,7 +102,8 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     validate(client, "i", "j", 3, 3);
 
     // add a new partition and validate that the delimiter change applied to it
-    response = getRestClient().execute(HttpMethod.PUT, new URL(serviceURL, "4"), getClientConfig().getAccessToken());
+    response = getRestClient()
+      .execute(HttpRequest.put(new URL(serviceURL, "4")).withBody("").build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, response.getResponseCode());
 
     validate(client, "i", "j", 3, 4);
@@ -114,12 +116,12 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
   }
 
   /**
-   * This validates that the pfs has all data in the correct format. Assumes that the pfs has a hybrid set
-   * of partitions, up to a certain partition key (commaLimit) delimited by comma, thereafter delimited by :
+   * This validates that the pfs has all data in the correct format. Assumes that the pfs has a hybrid set of
+   * partitions, up to a certain partition key (commaLimit) delimited by comma, thereafter delimited by :
    *
    * @param client a query client
    * @param fieldA the name of the first field in the explore table schema
-   * @param fieldB  the name of the second field in the explore table schema
+   * @param fieldB the name of the second field in the explore table schema
    * @param commaLimit partitions from key=1 up to key=commaLimit (inclusive) have ',' as the delimiter
    * @param colonLimit partitions with key>commaLimit up to key=colonLimit have ':' as the delimiter
    */
@@ -171,5 +173,4 @@ public class PartitionedFileSetUpdateTest extends AudiTestBase {
     }
     return rows;
   }
-
 }

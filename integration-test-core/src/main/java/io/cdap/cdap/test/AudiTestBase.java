@@ -16,9 +16,13 @@
 
 package io.cdap.cdap.test;
 
+import com.google.api.client.util.Throwables;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import io.cdap.cdap.api.app.Application;
+import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.dataset.Dataset;
 import io.cdap.cdap.api.dataset.DatasetAdmin;
 import io.cdap.cdap.api.dataset.DatasetProperties;
@@ -44,6 +48,7 @@ import io.cdap.cdap.remote.dataset.kvtable.KVTableDatasetApp;
 import io.cdap.cdap.remote.dataset.kvtable.RemoteKeyValueTable;
 import io.cdap.cdap.remote.dataset.table.RemoteTable;
 import io.cdap.cdap.remote.dataset.table.TableDatasetApp;
+import io.cdap.cdap.security.authentication.client.AccessToken;
 import io.cdap.chaosmonkey.proto.ClusterDisruptor;
 import io.cdap.common.ContentProvider;
 import io.cdap.common.http.HttpRequest;
@@ -53,26 +58,34 @@ import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.annotation.Nullable;
 
 /**
  * Custom wrapper around IntegrationTestBase
  */
 public class AudiTestBase extends IntegrationTestBase {
-  private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
 
+  private static final Logger LOG = LoggerFactory.getLogger(AudiTestBase.class);
+  private static final String GCP_SERVICE_ACCOUNT_PATH = "google.application.credentials.path";
+  private static final String GCP_SERVICE_ACCOUNT_BASE64_ENCODED = "google.application.credentials.base64.encoded";
   // Used for starting/stop await timeout.
   protected static final int PROGRAM_START_STOP_TIMEOUT_SECONDS =
     Integer.valueOf(System.getProperty("programTimeout", "120"));
@@ -89,6 +102,8 @@ public class AudiTestBase extends IntegrationTestBase {
   private final RESTClient restClient;
   protected DisruptorFactory disruptor;
 
+  private com.google.auth.oauth2.AccessToken oauthToken;
+
   @After
   public void stopDisruptor() {
     if (disruptor != null) {
@@ -101,6 +116,55 @@ public class AudiTestBase extends IntegrationTestBase {
     restClient.addListener(createRestClientListener());
 
     disruptor = new DisruptorFactory();
+  }
+
+  @Nullable
+  @Override
+  protected AccessToken getAccessToken() {
+    // Use basic auth if its defined (to maintain backwards compatibility)
+    String name = System.getProperty("cdap.username");
+    String password = System.getProperty("cdap.password");
+    try {
+      if (name != null && password != null) {
+        return fetchAccessToken(name, password);
+      }
+    } catch (IOException | TimeoutException | InterruptedException e) {
+      Throwables.propagate(e);
+    }
+
+    try {
+      // Get service account contents either from file or base64 encoded string
+      String serviceAccountCredentials = getServiceAccount();
+      if (serviceAccountCredentials == null) {
+        return null;
+      }
+      GoogleCredentials creds = ServiceAccountCredentials
+        .fromStream(new ByteArrayInputStream(serviceAccountCredentials.getBytes(StandardCharsets.UTF_8)))
+        .createScoped("https://www.googleapis.com/auth/cloud-platform");
+      Date now = new Date(System.currentTimeMillis());
+      // Refresh the token if the oauthToken is not already defined or it is expired
+      if (oauthToken == null || now.after(oauthToken.getExpirationTime())) {
+        oauthToken = creds.refreshAccessToken();
+      }
+
+      return new AccessToken(oauthToken.getTokenValue(), oauthToken.getExpirationTime().getTime(), "Bearer");
+    } catch (IOException e) {
+      Throwables.propagate(e);
+    }
+    return null;
+  }
+
+  private String getServiceAccount() throws IOException {
+    String serviceAccountPath = System.getProperty(GCP_SERVICE_ACCOUNT_PATH);
+    String serviceAccountEncoded = System.getProperty(GCP_SERVICE_ACCOUNT_BASE64_ENCODED);
+
+    if (serviceAccountEncoded != null) {
+      return Bytes.toString(Base64.getDecoder().decode(serviceAccountEncoded));
+    }
+    if (serviceAccountPath != null) {
+      return new String(Files.readAllBytes(Paths.get(serviceAccountPath)), StandardCharsets.UTF_8);
+    }
+    return null;
   }
 
   // should always use this RESTClient because it has listeners which log upon requests made and responses received.
