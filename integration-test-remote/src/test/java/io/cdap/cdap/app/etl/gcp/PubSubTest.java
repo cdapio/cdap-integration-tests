@@ -322,6 +322,79 @@ public class PubSubTest extends DataprocETLTestBase {
 
   @Category({RequiresSpark.class})
   @Test
+  public void pubSubToPubSubTestMacroSubscription() throws Exception {
+    String prefix = "cdap-msg";
+
+    String sourceTopicName = String.format("%s-source-%s", prefix, UUID.randomUUID());
+    String sinkTopicName = String.format("%s-sink-%s", prefix, UUID.randomUUID());
+
+    String testSubscriptionName = String.format("%s-test-%s", prefix, UUID.randomUUID());
+    String pipelineReadSubscriptionName = String.format("%s-pipeline-%s", prefix, UUID.randomUUID());
+    markSubscriptionForCleanup(pipelineReadSubscriptionName);
+
+    ProjectTopicName sourceTopicNamePTN = createTopic(sourceTopicName);
+    createTopic(sinkTopicName);
+
+    ProjectSubscriptionName testSubscriptionPSN = createSubscription(sinkTopicName, testSubscriptionName);
+
+    TestMessageReceiver receiver = new TestMessageReceiver();
+    Subscriber subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
+      .setCredentialsProvider(getCredentialProvider()).build();
+
+    subscriber.addListener(new Subscriber.Listener() {
+      public void failed(Subscriber.State from, Throwable failure) {
+        LOG.error("State {}:", from.toString(), failure);
+      }
+    }, MoreExecutors.directExecutor());
+
+    subscriber.startAsync().awaitRunning();
+
+    ETLStage ss = createSubscriberStage(sourceTopicName, "${subscription}");
+    ETLStage ps = createPublisherStage(sinkTopicName);
+
+    DataStreamsConfig config = DataStreamsConfig.builder()
+      .addStage(ss)
+      .addStage(ps)
+      .addConnection(ss.getName(), ps.getName())
+      .setBatchInterval("30s")
+      .setStopGracefully(false)
+      .disableCheckpoints()
+      .build();
+
+    ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
+    AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+    try {
+      Map<String, String> args = new HashMap<>();
+      args.put("system.profile.name", getProfileName());
+      args.put("subscription", pipelineReadSubscriptionName);
+      // it takes time to spin-up dataproc cluster, lets wait a little bit
+      startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING, args, 10, TimeUnit.MINUTES);
+
+      // wait and check for source subscription to be created
+      ensureSubscriptionCreated(pipelineReadSubscriptionName, 10, TimeUnit.MINUTES);
+
+      // send some messages...
+      publishMessages(sourceTopicNamePTN, "message1", "message3", "message2");
+      // ... and ensure they are passed through pipeline to our subscriber
+      receiver.assertRetrievedMessagesContain(10, TimeUnit.MINUTES, "message1", "message3", "message2");
+
+      subscriber.stopAsync().awaitTerminated();
+    } finally {
+      try {
+        sparkManager.stop();
+        sparkManager.waitForStopped(5, TimeUnit.MINUTES);
+      } catch (Exception e) {
+        // don't treat this as a test failure, but log a warning
+        LOG.warn("Pipeline failed to stop gracefully", e);
+      }
+    }
+  }
+
+  @Category({RequiresSpark.class})
+  @Test
   public void pubSubToPubSubJson() throws Exception {
     String message = "{\"message\":\"Hello\"}";
     pubSubToPubSubTestFormats(JSON, JSON, null, ByteString.copyFromUtf8(message), message,
