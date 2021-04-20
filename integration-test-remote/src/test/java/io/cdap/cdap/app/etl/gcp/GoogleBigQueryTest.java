@@ -352,6 +352,82 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
   }
 
   @Test
+  public void testSchemaNullTableNotExist() throws Exception {
+    testSchemaNullTableNotExist(Engine.MAPREDUCE);
+    testSchemaNullTableNotExist(Engine.SPARK);
+  }
+
+  /* Test check read data from existing table but schema is missing and store them in new table.
+   * Input data:
+   *  "string_value": "string_1"
+   *  "int_value": 1
+   *  "float_value": 0.1
+   *  "boolean_value": true
+   * Starting sink data:
+   *  "string_value": "string_1"
+   *  "int_value": 1
+   *  "float_value":0.1
+   *  "boolean_value": true
+   * Expected ending sink data:
+   *  "string_value": "string_1"
+   *  "int_value": 1
+   *  "float_value": 0.1
+   *  "boolean_value": true
+   */
+  private void testSchemaNullTableNotExist(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
+    String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableName, SIMPLE_FIELDS_SCHEMA);
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableName, Collections.singletonList(getSimpleSource()));
+
+    Assert.assertFalse(dataset.get(destinationTableName) != null);
+
+
+    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
+            .put("referenceName", "bigQuery_source")
+            .put("project", "${project}")
+            .put("dataset", "${dataset}")
+            .put("table", "${srcTable}")
+            .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+            .put("referenceName", "bigQuery_sink")
+            .put("project", "${project}")
+            .put("dataset", "${dataset}")
+            .put("table", "${dstTable}")
+            .put("operation", "${operation}")
+            .put("allowSchemaRelaxation", "${relax}")
+            .build();
+
+    int expectedCount = 1;
+
+    GoogleBigQueryTest.DeploymentDetails deploymentDetails =
+            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-nullSchemaNewTable", engine);
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable", sourceTableName);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "false");
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+            Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCount, 10);
+    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCount, 10);
+
+    Assert.assertTrue(dataset.get(destinationTableName) != null);
+    assertSchemaEquals(sourceTableName, destinationTableName);
+    assertTableEquals(sourceTableName, destinationTableName);
+  }
+
+  @Test
   public void testReadDataAndStoreWithUpdateTableSchema() throws Exception {
     testReadDataAndStoreWithUpdateTableSchema(Engine.MAPREDUCE);
     testReadDataAndStoreWithUpdateTableSchema(Engine.SPARK);
