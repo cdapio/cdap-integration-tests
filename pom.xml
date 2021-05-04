@@ -134,12 +134,12 @@
     </dependency>
     <dependency> <!-- ETLBatchConfig -->
       <groupId>io.cdap.cdap</groupId>
-      <artifactId>cdap-data-pipeline</artifactId>
+      <artifactId>cdap-data-pipeline2_2.11</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
       <groupId>io.cdap.cdap</groupId>
-      <artifactId>cdap-data-streams</artifactId>
+      <artifactId>cdap-data-streams2_2.11</artifactId>
       <version>${cdap.version}</version>
     </dependency>
     <dependency>
@@ -178,7 +178,7 @@
     <!-- to test Hydrator Kafka plugins -->
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.10</artifactId>
+      <artifactId>kafka_2.11</artifactId>
       <version>${kafka.version}</version>
       <exclusions>
         <exclusion>
