@@ -34,6 +34,7 @@ import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
 import io.cdap.cdap.etl.api.Engine;
+import io.cdap.cdap.etl.api.Transform;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
@@ -73,6 +74,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(GoogleBigQueryTest.class);
   private static final String BIG_QUERY_PLUGIN_NAME = "BigQueryTable";
   private static final String SOURCE_TABLE_NAME_TEMPLATE = "test_source_table_";
+  private static final String SOURCE_TABLE_NAME_TEMPLATE_2 = "test_source_table2_";
   private static final String SINK_TABLE_NAME_TEMPLATE = "test_sink_table_";
 
   private static final Field[] SIMPLE_FIELDS_SCHEMA = new Field[]{
@@ -154,6 +156,23 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     Field.newBuilder("int_value", LegacySQLTypeName.INTEGER).build(),
     Field.newBuilder("float_value", LegacySQLTypeName.FLOAT).build(),
     Field.newBuilder("boolean_value", LegacySQLTypeName.BOOLEAN).build()
+  };
+
+  private static final Field[] SOURCE_SCHEMA = new Field[]{
+    Field.newBuilder("JOB_ID", LegacySQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
+    Field.newBuilder("JOB_TITLE", LegacySQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
+    Field.newBuilder("MIN_SALARY", LegacySQLTypeName.NUMERIC).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("MAX_SALARY", LegacySQLTypeName.NUMERIC).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("DATE_UPDATED", LegacySQLTypeName.TIMESTAMP).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("END_DATE", LegacySQLTypeName.TIMESTAMP).setMode(Field.Mode.NULLABLE).build()
+  };
+
+  private static final Field[] UPDATED_SOURCE_SCHEMA = new Field[]{
+    Field.newBuilder("JOB_ID", LegacySQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
+    Field.newBuilder("JOB_TITLE", LegacySQLTypeName.STRING).setMode(Field.Mode.REQUIRED).build(),
+    Field.newBuilder("MIN_SALARY", LegacySQLTypeName.NUMERIC).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("MAX_SALARY", LegacySQLTypeName.NUMERIC).setMode(Field.Mode.NULLABLE).build(),
+    Field.newBuilder("DATE_UPDATED", LegacySQLTypeName.TIMESTAMP).setMode(Field.Mode.NULLABLE).build(),
   };
 
   private static String bigQueryDataset;
@@ -1907,6 +1926,112 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     assertTableEquals(sourceTableName, destinationTableName);
   }
 
+  @Test
+  public void testBigQueryWithDifferentSchemaRecordName() throws Exception {
+    testBigQueryWithDifferentSchemaRecordName(Engine.MAPREDUCE);
+    testBigQueryWithDifferentSchemaRecordName(Engine.SPARK);
+  }
+
+  private void testBigQueryWithDifferentSchemaRecordName(Engine engine) throws Exception {
+    String testId = GoogleBigQueryUtils.getUUID();
+
+    String sourceTableNameOne = SOURCE_TABLE_NAME_TEMPLATE + testId;
+    String sourceTableNameTwo = SOURCE_TABLE_NAME_TEMPLATE_2 + testId;
+    String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
+
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableNameOne, SOURCE_SCHEMA);
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, sourceTableNameTwo, SOURCE_SCHEMA);
+    GoogleBigQueryUtils.createTestTable(bq, bigQueryDataset, destinationTableName, UPDATED_SOURCE_SCHEMA);
+
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableNameOne,
+                                   Collections.singletonList(getSource()));
+    GoogleBigQueryUtils.insertData(bq, dataset, sourceTableNameTwo,
+                                   Collections.singletonList(getSource()));
+
+    Schema outputSourceSchema = getOutputSourceSchema();
+    Schema etlSchemaBodySourceSchema = getEtlSchemaBodySourceSchema();
+    Schema wranglerOutputSchema = getOutputSchemaForWrangler();
+
+    Map<String, String> wranglerProperties = ImmutableMap.of(
+      "field", "*",
+      "precondition", "false",
+      "threshold", "1",
+      "schema", wranglerOutputSchema.toString(),
+      "directives", "drop END_DATE");
+
+    Map<String, String> sourceOneProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source_1")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable1}")
+      .put("schema", outputSourceSchema.toString())
+      .build();
+
+    Map<String, String> sourceTwoProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_source_2")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${srcTable2}")
+      .put("schema", etlSchemaBodySourceSchema.toString())
+      .build();
+
+    Map<String, String> sinkProps = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "bigQuery_sink")
+      .put("project", "${project}")
+      .put("dataset", "${dataset}")
+      .put("table", "${dstTable}")
+      .put("operation", "${operation}")
+      .put("allowSchemaRelaxation", "${relax}")
+      .build();
+
+    DeploymentDetails deploymentDetails =
+      deployApplicationWithTwoSources(sourceOneProps, sourceTwoProps, wranglerProperties, sinkProps,
+                                      "BigQuery-" + engine + "-schemaWithTwoDifferentRecordName", engine);
+
+    Map<String, String> args = new HashMap<>();
+    args.put("project", getProjectId());
+    args.put("dataset", bigQueryDataset);
+    args.put("srcTable1", sourceTableNameOne);
+    args.put("srcTable2", sourceTableNameTwo);
+    args.put("dstTable", destinationTableName);
+    args.put("operation", "INSERT");
+    args.put("relax", "false");
+
+    startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, args);
+
+    ApplicationId appId = deploymentDetails.getAppId();
+    Map<String, String> tags = ImmutableMap.of(Constants.Metrics.Tag.NAMESPACE, appId.getNamespace(),
+                                               Constants.Metrics.Tag.APP, appId.getEntityName());
+
+    int expectedCountInSource = 1;
+    int expectedCountInSink = 2;
+
+    checkMetric(tags, "user." + deploymentDetails.getSource().getName() + ".records.out", expectedCountInSource, 10);
+    checkMetric(tags, "user." + deploymentDetails.getSink().getName() + ".records.in", expectedCountInSink, 10);
+
+    Assert.assertNotNull(dataset.get(destinationTableName));
+
+    List<FieldValueList> listValues = new ArrayList<>();
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "developer"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "123.456"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "456.321"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2021-04-20 12:41:35.220000+00:00")),
+        UPDATED_SOURCE_SCHEMA));
+    listValues.add(
+      FieldValueList.of(
+        Arrays.asList(FieldValue.of(FieldValue.Attribute.PRIMITIVE, "1"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "developer"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "123.456"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "456.321"),
+                      FieldValue.of(FieldValue.Attribute.PRIMITIVE, "2021-04-20 12:41:35.220000+00:00")),
+        UPDATED_SOURCE_SCHEMA));
+
+    assertTableEquals(destinationTableName, listValues, com.google.cloud.bigquery.Schema.of(UPDATED_SOURCE_SCHEMA));
+  }
+
   private void assertSchemaEquals(String tableName, com.google.cloud.bigquery.Schema expectedSchema) {
     TableId tableId = TableId.of(bigQueryDataset, tableName);
     com.google.cloud.bigquery.Schema actualSchema = bq.getTable(tableId).getDefinition().getSchema();
@@ -1976,6 +2101,26 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     }
   }
 
+  private void assertTableEquals(String actualTableName, List<FieldValueList> expectedResult,
+                                 com.google.cloud.bigquery.Schema expectedSchema) {
+    TableId actualTableId = TableId.of(bigQueryDataset, actualTableName);
+    com.google.cloud.bigquery.Schema actualSchema = bq.getTable(actualTableId).getDefinition().getSchema();
+    List<FieldValueList> actualResult = GoogleBigQueryUtils.getResultTableData(bq, actualTableId, actualSchema);
+
+    Assert.assertEquals(String.format("Expected row count '%d', actual row count '%d'.", expectedResult.size(),
+                                      actualResult.size()), expectedResult.size(), actualResult.size());
+
+    FieldList expectedFieldList = expectedSchema.getFields();
+    FieldList actualFieldList = actualSchema.getFields();
+    IntStream.range(0, expectedFieldList.size()).forEach(i -> {
+      Field expected = expectedFieldList.get(i);
+      Field actual = actualFieldList.get(i);
+      String fieldName = expected.getName();
+      String message = String.format("Values differ for field '%s'.", fieldName);
+      Assert.assertEquals(message, expected, actual);
+    });
+  }
+
   private void assertTableEquals(String expectedTableName, String actualTableName) {
     assertTableEquals(expectedTableName, actualTableName, Collections.emptySet());
   }
@@ -2037,6 +2182,44 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     return new DeploymentDetails(source, sink, appId, applicationManager);
   }
 
+  private DeploymentDetails deployApplicationWithTwoSources(Map<String, String> sourceOneProperties,
+                                                            Map<String, String> sourceTwoProperties,
+                                                            Map<String, String> wranglerProperties,
+                                                            Map<String, String> sinkProperties,
+                                                            String applicationName,
+                                                            Engine engine) throws Exception {
+
+    ETLStage sourceOne = new ETLStage("BigQuerySourceOneStage",
+                                   new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceOneProperties,
+                                                 GOOGLE_CLOUD_ARTIFACT));
+    ETLStage sourceTwo = new ETLStage("BigQuerySourceTwoStage",
+                                   new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceTwoProperties,
+                                                 GOOGLE_CLOUD_ARTIFACT));
+    ETLStage wranglerTransformStage =
+      new ETLStage("Wrangler",
+                   new ETLPlugin("Wrangler", Transform.PLUGIN_TYPE, wranglerProperties, null));
+
+    ETLStage sink = new ETLStage("BigQuerySinkStage",
+                                 new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, sinkProperties,
+                                               GOOGLE_CLOUD_ARTIFACT));
+
+    ETLBatchConfig etlConfig = ETLBatchConfig.builder()
+      .addStage(sourceOne)
+      .addStage(wranglerTransformStage)
+      .addStage(sourceTwo)
+      .addStage(sink)
+      .addConnection(sourceOne.getName(), wranglerTransformStage.getName())
+      .addConnection(wranglerTransformStage.getName(), sink.getName())
+      .addConnection(sourceTwo.getName(), sink.getName())
+      .setEngine(engine)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
+    ApplicationId appId = TEST_NAMESPACE.app(applicationName);
+    ApplicationManager applicationManager = deployApplication(appId, appRequest);
+    return new DeploymentDetails(sourceOne, sink, appId, applicationManager);
+  }
+
   private static void createDataset() {
     LOG.info("Creating dataset {}", bigQueryDataset);
     DatasetInfo datasetInfo = DatasetInfo.newBuilder(bigQueryDataset).build();
@@ -2058,6 +2241,17 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     json.addProperty("int_value", 1);
     json.addProperty("float_value", 0.1);
     json.addProperty("boolean_value", true);
+    return json;
+  }
+
+  private static JsonObject getSource() {
+    JsonObject json = new JsonObject();
+    json.addProperty("JOB_ID", "1");
+    json.addProperty("JOB_TITLE", "developer");
+    json.addProperty("MIN_SALARY", 123.456);
+    json.addProperty("MAX_SALARY", 456.321);
+    json.addProperty("DATE_UPDATED", "2021-04-20 12:41:35.220000+00:00");
+    json.addProperty("END_DATE", "2021-04-20 14:41:35.220000+00:00");
     return json;
   }
 
@@ -2234,6 +2428,40 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                 Schema.Field.of("int_value", Schema.nullableOf(Schema.of(Schema.Type.LONG))),
                 Schema.Field.of("float_value", Schema.nullableOf(Schema.of(Schema.Type.DOUBLE))),
                 Schema.Field.of("boolean_value", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN)))
+      );
+  }
+
+  private Schema getOutputSourceSchema() {
+    return Schema
+      .recordOf("output",
+                Schema.Field.of("JOB_ID", Schema.of(Schema.Type.STRING)),
+                Schema.Field.of("JOB_TITLE", Schema.of(Schema.Type.STRING)),
+                Schema.Field.of("MIN_SALARY", Schema.nullableOf(Schema.decimalOf(38, 9))),
+                Schema.Field.of("MAX_SALARY", Schema.nullableOf(Schema.decimalOf(38, 9))),
+                Schema.Field.of("DATE_UPDATED", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS))),
+                Schema.Field.of("END_DATE", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
+      );
+  }
+
+  private Schema getOutputSchemaForWrangler() {
+    return Schema
+      .recordOf("output",
+                Schema.Field.of("JOB_ID", Schema.of(Schema.Type.STRING)),
+                Schema.Field.of("JOB_TITLE", Schema.of(Schema.Type.STRING)),
+                Schema.Field.of("MIN_SALARY", Schema.nullableOf(Schema.decimalOf(38, 9))),
+                Schema.Field.of("MAX_SALARY", Schema.nullableOf(Schema.decimalOf(38, 9))),
+                Schema.Field.of("DATE_UPDATED", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
+      );
+  }
+
+  private Schema getEtlSchemaBodySourceSchema() {
+    return Schema
+      .recordOf("etlSchemaBody",
+                Schema.Field.of("JOB_ID", Schema.of(Schema.Type.STRING)),
+                Schema.Field.of("JOB_TITLE", Schema.of(Schema.Type.STRING)),
+                Schema.Field.of("MIN_SALARY", Schema.nullableOf(Schema.decimalOf(38, 9))),
+                Schema.Field.of("MAX_SALARY", Schema.nullableOf(Schema.decimalOf(38, 9))),
+                Schema.Field.of("DATE_UPDATED", Schema.nullableOf(Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)))
       );
   }
 
