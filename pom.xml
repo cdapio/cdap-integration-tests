@@ -196,6 +196,12 @@
       <groupId>io.cdap.cdap</groupId>
       <artifactId>cdap-integration-test</artifactId>
       <version>${cdap.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.pentaho</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.cdap.chaosmonkey</groupId>
