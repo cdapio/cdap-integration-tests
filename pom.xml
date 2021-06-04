@@ -47,7 +47,7 @@
     <kafka.version>0.8.2.2</kafka.version>
     <snappy.version>1.1.1.7</snappy.version>
     <chaosmonkey.version>0.1.0-SNAPSHOT</chaosmonkey.version>
-
+    <hive.version>2.3.8</hive.version>
     <!-- Skip all test cases by default. The different test cases are enabled in the profiles defined below -->
     <skip.remote.test>true</skip.remote.test>
     <skip.standalone.test>true</skip.standalone.test>
@@ -211,6 +211,17 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hive</groupId>
+      <artifactId>hive-service</artifactId>
+      <version>${hive.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>asm</groupId>
+          <artifactId>asm</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
