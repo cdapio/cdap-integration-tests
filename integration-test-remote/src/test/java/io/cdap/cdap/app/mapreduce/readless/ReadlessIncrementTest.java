@@ -17,10 +17,8 @@
 package io.cdap.cdap.app.mapreduce.readless;
 
 import com.google.gson.Gson;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.internal.guava.reflect.TypeToken;
 import io.cdap.cdap.proto.ProgramRunStatus;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.MapReduceManager;
@@ -54,8 +52,7 @@ public class ReadlessIncrementTest extends AudiTestBase {
 
   @Test
   public void testReadlessIncrementsInMapReduce()
-    throws IOException, InterruptedException, TimeoutException, UnauthenticatedException,
-    UnauthorizedException, ExecutionException {
+    throws IOException, InterruptedException, TimeoutException, ExecutionException {
 
     ApplicationManager appManager = deployApplication(ReadlessApp.class);
 

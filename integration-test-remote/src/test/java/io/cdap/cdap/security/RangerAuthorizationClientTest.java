@@ -16,16 +16,16 @@
 
 package io.cdap.cdap.security;
 
-import com.google.common.collect.ImmutableSet;
 import io.cdap.cdap.proto.id.NamespaceId;
-import io.cdap.cdap.proto.security.Action;
 import io.cdap.cdap.proto.security.Authorizable;
 import io.cdap.cdap.proto.security.Principal;
+import io.cdap.cdap.proto.security.StandardPermission;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -46,31 +46,31 @@ public class RangerAuthorizationClientTest {
   public void test() throws Exception {
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("shankar", Principal.PrincipalType.USER),
-                                    ImmutableSet.of(Action.READ));
+                                    EnumSet.of(StandardPermission.GET));
 
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("shankar", Principal.PrincipalType.USER),
-                                    ImmutableSet.of(Action.WRITE));
+                                    EnumSet.of(StandardPermission.UPDATE));
 
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("sagar", Principal.PrincipalType.USER),
-                                    ImmutableSet.of(Action.ADMIN));
+                                    EnumSet.of(StandardPermission.CREATE));
 
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("sysadmin", Principal.PrincipalType.GROUP),
-                                    ImmutableSet.of(Action.ADMIN));
+                                    EnumSet.of(StandardPermission.CREATE));
 
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("sysadmin", Principal.PrincipalType.GROUP),
-                                    ImmutableSet.of(Action.WRITE));
+                                    EnumSet.of(StandardPermission.UPDATE));
 
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("ali", Principal.PrincipalType.USER),
-                                    ImmutableSet.of(Action.ADMIN));
+                                    EnumSet.of(StandardPermission.CREATE));
 
     rangerAuthorizationClient.grant(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                     new Principal("ali", Principal.PrincipalType.USER),
-                                    ImmutableSet.of(Action.WRITE));
+                                    EnumSet.of(StandardPermission.UPDATE));
 
 
     List<RangerPolicy> rangerPolicies =
@@ -82,35 +82,37 @@ public class RangerAuthorizationClientTest {
     Assert.assertEquals(4, rangerPolicies.get(0).getPolicyItems().size());
     RangerPolicy.RangerPolicyItem policies = getPolicyItemsForUser(rangerPolicies.get(0).getPolicyItems(), new
       Principal("shankar", Principal.PrincipalType.USER));
-    Assert.assertEquals(rangerAuthorizationClient.getAccesses(ImmutableSet.of(Action.WRITE, Action.READ)),
-                        policies.getAccesses());
+    Assert.assertEquals(rangerAuthorizationClient.getAccesses(
+      EnumSet.of(StandardPermission.UPDATE, StandardPermission.GET)), policies.getAccesses());
     policies = getPolicyItemsForUser(rangerPolicies.get(0).getPolicyItems(),
                                      new Principal("sagar", Principal.PrincipalType.USER));
-    Assert.assertEquals(rangerAuthorizationClient.getAccesses(ImmutableSet.of(Action.ADMIN)), policies.getAccesses());
+    Assert.assertEquals(rangerAuthorizationClient.getAccesses(EnumSet.of(StandardPermission.CREATE)),
+                        policies.getAccesses());
 
     policies = getPolicyItemsForUser(rangerPolicies.get(0).getPolicyItems(), new
       Principal("sysadmin", Principal.PrincipalType.GROUP));
-    Assert.assertEquals(rangerAuthorizationClient.getAccesses(ImmutableSet.of(Action.WRITE, Action.ADMIN)),
-                        policies.getAccesses());
+    Assert.assertEquals(rangerAuthorizationClient.getAccesses(
+      EnumSet.of(StandardPermission.UPDATE, StandardPermission.CREATE)), policies.getAccesses());
 
     policies = getPolicyItemsForUser(rangerPolicies.get(0).getPolicyItems(), new
       Principal("ali", Principal.PrincipalType.USER));
-    Assert.assertEquals(rangerAuthorizationClient.getAccesses(ImmutableSet.of(Action.WRITE, Action.ADMIN)),
-                        policies.getAccesses());
+    Assert.assertEquals(rangerAuthorizationClient.getAccesses(
+      EnumSet.of(StandardPermission.UPDATE, StandardPermission.CREATE)), policies.getAccesses());
 
     rangerAuthorizationClient.revoke(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                      new Principal("shankar", Principal.PrincipalType.USER),
-                                     ImmutableSet.of(Action.WRITE));
+                                     EnumSet.of(StandardPermission.UPDATE));
 
     rangerAuthorizationClient.revoke(Authorizable.fromEntityId(NamespaceId.DEFAULT),
                                      new Principal("sagar", Principal.PrincipalType.USER),
-                                     ImmutableSet.of(Action.ADMIN));
+                                     EnumSet.of(StandardPermission.CREATE));
 
     policies = getPolicyItemsForUser(
       rangerAuthorizationClient.searchPolicy("policyName=" +
                                                Authorizable.fromEntityId(NamespaceId.DEFAULT)).get(0).getPolicyItems(),
       new Principal("shankar", Principal.PrincipalType.USER));
-    Assert.assertEquals(rangerAuthorizationClient.getAccesses(ImmutableSet.of(Action.READ)), policies.getAccesses());
+    Assert.assertEquals(rangerAuthorizationClient.getAccesses(EnumSet.of(StandardPermission.GET)),
+                        policies.getAccesses());
 
     rangerAuthorizationClient.revokeAll("shankar");
 

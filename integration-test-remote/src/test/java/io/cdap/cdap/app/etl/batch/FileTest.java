@@ -22,7 +22,6 @@ import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.dataset.table.Row;
 import io.cdap.cdap.api.dataset.table.Table;
 import io.cdap.cdap.app.etl.ETLTestBase;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -78,7 +77,7 @@ public class FileTest extends ETLTestBase {
                                 .build(), getClientConfig().getAccessToken());
     } catch (MalformedURLException e1) {
       throw new RuntimeException("Failed to create URL! Please check if the URL is formed correctly.", e1);
-    } catch (IOException | UnauthenticatedException e2) {
+    } catch (IOException e2) {
       throw new RuntimeException(String.format("Failed uploading file {} in CDAP!", fileName), e2);
     }
   }

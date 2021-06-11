@@ -27,7 +27,6 @@ import io.cdap.cdap.api.dataset.lib.FileSetProperties;
 import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.apps.fileset.FileSetExample;
 import io.cdap.cdap.client.QueryClient;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.action.Action;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
@@ -155,7 +154,7 @@ public class HivePluginTest extends ETLTestBase {
   }
 
   // construct a hive connection string, based upon cdap configs
-  private String getHiveConnectionString() throws IOException, UnauthenticatedException {
+  private String getHiveConnectionString() throws IOException {
     String jdbcURL = getMetaClient().getCDAPConfig().get("hive.server2.jdbc.url").getValue();
     // remove 'principal=hive/_HOST@REALM.NET'
     jdbcURL = jdbcURL.replaceFirst("principal=.*?(;|$)", "");

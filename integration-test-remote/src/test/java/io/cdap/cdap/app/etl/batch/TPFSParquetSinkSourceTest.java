@@ -21,7 +21,6 @@ import com.google.common.reflect.TypeToken;
 import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.app.etl.dataset.DatasetAccessApp;
 import io.cdap.cdap.app.etl.dataset.TPFSService;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.Transform;
@@ -33,7 +32,6 @@ import io.cdap.cdap.etl.proto.v2.ETLStage;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.id.ApplicationId;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.ServiceManager;
 import io.cdap.cdap.test.WorkflowManager;
@@ -110,7 +108,7 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
   }
 
   private void verifyTPFSData(ServiceManager serviceManager, String tpfsName, long startTime, long endTime)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
 
     URL tpfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
                           TPFSService.TPFS_PATH +

@@ -17,13 +17,13 @@
 package io.cdap.cdap.security;
 
 import io.cdap.cdap.proto.id.EntityId;
-import io.cdap.cdap.proto.security.Action;
 import io.cdap.cdap.proto.security.Authorizable;
+import io.cdap.cdap.proto.security.Permission;
 import io.cdap.cdap.proto.security.Principal;
 import io.cdap.cdap.proto.security.Role;
-import io.cdap.cdap.security.spi.authorization.Authorizer;
+import io.cdap.cdap.security.spi.authorization.AccessController;
 
-import java.util.EnumSet;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
@@ -31,48 +31,49 @@ import javax.annotation.Nullable;
  * Authorization test client used for sentry
  */
 public class SentryAuthorizationTestClient implements AuthorizationTestClient {
-  private final Authorizer authorizer;
+  private final AccessController accessController;
   private final int cacheTimeout;
 
-  public SentryAuthorizationTestClient(Authorizer authorizer, int cacheTimeout) {
-    this.authorizer = authorizer;
+  public SentryAuthorizationTestClient(AccessController accessController, int cacheTimeout) {
+    this.accessController = accessController;
     this.cacheTimeout = cacheTimeout;
   }
 
   @Override
-  public void grant(String principal, EntityId entityId, Action action) throws Exception {
-    grant(principal, entityId, action, null);
+  public void grant(String principal, EntityId entityId, Permission permission) throws Exception {
+    grant(principal, entityId, permission, null);
   }
 
   @Override
-  public void grant(String principal, EntityId entityId, Action action, @Nullable String groupName) throws Exception {
+  public void grant(String principal, EntityId entityId, Permission permission, @Nullable String groupName) {
     // grant to role and add to group
-    authorizer.grant(Authorizable.fromEntityId(entityId), new Role(principal), EnumSet.of(action));
-    authorizer.addRoleToPrincipal(
+    accessController.grant(Authorizable.fromEntityId(entityId), new Role(principal), Collections.singleton(permission));
+    accessController.addRoleToPrincipal(
       new Role(principal), groupName == null ? new Principal(principal, Principal.PrincipalType.GROUP) :
         new Principal(groupName, Principal.PrincipalType.GROUP));
   }
 
   @Override
-  public void wildCardGrant(String principal, Authorizable authorizable, Action action) throws Exception {
-    authorizer.grant(authorizable, new Principal(principal, Principal.PrincipalType.ROLE), EnumSet.of(action));
-    authorizer.addRoleToPrincipal(new Role(principal),
-                                  new Principal(principal, Principal.PrincipalType.GROUP));
+  public void wildCardGrant(String principal, Authorizable authorizable, Permission permission) {
+    accessController.grant(authorizable, new Principal(principal, Principal.PrincipalType.ROLE),
+                           Collections.singleton(permission));
+    accessController.addRoleToPrincipal(new Role(principal),
+                                        new Principal(principal, Principal.PrincipalType.GROUP));
   }
 
   @Override
-  public void revoke(String principal, EntityId entityId, Action action) throws Exception {
-    wildCardRevoke(principal, Authorizable.fromEntityId(entityId), action);
+  public void revoke(String principal, EntityId entityId, Permission permission) throws Exception {
+    wildCardRevoke(principal, Authorizable.fromEntityId(entityId), permission);
   }
 
   @Override
-  public void wildCardRevoke(String principal, Authorizable authorizable, Action action) throws Exception {
-    authorizer.revoke(authorizable, new Role(principal), EnumSet.of(action));
+  public void wildCardRevoke(String principal, Authorizable authorizable, Permission permission) throws Exception {
+    accessController.revoke(authorizable, new Role(principal), Collections.singleton(permission));
   }
 
   @Override
   public void revokeAll(String principal) throws Exception {
-    authorizer.dropRole(new Role(principal));
+    accessController.dropRole(new Role(principal));
   }
 
   @Override
@@ -82,6 +83,6 @@ public class SentryAuthorizationTestClient implements AuthorizationTestClient {
   }
 
   public void createRole(Role role) throws Exception {
-    authorizer.createRole(role);
+    accessController.createRole(role);
   }
 }

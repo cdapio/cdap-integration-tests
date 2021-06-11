@@ -23,13 +23,11 @@ import com.google.gson.Gson;
 import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.dataset.lib.KeyValueTable;
 import io.cdap.cdap.client.QueryClient;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.explore.client.ExploreExecutionResult;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.QueryResult;
 import io.cdap.cdap.proto.RunRecord;
 import io.cdap.cdap.proto.id.DatasetId;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.LongRunningTestBase;
 import io.cdap.cdap.test.ServiceManager;
@@ -132,7 +130,7 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
   }
 
   private void createPartition(URL serviceUrl, DataCleansingTestState state)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     URL url = new URL(serviceUrl, "v1/records/raw");
     List<String> records = new ArrayList<>();
     generateRecords(records, state.getEndInvalidRecordPid() + 1, false);
