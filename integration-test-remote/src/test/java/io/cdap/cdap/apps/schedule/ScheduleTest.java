@@ -23,7 +23,6 @@ import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.api.schedule.SchedulableProgramType;
 import io.cdap.cdap.api.workflow.ScheduleProgramInfo;
 import io.cdap.cdap.client.ScheduleClient;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.internal.app.runtime.schedule.ProgramScheduleStatus;
 import io.cdap.cdap.internal.schedule.constraint.Constraint;
@@ -39,7 +38,6 @@ import io.cdap.cdap.proto.id.NamespaceId;
 import io.cdap.cdap.proto.id.ProgramId;
 import io.cdap.cdap.proto.id.ScheduleId;
 import io.cdap.cdap.proto.id.WorkflowId;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.WorkflowManager;
@@ -408,14 +406,14 @@ public class ScheduleTest extends AudiTestBase {
    * Create TRIGGER_ON_NUM_PARTITIONS new partitions with the service in DataCleansing app
    */
   private void triggerDataSchedule(URL serviceUrl)
-    throws UnauthorizedException, IOException, UnauthenticatedException {
+    throws IOException {
     for (int i = 0; i < AppWithDataPartitionSchedule.TRIGGER_ON_NUM_PARTITIONS; i++) {
       createPartition(serviceUrl);
     }
   }
 
   private void createPartition(URL serviceUrl)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     URL url = new URL(serviceUrl, "v1/records/raw");
     HttpRequest request = HttpRequest.post(url).withBody("new partition").build();
     HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());

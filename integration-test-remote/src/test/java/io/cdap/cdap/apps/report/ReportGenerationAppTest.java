@@ -25,7 +25,6 @@ import com.google.gson.reflect.TypeToken;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.client.util.RESTClient;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
@@ -196,7 +195,7 @@ public class ReportGenerationAppTest extends AudiTestBase {
   }
 
   private ReportGenerationInfo getReportGenerationInfo(
-    RESTClient restClient, URL reportIdURL) throws IOException, UnauthenticatedException {
+    RESTClient restClient, URL reportIdURL) throws IOException {
     HttpResponse infoResponse =
       restClient.execute(HttpRequest.get(reportIdURL).build(), getClientConfig().getAccessToken());
     Assert.assertEquals(200, infoResponse.getResponseCode());

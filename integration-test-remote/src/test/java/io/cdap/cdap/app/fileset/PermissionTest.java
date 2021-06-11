@@ -27,10 +27,8 @@ import io.cdap.cdap.api.dataset.lib.PartitionedFileSet;
 import io.cdap.cdap.api.dataset.lib.PartitionedFileSetProperties;
 import io.cdap.cdap.api.dataset.lib.Partitioning;
 import io.cdap.cdap.api.dataset.lib.TimePartitionedFileSet;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.common.utils.FileUtils;
 import io.cdap.cdap.proto.ProgramRunStatus;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.MapReduceManager;
@@ -221,13 +219,13 @@ public class PermissionTest extends AudiTestBase {
 
   private void validateGroupAndPermissions(URL serviceURL, String dataset,
                                            int expectedPerms, String expectedGroup)
-    throws IOException, UnauthorizedException, UnauthenticatedException {
+    throws IOException {
     validateGroupAndPermissions(serviceURL, dataset, expectedPerms, expectedGroup, null);
   }
 
   private void validateGroupAndPermissions(URL serviceURL, String dataset,
                                            int expectedPerms, String expectedGroup, @Nullable String query)
-    throws IOException, UnauthorizedException, UnauthenticatedException {
+    throws IOException {
     query = query == null ? "" : "?" + query;
     HttpResponse response = getRestClient().execute(HttpRequest.get(
       new URL(serviceURL, "list/" + dataset + query)).build(), getClientConfig().getAccessToken());

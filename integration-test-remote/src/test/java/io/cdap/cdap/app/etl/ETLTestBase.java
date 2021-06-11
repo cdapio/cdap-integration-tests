@@ -34,7 +34,6 @@ import io.cdap.cdap.common.ArtifactAlreadyExistsException;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.ArtifactRangeNotFoundException;
 import io.cdap.cdap.common.BadRequestException;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.batch.BatchAggregator;
 import io.cdap.cdap.etl.api.batch.BatchSink;
@@ -152,7 +151,7 @@ public abstract class ETLTestBase extends AudiTestBase {
   }
 
   protected void installPluginFromHub(String packageName, String pluginName, String version)
-    throws IOException, UnauthenticatedException, BadRequestException, ArtifactRangeNotFoundException {
+    throws IOException, BadRequestException, ArtifactRangeNotFoundException {
     Map<String, ConfigEntry> cdapConfig = getMetaClient().getCDAPConfig();
 
     String hubURL = cdapConfig.get("market.base.url").getValue();

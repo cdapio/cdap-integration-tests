@@ -23,12 +23,10 @@ import io.cdap.cdap.api.dataset.table.Put;
 import io.cdap.cdap.api.dataset.table.Table;
 import io.cdap.cdap.client.DatasetClient;
 import io.cdap.cdap.client.config.ClientConfig;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.proto.DatasetMeta;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.id.DatasetId;
 import io.cdap.cdap.proto.id.ProgramId;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.DataSetManager;
@@ -144,21 +142,21 @@ public class DatasetTest extends AudiTestBase {
   }
 
   private Set<ProgramId> getPrograms(String endPoint)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     HttpResponse response = makeRequest(endPoint);
     return GSON.fromJson(response.getResponseBodyAsString(),
                          new TypeToken<Set<ProgramId>>() { }.getType());
   }
 
   private Set<DatasetId> getDatasetInstances(String endPoint)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     HttpResponse response = makeRequest(endPoint);
     return GSON.fromJson(response.getResponseBodyAsString(),
                          new TypeToken<Set<DatasetId>>() { }.getType());
   }
 
   private HttpResponse makeRequest(String endPoint)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     ClientConfig clientConfig = getClientConfig();
     URL url = clientConfig.resolveNamespacedURLV3(TEST_NAMESPACE, endPoint);
     HttpResponse response = getRestClient().execute(HttpMethod.GET, url, clientConfig.getAccessToken());

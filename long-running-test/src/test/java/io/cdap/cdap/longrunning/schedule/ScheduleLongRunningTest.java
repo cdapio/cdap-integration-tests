@@ -18,13 +18,11 @@ package io.cdap.cdap.longrunning.schedule;
 
 import io.cdap.cdap.client.ProgramClient;
 import io.cdap.cdap.client.ScheduleClient;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ScheduleId;
 import io.cdap.cdap.proto.id.WorkflowId;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.LongRunningTestBase;
 import io.cdap.cdap.test.ServiceManager;
@@ -153,7 +151,7 @@ public class ScheduleLongRunningTest extends LongRunningTestBase<DataPartitionSc
   }
 
   private void createPartition(URL serviceUrl, String datasetName)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     URL url = new URL(serviceUrl, "v1/records/" + datasetName);
     HttpRequest request = HttpRequest.post(url).withBody("new partition").build();
     HttpResponse response = getRestClient().execute(request, getClientConfig().getAccessToken());

@@ -17,8 +17,8 @@
 package io.cdap.cdap.security;
 
 import io.cdap.cdap.proto.id.EntityId;
-import io.cdap.cdap.proto.security.Action;
 import io.cdap.cdap.proto.security.Authorizable;
+import io.cdap.cdap.proto.security.Permission;
 
 import javax.annotation.Nullable;
 
@@ -30,27 +30,27 @@ public interface AuthorizationTestClient {
   /**
    * Grant action privilege to a principal on an entityId.
    */
-  void grant(String principal, EntityId entityId, Action action) throws Exception;
+  void grant(String principal, EntityId entityId, Permission permission) throws Exception;
 
   /**
    * Grant action privilege to a principal on an entityId and add it to group
    */
-  void grant(String principal, EntityId entityId, Action action, @Nullable String groupName) throws Exception;
+  void grant(String principal, EntityId entityId, Permission permission, @Nullable String groupName) throws Exception;
 
   /**
    * Grant a wildcard privilege to a principal on an authorizable.
    */
-  void wildCardGrant(String principal, Authorizable authorizable, Action action) throws Exception;
+  void wildCardGrant(String principal, Authorizable authorizable, Permission permission) throws Exception;
 
   /**
    * Revoke action privilege from a principal on an entityId.
    */
-  void revoke(String principal, EntityId entityId, Action action) throws Exception;
+  void revoke(String principal, EntityId entityId, Permission permission) throws Exception;
 
   /**
    * Revoke a wildcard privilege from a principal on an authorizable.
    */
-  void wildCardRevoke(String principal, Authorizable authorizable, Action action) throws Exception;
+  void wildCardRevoke(String principal, Authorizable authorizable, Permission permission) throws Exception;
 
   /**
    * Revoke all privileges from a principal.

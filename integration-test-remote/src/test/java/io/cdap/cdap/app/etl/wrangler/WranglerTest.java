@@ -28,7 +28,6 @@ import io.cdap.cdap.api.dataset.table.Table;
 import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.app.etl.dataset.DatasetAccessApp;
 import io.cdap.cdap.app.etl.dataset.SnapshotFilesetService;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.Transform;
@@ -41,7 +40,6 @@ import io.cdap.cdap.etl.proto.v2.ETLStage;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.id.ApplicationId;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.DataSetManager;
 import io.cdap.cdap.test.ServiceManager;
@@ -203,7 +201,7 @@ public class WranglerTest extends ETLTestBase {
   }
 
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     URL pfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
                          String.format("read/%s", sink));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, pfsURL, getClientConfig().getAccessToken());

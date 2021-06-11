@@ -20,16 +20,18 @@ import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import io.cdap.cdap.api.security.AccessException;
 import io.cdap.cdap.client.AuthorizationClient;
 import io.cdap.cdap.proto.element.EntityType;
 import io.cdap.cdap.proto.id.EntityId;
-import io.cdap.cdap.proto.security.Action;
 import io.cdap.cdap.proto.security.Authorizable;
+import io.cdap.cdap.proto.security.GrantedPermission;
+import io.cdap.cdap.proto.security.Permission;
 import io.cdap.cdap.proto.security.Principal;
-import io.cdap.cdap.proto.security.Privilege;
 import io.cdap.cdap.proto.security.Role;
 import io.cdap.cdap.security.authorization.ranger.commons.RangerCommon;
-import io.cdap.cdap.security.spi.authorization.AbstractAuthorizer;
+import io.cdap.cdap.security.spi.AccessIOException;
+import io.cdap.cdap.security.spi.authorization.AccessController;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.junit.Assert;
 
@@ -53,7 +55,7 @@ import java.util.Set;
 /**
  * An Authorization Client for Ranger which uses Ranger REST APIs for privilege management
  */
-public class RangerAuthorizationClient extends AbstractAuthorizer {
+public class RangerAuthorizationClient implements AccessController {
   private static final Gson GSON = new GsonBuilder().enableComplexMapKeySerialization().create();
 
   private enum UpdateType {
@@ -70,91 +72,104 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
   }
 
   @Override
-  public void createRole(Role role) throws Exception {
+  public void createRole(Role role) {
     authorizationClient.createRole(role);
   }
 
   @Override
-  public void dropRole(Role role) throws Exception {
+  public void dropRole(Role role) {
     authorizationClient.dropRole(role);
   }
 
   @Override
-  public void addRoleToPrincipal(Role role, Principal principal) throws Exception {
+  public void addRoleToPrincipal(Role role, Principal principal) {
     authorizationClient.addRoleToPrincipal(role, principal);
   }
 
   @Override
-  public void removeRoleFromPrincipal(Role role, Principal principal) throws Exception {
+  public void removeRoleFromPrincipal(Role role, Principal principal) {
     authorizationClient.removeRoleFromPrincipal(role, principal);
   }
 
   @Override
-  public Set<Role> listRoles(Principal principal) throws Exception {
+  public Set<Role> listRoles(Principal principal) {
     return authorizationClient.listRoles(principal);
   }
 
   @Override
-  public Set<Role> listAllRoles() throws Exception {
+  public Set<Role> listAllRoles() {
     return authorizationClient.listAllRoles();
   }
 
   @Override
-  public void enforce(EntityId entityId, Principal principal, Set<Action> set) throws Exception {
-    authorizationClient.enforce(entityId, principal, set);
+  public void enforce(EntityId entity, Principal principal, Set<? extends Permission> permissions) {
+    authorizationClient.enforce(entity, principal, permissions);
   }
 
   @Override
-  public Set<? extends EntityId> isVisible(Set<? extends EntityId> set, Principal principal) throws Exception {
+  public void enforceOnParent(EntityType entityType, EntityId parentId, Principal principal, Permission permission) {
+    authorizationClient.enforceOnParent(entityType, parentId, principal, permission);
+  }
+
+  @Override
+  public Set<? extends EntityId> isVisible(Set<? extends EntityId> set, Principal principal) {
     return authorizationClient.isVisible(set, principal);
   }
 
 
   @Override
-  public void grant(Authorizable authorizable, Principal principal, Set<Action> set) throws Exception {
-    List<RangerPolicy> existingPolicies = searchPolicy("policyName=" + authorizable.toString());
-    if (existingPolicies != null && !existingPolicies.isEmpty()) {
-      updatePolicyItems(existingPolicies, authorizable, principal, set, UpdateType.GRANT);
-      return;
-    }
-    // create new policy
-    String json = GSON.toJson(createRangerPolicy(authorizable, principal, set));
-    HttpURLConnection conn = getRangerConnection("policy");
-    conn.setDoOutput(true);
-    conn.setRequestMethod("POST");
-    conn.setRequestProperty("Content-Type", "application/json");
-    // its okay to hardcode the username and password here since in all our clusters we just use the dummy auth
-    conn.setRequestProperty("Authorization", "Basic " +
-      javax.xml.bind.DatatypeConverter.printBase64Binary("admin:admin".getBytes()));
-    conn.setRequestProperty("charset", "utf-8");
+  public void grant(Authorizable authorizable, Principal principal, Set<? extends Permission> set)
+    throws AccessException {
 
-    conn.setRequestProperty("Content-Length", Integer.toString(json.length()));
+    try {
+      List<RangerPolicy> existingPolicies = searchPolicy("policyName=" + authorizable.toString());
+      if (existingPolicies != null && !existingPolicies.isEmpty()) {
+        updatePolicyItems(existingPolicies, authorizable, principal, set, UpdateType.GRANT);
+        return;
+      }
+      // create new policy
+      String json = GSON.toJson(createRangerPolicy(authorizable, principal, set));
+      HttpURLConnection conn = getRangerConnection("policy");
+      conn.setDoOutput(true);
+      conn.setRequestMethod("POST");
+      conn.setRequestProperty("Content-Type", "application/json");
+      // its okay to hardcode the username and password here since in all our clusters we just use the dummy auth
+      conn.setRequestProperty("Authorization", "Basic " +
+        javax.xml.bind.DatatypeConverter.printBase64Binary("admin:admin".getBytes()));
+      conn.setRequestProperty("charset", "utf-8");
 
-    try (DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
-      wr.write(json.getBytes(StandardCharsets.UTF_8));
-      wr.flush();
-      wr.close();
+      conn.setRequestProperty("Content-Length", Integer.toString(json.length()));
+
+      try (DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
+        wr.write(json.getBytes(StandardCharsets.UTF_8));
+      }
+      Assert.assertEquals(conn.getResponseMessage(), HttpURLConnection.HTTP_OK, conn.getResponseCode());
+    } catch (IOException e) {
+      throw new AccessIOException(e);
     }
-    Assert.assertEquals(conn.getResponseMessage(), HttpURLConnection.HTTP_OK, conn.getResponseCode());
 
   }
 
   @Override
-  public void revoke(Authorizable authorizable, Principal principal, Set<Action> set) throws Exception {
-    List<RangerPolicy> existingPolicies = searchPolicy("policyName=" + authorizable.toString());
-    if (existingPolicies != null && !existingPolicies.isEmpty()) {
-      updatePolicyItems(existingPolicies, authorizable, principal, set, UpdateType.REVOKE);
+  public void revoke(Authorizable authorizable, Principal principal, Set<? extends Permission> set) {
+    try {
+      List<RangerPolicy> existingPolicies = searchPolicy("policyName=" + authorizable.toString());
+      if (existingPolicies != null && !existingPolicies.isEmpty()) {
+        updatePolicyItems(existingPolicies, authorizable, principal, set, UpdateType.REVOKE);
+      }
+    } catch (IOException e) {
+      throw new AccessIOException(e);
     }
   }
 
   @Override
-  public void revoke(Authorizable authorizable) throws Exception {
+  public void revoke(Authorizable authorizable) {
     authorizationClient.revoke(authorizable);
   }
 
   // Note: This is bad design but all authorization tests are written without Principal and in compatible with CDAP's
   // Authorizer API
-  public void revokeAll(String username) throws Exception {
+  public void revokeAll(String username) throws IOException {
     List<RangerPolicy> rangerPolicies = searchPolicy("user=" + username);
     for (RangerPolicy rangerPolicy : rangerPolicies) {
       deletePolicy(rangerPolicy.getId());
@@ -173,12 +188,11 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
   }
 
   @Override
-  public Set<Privilege> listPrivileges(Principal principal) throws Exception {
-    return authorizationClient.listPrivileges(principal);
+  public Set<GrantedPermission> listGrants(Principal principal) throws AccessException {
+    return authorizationClient.listGrants(principal);
   }
 
-
-  protected List<RangerPolicy> searchPolicy(String query) throws Exception {
+  protected List<RangerPolicy> searchPolicy(String query) throws IOException {
     HttpURLConnection conn = getRangerConnection("service/cdapdev/policy?" + query);
     conn.setDoOutput(true);
     conn.setRequestMethod("GET");
@@ -204,13 +218,13 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
   }
 
   private void updatePolicyItems(List<RangerPolicy> policies, Authorizable authorizable, Principal principal,
-                                 Set<Action> actions, UpdateType updateType) throws IOException {
+                                 Set<? extends Permission> permissions, UpdateType updateType) throws IOException {
     if (policies.size() != 1) {
       throw new RuntimeException("No or multiple existing policies found.");
     }
     Long policyId = policies.get(0).getId();
     List<RangerPolicy.RangerPolicyItem> updatedPolicyItems = updatePolicyItems(policies.get(0).getPolicyItems(),
-                                                                               principal, actions, updateType);
+                                                                               principal, permissions, updateType);
     String updatedPolicy = GSON.toJson(new RangerPolicy("cdapdev", authorizable.toString(), null, "",
                                                         policies.get(0).getResources(),
                                                         updatedPolicyItems, null));
@@ -228,14 +242,12 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
 
     try (DataOutputStream wr = new DataOutputStream(conn.getOutputStream())) {
       wr.write(updatedPolicy.getBytes(StandardCharsets.UTF_8));
-      wr.flush();
-      wr.close();
     }
     Assert.assertEquals(conn.getResponseMessage(), HttpURLConnection.HTTP_OK, conn.getResponseCode());
   }
 
   private List<RangerPolicy.RangerPolicyItem> updatePolicyItems(List<RangerPolicy.RangerPolicyItem> existing, Principal
-    principal, Set<Action> actions, UpdateType updateType) {
+    principal, Set<? extends Permission> permissions, UpdateType updateType) {
     List<RangerPolicy.RangerPolicyItem> result = new LinkedList<>();
     boolean updatedExistingPrivilege = false;
     for (RangerPolicy.RangerPolicyItem rangerPolicyItem : existing) {
@@ -245,7 +257,7 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
         if (rangerPolicyItem.getGroups().contains(principal.getName().toLowerCase()) ||
           rangerPolicyItem.getUsers().contains(principal.getName().toLowerCase())) {
           updatedExistingPrivilege = true;
-          HashSet<RangerPolicy.RangerPolicyItemAccess> updatedPolices = Sets.newHashSet(getAccesses(actions));
+          HashSet<RangerPolicy.RangerPolicyItemAccess> updatedPolices = Sets.newHashSet(getAccesses(permissions));
           if (updateType == UpdateType.GRANT) {
             existingAccesses.addAll(updatedPolices);
           } else {
@@ -264,7 +276,7 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
       }
     }
     if (!updatedExistingPrivilege && updateType == UpdateType.GRANT) {
-      result.addAll(getPolicyItems(principal, actions));
+      result.addAll(getPolicyItems(principal, permissions));
     }
     return result;
   }
@@ -274,30 +286,33 @@ public class RangerAuthorizationClient extends AbstractAuthorizer {
     return (HttpURLConnection) url.openConnection();
   }
 
-  private RangerPolicy createRangerPolicy(Authorizable authorizable, Principal principal, Set<Action> actions) {
+  private RangerPolicy createRangerPolicy(Authorizable authorizable, Principal principal,
+                                          Set<? extends Permission> actions) {
     Map<String, RangerPolicy.RangerPolicyResource> resource = new LinkedHashMap<>();
     setRangerResource(authorizable, resource);
-    return new RangerPolicy("cdapdev", authorizable.toString(), 0, "", resource, getPolicyItems(principal, actions),
+    return new RangerPolicy("cdapdev", authorizable.toString(), 0, "", resource,
+                            getPolicyItems(principal, actions),
                             null);
   }
 
-  private List<RangerPolicy.RangerPolicyItem> getPolicyItems(Principal principal, Set<Action> actions) {
+  private List<RangerPolicy.RangerPolicyItem> getPolicyItems(Principal principal,
+                                                             Set<? extends Permission> permissions) {
     List<String> prin = ImmutableList.of(principal.getName());
     RangerPolicy.RangerPolicyItem rangerPolicyItem;
     if (principal.getType() == Principal.PrincipalType.USER) {
-      rangerPolicyItem = new RangerPolicy.RangerPolicyItem(getAccesses(actions), prin, null, null, null);
+      rangerPolicyItem = new RangerPolicy.RangerPolicyItem(getAccesses(permissions), prin, null, null, null);
     } else if (principal.getType() == Principal.PrincipalType.GROUP) {
-      rangerPolicyItem = new RangerPolicy.RangerPolicyItem(getAccesses(actions), null, prin, null, null);
+      rangerPolicyItem = new RangerPolicy.RangerPolicyItem(getAccesses(permissions), null, prin, null, null);
     } else {
       throw new RuntimeException("Invalid principal type");
     }
     return ImmutableList.of(rangerPolicyItem);
   }
 
-  List<RangerPolicy.RangerPolicyItemAccess> getAccesses(Set<Action> actions) {
+  List<RangerPolicy.RangerPolicyItemAccess> getAccesses(Set<? extends Permission> permissions) {
     List<RangerPolicy.RangerPolicyItemAccess> accesses = new LinkedList<>();
-    for (Action action : actions) {
-      accesses.add(new RangerPolicy.RangerPolicyItemAccess(action.toString().toLowerCase(), true));
+    for (Permission permission : permissions) {
+      accesses.add(new RangerPolicy.RangerPolicyItemAccess(permission.toString().toLowerCase(), true));
     }
     return accesses;
   }

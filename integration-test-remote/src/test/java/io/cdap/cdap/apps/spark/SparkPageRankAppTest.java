@@ -23,9 +23,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.cdap.cdap.api.dataset.lib.KeyValueTable;
 import io.cdap.cdap.client.ProgramClient;
-import io.cdap.cdap.common.UnauthenticatedException;
 import io.cdap.cdap.common.app.RunIds;
-import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.data2.metadata.lineage.AccessType;
 import io.cdap.cdap.data2.metadata.lineage.Lineage;
 import io.cdap.cdap.data2.metadata.lineage.LineageSerializer;
@@ -39,7 +37,6 @@ import io.cdap.cdap.proto.id.NamespacedEntityId;
 import io.cdap.cdap.proto.id.ProgramId;
 import io.cdap.cdap.proto.metadata.lineage.CollapseType;
 import io.cdap.cdap.proto.metadata.lineage.LineageRecord;
-import io.cdap.cdap.security.spi.authorization.UnauthorizedException;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.DataSetManager;
@@ -59,7 +56,6 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -198,7 +194,7 @@ public class SparkPageRankAppTest extends AudiTestBase {
   }
 
   private void testLineage(URL url, LineageRecord expected)
-    throws IOException, UnauthenticatedException, UnauthorizedException {
+    throws IOException {
     HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
     LineageRecord lineageRecord = GSON.fromJson(response.getResponseBodyAsString(), LineageRecord.class);
     Assert.assertEquals(expected, lineageRecord);
