@@ -55,6 +55,7 @@ import org.apache.avro.io.DatumWriter;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
@@ -202,6 +203,7 @@ public class GCSTest extends DataprocETLTestBase {
     return String.format("gs://%s/%s", bucket.getName(), blobName);
   }
 
+  @Ignore
   @Test
   public void testGCSCopy() throws Exception {
     testGCSCopy(Engine.MAPREDUCE);
@@ -1091,6 +1093,7 @@ public class GCSTest extends DataprocETLTestBase {
     assertBlobContains(sinkBucket, authorsBlobName, "\"3\"");
   }
 
+  @Ignore
   @Test
   public void testSchemaDetectionOnMultipleFilesWithDifferentSchema() throws Exception {
     /*
