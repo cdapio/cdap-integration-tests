@@ -338,8 +338,12 @@ public class AudiTestBase extends IntegrationTestBase {
   protected void startAndWaitForRun(ProgramManager<?> programManager, ProgramRunStatus runStatus,
                                     Map<String, String> runtimeArgs, long waitTime, TimeUnit waitUnit)
     throws InterruptedException, ExecutionException, TimeoutException {
-    programManager.startAndWaitForRun(runtimeArgs, runStatus, waitTime, waitUnit,
-                                      POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+    if (runStatus.isUnsuccessful()) {
+      programManager.startAndWaitForRun(runtimeArgs, runStatus, waitTime, waitUnit,
+                                        POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+    } else {
+      programManager.startAndWaitForGoodRun(runtimeArgs, runStatus, waitTime, waitUnit);
+    }
   }
 
   // ensures that the Service for the dataset is deployed and running
