@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -122,6 +123,7 @@ public class GCSTest extends DataprocETLTestBase {
 
   private static Storage storage;
   private List<String> markedForDeleteBuckets;
+  private String saFilePath;
 
   @BeforeClass
   public static void testClassSetup() throws IOException {
@@ -134,6 +136,14 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Override
   protected void innerSetup() throws Exception {
+    // Save sa in a file for tests that need key during validation.
+    // Creating in TemporaryFolder so it gets autodeleted after test
+    File saFile = temporaryFolder.newFile("tmp-sa.json");
+    try (FileWriter writer = new FileWriter(saFile)) {
+      writer.append(getServiceAccountCredentials());
+    }
+    saFilePath = saFile.getAbsolutePath();
+
     // wait for artifact containing GCSCopy to load
     Tasks.waitFor(true, () -> {
       try {
@@ -1106,6 +1116,8 @@ public class GCSTest extends DataprocETLTestBase {
   }
 
   private void testSchemaDetectionOnMultipleFilesWithDifferentSchema(String skipHeader) throws Exception {
+    //Skip writing the header in test blob if skipHeader will be set to false
+    boolean addHeader = Boolean.parseBoolean(skipHeader);
     // source bucket
     String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
     Bucket sourceBucket = createBucket(sourceBucketName);
@@ -1120,17 +1132,22 @@ public class GCSTest extends DataprocETLTestBase {
     String authorHeaders = "Name;Surname;Age";
     String author1 = "John;Doe;35";
     String author2 = "Alice;Green;28";
-    String authorsBlobContent = String.join("\n", Arrays.asList(authorHeaders, author1, author2));
+    String authorsBlobContent = String.join("\n", addHeader ?
+      Arrays.asList(authorHeaders, author1, author2) :
+      Arrays.asList(author1, author2));
     sourceBucket.create("authors.csv", authorsBlobContent.getBytes(StandardCharsets.UTF_8));
 
     // The second blob with a different schema
     String bookHeaders = "Title;Year;Price";
     String book1 = "Year of Jupyter;2020;19.99";
-    String book2 = "The return of Avalon;17.99";
-    String booksBlobContent = String.join("\n", Arrays.asList(bookHeaders, book1, book2));
+    String book2 = "The return of Avalon;2019;17.99";
+    String booksBlobContent = String.join("\n", addHeader ?
+      Arrays.asList(bookHeaders, book1, book2) :
+      Arrays.asList(book1, book2));
     sourceBucket.create("books.csv", booksBlobContent.getBytes(StandardCharsets.UTF_8));
 
     // gcs source plugin
+    // The serviceFilePath is added as a fix for CDAP-18250
     Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "source-gcs-schema-detection")
       .put("project", getProjectId())
@@ -1139,6 +1156,8 @@ public class GCSTest extends DataprocETLTestBase {
       .put("delimiter", ";")
       .put("sampleSize", "1000")
       .put("skipHeader", skipHeader)
+      .put("serviceAccountType", "filePath")
+      .put("serviceFilePath", saFilePath)
       .build();
 
     ETLPlugin gcsSourcePlugin = new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, gcsSourcePluginParams,
