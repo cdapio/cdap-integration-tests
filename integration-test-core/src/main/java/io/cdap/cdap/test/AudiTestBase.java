@@ -21,6 +21,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
+import io.cdap.cdap.api.Predicate;
 import io.cdap.cdap.api.app.Application;
 import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.dataset.Dataset;
@@ -342,7 +343,14 @@ public class AudiTestBase extends IntegrationTestBase {
       programManager.startAndWaitForRun(runtimeArgs, runStatus, waitTime, waitUnit,
                                         POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
     } else {
-      programManager.startAndWaitForGoodRun(runtimeArgs, runStatus, waitTime, waitUnit);
+      if (programManager instanceof AbstractProgramManager) {
+        ((AbstractProgramManager<?>) programManager).startAndWaitForRun(runtimeArgs, runStatus,
+                                                                        r -> r != null && r.isUnsuccessful(),
+                                                                        waitTime, waitUnit,
+                                                                        POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+      } else {
+        programManager.startAndWaitForGoodRun(runtimeArgs, runStatus, waitTime, waitUnit);
+      }
     }
   }
 
