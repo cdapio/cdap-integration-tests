@@ -1106,6 +1106,8 @@ public class GCSTest extends DataprocETLTestBase {
   }
 
   private void testSchemaDetectionOnMultipleFilesWithDifferentSchema(String skipHeader) throws Exception {
+    //Skip writing the header in test blob if skipHeader will be set to false
+    boolean addHeader = Boolean.parseBoolean(skipHeader);
     // source bucket
     String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
     Bucket sourceBucket = createBucket(sourceBucketName);
@@ -1120,14 +1122,18 @@ public class GCSTest extends DataprocETLTestBase {
     String authorHeaders = "Name;Surname;Age";
     String author1 = "John;Doe;35";
     String author2 = "Alice;Green;28";
-    String authorsBlobContent = String.join("\n", Arrays.asList(authorHeaders, author1, author2));
+    String authorsBlobContent = String.join("\n", addHeader ?
+      Arrays.asList(authorHeaders, author1, author2) :
+      Arrays.asList(author1, author2));
     sourceBucket.create("authors.csv", authorsBlobContent.getBytes(StandardCharsets.UTF_8));
 
     // The second blob with a different schema
     String bookHeaders = "Title;Year;Price";
     String book1 = "Year of Jupyter;2020;19.99";
-    String book2 = "The return of Avalon;17.99";
-    String booksBlobContent = String.join("\n", Arrays.asList(bookHeaders, book1, book2));
+    String book2 = "The return of Avalon;2019;17.99";
+    String booksBlobContent = String.join("\n", addHeader ?
+      Arrays.asList(bookHeaders, book1, book2) :
+      Arrays.asList(book1, book2));
     sourceBucket.create("books.csv", booksBlobContent.getBytes(StandardCharsets.UTF_8));
 
     // gcs source plugin
