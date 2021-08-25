@@ -26,10 +26,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import io.cdap.cdap.api.artifact.ArtifactScope;
+import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.common.ApplicationNotFoundException;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.etl.api.Engine;
@@ -45,7 +48,11 @@ import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.artifact.PluginSummary;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
+import io.cdap.cdap.proto.id.NamespaceId;
 import io.cdap.cdap.test.ApplicationManager;
+import io.cdap.cdap.test.ServiceManager;
+import io.cdap.common.http.HttpRequest;
+import io.cdap.common.http.HttpResponse;
 import io.cdap.plugin.common.batch.action.Condition;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
@@ -64,6 +71,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -87,6 +95,7 @@ import java.util.stream.StreamSupport;
 public class GCSTest extends DataprocETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSTest.class);
+  private static final String CONNECTION_ID = String.format("gcs_test_connection_%s", UUID.randomUUID());
   private static final String OUTPUT_BLOB_NAME = "data/output";
   private static final String GCS_BUCKET_DELETE_PLUGIN_NAME = "GCSBucketDelete";
   private static final String GCS_BUCKET_CREATE_PLUGIN_NAME = "GCSBucketCreate";
@@ -122,6 +131,7 @@ public class GCSTest extends DataprocETLTestBase {
 
   private static Storage storage;
   private List<String> markedForDeleteBuckets;
+  private ServiceManager pipelineServiceManager;
 
   @BeforeClass
   public static void testClassSetup() throws IOException {
@@ -147,6 +157,8 @@ public class GCSTest extends DataprocETLTestBase {
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
     markedForDeleteBuckets = new ArrayList<>();
+    pipelineServiceManager = startPipelineService();
+    createConnection();
   }
 
   @Override
@@ -161,6 +173,81 @@ public class GCSTest extends DataprocETLTestBase {
         LOG.error("Unable to delete GCS bucket {}", bucketName, e);
       }
     }
+    pipelineServiceManager.stop();
+  }
+
+  /**
+   * This method starts the pipeline studio in preparation for creating a connection to be used
+   * via the studio.
+   * @return The service manager for the pipeline studio service.
+   * @throws Exception
+   */
+  private ServiceManager startPipelineService() throws Exception {
+    ApplicationId appId = NamespaceId.SYSTEM.app("pipeline");
+    ApplicationManager appManager;
+
+    // Deploy the pipeline app if it doesn't exist already
+    try {
+      getApplicationClient().get(appId);
+      appManager = getApplicationManager(appId);
+    } catch (ApplicationNotFoundException e) {
+      List<ArtifactSummary> artifactSummaryList = artifactClient.list(TEST_NAMESPACE.getNamespaceId(),
+          ArtifactScope.SYSTEM);
+
+      AppRequest appRequest = getWranglerAppRequest(artifactSummaryList);
+      appManager = deployApplication(appId, appRequest);
+    }
+
+    ServiceManager serviceManager = appManager.getServiceManager("studio");
+    if (!serviceManager.isRunning()) {
+      startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
+    }
+    return serviceManager;
+  }
+
+  private void createConnection() throws Exception {
+    URL baseURL = pipelineServiceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
+    Gson gson = new Gson();
+
+    JsonObject properties = new JsonObject();
+    properties.addProperty("project", getProjectId());
+    properties.addProperty("serviceAccountType", "filePath");
+    properties.addProperty("serviceFilePath", "auto-detect");
+
+    JsonObject artifact = new JsonObject();
+    artifact.addProperty("scope", "SYSTEM");
+    artifact.addProperty("name", "google-cloud");
+
+    JsonObject plugin = new JsonObject();
+    plugin.addProperty("category", "Google Cloud Platform");
+    plugin.addProperty("name", "GCS");
+    plugin.addProperty("type", "connector");
+    plugin.add("properties", properties);
+    plugin.add("artifact", artifact);
+
+    JsonObject body = new JsonObject();
+    body.addProperty("name", CONNECTION_ID);
+    body.addProperty("description", "");
+    body.addProperty("category", "Google Cloud Platform");
+    body.add("plugin", plugin);
+
+    String testPath = String.format("v1/contexts/%s/connections/test", TEST_NAMESPACE.getNamespace());
+    HttpResponse testResponse = getRestClient()
+        .execute(HttpRequest.post(new URL(baseURL, testPath)).withBody(gson.toJson(body)).build(),
+            getClientConfig().getAccessToken());
+    Assert.assertEquals(200, testResponse.getResponseCode());
+
+    String createPath = String.format("v1/contexts/%s/connections/%s",
+        TEST_NAMESPACE.getNamespace(), CONNECTION_ID);
+    HttpResponse createResponse = getRestClient()
+        .execute(HttpRequest.put(new URL(baseURL, createPath)).withBody(gson.toJson(body)).build(),
+            getClientConfig().getAccessToken());
+    Assert.assertEquals(200, createResponse.getResponseCode());
+  }
+
+  private void removeConnection() {
+    // TODO: Remove connection
   }
 
   /**
@@ -750,7 +837,7 @@ public class GCSTest extends DataprocETLTestBase {
                                                             "recursive", String.valueOf(recursive)),
                                             GOOGLE_CLOUD_ARTIFACT));
   }
-  
+
   @Test
   public void testAllTypes() throws Exception {
     testAllTypes(Engine.MAPREDUCE);
@@ -833,7 +920,7 @@ public class GCSTest extends DataprocETLTestBase {
 
     bucket.create(inputBlobName, Files.toByteArray(avroFile));
 
-    ETLStage source = new ETLStage("GCSSourceStage",
+    ETLStage source2 = new ETLStage("GCSSourceStage",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
                                                  ImmutableMap.of(
@@ -843,6 +930,24 @@ public class GCSTest extends DataprocETLTestBase {
                                                    "project", getProjectId(),
                                                    "path", createPath(bucket, inputBlobName)),
                                                  GOOGLE_CLOUD_ARTIFACT));
+
+    ETLStage source = new ETLStage("GCSSourceStage",
+                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
+                                                  BatchSource.PLUGIN_TYPE,
+                                                  new ImmutableMap.Builder<String, String>()
+                                                    .put("schema", schema)
+                                                    .put("format", "avro")
+                                                    .put("referenceName", "gcs-input")
+                                                      .put("project", getProjectId())
+                                                    //.put("useConnection", "true")
+                                                    //.put("connection", "${conn(connection-name)}")
+                                                    .put("serviceAccountType", "JSON")
+                                                    .put("serviceAccountJSON", getServiceAccountCredentials())
+                                                    .put("path", createPath(bucket, inputBlobName))
+                                                    .build(),
+                                                  GOOGLE_CLOUD_ARTIFACT));
+
+
 
     ETLStage sink = new ETLStage("GCSSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
                                                                BatchSink.PLUGIN_TYPE,
@@ -1139,12 +1244,16 @@ public class GCSTest extends DataprocETLTestBase {
     // gcs source plugin
     Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
       .put("referenceName", "source-gcs-schema-detection")
-      .put("project", getProjectId())
+      // .put("project", getProjectId())
+      .put("useConnection", "true")
+      .put("connection", "${conn(connection-name)}")
       .put("path", sourcePath)
       .put("format", "delimited")
       .put("delimiter", ";")
       .put("sampleSize", "1000")
       .put("skipHeader", skipHeader)
+      // .put("serviceAccountType", "JSON")
+      // .put("serviceAccountJSON", getServiceAccountCredentials())
       .build();
 
     ETLPlugin gcsSourcePlugin = new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, gcsSourcePluginParams,
