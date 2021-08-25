@@ -95,7 +95,7 @@ import java.util.stream.StreamSupport;
 public class GCSTest extends DataprocETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSTest.class);
-  private static final String CONNECTION_ID = String.format("gcs_test_connection_%s", UUID.randomUUID());
+  private static final String CONNECTION_ID = String.format("gcs_test_%s", UUID.randomUUID());
   private static final String OUTPUT_BLOB_NAME = "data/output";
   private static final String GCS_BUCKET_DELETE_PLUGIN_NAME = "GCSBucketDelete";
   private static final String GCS_BUCKET_CREATE_PLUGIN_NAME = "GCSBucketCreate";
@@ -1053,15 +1053,18 @@ public class GCSTest extends DataprocETLTestBase {
                   |
                   |--> tsv
      */
+    Map<String, String> sourceproperties = new ImmutableMap.Builder<String, String>()
+                                             .put("referenceName", "gcs-input")
+                                             .put("useConnection", "true")
+                                             .put("connection", String.format("${conn(%s)}", CONNECTION_ID))
+                                             .put("path", createPath(bucket, inputPath))
+                                             .put("format", "csv")
+                                             .put("schema", schema.toString())
+                                             .build();
     ETLStage source = new ETLStage("source",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
-                                                 ImmutableMap.of(
-                                                   "schema", schema.toString(),
-                                                   "format", "csv",
-                                                   "referenceName", "gcs-input",
-                                                   "project", getProjectId(),
-                                                   "path", createPath(bucket, inputPath)),
+                                                 sourceproperties,
                                                  GOOGLE_CLOUD_ARTIFACT));
 
     List<String> formats = Arrays.asList("avro", "csv", "delimited", "json", "parquet", "tsv");
