@@ -77,7 +77,7 @@ import java.util.concurrent.TimeUnit;
 public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private static final String BQ_SQLENGINE_PLUGIN_NAME = "BigQueryPushdownEngine";
-  private static final String BIG_QUERY_DATASET = "bq_dataset_joiner-test";
+  private static final String BIG_QUERY_DATASET = "bq_dataset_joiner_test";
 
   @Override
   protected void innerSetup() throws Exception {
