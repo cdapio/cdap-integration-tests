@@ -157,6 +157,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     properties.add(ofProperty("preferExternalIP", "true"));
     properties.add(ofProperty("stackdriverLoggingEnabled", "true"));
     properties.add(ofProperty("stackdriverMonitoringEnabled", "true"));
+    properties.add(ofProperty("idleTTL", "60"));
 
     JsonObject provisioner = new JsonObject();
     provisioner.addProperty("name", "gcp-dataproc");
