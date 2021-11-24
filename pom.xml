@@ -111,6 +111,11 @@
       <version>20.0</version>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-kms</artifactId>
+      <version>2.0.2</version>
+    </dependency>
+    <dependency>
       <groupId>io.cdap.common</groupId>
       <artifactId>common-http</artifactId>
       <version>${cdap.common.version}</version>
