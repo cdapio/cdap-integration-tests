@@ -26,16 +26,20 @@ import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.proto.ProgramRunStatus;
+import io.cdap.cdap.proto.id.NamespaceId;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.WorkflowManager;
 import io.cdap.common.http.HttpRequest;
+import io.cdap.common.http.HttpResponse;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -176,5 +180,67 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     jsonObject.addProperty("name", name);
     jsonObject.addProperty("value", value);
     return jsonObject;
+  }
+
+  protected void createConnection(String connectionName, String connectorName) throws Exception {
+    Gson gson = new Gson();
+    URL baseURL = getClientConfig().resolveNamespacedURLV3(NamespaceId.SYSTEM,
+                                                           "apps/pipeline/services/studio/methods/");
+    JsonObject properties = new JsonObject();
+    properties.addProperty("project", getProjectId());
+    properties.addProperty("serviceAccountType", "filePath");
+    properties.addProperty("serviceFilePath", "auto-detect");
+
+    JsonObject artifact = new JsonObject();
+    artifact.addProperty("scope", "SYSTEM");
+    artifact.addProperty("name", "google-cloud");
+
+    JsonObject plugin = new JsonObject();
+    plugin.addProperty("category", "Google Cloud Platform");
+    plugin.addProperty("name", connectorName);
+    plugin.addProperty("type", "connector");
+    plugin.add("properties", properties);
+    plugin.add("artifact", artifact);
+
+    JsonObject body = new JsonObject();
+    body.addProperty("name", connectionName);
+    body.addProperty("description", String.format("%s connection for running integration test", connectorName));
+    body.addProperty("category", "Google Cloud Platform");
+    body.add("plugin", plugin);
+
+    String testPath = String.format("v1/contexts/%s/connections/test", TEST_NAMESPACE.getNamespace());
+    HttpResponse testResponse = getRestClient()
+      .execute(HttpRequest.post(new URL(baseURL, testPath)).withBody(gson.toJson(body)).build(),
+               getClientConfig().getAccessToken());
+    Assert.assertEquals(200, testResponse.getResponseCode());
+    String createPath = String.format("v1/contexts/%s/connections/%s", TEST_NAMESPACE.getNamespace(), connectionName);
+    try {
+      HttpResponse createResponse = getRestClient()
+        .execute(HttpRequest.put(new URL(baseURL, createPath)).withBody(gson.toJson(body)).build(),
+                 getClientConfig().getAccessToken());
+      Assert.assertEquals(200, createResponse.getResponseCode());
+    } catch (IOException e) {
+      if (e.getMessage().startsWith("409")) {
+        // conflict means connection already exists
+        // Ignore this and move on, since all that matters is that the connection exists.
+      } else {
+        throw new IOException(e);
+      }
+    }
+    LOG.info(String.format("Connection %s created successfully", connectionName));
+  }
+
+  protected void deleteConnection(String connectionName) throws Exception {
+    URL baseURL = getClientConfig().resolveNamespacedURLV3(NamespaceId.SYSTEM,
+                                                           "apps/pipeline/services/studio/methods/");
+    String deletePath = String.format("v1/contexts/%s/connections/%s", TEST_NAMESPACE.getNamespace(), connectionName);
+    try {
+      HttpResponse createResponse = getRestClient()
+        .execute(HttpRequest.delete(new URL(baseURL, deletePath)).build(), getClientConfig().getAccessToken());
+      Assert.assertEquals(200, createResponse.getResponseCode());
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to delete connection: %s", connectionName), e);
+    }
+    LOG.info(String.format("Connection %s deleted successfully", connectionName));
   }
 }

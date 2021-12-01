@@ -49,11 +49,11 @@ import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.Tasks;
+import io.cdap.plugin.common.ConfigUtil;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +84,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   private static final String SPANNER_SINK_STAGE_NAME = "SpannerSinkStage";
   private static final String SOURCE_TABLE_NAME = "source";
   private static final String SINK_TABLE_NAME = "sink";
+  private static final String CONNECTION_NAME = String.format("test_spanner_%s", GoogleBigQueryUtils.getUUID());
 
   private static final String TABLE_FORMAT = "CREATE TABLE %s (" +
     "ID INT64," +
@@ -203,7 +204,8 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
 
   @Override
-  protected void innerTearDown() {
+  protected void innerTearDown() throws Exception {
+    deleteConnection(CONNECTION_NAME);
   }
 
   @Before
@@ -215,40 +217,53 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
     // Insert test data
     spanner.getDatabaseClient(database.getId()).write(SOURCE_TABLE_TEST_MUTATIONS);
+    createConnection(CONNECTION_NAME, "Spanner");
+  }
+
+  private Map<String, String> getProps(Boolean useConnection, String referenceName, String table, Schema schema) {
+    String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
+    Map<String, String> props = new HashMap<>();
+    props.put("referenceName", referenceName);
+    if (useConnection) {
+      props.put(ConfigUtil.NAME_CONNECTION, connectionId);
+      props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
+    } else {
+      props.put("project", "${project}");
+    }
+    props.put("instance", "${instance}");
+    props.put("database", "${database}");
+    props.put("table", table);
+    if (schema != null) {
+      props.put("schema", schema.toString());
+    }
+    return new ImmutableMap.Builder<String, String>().putAll(props).build();
   }
 
   @Test
   public void testReadAndStoreInNewTable() throws Exception {
-    testReadAndStoreInNewTable(Engine.MAPREDUCE);
-    testReadAndStoreInNewTable(Engine.SPARK);
+    testReadAndStoreInNewTable(Engine.MAPREDUCE, false);
+    testReadAndStoreInNewTable(Engine.SPARK, false);
+    testReadAndStoreInNewTable(Engine.MAPREDUCE, true);
+    testReadAndStoreInNewTable(Engine.SPARK, true);
   }
 
-  private void testReadAndStoreInNewTable(Engine engine) throws Exception {
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_source")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${srcTable}")
-      .put("schema", SCHEMA.toString())
-      .build();
+  private void testReadAndStoreInNewTable(Engine engine, Boolean useConnection) throws Exception {
+    Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_sink")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${dstTable}")
-      .put("schema", SCHEMA.toString())
+      .putAll(getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA))
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTable";
+    String applicationName =
+      SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTable" + (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
-    args.put("project", getProjectId());
+    if (!useConnection) {
+      args.put("project", getProjectId());
+    }
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
@@ -262,40 +277,30 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStore() throws Exception {
-    testReadAndStore(Engine.MAPREDUCE);
-    testReadAndStore(Engine.SPARK);
+    testReadAndStore(Engine.MAPREDUCE, false);
+    testReadAndStore(Engine.SPARK, false);
+    testReadAndStore(Engine.MAPREDUCE, true);
+    testReadAndStore(Engine.SPARK, true);
   }
 
-  private void testReadAndStore(Engine engine) throws Exception {
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_source")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${srcTable}")
-      .put("schema", SCHEMA.toString())
-      .build();
+  private void testReadAndStore(Engine engine, Boolean useConnection) throws Exception {
+    Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
-    Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_sink")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${dstTable}")
-      .put("schema", SCHEMA.toString())
-      .build();
+    Map<String, String> sinkProperties = getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA);
 
     String sinkTable = SINK_TABLE_NAME + engine;
-    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStore";
+    String applicationName =
+      SPANNER_PLUGIN_NAME + engine + "-testReadAndStore" + (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
-    args.put("project", getProjectId());
+    if (!useConnection) {
+      args.put("project", getProjectId());
+    }
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
     args.put("dstTable", sinkTable);
-    args.put("keys", "ID");
     startWorkFlow(applicationManager, ProgramRunStatus.COMPLETED, args);
 
     checkMetrics(applicationName, SOURCE_TABLE_TEST_MUTATIONS.size());
@@ -310,35 +315,29 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreInNewTableWithNoSourceSchema() throws Exception {
-    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE);
-    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK);
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE, false);
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK, false);
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE, true);
+    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK, true);
   }
 
-  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine) throws Exception {
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_source")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${srcTable}")
-      .build();
+  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine, Boolean useConnection) throws Exception {
+    Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", null);
 
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_sink")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${dstTable}")
-      .put("schema", SCHEMA.toString())
+      .putAll(getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA))
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTableWithNoSourceSchema";
+    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTableWithNoSourceSchema" +
+      (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
-    args.put("project", getProjectId());
+    if (!useConnection) {
+      args.put("project", getProjectId());
+    }
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
@@ -352,34 +351,26 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreWithNoSourceSchema() throws Exception {
-    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE);
-    testReadAndStoreWithNoSourceSchema(Engine.SPARK);
+    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE, false);
+    testReadAndStoreWithNoSourceSchema(Engine.SPARK, false);
+    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE, true);
+    testReadAndStoreWithNoSourceSchema(Engine.SPARK, true);
   }
 
-  private void testReadAndStoreWithNoSourceSchema(Engine engine) throws Exception {
-    Map<String, String> sourceProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_source")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${srcTable}")
-      .build();
+  private void testReadAndStoreWithNoSourceSchema(Engine engine, Boolean useConnection) throws Exception {
+    Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", null);
 
-    Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
-      .put("referenceName", "spanner_sink")
-      .put("project", "${project}")
-      .put("instance", "${instance}")
-      .put("database", "${database}")
-      .put("table", "${dstTable}")
-      .put("schema", SCHEMA.toString())
-      .build();
+    Map<String, String> sinkProperties = getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA);
 
     String sinkTable = SINK_TABLE_NAME + engine;
-    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreWithNoSourceSchema";
+    String applicationName =
+      SPANNER_PLUGIN_NAME + "-testReadAndStoreWithNoSourceSchema" + (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
                                                               applicationName, engine);
     Map<String, String> args = new HashMap<>();
-    args.put("project", getProjectId());
+    if (!useConnection) {
+      args.put("project", getProjectId());
+    }
     args.put("instance", instance.getId().getInstance());
     args.put("database", database.getId().getDatabase());
     args.put("srcTable", SOURCE_TABLE_NAME);
