@@ -41,6 +41,7 @@ import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.Tasks;
+import io.cdap.plugin.common.ConfigUtil;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -65,6 +66,7 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
   public static final String MULTISINK_RUNTIME_ARG = "multisink.%s";
   public static final String SOURCE_TABLE_NAME_TEMPLATE = "test_source_table_";
   public static final String SINK_TABLE_NAME_TEMPLATE = "test_sink_table_";
+  private static final String CONNECTION_NAME = String.format("test_bq_%s", GoogleBigQueryUtils.getUUID());
   private static String bigQueryDatasetName;
   private static Dataset dataset;
   private static BigQuery bq;
@@ -120,11 +122,12 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
+    createConnection(CONNECTION_NAME, "BigQuery");
   }
 
   @Override
   protected void innerTearDown() throws Exception {
-
+    deleteConnection(CONNECTION_NAME);
   }
 
   @BeforeClass
@@ -144,12 +147,14 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
 
   @Test
   public void testStoreInTwoNewTables() throws Exception {
-    testStoreInTwoNewTables(Engine.MAPREDUCE);
-    testStoreInTwoNewTables(Engine.SPARK);
+    testStoreInTwoNewTables(Engine.MAPREDUCE, false);
+    testStoreInTwoNewTables(Engine.SPARK, false);
+    testStoreInTwoNewTables(Engine.MAPREDUCE, true);
+    testStoreInTwoNewTables(Engine.SPARK, true);
   }
 
   //Read from existing tables and store in two new tables
-  private void testStoreInTwoNewTables(Engine engine) throws Exception {
+  private void testStoreInTwoNewTables(Engine engine, boolean useConnection) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -173,10 +178,10 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     Assert.assertFalse(dataset.get(destinationTableName2) != null);
 
     Schema sourceSchema = getSimpleTableSchema();
-    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1);
-    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2);
+    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1, useConnection);
+    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2, useConnection);
 
-    Map<String, String> destProps = getDestProps("bigQuery_multisink1");
+    Map<String, String> destProps = getDestProps("bigQuery_multisink1", useConnection);
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
                            destProps, engine);
@@ -216,9 +221,9 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
     Assert.assertFalse(dataset.get(destinationTableName1) != null);
 
     Schema sourceSchema = getSimpleTableSchema();
-    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1);
+    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1, false);
 
-    Map<String, String> destProps = getDestProps("bigQuery_multisink2");
+    Map<String, String> destProps = getDestProps("bigQuery_multisink2", false);
 
     createAndStartSingleTablePipeline(destinationTableName1, srcProps1, destProps);
 
@@ -232,12 +237,14 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
 
   @Test
   public void testStoreInTwoExistingTables() throws Exception {
-    testStoreInTwoExistingTables(Engine.MAPREDUCE);
-    testStoreInTwoExistingTables(Engine.SPARK);
+    testStoreInTwoExistingTables(Engine.MAPREDUCE, false);
+    testStoreInTwoExistingTables(Engine.SPARK, false);
+    testStoreInTwoExistingTables(Engine.MAPREDUCE, true);
+    testStoreInTwoExistingTables(Engine.SPARK, true);
   }
 
   //Read from source tables and write into two existing tables
-  private void testStoreInTwoExistingTables(Engine engine) throws Exception {
+  private void testStoreInTwoExistingTables(Engine engine, boolean useConnection) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -267,10 +274,10 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
                                    Collections.singletonList(getSimpleDestData()));
 
     Schema sourceSchema = getSimpleTableSchema();
-    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1);
-    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2);
+    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1, useConnection);
+    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2, useConnection);
 
-    Map<String, String> destProps = getDestProps("bigQuery_multisink_existing");
+    Map<String, String> destProps = getDestProps("bigQuery_multisink_existing", useConnection);
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
                            destProps, engine);
@@ -284,12 +291,14 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
 
   @Test
   public void testTruncateAndStoreInTwoExistingTables() throws Exception {
-    testTruncateAndStoreInTwoExistingTables(Engine.MAPREDUCE);
-    testTruncateAndStoreInTwoExistingTables(Engine.SPARK);
+    testTruncateAndStoreInTwoExistingTables(Engine.MAPREDUCE, false);
+    testTruncateAndStoreInTwoExistingTables(Engine.SPARK, false);
+    testTruncateAndStoreInTwoExistingTables(Engine.MAPREDUCE, true);
+    testTruncateAndStoreInTwoExistingTables(Engine.SPARK, true);
   }
 
   //Read from source tables and write to destination tables with truncate flag set
-  private void testTruncateAndStoreInTwoExistingTables(Engine engine) throws Exception {
+  private void testTruncateAndStoreInTwoExistingTables(Engine engine, boolean useConnection) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -318,10 +327,10 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
                                    Collections.singletonList(getSimpleDestData()));
 
     Schema sourceSchema = getSimpleTableSchema();
-    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1);
-    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2);
+    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1, useConnection);
+    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2, useConnection);
     //Truncate is set and update is not set
-    Map<String, String> destProps = getDestProps("bigQuery_multisink_truncate", true, false);
+    Map<String, String> destProps = getDestProps("bigQuery_multisink_truncate", true, false, useConnection);
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
                            destProps, engine);
@@ -333,12 +342,14 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
 
   @Test
   public void testUpdateAndStoreInTwoExistingTables() throws Exception {
-    testUpdateAndStoreInTwoExistingTables(Engine.MAPREDUCE);
-    testUpdateAndStoreInTwoExistingTables(Engine.SPARK);
+    testUpdateAndStoreInTwoExistingTables(Engine.MAPREDUCE, false);
+    testUpdateAndStoreInTwoExistingTables(Engine.SPARK, false);
+    testUpdateAndStoreInTwoExistingTables(Engine.MAPREDUCE, true);
+    testUpdateAndStoreInTwoExistingTables(Engine.SPARK, true);
   }
 
   //Read from source and write to two destination tables with truncate and update schema flags set.
-  private void testUpdateAndStoreInTwoExistingTables(Engine engine) throws Exception {
+  private void testUpdateAndStoreInTwoExistingTables(Engine engine, boolean useConnection) throws Exception {
     String sourceTableName1 =
       SOURCE_TABLE_NAME_TEMPLATE + GoogleBigQueryUtils.getUUID();
     String sourceTableName2 =
@@ -369,11 +380,11 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
                                    Collections.singletonList(getSimpleDestData()));
 
     Schema sourceSchema = getSimpleTableSchema();
-    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1);
-    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2);
+    Map<String, String> srcProps1 = getSrcProps("bigQuery_source1", sourceSchema, sourceTableName1, useConnection);
+    Map<String, String> srcProps2 = getSrcProps("bigQuery_source2", sourceSchema, sourceTableName2, useConnection);
 
     //Both truncate and relax schema set
-    Map<String, String> destProps = getDestProps("bigQuery_multisink_truncate", true, true);
+    Map<String, String> destProps = getDestProps("bigQuery_multisink_truncate", true, true, useConnection);
 
     createAndStartPipeline(destinationTableName1, destinationTableName2, srcProps1, srcProps2,
                            destProps, engine);
@@ -568,26 +579,38 @@ public class GoogleBigQueryMultiSinkTest extends DataprocETLTestBase {
       );
   }
 
+  private Map<String, String> getConnectionProps(boolean useConnection) {
+    String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
+    Map<String, String> props = new HashMap<>();
+    if (useConnection) {
+      props.put(ConfigUtil.NAME_CONNECTION, connectionId);
+      props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
+    } else {
+      props.put("project", "${project}");
+    }
+    return new ImmutableMap.Builder<String, String>().putAll(props).build();
+  }
+
   private Map<String, String> getSrcProps(String referenceName, Schema sourceSchema,
-                                          String srcTable) {
+                                          String srcTable, boolean useConnection) {
     return new ImmutableMap.Builder<String, String>()
       .put("referenceName", referenceName)
-      .put("project", "${project}")
+      .putAll(getConnectionProps(useConnection))
       .put("dataset", "${dataset}")
       .put("table", srcTable)
       .put("schema", sourceSchema.toString())
       .build();
   }
 
-  private Map<String, String> getDestProps(String referenceName) {
-    return getDestProps(referenceName, false, false);
+  private Map<String, String> getDestProps(String referenceName, boolean useConnection) {
+    return getDestProps(referenceName, false, false, useConnection);
   }
 
   private Map<String, String> getDestProps(String referenceName, boolean truncateTable,
-                                           boolean relaxSchema) {
+                                           boolean relaxSchema, boolean useConnection) {
     return new ImmutableMap.Builder<String, String>()
       .put("referenceName", referenceName)
-      .put("project", "${project}")
+      .putAll(getConnectionProps(useConnection))
       .put("dataset", "${dataset}")
       .put("splitField", "tablename")
       .put("truncateTable", String.valueOf(truncateTable))
