@@ -212,7 +212,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     createConnection(CONNECTION_NAME, "BigQuery");
   }
 
-  private Map<String, String> getProps(Boolean useConnection, String referenceName, String table) {
+  private Map<String, String> getProps(boolean useConnection, String referenceName, String table) {
     String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
     Map<String, String> props = new HashMap<>();
     props.put("referenceName", referenceName);
@@ -257,7 +257,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "float_value": 0.1
    *  "boolean_value": true
    */
-  private void testReadDataAndStoreInNewTable(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadDataAndStoreInNewTable(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -334,7 +334,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "float_value": 0.1
    *  "boolean_value": true
    */
-  private void testReadDataAndStoreInExistingTable(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadDataAndStoreInExistingTable(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -412,7 +412,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "float_value": 0.1
    *  "boolean_value": true
    */
-  private void testSchemaNullTableNotExist(Engine engine, Boolean useConnection) throws Exception {
+  private void testSchemaNullTableNotExist(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -507,7 +507,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "timestamp_value", LegacySQLTypeName.TIMESTAMP
    *  "date_value", LegacySQLTypeName.DATE
    */
-  private void testReadDataAndStoreWithUpdateTableSchema(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadDataAndStoreWithUpdateTableSchema(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -611,7 +611,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "complex_record": {"simple_record":{"boolean_value":true,"record_string":"r_string"},"float_value":0.25}
    *  "record_array":[{"r_a_string":"r_a_string_1","r_a_int":100},{"r_a_string":"r_a_string_2","r_a_int":200}]}
    */
-  private void testProcessingAllBigQuerySupportTypes(Engine engine, Boolean useConnection) throws Exception {
+  private void testProcessingAllBigQuerySupportTypes(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -686,7 +686,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    */
-  private void testUpdateOperationWithoutSchemaUpdate(Engine engine, Boolean useConnection) throws Exception {
+  private void testUpdateOperationWithoutSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -783,7 +783,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testUpsertOperationWithoutSchemaUpdate(Engine engine, Boolean useConnection) throws Exception {
+  private void testUpsertOperationWithoutSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -895,7 +895,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"id":null,"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"id":null,"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithSchemaUpdate(Engine engine, Boolean useConnection) throws Exception {
+  private void testInsertOperationWithSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1018,7 +1018,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithIntegerPartition(Engine engine, Boolean useConnection) throws Exception {
+  private void testInsertOperationWithIntegerPartition(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1127,7 +1127,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
   private void testInsertOperationWithIntegerPartitionInExistingTable(Engine engine,
-                                                                      Boolean useConnection) throws Exception {
+                                                                      boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1272,7 +1272,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithIngestionTimePartition(Engine engine, Boolean useConnection) throws Exception {
+  private void testInsertOperationWithIngestionTimePartition(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1368,7 +1368,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"date_value":"2000-01-20"}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"date_value":"2000-01-21"}
    */
-  private void testInsertOperationWithTimeColumnPartition(Engine engine, Boolean useConnection) throws Exception {
+  private void testInsertOperationWithTimeColumnPartition(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1458,7 +1458,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"id":100,"string_value":"string_0","int_value":null,"float_value":null,"boolean_value":true}
    *  {"id":101,"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    */
-  private void testUpdateOperationWithSchemaUpdate(Engine engine, Boolean useConnection) throws Exception {
+  private void testUpdateOperationWithSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1555,7 +1555,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"id":null,"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"id":null,"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testUpsertOperationWithSchemaUpdate(Engine engine, Boolean useConnection) throws Exception {
+  private void testUpsertOperationWithSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1664,7 +1664,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    */
-  private void testUpdateOperationWithDedupeSourceData(Engine engine, Boolean useConnection) throws Exception {
+  private void testUpdateOperationWithDedupeSourceData(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1760,7 +1760,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testUpsertOperationWithDedupeSourceData(Engine engine, Boolean useConnection) throws Exception {
+  private void testUpsertOperationWithDedupeSourceData(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1862,7 +1862,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     testBigQueryNullMode(Engine.SPARK, true);
   }
 
-  private void testBigQueryNullMode(Engine engine, Boolean useConnection) throws Exception {
+  private void testBigQueryNullMode(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1923,7 +1923,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     testBigQueryWithDifferentSchemaRecordName(Engine.SPARK, true);
   }
 
-  private void testBigQueryWithDifferentSchemaRecordName(Engine engine, Boolean useConnection) throws Exception {
+  private void testBigQueryWithDifferentSchemaRecordName(Engine engine, boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableNameOne = SOURCE_TABLE_NAME_TEMPLATE + testId;

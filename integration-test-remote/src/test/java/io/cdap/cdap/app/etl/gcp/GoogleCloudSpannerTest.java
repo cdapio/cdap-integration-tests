@@ -220,7 +220,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     createConnection(CONNECTION_NAME, "Spanner");
   }
 
-  private Map<String, String> getProps(Boolean useConnection, String referenceName, String table, Schema schema) {
+  private Map<String, String> getProps(boolean useConnection, String referenceName, String table, Schema schema) {
     String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
     Map<String, String> props = new HashMap<>();
     props.put("referenceName", referenceName);
@@ -247,7 +247,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     testReadAndStoreInNewTable(Engine.SPARK, true);
   }
 
-  private void testReadAndStoreInNewTable(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadAndStoreInNewTable(Engine engine, boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
@@ -283,7 +283,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     testReadAndStore(Engine.SPARK, true);
   }
 
-  private void testReadAndStore(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadAndStore(Engine engine, boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
     Map<String, String> sinkProperties = getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA);
@@ -321,7 +321,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK, true);
   }
 
-  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine, boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", null);
 
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
@@ -357,7 +357,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     testReadAndStoreWithNoSourceSchema(Engine.SPARK, true);
   }
 
-  private void testReadAndStoreWithNoSourceSchema(Engine engine, Boolean useConnection) throws Exception {
+  private void testReadAndStoreWithNoSourceSchema(Engine engine, boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", null);
 
     Map<String, String> sinkProperties = getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA);
