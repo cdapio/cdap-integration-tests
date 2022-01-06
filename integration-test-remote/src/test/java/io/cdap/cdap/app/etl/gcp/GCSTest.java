@@ -26,8 +26,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.annotations.SerializedName;
 import io.cdap.cdap.api.artifact.ArtifactScope;
 import io.cdap.cdap.api.common.Bytes;
@@ -42,24 +40,18 @@ import io.cdap.cdap.etl.api.batch.PostAction;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
-import io.cdap.cdap.etl.proto.v2.validation.StageValidationResponse;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.artifact.PluginSummary;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
-import io.cdap.cdap.proto.id.NamespaceId;
 import io.cdap.cdap.test.ApplicationManager;
-import io.cdap.common.http.HttpRequest;
-import io.cdap.common.http.HttpResponse;
-import io.cdap.plugin.common.ConfigUtil;
 import io.cdap.plugin.common.batch.action.Condition;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
-import org.apache.parquet.Strings;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -72,7 +64,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -104,7 +95,6 @@ public class GCSTest extends DataprocETLTestBase {
   private static final String GCS_DONE_FILE_MARKER_PLUGIN_NAME = "GCSDoneFileMarker";
   private static final String SINK_PLUGIN_NAME = "GCS";
   private static final String SOURCE_PLUGIN_NAME = "GCSFile";
-  private static final String CONNECTION_NAME = String.format("test_gcs_%s", GoogleBigQueryUtils.getUUID());
   private static final Schema ALL_DT_SCHEMA = Schema.recordOf(
     "record",
     Schema.Field.of("string", Schema.of(Schema.Type.STRING)),
@@ -157,11 +147,10 @@ public class GCSTest extends DataprocETLTestBase {
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
     markedForDeleteBuckets = new ArrayList<>();
-    createConnection(CONNECTION_NAME, "GCS");
   }
 
   @Override
-  protected void innerTearDown() throws Exception {
+  protected void innerTearDown() {
     for (String bucketName : markedForDeleteBuckets) {
       try {
         Bucket bucket = storage.get(bucketName);
@@ -172,7 +161,6 @@ public class GCSTest extends DataprocETLTestBase {
         LOG.error("Unable to delete GCS bucket {}", bucketName, e);
       }
     }
-    deleteConnection(CONNECTION_NAME);
   }
 
   /**
@@ -765,13 +753,11 @@ public class GCSTest extends DataprocETLTestBase {
   
   @Test
   public void testAllTypes() throws Exception {
-    testAllTypes(Engine.MAPREDUCE, true);
-    testAllTypes(Engine.SPARK, true);
-    testAllTypes(Engine.MAPREDUCE, false);
-    testAllTypes(Engine.SPARK, false);
+    testAllTypes(Engine.MAPREDUCE);
+    testAllTypes(Engine.SPARK);
   }
 
-  private void testAllTypes(Engine engine, boolean useConnection) throws Exception {
+  private void testAllTypes(Engine engine) throws Exception {
     String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
     Bucket bucket = createBucket(bucketName);
     String inputBlobName = "gcs-types/" + engine + "/test.avro";
@@ -847,21 +833,24 @@ public class GCSTest extends DataprocETLTestBase {
 
     bucket.create(inputBlobName, Files.toByteArray(avroFile));
 
-    Map<String, String> sourceProps = getProps(useConnection, "gcs-input",
-                                               createPath(bucket, inputBlobName), "avro", schema);
-
-    Map<String, String> sinkProps = getProps(useConnection, "gcs-output",
-                                             createPath(bucket, outputBlobName), "json", null);
-
     ETLStage source = new ETLStage("GCSSourceStage",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
-                                                 sourceProps,
+                                                 ImmutableMap.of(
+                                                   "schema", schema,
+                                                   "format", "avro",
+                                                   "referenceName", "gcs-input",
+                                                   "project", getProjectId(),
+                                                   "path", createPath(bucket, inputBlobName)),
                                                  GOOGLE_CLOUD_ARTIFACT));
 
     ETLStage sink = new ETLStage("GCSSinkStage", new ETLPlugin(SINK_PLUGIN_NAME,
                                                                BatchSink.PLUGIN_TYPE,
-                                                               sinkProps,
+                                                               ImmutableMap.of(
+                                                                 "path", createPath(bucket, outputBlobName),
+                                                                 "format", "json",
+                                                                 "project", getProjectId(),
+                                                                 "referenceName", "gcs-output"),
                                                                GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig etlConfig = ETLBatchConfig.builder()
@@ -872,7 +861,7 @@ public class GCSTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS" + engine + (useConnection ? "WithConnection" : ""));
+    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -929,13 +918,11 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGcsSourceFormats() throws Exception {
-    testGcsSourceFormats(Engine.MAPREDUCE, true);
-    testGcsSourceFormats(Engine.SPARK, true);
-    testGcsSourceFormats(Engine.MAPREDUCE, false);
-    testGcsSourceFormats(Engine.SPARK, false);
+    testGcsSourceFormats(Engine.MAPREDUCE);
+    testGcsSourceFormats(Engine.SPARK);
   }
 
-  public void testGcsSourceFormats(Engine engine, boolean useConnection) throws Exception {
+  public void testGcsSourceFormats(Engine engine) throws Exception {
     String bucketName = "cask-gcs-formats-" + UUID.randomUUID().toString();
     Bucket bucket = createBucket(bucketName);
 
@@ -961,26 +948,29 @@ public class GCSTest extends DataprocETLTestBase {
                   |
                   |--> tsv
      */
-    Map<String, String> sourceProps = getProps(useConnection, "gcs-input",
-                                               createPath(bucket, inputPath), "csv", schema.toString());
     ETLStage source = new ETLStage("source",
                                    new ETLPlugin(SOURCE_PLUGIN_NAME,
                                                  BatchSource.PLUGIN_TYPE,
-                                                 sourceProps,
+                                                 ImmutableMap.of(
+                                                   "schema", schema.toString(),
+                                                   "format", "csv",
+                                                   "referenceName", "gcs-input",
+                                                   "project", getProjectId(),
+                                                   "path", createPath(bucket, inputPath)),
                                                  GOOGLE_CLOUD_ARTIFACT));
 
     List<String> formats = Arrays.asList("avro", "csv", "delimited", "json", "parquet", "tsv");
     ETLBatchConfig.Builder pipelineConfig = ETLBatchConfig.builder().addStage(source);
     for (String format : formats) {
       String path = String.format("%s/%s/%s", createPath(bucket, OUTPUT_BLOB_NAME), format, suffix);
-      ETLStage sink = new ETLStage(format, createSinkPlugin(format, path, schema, useConnection));
+      ETLStage sink = new ETLStage(format, createSinkPlugin(format, path, schema));
       pipelineConfig.addStage(sink).addConnection(source.getName(), sink.getName());
     }
 
     pipelineConfig.setEngine(engine);
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig.build());
-    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks" + engine + (useConnection ? "WithConnection" : ""));
+    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks" + engine);
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -1000,18 +990,18 @@ public class GCSTest extends DataprocETLTestBase {
       id,first,last,email,address,city,state,zip
       1,Marilyn,Hawkins,mhawkins0@ted.com,238 Melvin Way,Palo Alto,CA,94302
      */
-    ETLStage sink = new ETLStage("sink", createSinkPlugin("csv", createPath(bucket, "output"), schema, useConnection));
+    ETLStage sink = new ETLStage("sink", createSinkPlugin("csv", createPath(bucket, "output"), schema));
     pipelineConfig = ETLBatchConfig.builder().addStage(sink);
     for (String format : formats) {
       String path = String.format("%s/%s", createPath(bucket, OUTPUT_BLOB_NAME), format);
-      source = createSourceStage(format, path, String.format(".*/%s/.*", suffix), schema, useConnection);
+      source = createSourceStage(format, path, String.format(".*/%s/.*", suffix), schema);
       pipelineConfig.addStage(source).addConnection(source.getName(), sink.getName());
     }
 
     pipelineConfig.setEngine(engine);
 
     appRequest = getBatchAppRequestV2(pipelineConfig.build());
-    appId = TEST_NAMESPACE.app("GCSFormatSources" + engine + (useConnection ? "WithConnection" : ""));
+    appId = TEST_NAMESPACE.app("GCSFormatSources" + engine);
     appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
@@ -1032,13 +1022,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testSchemaDetectionOnSingleFile() throws Exception {
-    testSchemaDetectionOnSingleFile(Engine.MAPREDUCE, true);
-    testSchemaDetectionOnSingleFile(Engine.SPARK, true);
-    testSchemaDetectionOnSingleFile(Engine.MAPREDUCE, false);
-    testSchemaDetectionOnSingleFile(Engine.SPARK, false);
-  }
-
-  public void testSchemaDetectionOnSingleFile(Engine engine, boolean useConnection) throws Exception {
     // source bucket
     String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
     Bucket sourceBucket = createBucket(sourceBucketName);
@@ -1058,7 +1041,10 @@ public class GCSTest extends DataprocETLTestBase {
 
     // Schema is not passed (ie. schema is null) in the GCS source plugin so the automatic schema detection is triggered
     Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
-      .putAll(getProps(useConnection, "source-gcs-schema-detection", blobSourcePath, "delimited", null))
+      .put("referenceName", "source-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSourcePath)
+      .put("format", "delimited")
       .put("delimiter", ";")
       .put("sampleSize", "1000")
       .put("skipHeader", "true")
@@ -1069,14 +1055,13 @@ public class GCSTest extends DataprocETLTestBase {
                                               GOOGLE_CLOUD_ARTIFACT);
     ETLStage source = new ETLStage("source", gcsSourcePlugin);
 
-    if (useConnection) {
-      // detecting output schema when connection set to true as connection properties are macro at deploy time
-      source = getSourceStageWithAutoDetectedSchema(source, gcsSourcePluginParams);
-    }
-
     // gcs sink plugin
-    Map<String, String> gcsSinkPluginParams = getProps(useConnection, "sink-gcs-schema-detection",
-                                                       blobSinkPath, "json", null);
+    Map<String, String> gcsSinkPluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "sink-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSinkPath)
+      .put("format", "json")
+      .build();
 
     ETLPlugin gcsSinkPlugin = new ETLPlugin(SINK_PLUGIN_NAME, BatchSink.PLUGIN_TYPE, gcsSinkPluginParams,
                                             GOOGLE_CLOUD_ARTIFACT);
@@ -1087,11 +1072,11 @@ public class GCSTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
-    String appName = "GCS_Source_Sink_" + engine + (useConnection ? "WithConnection" : "");
+    String appName = "GCS_Source_Sink_" + UUID.randomUUID().toString().replace("-", "_");
     ApplicationId appId = TEST_NAMESPACE.app(appName);
     ApplicationManager appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -1104,36 +1089,6 @@ public class GCSTest extends DataprocETLTestBase {
 
     // The BooksPublished data type is manually set to String. Thus it contains string values rather than integers.
     assertBlobContains(sinkBucket, authorsBlobName, "\"3\"");
-  }
-
-  private ETLStage getSourceStageWithAutoDetectedSchema(ETLStage source,
-                                                        Map<String, String> pluginParams) throws Exception {
-    Gson gson = new Gson();
-    String sourceJson = "{ \"stage\": " + gson.toJson(source) + "}";
-    URL baseURL = getClientConfig().resolveNamespacedURLV3(NamespaceId.SYSTEM,
-                                                           "apps/pipeline/services/studio/methods/");
-    String path = String.format("v1/contexts/%s/validations/stage", TEST_NAMESPACE.getNamespace());
-    HttpResponse httpResponse = getRestClient()
-      .execute(HttpRequest.post(new URL(baseURL, path)).withBody(sourceJson).build(),
-               getClientConfig().getAccessToken());
-    String schema = parseOutputSchemaFromResponse(httpResponse);
-    if (Strings.isNullOrEmpty(schema)) {
-      return source;
-    }
-    Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
-      .putAll(pluginParams)
-      .put("schema", schema)
-      .build();
-    ETLPlugin gcsSourcePlugin = new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, gcsSourcePluginParams,
-                                              GOOGLE_CLOUD_ARTIFACT);
-    return new ETLStage("source", gcsSourcePlugin);
-  }
-
-  private String parseOutputSchemaFromResponse(HttpResponse httpResponse) {
-    String responseBody = httpResponse.getResponseBodyAsString();
-    JsonParser jsonParser = new JsonParser();
-    JsonObject spec = jsonParser.parse(responseBody).getAsJsonObject().getAsJsonObject("spec");
-    return spec.get("outputSchema").toString();
   }
 
   @Test
@@ -1231,15 +1186,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided() throws Exception {
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.MAPREDUCE, true);
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.SPARK, true);
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.MAPREDUCE, false);
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.SPARK, false);
-  }
-  
-  public void testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine engine,
-                                                                                               boolean useConnection)
-    throws Exception {
     /*
     In this test case, the plugin will filter out all the files from the source bucket that do not match the given file
     filter regex ".+authors.*". So from authors-part-1.csv, authors-part-2.csv and books.csv, only
@@ -1278,7 +1224,10 @@ public class GCSTest extends DataprocETLTestBase {
 
     // Schema is not passed (ie. schema is null) in the GCS source plugin so the automatic schema detection is triggered
     Map<String, String> gcsSourcePluginParams = new ImmutableMap.Builder<String, String>()
-      .putAll(getProps(useConnection, "source-gcs-schema-detection", sourcePath, "delimited", null))
+      .put("referenceName", "source-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", sourcePath)
+      .put("format", "delimited")
       .put("delimiter", ";")
       .put("sampleSize", "1000")
       .put("skipHeader", "true")
@@ -1294,14 +1243,13 @@ public class GCSTest extends DataprocETLTestBase {
 
     ETLStage source = new ETLStage("source", gcsSourcePlugin);
 
-    if (useConnection) {
-      // detecting output schema when connection set to true as connection properties are macro at deploy time
-      source = getSourceStageWithAutoDetectedSchema(source, gcsSourcePluginParams);
-    }
-
     // gcs sink plugin
-    Map<String, String> gcsSinkPluginParams = getProps(useConnection, "sink-gcs-schema-detection",
-                                                       blobSinkPath, "json", null);
+    Map<String, String> gcsSinkPluginParams = new ImmutableMap.Builder<String, String>()
+      .put("referenceName", "sink-gcs-schema-detection")
+      .put("project", getProjectId())
+      .put("path", blobSinkPath)
+      .put("format", "json")
+      .build();
 
     ETLPlugin gcsSinkPlugin = new ETLPlugin(
       SINK_PLUGIN_NAME,
@@ -1316,11 +1264,11 @@ public class GCSTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
-    String appName = "GCS_Source_Sink_" + engine + (useConnection ? "WithConnection" : "");
+    String appName = "GCS_Source_Sink_" + UUID.randomUUID().toString().replace("-", "_");
     ApplicationId appId = TEST_NAMESPACE.app(appName);
     ApplicationManager appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -1340,40 +1288,28 @@ public class GCSTest extends DataprocETLTestBase {
     assertBlobNotContains(sinkBucket, existingBlobNames.get(0), "\"35\"");
   }
 
-  private ETLStage createSourceStage(String format, String path, String regex, Schema schema, boolean useConnection) {
-    Map<String, String> sourceProps = new ImmutableMap.Builder<String, String>()
-      .putAll(getProps(useConnection, "gcs-input", path, format, schema.toString()))
-      .put("fileRegex", regex)
-      .put("recursive", "true")
-      .build();
-    return new ETLStage(format, new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProps,
+  private ETLStage createSourceStage(String format, String path, String regex, Schema schema) {
+    return new ETLStage(format, new ETLPlugin(SOURCE_PLUGIN_NAME, BatchSource.PLUGIN_TYPE,
+                                              new ImmutableMap.Builder<String, String>()
+                                                .put("path", path)
+                                                .put("format", format)
+                                                .put("project", getProjectId())
+                                                .put("referenceName", format)
+                                                .put("fileRegex", regex)
+                                                .put("recursive", "true")
+                                                .put("schema", schema.toString()).build(),
                                               GOOGLE_CLOUD_ARTIFACT));
   }
 
-  private ETLPlugin createSinkPlugin(String format, String path, Schema schema, boolean useConnection) {
-    Map<String, String> sinkProps = getProps(useConnection, "gcs-output", path, format, schema.toString());
+  private ETLPlugin createSinkPlugin(String format, String path, Schema schema) {
     return new ETLPlugin(SINK_PLUGIN_NAME, BatchSink.PLUGIN_TYPE,
-                         sinkProps,
+                         ImmutableMap.of(
+                           "path", path,
+                           "format", format,
+                           "project", getProjectId(),
+                           "referenceName", format,
+                           "schema", schema.toString()),
                          GOOGLE_CLOUD_ARTIFACT);
-  }
-
-  private Map<String, String> getProps(boolean useConnection, String referenceName, String path,
-                                       String format, String schema) {
-    String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
-    Map<String, String> props = new HashMap<>();
-    props.put("referenceName", referenceName);
-    if (useConnection) {
-      props.put(ConfigUtil.NAME_CONNECTION, connectionId);
-      props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
-    } else {
-      props.put("project", getProjectId());
-    }
-    props.put("path", path);
-    props.put("format", format);
-    if (!Strings.isNullOrEmpty(schema)) {
-      props.put("schema", schema);
-    }
-    return new ImmutableMap.Builder<String, String>().putAll(props).build();
   }
 
   static class DataTypesRecord {
