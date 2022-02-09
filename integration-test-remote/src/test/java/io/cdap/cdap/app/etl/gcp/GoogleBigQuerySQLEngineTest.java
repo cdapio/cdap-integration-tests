@@ -51,6 +51,7 @@ import io.cdap.cdap.test.suite.category.RequiresSpark;
 import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpResponse;
 import io.cdap.common.http.ObjectResponse;
+import io.cdap.plugin.common.ConfigUtil;
 import io.cdap.plugin.common.Properties;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.file.DataFileStream;
@@ -58,6 +59,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DatumReader;
+import org.apache.parquet.Strings;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -66,6 +68,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -78,6 +81,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private static final String BQ_SQLENGINE_PLUGIN_NAME = "BigQueryPushdownEngine";
   private static final String BIG_QUERY_DATASET = "bq_dataset_joiner_test";
+  private static final String CONNECTION_NAME = String.format("test_bq_%s", GoogleBigQueryUtils.getUUID());
 
   @Override
   protected void innerSetup() throws Exception {
@@ -90,10 +94,12 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
+    createConnection(CONNECTION_NAME, "BigQuery");
   }
 
   @Override
   protected void innerTearDown() throws Exception {
+    deleteConnection(CONNECTION_NAME);
   }
 
   @Category({
@@ -101,10 +107,22 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineJoinSpark() throws Exception {
-    testSQLEngineJoin(Engine.SPARK);
+    testSQLEngineJoin(Engine.SPARK, false);
+    testSQLEngineJoin(Engine.SPARK, true);
   }
 
-  private void testSQLEngineJoin(Engine engine) throws Exception {
+  private Map<String, String> getProps(boolean useConnection) {
+    String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
+    Map<String, String> props = new HashMap<>();
+    if (useConnection) {
+      props.put(ConfigUtil.NAME_CONNECTION, connectionId);
+      props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
+    }
+    props.put("dataset", BIG_QUERY_DATASET);
+    return new ImmutableMap.Builder<String, String>().putAll(props).build();
+  }
+
+  private void testSQLEngineJoin(Engine engine, boolean useConnection) throws Exception {
     String filmDatasetName = "film-sqlenginejoinertest";
     String filmCategoryDatasetName = "film-category-sqlenginejoinertest";
     String filmActorDatasetName = "film-actor-sqlenginejoinertest";
@@ -184,9 +202,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       new ETLTransformationPushdown(
         new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
                       BatchSQLEngine.PLUGIN_TYPE,
-                      ImmutableMap.of(
-                        "dataset", BIG_QUERY_DATASET
-                      )
+                      getProps(useConnection)
         )
       );
 
