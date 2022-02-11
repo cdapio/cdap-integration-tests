@@ -99,6 +99,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   @Override
   protected void innerTearDown() throws Exception {
+    deleteConnection(CONNECTION_NAME);
   }
 
   @Category({
