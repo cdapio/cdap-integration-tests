@@ -65,6 +65,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DatumReader;
+import org.apache.parquet.Strings;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -178,6 +179,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     testSQLEngineJoin(Engine.SPARK, false);
     testSQLEngineJoin(Engine.SPARK, true);
   }
+
 
   @Category({
           RequiresSpark.class
@@ -305,6 +307,9 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
     // verfiy output
     Assert.assertEquals(expected, readOutput(serviceManager, DEDUPLICATE_SINK, DedupAggregatorTest.USER_SCHEMA));
+  }
+
+    return new ImmutableMap.Builder<String, String>().putAll(props).build();
   }
 
   private void testSQLEngineJoin(Engine engine, boolean useConnection) throws Exception {
