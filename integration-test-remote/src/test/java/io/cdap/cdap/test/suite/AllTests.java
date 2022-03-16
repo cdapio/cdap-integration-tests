@@ -21,6 +21,7 @@ import io.cdap.cdap.app.etl.TPFSAvroSinkSourceTest;
 import io.cdap.cdap.app.etl.batch.BatchAggregatorTest;
 import io.cdap.cdap.app.etl.batch.BatchCubeSinkTest;
 import io.cdap.cdap.app.etl.batch.BatchJoinerTest;
+import io.cdap.cdap.app.etl.batch.DedupAggregatorTest;
 import io.cdap.cdap.app.etl.batch.ETLMapReduceTest;
 import io.cdap.cdap.app.etl.batch.ExcelInputReaderTest;
 import io.cdap.cdap.app.etl.batch.HivePluginTest;
@@ -65,6 +66,7 @@ import org.junit.runners.Suite;
   BatchJoinerTest.class,
   DatasetTest.class,
   DataStreamsTest.class,
+  DedupAggregatorTest.class,
   ETLMapReduceTest.class,
   ExcelInputReaderTest.class,
   FileSetTest.class,
