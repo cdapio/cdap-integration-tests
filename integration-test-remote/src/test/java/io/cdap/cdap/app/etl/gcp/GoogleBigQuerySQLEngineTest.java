@@ -90,10 +90,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   private static final String BQ_SQLENGINE_PLUGIN_NAME = "BigQueryPushdownEngine";
   private static final String BIG_QUERY_DATASET = "bq_dataset_joiner_test";
   private static final String CONNECTION_NAME = String.format("test_bq_%s", GoogleBigQueryUtils.getUUID());
-  public static final String SMARTWORKFLOW_NAME = SmartWorkflow.NAME;
   public static final String PURCHASE_SOURCE = "purchaseSource";
-  public static final String USER_CONDITION_SOURCE = "userConditionSource";
-  public static final String USER_CONDITION_SINK = "userConditionSink";
   public static final String ITEM_SINK = "itemSink";
   public static final String USER_SINK = "userSink";
   public static final String DEDUPLICATE_SOURCE = "userSource";
@@ -132,26 +129,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
           Schema.Field.of("totalPurchases", Schema.of(Schema.Type.LONG)),
           Schema.Field.of("totalSpent", Schema.of(Schema.Type.LONG)));
 
-  private static final Schema USER_CONDITION_SCHEMA = Schema.recordOf(
-          "user_condition",
-          Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("age", Schema.of(Schema.Type.DOUBLE)),
-          Schema.Field.of("isMember", Schema.of(Schema.Type.BOOLEAN)),
-          Schema.Field.of("city", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("price", Schema.of(Schema.Type.DOUBLE)));
-
-  private static final Schema USER_CONDITION_OUTPUT_SCHEMA = Schema.recordOf(
-          "user_condition",
-          Schema.Field.of("name", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("highestPrice", Schema.of(Schema.Type.DOUBLE)),
-          Schema.Field.of("averageDonutPrice", Schema.of(Schema.Type.DOUBLE)),
-          Schema.Field.of("totalPurchasesInTokyo", Schema.of(Schema.Type.DOUBLE)),
-          Schema.Field.of("anyPurchaseInBerlin", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("doughnutsSold", Schema.of(Schema.Type.INT)),
-          Schema.Field.of("lowestPrice", Schema.of(Schema.Type.DOUBLE))
-  );
-
   @Override
   protected void innerSetup() throws Exception {
     Tasks.waitFor(true, () -> {
@@ -180,7 +157,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     testSQLEngineJoin(Engine.SPARK, true);
   }
 
-
   @Category({
           RequiresSpark.class
   })
@@ -188,9 +164,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   public void testSQLEngineGroupBySpark() throws Exception {
      testSQLEngineGroupBy(Engine.SPARK, false);
      testSQLEngineGroupBy(Engine.SPARK, true);
-
-     testSQLEngineGroupByCondition(Engine.SPARK, false);
-     testSQLEngineGroupByCondition(Engine.SPARK, true);
   }
 
   @Category({
@@ -208,7 +181,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     if (useConnection) {
       props.put(ConfigUtil.NAME_CONNECTION, connectionId);
       props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
-    }
+    } 
     props.put("dataset", BIG_QUERY_DATASET);
     if (includedStages != null) {
       props.put("includedStages", includedStages);
@@ -307,9 +280,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
     // verfiy output
     Assert.assertEquals(expected, readOutput(serviceManager, DEDUPLICATE_SINK, DedupAggregatorTest.USER_SCHEMA));
-  }
-
-    return new ImmutableMap.Builder<String, String>().putAll(props).build();
   }
 
   private void testSQLEngineJoin(Engine engine, boolean useConnection) throws Exception {
@@ -510,7 +480,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
 
     ETLStage userGroupStage = getGroupStage("userGroup", "user",
-            "totalPurchases:count(*), totalSpent:sum(price)");
+            "totalPurchases:count(item), totalSpent:sum(price)");
 
 
     ETLStage itemGroupStage = getGroupStage("itemGroup", "item",
@@ -571,155 +541,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     verifyOutput(groupedUsers, groupedItems);
   }
-
-  private void testSQLEngineGroupByCondition(Engine engine, boolean useConnection) throws Exception {
-    ETLStage sourceStage =
-            new ETLStage("source", new ETLPlugin("Table",
-                    BatchSource.PLUGIN_TYPE,
-                    ImmutableMap.of(
-                            Properties.BatchReadableWritable.NAME, USER_CONDITION_SOURCE,
-                            Properties.Table.PROPERTY_SCHEMA, USER_CONDITION_SCHEMA.toString()),
-                    null));
-
-    ETLStage groupStage = getGroupStage("group", "name", String.join(",", CONDITIONAL_AGGREGATES));
-
-    ETLStage sinkStage = getSink(USER_CONDITION_SINK, USER_CONDITION_OUTPUT_SCHEMA);
-
-    ETLTransformationPushdown transformationPushdown =
-            new ETLTransformationPushdown(
-                    new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
-                            BatchSQLEngine.PLUGIN_TYPE,
-                            getProps(useConnection, "group")
-                    )
-            );
-
-    ETLBatchConfig config = ETLBatchConfig.builder()
-            .addStage(sourceStage)
-            .addStage(groupStage)
-            .addStage(sinkStage)
-            .addConnection(sourceStage.getName(), groupStage.getName())
-            .addConnection(groupStage.getName(), sinkStage.getName())
-            .setDriverResources(new Resources(2048))
-            .setResources(new Resources(2048))
-            .setEngine(engine)
-            .setPushdownEnabled(true)
-            .setTransformationPushdown(transformationPushdown)
-            .build();
-
-    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-groupby-condition-test");
-    ApplicationManager appManager = deployApplication(appId, request);
-
-    // Deploy an application with a service to get partitionedFileset data for verification
-    ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager(
-            SnapshotFilesetService.class.getSimpleName());
-    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
-    ingestConditionData(USER_CONDITION_SOURCE);
-
-    // run the pipeline
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SMARTWORKFLOW_NAME);
-    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 15, TimeUnit.MINUTES);
-
-
-    Map<String, List<Object>> groups = parseConditionOutput(serviceManager);
-    verifyConditionOutput(groups);
-  }
-
-  private void ingestConditionData(String conditionDatasetName) throws Exception {
-    DataSetManager<Table> manager = getTableDataset(conditionDatasetName);
-    Table table = manager.get();
-    putConditionValues(table, 1, "Ben", 23, true, "Berlin", "doughnut", 1.5);
-    putConditionValues(table, 2, "Ben", 23, true, "LA", "pretzel", 2.05);
-    putConditionValues(table, 3, "Ben", 23, true, "Berlin", "doughnut", 0.75);
-    putConditionValues(table, 4, "Ben", 23, true, "Tokyo", "pastry", 3.25);
-    putConditionValues(table, 5, "Emma", 18, false, "Tokyo", "doughnut", 1.75);
-    putConditionValues(table, 6, "Emma", 18, false, "LA", "bagel", 2.95);
-    putConditionValues(table, 7, "Emma", 18, false, "Berlin", "pretzel", 2.05);
-    putConditionValues(table, 8, "Ron", 22, true, "LA", "bagel", 2.95);
-    putConditionValues(table, 9, "Ron", 22, true, "Tokyo", "pretzel", 0.5);
-    putConditionValues(table, 10, "Ron", 22, true, "Berlin", "doughnut", 1.75);
-
-    manager.flush();
-  }
-
-  private void putConditionValues(Table table, int id, String name, double age, boolean isMember, String city,
-                                  String item, double price) {
-    Put put = new Put(Bytes.toBytes(id));
-    put.add("name", name);
-    put.add("age", age);
-    put.add("isMember", isMember);
-    put.add("city", city);
-    put.add("item", item);
-    put.add("price", price);
-    table.put(put);
-  }
-
-  private void verifyConditionOutput(Map<String, List<Object>> groups) {
-    Assert.assertEquals(3, groups.size());
-
-    List<Object> groupedValues = groups.get("Ben");
-    Assert.assertEquals(2.05, groupedValues.get(0));
-    Assert.assertEquals(1.125, groupedValues.get(1));
-    Assert.assertEquals(3.25, groupedValues.get(2));
-    Assert.assertEquals("doughnut", groupedValues.get(3).toString());
-    Assert.assertEquals(2, groupedValues.get(4));
-    Assert.assertEquals(0.75, groupedValues.get(5));
-
-    groupedValues = groups.get("Ron");
-    Assert.assertEquals(2.95, groupedValues.get(0));
-    Assert.assertEquals(1.75, groupedValues.get(1));
-    Assert.assertEquals(0.5, groupedValues.get(2));
-    Assert.assertEquals("doughnut", groupedValues.get(3).toString());
-    Assert.assertEquals(1, groupedValues.get(4));
-    Assert.assertEquals(0.5, groupedValues.get(5));
-
-    groupedValues = groups.get("Emma");
-    Assert.assertEquals(2.95, groupedValues.get(0));
-    Assert.assertEquals(1.75, groupedValues.get(1));
-    Assert.assertEquals(1.75, groupedValues.get(2));
-    Assert.assertEquals("pretzel", groupedValues.get(3).toString());
-    Assert.assertEquals(1, groupedValues.get(4));
-    Assert.assertEquals(1.75, groupedValues.get(5));
-  }
-
-  private Map<String, List<Object>> parseConditionOutput(ServiceManager serviceManager) throws Exception {
-    URL pfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
-            String.format("read/%s", USER_CONDITION_SINK));
-    HttpResponse response = getRestClient().execute(HttpMethod.GET, pfsURL, getClientConfig().getAccessToken());
-
-    Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
-
-    Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-            response, new TypeToken<Map<String, byte[]>>() {
-            }.getType()).getResponseObject();
-
-    org.apache.avro.Schema avroSchema = new org.apache.avro.Schema.Parser()
-            .parse(USER_CONDITION_OUTPUT_SCHEMA.toString());
-
-    Map<String, List<Object>> group = new HashMap<>();
-
-    for (Map.Entry<String, byte[]> entry : map.entrySet()) {
-      DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(avroSchema);
-      DataFileStream<GenericRecord> fileStream = new DataFileStream<>(
-              new ByteArrayInputStream(entry.getValue()), datumReader);
-      for (GenericRecord record : fileStream) {
-        List<Schema.Field> fields = USER_CONDITION_OUTPUT_SCHEMA.getFields();
-        List<Object> values = new ArrayList<>();
-        values.add(record.get(fields.get(1).getName()));
-        values.add(record.get(fields.get(2).getName()));
-        values.add(record.get(fields.get(3).getName()));
-        values.add(record.get(fields.get(4).getName()));
-        values.add(record.get(fields.get(5).getName()));
-        values.add(record.get(fields.get(6).getName()));
-
-        group.put(record.get(fields.get(0).getName()).toString(), values);
-      }
-      fileStream.close();
-    }
-    return group;
-  }
-
+  
   private Map<String, List<Long>> readOutputGroupBy(ServiceManager serviceManager, String sink, Schema schema)
           throws IOException {
     URL pfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),

@@ -162,7 +162,6 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     properties.add(ofProperty("stackdriverLoggingEnabled", "true"));
     properties.add(ofProperty("stackdriverMonitoringEnabled", "true"));
     properties.add(ofProperty("idleTTL", "60"));
-    properties.add(ofProperty("imageVersion", "2.0.25-debian10"));
 
     JsonObject provisioner = new JsonObject();
     provisioner.addProperty("name", "gcp-dataproc");
