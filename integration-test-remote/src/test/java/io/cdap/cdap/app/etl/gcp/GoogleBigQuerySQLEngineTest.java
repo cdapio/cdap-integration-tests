@@ -65,6 +65,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DatumReader;
+import org.apache.parquet.Strings;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -539,35 +540,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Map<String, List<Long>> groupedItems = readOutputGroupBy(serviceManager, ITEM_SINK, ITEM_SCHEMA);
 
     verifyOutput(groupedUsers, groupedItems);
-  }
-
-  private void ingestConditionData(String conditionDatasetName) throws Exception {
-    DataSetManager<Table> manager = getTableDataset(conditionDatasetName);
-    Table table = manager.get();
-    putConditionValues(table, 1, "Ben", 23, true, "Berlin", "doughnut", 1.5);
-    putConditionValues(table, 2, "Ben", 23, true, "LA", "pretzel", 2.05);
-    putConditionValues(table, 3, "Ben", 23, true, "Berlin", "doughnut", 0.75);
-    putConditionValues(table, 4, "Ben", 23, true, "Tokyo", "pastry", 3.25);
-    putConditionValues(table, 5, "Emma", 18, false, "Tokyo", "doughnut", 1.75);
-    putConditionValues(table, 6, "Emma", 18, false, "LA", "bagel", 2.95);
-    putConditionValues(table, 7, "Emma", 18, false, "Berlin", "pretzel", 2.05);
-    putConditionValues(table, 8, "Ron", 22, true, "LA", "bagel", 2.95);
-    putConditionValues(table, 9, "Ron", 22, true, "Tokyo", "pretzel", 0.5);
-    putConditionValues(table, 10, "Ron", 22, true, "Berlin", "doughnut", 1.75);
-
-    manager.flush();
-  }
-
-  private void putConditionValues(Table table, int id, String name, double age, boolean isMember, String city,
-                                  String item, double price) {
-    Put put = new Put(Bytes.toBytes(id));
-    put.add("name", name);
-    put.add("age", age);
-    put.add("isMember", isMember);
-    put.add("city", city);
-    put.add("item", item);
-    put.add("price", price);
-    table.put(put);
   }
   
   private Map<String, List<Long>> readOutputGroupBy(ServiceManager serviceManager, String sink, Schema schema)
