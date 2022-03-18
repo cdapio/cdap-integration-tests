@@ -16,8 +16,9 @@
 
 package io.cdap.cdap.app.etl.gcp;
 
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.DatasetInfo;
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -65,15 +66,19 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DatumReader;
-import org.apache.parquet.Strings;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,28 +92,26 @@ import java.util.concurrent.TimeUnit;
  */
 public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
+  private static final Logger LOG = LoggerFactory.getLogger(GoogleBigQuerySQLEngineTest.class);
   private static final String BQ_SQLENGINE_PLUGIN_NAME = "BigQueryPushdownEngine";
-  private static final String BIG_QUERY_DATASET = "bq_dataset_joiner_test";
+  private static final String BIG_QUERY_DATASET_PREFIX = "bq_pd_ds_";
   private static final String CONNECTION_NAME = String.format("test_bq_%s", GoogleBigQueryUtils.getUUID());
   public static final String PURCHASE_SOURCE = "purchaseSource";
   public static final String ITEM_SINK = "itemSink";
   public static final String USER_SINK = "userSink";
   public static final String DEDUPLICATE_SOURCE = "userSource";
   public static final String DEDUPLICATE_SINK = "userSink";
+  public static final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
+  public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS");
 
+  private static BigQuery bq;
+  private String bigQueryDataset;
+
+  
   private static final Map<String, String> CONFIG_MAP = new ImmutableMap.Builder<String, String>()
           .put("uniqueFields", "profession")
           .put("filterOperation", "age:Min")
           .build();
-
-  private static final List<String> CONDITIONAL_AGGREGATES = ImmutableList.of(
-          "highestPrice:maxIf(price):condition(city.equals('LA'))",
-          "averageDonutPrice:avgIf(price):condition(item.equals('doughnut'))",
-          "totalPurchasesInTokyo:sumIf(price):condition(city.equals('Tokyo'))",
-          "anyPurchaseInBerlin:anyIf(item):condition(city.equals('Berlin'))",
-          "doughnutsSold:countIf(item):condition(item.equals('doughnut'))",
-          "lowestPrice:minIf(price):condition(!item.equals('bagel'))"
-  );
 
   public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
           "purchase",
@@ -129,6 +132,11 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
           Schema.Field.of("totalPurchases", Schema.of(Schema.Type.LONG)),
           Schema.Field.of("totalSpent", Schema.of(Schema.Type.LONG)));
 
+  @BeforeClass
+  public static void testClassSetup() throws IOException {
+    bq = GoogleBigQueryUtils.getBigQuery(getProjectId(), getServiceAccountCredentials());
+  }
+
   @Override
   protected void innerSetup() throws Exception {
     Tasks.waitFor(true, () -> {
@@ -141,10 +149,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
     createConnection(CONNECTION_NAME, "BigQuery");
+    bigQueryDataset = BIG_QUERY_DATASET_PREFIX + LocalDateTime.now().format(DATE_TIME_FORMAT);
+    createDataset(bigQueryDataset);
   }
 
   @Override
   protected void innerTearDown() throws Exception {
+    deleteDataset(bigQueryDataset);
     deleteConnection(CONNECTION_NAME);
   }
 
@@ -182,7 +193,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       props.put(ConfigUtil.NAME_CONNECTION, connectionId);
       props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
     } 
-    props.put("dataset", BIG_QUERY_DATASET);
+    props.put("dataset", bigQueryDataset);
+    props.put("retainTables", "true");
     if (includedStages != null) {
       props.put("includedStages", includedStages);
     }
@@ -777,5 +789,24 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     getApplicationManager(TEST_NAMESPACE.app(datasetName))
       .getServiceManager(AbstractDatasetApp.DatasetService.class.getSimpleName())
       .stop();
+  }
+
+  private static void createDataset(String bigQueryDataset) {
+    LOG.info("Creating bigquery dataset {}", bigQueryDataset);
+    // Create dataset with a default table expiration of 24 hours.
+    DatasetInfo datasetInfo = DatasetInfo.newBuilder(bigQueryDataset)
+            .setDefaultTableLifetime(MILLISECONDS_IN_A_DAY)
+            .setDefaultPartitionExpirationMs(MILLISECONDS_IN_A_DAY)
+            .build();
+    bq.create(datasetInfo);
+    LOG.info("Created bigquery dataset {}", bigQueryDataset);
+  }
+
+  private static void deleteDataset(String bigQueryDataset) {
+    LOG.info("Deleting bigquery dataset {}", bigQueryDataset);
+    boolean deleted = bq.delete(bigQueryDataset, BigQuery.DatasetDeleteOption.deleteContents());
+    if (deleted) {
+      LOG.info("Deleted bigquery dataset {}", bigQueryDataset);
+    }
   }
 }
