@@ -17,34 +17,28 @@
 package io.cdap.cdap.lib;
 
 import io.cdap.cdap.support.status.CollectionState;
+import io.cdap.cdap.support.status.SupportBundleTaskStatus;
+
+import java.util.Set;
 
 public class SupportBundleOperationStatus {
-    private final String bundleId;
-    private CollectionState bundleStatus;
-    private SupportBundlePipelineStatus supportBundlePipelineStatus;
+  private final String id;
+  private final CollectionState bundleStatus;
+  private final Set<SupportBundleTaskStatus> taskStatusSet;
 
-    public SupportBundleOperationStatus(String bundleId) {
-      this.bundleId = bundleId;
-    }
+  public SupportBundleOperationStatus(String id,
+                                      CollectionState bundleStatus,
+                                      Set<SupportBundleTaskStatus> taskStatusSet) {
+    this.id = id;
+    this.bundleStatus = bundleStatus;
+    this.taskStatusSet = taskStatusSet;
+  }
 
-    public String getBundleId() {
-      return bundleId;
-    }
+  public CollectionState getBundleStatus() {
+    return bundleStatus;
+  }
 
-    public CollectionState getBundleStatus() {
-      return bundleStatus;
-    }
-
-    public void setBundleStatus(CollectionState bundleStatus) {
-      this.bundleStatus = bundleStatus;
-    }
-
-    public SupportBundlePipelineStatus getSupportBundlePipelineStatus() {
-      return supportBundlePipelineStatus;
-    }
-
-    public void setSupportBundlePipelineStatus(SupportBundlePipelineStatus supportBundlePipelineStatus) {
-      this.supportBundlePipelineStatus = supportBundlePipelineStatus;
-    }
-
+  public Set<SupportBundleTaskStatus> getTaskStatusSet() {
+    return taskStatusSet;
+  }
 }
