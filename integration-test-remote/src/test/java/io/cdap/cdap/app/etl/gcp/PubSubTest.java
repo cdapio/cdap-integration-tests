@@ -99,7 +99,6 @@ import java.util.concurrent.TimeUnit;
  */
 
 // TODO - Enable it after fixing not to use FileSetDataset. See CDAP-18241.
-@Ignore
 public class PubSubTest extends DataprocETLTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(PubSubTest.class);
   private static final String GOOGLE_SUBSCRIBER_PLUGIN_NAME = "GoogleSubscriber";
