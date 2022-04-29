@@ -118,7 +118,8 @@ public class WranglerTest extends ETLTestBase {
       .put("precondition", "false")
       .put("threshold", "1")
       .put("schema", wranglerSchema.toString())
-      .put("directives", wranglerDirectives);
+      .put("directives", wranglerDirectives)
+      .put("on-error", "skip-error");
 
     ETLStage wranglerTransformStage =
       new ETLStage("Wrangler",
