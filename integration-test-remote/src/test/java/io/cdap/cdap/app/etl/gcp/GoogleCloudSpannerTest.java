@@ -286,7 +286,10 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   private void testReadAndStore(Engine engine, boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
-    Map<String, String> sinkProperties = getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA);
+    Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
+      .putAll(getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA))
+      .put("keys", "ID")
+      .build();
 
     String sinkTable = SINK_TABLE_NAME + engine;
     String applicationName =
