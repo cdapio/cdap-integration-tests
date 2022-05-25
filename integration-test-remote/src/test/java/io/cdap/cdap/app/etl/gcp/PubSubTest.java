@@ -28,6 +28,11 @@ import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.SubscriptionAdminSettings;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Bucket;
+import com.google.cloud.storage.BucketInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
@@ -98,8 +103,6 @@ import java.util.concurrent.TimeUnit;
  * for more details
  */
 
-// TODO - Enable it after fixing not to use FileSetDataset. See CDAP-18241.
-@Ignore
 public class PubSubTest extends DataprocETLTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(PubSubTest.class);
   private static final String GOOGLE_SUBSCRIBER_PLUGIN_NAME = "GoogleSubscriber";
@@ -124,6 +127,8 @@ public class PubSubTest extends DataprocETLTestBase {
   private static SubscriptionAdminClient subscriptionAdmin;
   private ArrayList<ProjectTopicName> topicsToDelete;
   private ArrayList<ProjectSubscriptionName> subscriptionsToDelete;
+  private List<String> bucketsToDelete;
+  private static Storage storage;
   private static final Schema MESSAGE_SCHEMA = Schema.recordOf(
     "message",
     Schema.Field.of("message", Schema.of(Schema.Type.STRING)));
@@ -151,6 +156,11 @@ public class PubSubTest extends DataprocETLTestBase {
       TopicAdminSettings.newBuilder().setCredentialsProvider(getCredentialProvider()).build());
     subscriptionAdmin = SubscriptionAdminClient.create(
       SubscriptionAdminSettings.newBuilder().setCredentialsProvider(getCredentialProvider()).build());
+    storage = StorageOptions.newBuilder()
+            .setProjectId(getProjectId())
+            .setCredentials(GoogleCredentials.fromStream(
+                    new ByteArrayInputStream(getServiceAccountCredentials().getBytes(StandardCharsets.UTF_8))))
+            .build().getService();
   }
 
   @AfterClass
@@ -208,6 +218,7 @@ public class PubSubTest extends DataprocETLTestBase {
 
     topicsToDelete = new ArrayList<>();
     subscriptionsToDelete = new ArrayList<>();
+    bucketsToDelete = new ArrayList<>();
   }
 
   @Override
@@ -226,6 +237,16 @@ public class PubSubTest extends DataprocETLTestBase {
         LOG.info("Deleted subscription {}", subscription.toString());
       } catch (ApiException ex) {
         LOG.error(String.format("Failed to delete subscription %s", subscription.toString()), ex);
+      }
+    }
+    for (String bucketName : bucketsToDelete) {
+      try {
+        Bucket bucket = storage.get(bucketName);
+        if (bucket != null) {
+          deleteBucket(bucket);
+        }
+      } catch (RuntimeException e) {
+        LOG.error("Unable to delete GCS bucket {}", bucketName, e);
       }
     }
   }
@@ -250,6 +271,30 @@ public class PubSubTest extends DataprocETLTestBase {
   private void markSubscriptionForCleanup(String subscriptionName) {
     ProjectSubscriptionName result = ProjectSubscriptionName.of(getProjectId(), subscriptionName);
     subscriptionsToDelete.add(result);
+  }
+
+  /**
+   * Create a bucket that will be automatically deleted when the test completes.
+   */
+  private Bucket createBucket(String name) {
+    LOG.info("Creating bucket {}", name);
+    Bucket bucket = storage.create(BucketInfo.of(name));
+    LOG.info("Created bucket {}", name);
+    bucketsToDelete.add(name);
+    return bucket;
+  }
+
+  private void deleteBucket(Bucket bucket) {
+    for (Blob blob : bucket.list().iterateAll()) {
+      try {
+        LOG.info("Deleting blob {}", blob);
+        blob.delete();
+      } catch (RuntimeException e) {
+        LOG.error("Unable to delete GCS bucket {}", blob.getBucket(), e);
+      }
+    }
+    LOG.info("Deleting bucket {}", bucket);
+    bucket.delete(Bucket.BucketSourceOption.metagenerationMatch());
   }
 
   @Category({RequiresSpark.class})
@@ -283,13 +328,17 @@ public class PubSubTest extends DataprocETLTestBase {
 
     ETLStage ss = createSubscriberStage(sourceTopicName, pipelineReadSubscriptionName);
     ETLStage ps = createPublisherStage(sinkTopicName);
+    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    Bucket bucket = createBucket(bucketName);
+    String checkpointDir = "cp-dir/";
+    bucket.create(checkpointDir, new byte[] { });
 
     DataStreamsConfig config = DataStreamsConfig.builder()
       .addStage(ss)
       .addStage(ps)
       .addConnection(ss.getName(), ps.getName())
       .setBatchInterval("30s")
-      .setStopGracefully(false)
+      .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
       .build();
 
     ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
@@ -353,14 +402,17 @@ public class PubSubTest extends DataprocETLTestBase {
 
     ETLStage ss = createSubscriberStage(sourceTopicName, "${subscription}");
     ETLStage ps = createPublisherStage(sinkTopicName);
+    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    Bucket bucket = createBucket(bucketName);
+    String checkpointDir = "cp-dir/";
+    bucket.create(checkpointDir, new byte[] { });
 
     DataStreamsConfig config = DataStreamsConfig.builder()
       .addStage(ss)
       .addStage(ps)
       .addConnection(ss.getName(), ps.getName())
       .setBatchInterval("30s")
-      .setStopGracefully(false)
-      .disableCheckpoints()
+      .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
       .build();
 
     ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
@@ -586,13 +638,17 @@ public class PubSubTest extends DataprocETLTestBase {
     ETLStage ss = createSubscriberStage(sourceTopicName, sourceConfig);
     final Map<String, String> sinkConfig = createSinkConfig(sinkTopicName, sinkFormat, delimiter);
     ETLStage ps = createPublisherStage(sinkTopicName, sinkConfig);
+    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    Bucket bucket = createBucket(bucketName);
+    String checkpointDir = "cp-dir/";
+    bucket.create(checkpointDir, new byte[] { });
 
     DataStreamsConfig config = DataStreamsConfig.builder()
       .addStage(ss)
       .addStage(ps)
       .addConnection(ss.getName(), ps.getName())
       .setBatchInterval("30s")
-      .setStopGracefully(false)
+      .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
       .build();
 
     ApplicationId appId = TEST_NAMESPACE.app(String.format("PubSubTestFormat-%s-to-%s", sourceFormat, sinkFormat));
