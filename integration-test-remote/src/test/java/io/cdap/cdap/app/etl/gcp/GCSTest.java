@@ -734,7 +734,6 @@ public void testGSCDeleteWildcard() throws Exception {
     bucket1.create("dir/3.csv", "3".getBytes(StandardCharsets.UTF_8));
     bucket1.create("dir/4.csv", "4".getBytes(StandardCharsets.UTF_8));
     bucket1.create("dir/file1/5.txt", "5".getBytes(StandardCharsets.UTF_8));
-    bucket1.create("dir/testcsv", "6".getBytes(StandardCharsets.UTF_8));
 
     String paths = String.join(",", createPath(bucket1, "dir/*.txt"),
                                createPath(bucket1, "dir/4.csv"));
@@ -761,7 +760,6 @@ public void testGSCDeleteWildcard() throws Exception {
     assertNotExists(bucket1, "dir/4.csv");
     assertGCSContents(bucket1, "dir/3.csv", "3");
     assertGCSContents(bucket1, "dir/file1/5.txt", "5");
-    assertGCSContents(bucket1, "dir/testcsv", "6");
   }
 
 
