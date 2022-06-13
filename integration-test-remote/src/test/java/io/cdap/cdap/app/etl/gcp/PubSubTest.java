@@ -37,6 +37,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
@@ -49,6 +50,7 @@ import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.utils.Tasks;
 import io.cdap.cdap.datastreams.DataStreamsSparkLauncher;
+import io.cdap.cdap.etl.api.Transform;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.streaming.StreamingSource;
 import io.cdap.cdap.etl.proto.v2.DataStreamsConfig;
@@ -81,6 +83,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Int;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -93,9 +96,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * TODO: Follow up CDAP-17648 pubSubToPubSubCSVSink currently doesn't work because of the SINK which will write a memory
@@ -107,6 +112,7 @@ public class PubSubTest extends DataprocETLTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(PubSubTest.class);
   private static final String GOOGLE_SUBSCRIBER_PLUGIN_NAME = "GoogleSubscriber";
   private static final String GOOGLE_PUBLISHER_PLUGIN_NAME = "GooglePublisher";
+  private static final String JAVASCRIPT_PLUGIN_NAME = "JavaScript";
   private static final String TEXT = "text";
   private static final String BLOB = "blob";
   private static final String SCHEMA = "schema";
@@ -364,6 +370,106 @@ public class PubSubTest extends DataprocETLTestBase {
       try {
         sparkManager.stop();
         sparkManager.waitForStopped(5, TimeUnit.MINUTES);
+      } catch (Exception e) {
+        // don't treat this as a test failure, but log a warning
+        LOG.warn("Pipeline failed to stop gracefully", e);
+      }
+    }
+  }
+
+  @Category({RequiresSpark.class})
+  @Test
+  public void pubSubToPubSubWithDelayTest() throws Exception {
+    String prefix = "cdap-msg";
+
+    String sourceTopicName = String.format("%s-source-%s", prefix, UUID.randomUUID());
+    String sinkTopicName = String.format("%s-sink-%s", prefix, UUID.randomUUID());
+
+    String testSubscriptionName = String.format("%s-test-%s", prefix, UUID.randomUUID());
+    String pipelineReadSubscriptionName = String.format("%s-pipeline-%s", prefix, UUID.randomUUID());
+    markSubscriptionForCleanup(pipelineReadSubscriptionName);
+
+    ProjectTopicName sourceTopicNamePTN = createTopic(sourceTopicName);
+    createTopic(sinkTopicName);
+
+    ProjectSubscriptionName testSubscriptionPSN = createSubscription(sinkTopicName, testSubscriptionName);
+
+    TestMessageReceiver receiver = new TestMessageReceiver();
+    Subscriber subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
+            .setCredentialsProvider(getCredentialProvider()).build();
+
+    subscriber.addListener(new Subscriber.Listener() {
+      public void failed(Subscriber.State from, Throwable failure) {
+        LOG.error("State {}:", from.toString(), failure);
+      }
+    }, MoreExecutors.directExecutor());
+
+    subscriber.startAsync().awaitRunning();
+
+    ETLStage ss = createSubscriberStage(sourceTopicName, pipelineReadSubscriptionName);
+    ETLStage ps = createPublisherStage(sinkTopicName);
+    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+    Bucket bucket = createBucket(bucketName);
+    String checkpointDir = "cp-dir/";
+    String writeAheadLogsDir = "receivedData/";
+    bucket.create(checkpointDir, new byte[] { });
+
+    ETLStage js = new ETLStage("DelayFilter", new ETLPlugin(
+            JAVASCRIPT_PLUGIN_NAME, Transform.PLUGIN_TYPE,
+            ImmutableMap.of("script",
+                    "function transform(input, emitter, context) {" +
+                            "var Timer = Java.type('java.util.Timer');" +
+                            "var eventLoop = new Timer('jsEventLoop', false);" +
+                            "this.setTimeout = function(fn, millis) {" +
+                              "eventLoop.schedule(function() {" +
+                              "fn();" +
+                              "}, millis);" +
+                            "};" +
+                            "setTimeout(function() {" +
+                              "emitter.emit(input);" +
+                            "}, 2000);" +
+                        "}"),
+            null));
+
+    DataStreamsConfig config = DataStreamsConfig.builder()
+            .addStage(ss)
+            .addStage(js)
+            .addStage(ps)
+            .addConnection(ss.getName(), ps.getName())
+            .setBatchInterval("30s")
+            .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
+            .build();
+
+    ApplicationId appId = TEST_NAMESPACE.app("PubSubWithDelayTest");
+    AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+    try {
+      // it takes time to spin-up dataproc cluster, lets wait a little
+      startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING,
+              Collections.singletonMap("system.profile.name", getProfileName()), 10, TimeUnit.MINUTES);
+
+      // wait and check for source subscription to be created
+      ensureSubscriptionCreated(pipelineReadSubscriptionName, 10, TimeUnit.MINUTES);
+
+      // send some messages...
+      publishMessages(sourceTopicNamePTN, "message1", "message3", "message2");
+
+      // ... and ensure they are passed through pipeline to our subscriber
+      receiver.assertRetrievedMessagesContain(10, TimeUnit.MINUTES, "message1", "message3", "message2");
+
+      subscriber.stopAsync().awaitTerminated();
+    } finally {
+      try {
+        // Stop the pipeline
+        sparkManager.stop();
+
+        // Assert write-ahead logs directory is not null
+        Assert.assertNotNull(bucket.get(writeAheadLogsDir));
+
+        // Wait for pipeline to stop gracefully
+        sparkManager.waitForStopped(Integer.MAX_VALUE, TimeUnit.MINUTES);
       } catch (Exception e) {
         // don't treat this as a test failure, but log a warning
         LOG.warn("Pipeline failed to stop gracefully", e);
