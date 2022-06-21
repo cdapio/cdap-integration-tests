@@ -716,6 +716,55 @@ public class GCSTest extends DataprocETLTestBase {
     assertGCSContents(bucket1, "dir/2.txt", "2");
   }
 
+  @Test
+  public void testGSCDeleteWildcard() throws Exception {
+    testGSCDeleteWildcard(Engine.MAPREDUCE);
+    testGSCDeleteWildcard(Engine.SPARK);
+  }
+
+  private void testGSCDeleteWildcard(Engine engine) throws Exception {
+    String prefix = "cdap-gcs-deletewild-test";
+    String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
+
+    Bucket bucket1 = createBucket(bucket1Name);
+
+    bucket1.create("dir/1.txt", "1".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/2.txt", "2".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/3.csv", "3".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/4.csv", "4".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/file1/5.txt", "5".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/file2/6.txt", "6".getBytes(StandardCharsets.UTF_8));
+    bucket1.create("dir/testtxt", "7".getBytes(StandardCharsets.UTF_8));
+
+    String paths = String.join(",", createPath(bucket1, "dir/*.txt"),
+                               createPath(bucket1, "dir/file*"));
+
+
+    ETLStage cp1 = new ETLStage("gcs-delete", new ETLPlugin(GCS_BUCKET_DELETE_PLUGIN_NAME, Action.PLUGIN_TYPE,
+                                                            ImmutableMap.of("project", getProjectId(),
+                                                                            "paths", paths),
+                                                            GOOGLE_CLOUD_ARTIFACT));
+    ETLBatchConfig config = ETLBatchConfig.builder()
+      .addStage(cp1)
+      .setEngine(engine)
+      .build();
+
+    AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestWildcard" + engine);
+    ApplicationManager appManager = deployApplication(appId, appRequest);
+
+    // start the pipeline and wait for it to finish
+    startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
+
+    assertNotExists(bucket1, "dir/1.txt");
+    assertNotExists(bucket1, "dir/2.txt");
+    assertNotExists(bucket1, "dir/file1/5.txt");
+    assertNotExists(bucket1, "dir/file1/6.txt");
+    assertNotExists(bucket1, "dir/file1");
+    assertGCSContents(bucket1, "dir/3.csv", "3");
+    assertGCSContents(bucket1, "dir/4.csv", "4");
+    assertGCSContents(bucket1, "dir/testtxt", "7");
+  }
 
   private void assertGCSContents(Bucket bucket, String blobName, String content) {
     Blob blob = bucket.get(blobName);
