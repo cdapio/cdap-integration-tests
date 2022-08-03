@@ -274,7 +274,9 @@ public class DLPTest extends DataprocETLTestBase {
           .put("on-error", "stop-on-error")
           .put("serviceFilePath", "auto-detect")
           .put("project", getProjectId())
-          .put("template-id", templateId).build(), DLP_ARTIFACT));
+          .put("template-id", templateId)
+          .put("dlp-override-enabled", "false")
+          .put("customTemplateEnabled", "false").build(), DLP_ARTIFACT));
 
     ETLStage sinkStage1 =
       new ETLStage("GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
