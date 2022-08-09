@@ -1039,8 +1039,8 @@ public class GCSTest extends DataprocETLTestBase {
     Assert.assertArrayEquals("cbd".getBytes(), object2.bytes);
 
     // we can use BigInteger here, scale not important here since it is stored in schema.
-    Assert.assertArrayEquals(new BigInteger("11234").toByteArray(), object1.decimal);
-    Assert.assertArrayEquals(new BigInteger("43211").toByteArray(), object2.decimal);
+    Assert.assertEquals(1.1234, object1.decimal, 0.00001);
+    Assert.assertEquals(4.3211, object2.decimal, 0.00001);
 
     Assert.assertEquals(123, object1.intField);
     Assert.assertEquals(321, object2.intField);
@@ -1544,8 +1544,8 @@ public class GCSTest extends DataprocETLTestBase {
 
     byte[] bytes;
 
-    // decimal field written as bytes to json
-    byte[] decimal;
+    // decimal field written as a number to JSON
+    double decimal;
 
     List<String> array;
 
