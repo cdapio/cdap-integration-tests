@@ -27,6 +27,8 @@ import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.id.NamespaceId;
+import io.cdap.cdap.proto.profile.Profile;
+import io.cdap.cdap.runtime.spi.profile.ProfileStatus;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.WorkflowManager;
 import io.cdap.common.http.HttpRequest;
@@ -39,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -93,7 +94,19 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
   @Before
   public void testSetup() throws Exception {
     createProfile(getProfileName());
+    enableProfile();
     innerSetup();
+  }
+
+  private void enableProfile() throws Exception {
+    // Enable the profile if it is disabled
+    URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + getProfileName());
+    HttpResponse response = getRestClient().execute(HttpRequest.get(url).build(), getClientConfig().getAccessToken());
+    ProfileStatus status = new Gson().fromJson(response.getResponseBodyAsString(), Profile.class).getStatus();
+    if (status == ProfileStatus.DISABLED) {
+      url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "profiles/" + getProfileName() + "/enable");
+      getRestClient().execute(HttpRequest.post(url).withBody("").build(), getClientConfig().getAccessToken());
+    }
   }
 
   @After
