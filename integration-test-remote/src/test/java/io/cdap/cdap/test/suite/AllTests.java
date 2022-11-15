@@ -18,18 +18,7 @@ package io.cdap.cdap.test.suite;
 
 import io.cdap.cdap.app.etl.KVTableWithProjectionTest;
 import io.cdap.cdap.app.etl.TPFSAvroSinkSourceTest;
-import io.cdap.cdap.app.etl.batch.BatchAggregatorTest;
-import io.cdap.cdap.app.etl.batch.BatchCubeSinkTest;
-import io.cdap.cdap.app.etl.batch.BatchJoinerTest;
-import io.cdap.cdap.app.etl.batch.DedupAggregatorTest;
-import io.cdap.cdap.app.etl.batch.ETLMapReduceTest;
-import io.cdap.cdap.app.etl.batch.ExcelInputReaderTest;
-import io.cdap.cdap.app.etl.batch.HivePluginTest;
-import io.cdap.cdap.app.etl.batch.NormalizeTest;
-import io.cdap.cdap.app.etl.batch.RowDenormalizerTest;
-import io.cdap.cdap.app.etl.batch.TPFSParquetSinkSourceTest;
-import io.cdap.cdap.app.etl.batch.ValueMapperTest;
-import io.cdap.cdap.app.etl.batch.XMLReaderTest;
+import io.cdap.cdap.app.etl.batch.*;
 import io.cdap.cdap.app.etl.realtime.DataStreamsTest;
 import io.cdap.cdap.app.etl.wrangler.WranglerServiceTest;
 import io.cdap.cdap.app.etl.wrangler.WranglerTest;
@@ -89,6 +78,7 @@ import org.junit.runners.Suite;
   TPFSAvroSinkSourceTest.class,
   TPFSParquetSinkSourceTest.class,
   ValueMapperTest.class,
+  WindowAggregationTest.class,
   WorkflowTest.class,
   WranglerServiceTest.class,
   WranglerTest.class,
