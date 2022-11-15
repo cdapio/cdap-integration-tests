@@ -30,6 +30,7 @@ import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.dataset.table.Put;
 import io.cdap.cdap.api.dataset.table.Table;
 import io.cdap.cdap.app.etl.batch.DedupAggregatorTest;
+import io.cdap.cdap.app.etl.batch.WindowAggregationTest;
 import io.cdap.cdap.app.etl.dataset.DatasetAccessApp;
 import io.cdap.cdap.app.etl.dataset.SnapshotFilesetService;
 import io.cdap.cdap.common.ArtifactNotFoundException;
@@ -93,49 +94,77 @@ import java.util.concurrent.TimeUnit;
  */
 public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
+  public static final String PURCHASE_SOURCE = "purchaseSource";
+  public static final String ITEM_SINK = "itemSink";
+  public static final String USER_SINK = "userSink";
+  public static final String USER_SOURCE = "userSource";
+  public static final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
+  public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS");
+  public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
+    "purchase",
+    Schema.Field.of("ts", Schema.of(Schema.Type.LONG)),
+    Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("price", Schema.of(Schema.Type.LONG)));
+  public static final Schema ITEM_SCHEMA = Schema.recordOf(
+    "item",
+    Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("totalPurchases", Schema.of(Schema.Type.LONG)),
+    Schema.Field.of("latestPurchase", Schema.of(Schema.Type.LONG)));
+  public static final Schema USER_SCHEMA = Schema.recordOf(
+    "user",
+    Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
+    Schema.Field.of("totalPurchases", Schema.of(Schema.Type.LONG)),
+    Schema.Field.of("totalSpent", Schema.of(Schema.Type.LONG)));
   private static final Logger LOG = LoggerFactory.getLogger(GoogleBigQuerySQLEngineTest.class);
   private static final String BQ_SQLENGINE_PLUGIN_NAME = "BigQueryPushdownEngine";
   private static final String BIG_QUERY_DATASET_PREFIX = "bq_pd_ds_";
   private static final String CONNECTION_NAME = String.format("test_bq_%s", GoogleBigQueryUtils.getUUID());
-  public static final String PURCHASE_SOURCE = "purchaseSource";
-  public static final String ITEM_SINK = "itemSink";
-  public static final String USER_SINK = "userSink";
-  public static final String DEDUPLICATE_SOURCE = "userSource";
-  public static final String DEDUPLICATE_SINK = "userSink";
-  public static final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
-  public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS");
-
+  private static final Map<String, String> CONFIG_MAP_DEDUPE = new ImmutableMap.Builder<String, String>()
+    .put("uniqueFields", "profession")
+    .put("filterOperation", "age:Min")
+    .build();
+  private static final Map<String, String> CONFIG_MAP_WINDOW = new ImmutableMap.Builder<String, String>()
+    .put("partitionFields", "profession")
+    .put("aggregates", "age:Rank")
+    .build();
   private static BigQuery bq;
   private String bigQueryDataset;
-
-  
-  private static final Map<String, String> CONFIG_MAP = new ImmutableMap.Builder<String, String>()
-          .put("uniqueFields", "profession")
-          .put("filterOperation", "age:Min")
-          .build();
-
-  public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
-          "purchase",
-          Schema.Field.of("ts", Schema.of(Schema.Type.LONG)),
-          Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("price", Schema.of(Schema.Type.LONG)));
-
-  public static final Schema ITEM_SCHEMA = Schema.recordOf(
-          "item",
-          Schema.Field.of("item", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("totalPurchases", Schema.of(Schema.Type.LONG)),
-          Schema.Field.of("latestPurchase", Schema.of(Schema.Type.LONG)));
-
-  public static final Schema USER_SCHEMA = Schema.recordOf(
-          "user",
-          Schema.Field.of("user", Schema.of(Schema.Type.STRING)),
-          Schema.Field.of("totalPurchases", Schema.of(Schema.Type.LONG)),
-          Schema.Field.of("totalSpent", Schema.of(Schema.Type.LONG)));
 
   @BeforeClass
   public static void testClassSetup() throws IOException {
     bq = GoogleBigQueryUtils.getBigQuery(getProjectId(), getServiceAccountCredentials());
+  }
+
+  private static void createDataset(String bigQueryDataset) {
+    LOG.info("Creating bigquery dataset {}", bigQueryDataset);
+    // Create dataset with a default table expiration of 24 hours.
+    DatasetInfo datasetInfo = DatasetInfo.newBuilder(bigQueryDataset)
+                                         .setDefaultTableLifetime(MILLISECONDS_IN_A_DAY)
+                                         .setDefaultPartitionExpirationMs(MILLISECONDS_IN_A_DAY)
+                                         .build();
+    bq.create(datasetInfo);
+    LOG.info("Created bigquery dataset {}", bigQueryDataset);
+  }
+
+  private static void deleteDataset(String bigQueryDataset) {
+    LOG.info("Deleting bigquery dataset {}", bigQueryDataset);
+    boolean deleted = bq.delete(bigQueryDataset, BigQuery.DatasetDeleteOption.deleteContents());
+    if (deleted) {
+      LOG.info("Deleted bigquery dataset {}", bigQueryDataset);
+    }
+  }
+
+  private static int countTablesInDataset(String bigQueryDataset) {
+    int numTables = 0;
+
+    // count all tables in this dataset.
+    Page<com.google.cloud.bigquery.Table> page = bq.listTables(bigQueryDataset);
+    for (com.google.cloud.bigquery.Table table : page.iterateAll()) {
+      numTables++;
+    }
+
+    return numTables;
   }
 
   @Override
@@ -170,21 +199,116 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   }
 
   @Category({
-          RequiresSpark.class
+    RequiresSpark.class
   })
   @Test
   public void testSQLEngineGroupBySpark() throws Exception {
-     testSQLEngineGroupBy(Engine.SPARK, false);
-     testSQLEngineGroupBy(Engine.SPARK, true);
+    testSQLEngineGroupBy(Engine.SPARK, false);
+    testSQLEngineGroupBy(Engine.SPARK, true);
   }
 
   @Category({
-          RequiresSpark.class
+    RequiresSpark.class
   })
   @Test
   public void testSQLEngineDeduplicateSpark() throws Exception {
-     testSQLEngineDeduplicate(Engine.SPARK, false);
-     testSQLEngineDeduplicate(Engine.SPARK, true);
+    testSQLEngineDeduplicate(Engine.SPARK, false);
+    testSQLEngineDeduplicate(Engine.SPARK, true);
+  }
+
+  @Test
+  public void testSQLEngineWindowSpark() throws Exception {
+    testSQLEngineWindow(Engine.SPARK, false);
+    testSQLEngineWindow(Engine.SPARK, true);
+  }
+
+  private void testSQLEngineWindow(Engine engine, boolean useConnection) throws Exception {
+    ETLStage userSourceStage =
+      new ETLStage("users", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
+          Properties.BatchReadableWritable.NAME, USER_SOURCE, Properties.Table.PROPERTY_SCHEMA,
+            WindowAggregationTest.USER_SCHEMA.toString()), null));
+
+    ETLStage userSinkStage = new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
+        .put("schema", WindowAggregationTest.USER_SCHEMA.toString()).build(), null));
+
+    ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(null,
+                                                                       "google-cloud",
+                                                                       "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
+
+    ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("WindowAggregation",
+                                                                         BatchAggregator.PLUGIN_TYPE,
+                                                                         CONFIG_MAP_WINDOW, null));
+
+    ETLTransformationPushdown transformationPushdown =
+      new ETLTransformationPushdown(
+        new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
+                      BatchSQLEngine.PLUGIN_TYPE,
+                      getProps(useConnection, "KeyAggregate"),
+                      selectorConfig
+        )
+      );
+
+    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
+                                          .addStage(userSourceStage)
+                                          .addStage(userSinkStage)
+                                          .addStage(userGroupStage)
+                                          .addConnection(userSourceStage.getName(), userGroupStage.getName())
+                                          .addConnection(userGroupStage.getName(), userSinkStage.getName())
+                                          .setDriverResources(new Resources(2048))
+                                          .setResources(new Resources(2048))
+                                          .setEngine(engine)
+                                          .setPushdownEnabled(true)
+                                          .setTransformationPushdown(transformationPushdown)
+                                          .build();
+
+
+    ingestInputDataDeduplicate(USER_SOURCE);
+
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-windowaggregation-test");
+    ApplicationManager appManager = deployApplication(appId, request);
+
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+
+    // Deploy an application with a service to get partitionedFileset data for verification
+    ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
+    ServiceManager serviceManager = applicationManager.getServiceManager
+                                                        (SnapshotFilesetService.class.getSimpleName());
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
+
+    org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser()
+      .parse(WindowAggregationTest.USER_SCHEMA.toString());
+    // output has these records:
+    // 1: shelton, alex, professor, 45
+    // 3: schuster, chris, accountant, 23
+    // 5: gamal , ali , engineer, 28
+    GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Shelton")
+      .set("Firstname", "Alex")
+      .set("profession", "professor")
+      .set("age", 45)
+      .build();
+
+    GenericRecord record2 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Schuster")
+      .set("Firstname", "Chris")
+      .set("profession", "accountant")
+      .set("age", 23)
+      .build();
+
+    GenericRecord record3 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Gamal")
+      .set("Firstname", "Ali")
+      .set("profession", "engineer")
+      .set("age", 28)
+      .build();
+
+    Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
+    // verfiy output
+    Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, WindowAggregationTest.USER_SCHEMA));
+    Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }
 
   private Map<String, String> getProps(boolean useConnection, String includedStages) {
@@ -204,51 +328,46 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private void testSQLEngineDeduplicate(Engine engine, boolean useConnection) throws Exception {
     ETLStage userSourceStage =
-            new ETLStage("users", new ETLPlugin("Table",
-                    BatchSource.PLUGIN_TYPE,
-                    ImmutableMap.of(
-                            Properties.BatchReadableWritable.NAME, DEDUPLICATE_SOURCE,
-                            Properties.Table.PROPERTY_SCHEMA, DedupAggregatorTest.USER_SCHEMA.toString()),
-                    null));
+      new ETLStage("users", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE, ImmutableMap.of(
+        Properties.BatchReadableWritable.NAME, USER_SOURCE, Properties.Table.PROPERTY_SCHEMA,
+        DedupAggregatorTest.USER_SCHEMA.toString()), null));
 
-    ETLStage userSinkStage =  new ETLStage(DEDUPLICATE_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-            ImmutableMap.<String, String>builder()
-                    .put(Properties.BatchReadableWritable.NAME, DEDUPLICATE_SINK)
-                    .put("schema", DedupAggregatorTest.USER_SCHEMA.toString())
-                    .build(), null));
+    ETLStage userSinkStage = new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
+      ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
+        .put("schema", DedupAggregatorTest.USER_SCHEMA.toString()).build(), null));
 
     ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(null,
-            "google-cloud",
-            "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
+                                                                       "google-cloud",
+                                                                       "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-            BatchAggregator.PLUGIN_TYPE,
-            CONFIG_MAP, null));
+                                                                         BatchAggregator.PLUGIN_TYPE,
+                                                                         CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
-            new ETLTransformationPushdown(
-                    new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
-                            BatchSQLEngine.PLUGIN_TYPE,
-                            getProps(useConnection, "KeyAggregate"),
-                            selectorConfig
-                    )
-            );
+      new ETLTransformationPushdown(
+        new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
+                      BatchSQLEngine.PLUGIN_TYPE,
+                      getProps(useConnection, "KeyAggregate"),
+                      selectorConfig
+        )
+      );
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
-            .addStage(userSourceStage)
-            .addStage(userSinkStage)
-            .addStage(userGroupStage)
-            .addConnection(userSourceStage.getName(), userGroupStage.getName())
-            .addConnection(userGroupStage.getName(), userSinkStage.getName())
-            .setDriverResources(new Resources(2048))
-            .setResources(new Resources(2048))
-            .setEngine(engine)
-            .setPushdownEnabled(true)
-            .setTransformationPushdown(transformationPushdown)
-            .build();
+                                          .addStage(userSourceStage)
+                                          .addStage(userSinkStage)
+                                          .addStage(userGroupStage)
+                                          .addConnection(userSourceStage.getName(), userGroupStage.getName())
+                                          .addConnection(userGroupStage.getName(), userSinkStage.getName())
+                                          .setDriverResources(new Resources(2048))
+                                          .setResources(new Resources(2048))
+                                          .setEngine(engine)
+                                          .setPushdownEnabled(true)
+                                          .setTransformationPushdown(transformationPushdown)
+                                          .build();
 
 
-    ingestInputDataDeduplicate(DEDUPLICATE_SOURCE);
+    ingestInputDataDeduplicate(USER_SOURCE);
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
     ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-deduplicate-test");
@@ -260,39 +379,39 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     // Deploy an application with a service to get partitionedFileset data for verification
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
     ServiceManager serviceManager = applicationManager.getServiceManager
-            (SnapshotFilesetService.class.getSimpleName());
+                                                        (SnapshotFilesetService.class.getSimpleName());
     startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser()
-            .parse(DedupAggregatorTest.USER_SCHEMA.toString());
+      .parse(DedupAggregatorTest.USER_SCHEMA.toString());
     // output has these records:
     // 1: shelton, alex, professor, 45
     // 3: schuster, chris, accountant, 23
     // 5: gamal , ali , engineer, 28
     GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
-            .set("Lastname", "Shelton")
-            .set("Firstname", "Alex")
-            .set("profession", "professor")
-            .set("age", 45)
-            .build();
+      .set("Lastname", "Shelton")
+      .set("Firstname", "Alex")
+      .set("profession", "professor")
+      .set("age", 45)
+      .build();
 
     GenericRecord record2 = new GenericRecordBuilder(avroOutputSchema)
-            .set("Lastname", "Schuster")
-            .set("Firstname", "Chris")
-            .set("profession", "accountant")
-            .set("age", 23)
-            .build();
+      .set("Lastname", "Schuster")
+      .set("Firstname", "Chris")
+      .set("profession", "accountant")
+      .set("age", 23)
+      .build();
 
     GenericRecord record3 = new GenericRecordBuilder(avroOutputSchema)
-            .set("Lastname", "Gamal")
-            .set("Firstname", "Ali")
-            .set("profession", "engineer")
-            .set("age", 28)
-            .build();
+      .set("Lastname", "Gamal")
+      .set("Firstname", "Ali")
+      .set("profession", "engineer")
+      .set("age", 28)
+      .build();
 
     Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
     // verfiy output
-    Assert.assertEquals(expected, readOutput(serviceManager, DEDUPLICATE_SINK, DedupAggregatorTest.USER_SCHEMA));
+    Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA));
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }
 
@@ -349,15 +468,9 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     String selectedFields1 = "film.film_id, film.film_name, filmActor.actor_name as renamed_actor";
 
-    ETLStage innerJoinStage =
-      new ETLStage("innerJoin",
-                   new ETLPlugin("Joiner",
-                                 BatchJoiner.PLUGIN_TYPE,
-                                 ImmutableMap.of(
-                                   "joinKeys", "film.film_id=filmActor.film_id&film.film_name=filmActor.film_name",
-                                   "selectedFields", selectedFields1,
-                                   "requiredInputs", "film,filmActor"),
-                                 null));
+    ETLStage innerJoinStage = new ETLStage("innerJoin", new ETLPlugin("Joiner", BatchJoiner.PLUGIN_TYPE,
+      ImmutableMap.of("joinKeys", "film.film_id=filmActor.film_id&film.film_name=filmActor.film_name",
+         "selectedFields", selectedFields1, "requiredInputs", "film,filmActor"), null));
 
     String selectedFields2 = "innerJoin.film_id, innerJoin.film_name, innerJoin.renamed_actor, " +
       "filmCategory.category_name as renamed_category";
@@ -391,30 +504,30 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     ETLStage joinSinkStage =
       new ETLStage("sink", new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
                                          ImmutableMap.<String, String>builder()
-                                           .put(Properties.BatchReadableWritable.NAME, joinedDatasetName)
-                                           .put("schema", outputSchema.toString())
-                                           .build(), null));
+                                                     .put(Properties.BatchReadableWritable.NAME, joinedDatasetName)
+                                                     .put("schema", outputSchema.toString())
+                                                     .build(), null));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
-      .addStage(filmStage)
-      .addStage(filmActorStage)
-      .addStage(filmCategoryStage)
-      .addStage(innerJoinStage)
-      .addStage(outerJoinStage)
-      .addStage(joinSinkStage)
-      .addConnection(filmStage.getName(), innerJoinStage.getName())
-      .addConnection(filmActorStage.getName(), innerJoinStage.getName())
-      .addConnection(filmCategoryStage.getName(), outerJoinStage.getName())
-      .addConnection(innerJoinStage.getName(), outerJoinStage.getName())
-      .addConnection(outerJoinStage.getName(), joinSinkStage.getName())
-      .setEngine(engine)
-      .setPushdownEnabled(true)
-      .setTransformationPushdown(transformationPushdown)
-      .setDriverResources(new Resources(1024))
-      .setResources(new Resources(1024))
-      .build();
+                                          .addStage(filmStage)
+                                          .addStage(filmActorStage)
+                                          .addStage(filmCategoryStage)
+                                          .addStage(innerJoinStage)
+                                          .addStage(outerJoinStage)
+                                          .addStage(joinSinkStage)
+                                          .addConnection(filmStage.getName(), innerJoinStage.getName())
+                                          .addConnection(filmActorStage.getName(), innerJoinStage.getName())
+                                          .addConnection(filmCategoryStage.getName(), outerJoinStage.getName())
+                                          .addConnection(innerJoinStage.getName(), outerJoinStage.getName())
+                                          .addConnection(outerJoinStage.getName(), joinSinkStage.getName())
+                                          .setEngine(engine)
+                                          .setPushdownEnabled(true)
+                                          .setTransformationPushdown(transformationPushdown)
+                                          .setDriverResources(new Resources(1024))
+                                          .setResources(new Resources(1024))
+                                          .build();
 
-    AppRequest<ETLBatchConfig> request =  getBatchAppRequestV2(config);
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
     ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-joiner-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
@@ -482,11 +595,9 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private void testSQLEngineGroupBy(Engine engine, boolean useConnection) throws Exception {
     ETLStage purchaseStage =
-            new ETLStage("purchases", new ETLPlugin("Table",
-                    BatchSource.PLUGIN_TYPE,
-                    ImmutableMap.of(
-                            Properties.BatchReadableWritable.NAME, PURCHASE_SOURCE,
-                            Properties.Table.PROPERTY_SCHEMA, PURCHASE_SCHEMA.toString()), null));
+      new ETLStage("purchases", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE,
+        ImmutableMap.of(Properties.BatchReadableWritable.NAME, PURCHASE_SOURCE,
+          Properties.Table.PROPERTY_SCHEMA, PURCHASE_SCHEMA.toString()), null));
 
     ETLStage userSinkStage = getSink(USER_SINK, USER_SCHEMA);
 
@@ -494,47 +605,47 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
 
     ETLStage userGroupStage = getGroupStage("userGroup", "user",
-            "totalPurchases:count(item), totalSpent:sum(price)");
+                                            "totalPurchases:count(item), totalSpent:sum(price)");
 
 
     ETLStage itemGroupStage = getGroupStage("itemGroup", "item",
-            "totalPurchases:count(user), latestPurchase:max(ts)");
+                                            "totalPurchases:count(user), latestPurchase:max(ts)");
 
     List<String> includedStagesList =
-            Lists.newArrayList("userGroup", "itemGroup");
+      Lists.newArrayList("userGroup", "itemGroup");
     String includedStages = Joiner.on("\u0001").join(includedStagesList);
 
     ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(null,
-            "google-cloud",
-            "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
+                                                                       "google-cloud",
+                                                                       "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
 
     ETLTransformationPushdown transformationPushdown =
-            new ETLTransformationPushdown(
-                    new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
-                            BatchSQLEngine.PLUGIN_TYPE,
-                            getProps(useConnection, includedStages),
-                            selectorConfig
-                    )
-            );
+      new ETLTransformationPushdown(
+        new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
+                      BatchSQLEngine.PLUGIN_TYPE,
+                      getProps(useConnection, includedStages),
+                      selectorConfig
+        )
+      );
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
-            .addStage(purchaseStage)
-            .addStage(userSinkStage)
-            .addStage(itemSinkStage)
-            .addStage(userGroupStage)
-            .addStage(itemGroupStage)
-            .addConnection(purchaseStage.getName(), userGroupStage.getName())
-            .addConnection(purchaseStage.getName(), itemGroupStage.getName())
-            .addConnection(userGroupStage.getName(), userSinkStage.getName())
-            .addConnection(itemGroupStage.getName(), itemSinkStage.getName())
-            .setEngine(engine)
-            .setPushdownEnabled(true)
-            .setTransformationPushdown(transformationPushdown)
-            .setDriverResources(new Resources(2048))
-            .setResources(new Resources(2048))
-            .build();
+                                          .addStage(purchaseStage)
+                                          .addStage(userSinkStage)
+                                          .addStage(itemSinkStage)
+                                          .addStage(userGroupStage)
+                                          .addStage(itemGroupStage)
+                                          .addConnection(purchaseStage.getName(), userGroupStage.getName())
+                                          .addConnection(purchaseStage.getName(), itemGroupStage.getName())
+                                          .addConnection(userGroupStage.getName(), userSinkStage.getName())
+                                          .addConnection(itemGroupStage.getName(), itemSinkStage.getName())
+                                          .setEngine(engine)
+                                          .setPushdownEnabled(true)
+                                          .setTransformationPushdown(transformationPushdown)
+                                          .setDriverResources(new Resources(2048))
+                                          .setResources(new Resources(2048))
+                                          .build();
 
-    AppRequest<ETLBatchConfig> request =  getBatchAppRequestV2(config);
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
     ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-groupby-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
@@ -555,18 +666,18 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     verifyOutput(groupedUsers, groupedItems);
   }
-  
+
   private Map<String, List<Long>> readOutputGroupBy(ServiceManager serviceManager, String sink, Schema schema)
-          throws IOException {
+    throws IOException {
     URL pfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
-            String.format("read/%s", sink));
+                         String.format("read/%s", sink));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, pfsURL, getClientConfig().getAccessToken());
 
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-            response, new TypeToken<Map<String, byte[]>>() {
-            }.getType()).getResponseObject();
+      response, new TypeToken<Map<String, byte[]>>() {
+      }.getType()).getResponseObject();
 
     return parseOutputGroupBy(map, schema);
   }
@@ -578,7 +689,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     for (Map.Entry<String, byte[]> entry : contents.entrySet()) {
       DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(avroSchema);
       DataFileStream<GenericRecord> fileStream = new DataFileStream<>(
-              new ByteArrayInputStream(entry.getValue()), datumReader);
+        new ByteArrayInputStream(entry.getValue()), datumReader);
       for (GenericRecord record : fileStream) {
         List<Schema.Field> fields = schema.getFields();
         List<Long> values = new ArrayList<>();
@@ -617,16 +728,16 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     // 5: gamal , ali , engineer, 28
     DataSetManager<Table> inputManager = getTableDataset(inputDatasetName);
     Table inputTable = inputManager.get();
-    putValuesDeduplicate(inputTable, 1, "Shelton", "Alex", "professor",  45);
-    putValuesDeduplicate(inputTable, 2, "Seitz", "Bob", "professor",  50);
-    putValuesDeduplicate(inputTable, 3, "Schuster", "Chris", "accountant",  23);
-    putValuesDeduplicate(inputTable, 4, "Bolt", "Henry", "engineer",  30);
-    putValuesDeduplicate(inputTable, 5, "Gamal", "Ali", "engineer",  28);
+    putValuesDeduplicate(inputTable, 1, "Shelton", "Alex", "professor", 45);
+    putValuesDeduplicate(inputTable, 2, "Seitz", "Bob", "professor", 50);
+    putValuesDeduplicate(inputTable, 3, "Schuster", "Chris", "accountant", 23);
+    putValuesDeduplicate(inputTable, 4, "Bolt", "Henry", "engineer", 30);
+    putValuesDeduplicate(inputTable, 5, "Gamal", "Ali", "engineer", 28);
     inputManager.flush();
   }
 
   private void putValuesDeduplicate(Table inputTable, int index, String lastname, String firstname, String profession,
-                         int age) {
+                                    int age) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("Lastname", lastname);
     put.add("Firstname", firstname);
@@ -677,19 +788,19 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private ETLStage getSink(String name, Schema schema) {
     return new ETLStage(name, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-            ImmutableMap.<String, String>builder()
-                    .put(Properties.BatchReadableWritable.NAME, name)
-                    .put("schema", schema.toString())
-                    .build(), null));
+                                            ImmutableMap.<String, String>builder()
+                                                        .put(Properties.BatchReadableWritable.NAME, name)
+                                                        .put("schema", schema.toString())
+                                                        .build(), null));
   }
 
   private ETLStage getGroupStage(String name, String field, String condition) {
     return new ETLStage(name,
-            new ETLPlugin("GroupByAggregate",
-                    BatchAggregator.PLUGIN_TYPE,
-                    ImmutableMap.of(
-                            "groupByFields", field,
-                            "aggregates", condition), null));
+                        new ETLPlugin("GroupByAggregate",
+                                      BatchAggregator.PLUGIN_TYPE,
+                                      ImmutableMap.of(
+                                        "groupByFields", field,
+                                        "aggregates", condition), null));
   }
 
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)
@@ -701,7 +812,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-      response, new TypeToken<Map<String, byte[]>>() { }.getType()).getResponseObject();
+      response, new TypeToken<Map<String, byte[]>>() {
+      }.getType()).getResponseObject();
 
     return parseOutput(map, schema);
   }
@@ -793,36 +905,5 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     getApplicationManager(TEST_NAMESPACE.app(datasetName))
       .getServiceManager(AbstractDatasetApp.DatasetService.class.getSimpleName())
       .stop();
-  }
-
-  private static void createDataset(String bigQueryDataset) {
-    LOG.info("Creating bigquery dataset {}", bigQueryDataset);
-    // Create dataset with a default table expiration of 24 hours.
-    DatasetInfo datasetInfo = DatasetInfo.newBuilder(bigQueryDataset)
-            .setDefaultTableLifetime(MILLISECONDS_IN_A_DAY)
-            .setDefaultPartitionExpirationMs(MILLISECONDS_IN_A_DAY)
-            .build();
-    bq.create(datasetInfo);
-    LOG.info("Created bigquery dataset {}", bigQueryDataset);
-  }
-
-  private static void deleteDataset(String bigQueryDataset) {
-    LOG.info("Deleting bigquery dataset {}", bigQueryDataset);
-    boolean deleted = bq.delete(bigQueryDataset, BigQuery.DatasetDeleteOption.deleteContents());
-    if (deleted) {
-      LOG.info("Deleted bigquery dataset {}", bigQueryDataset);
-    }
-  }
-
-  private static int countTablesInDataset(String bigQueryDataset) {
-    int numTables = 0;
-
-    // count all tables in this dataset.
-    Page<com.google.cloud.bigquery.Table> page = bq.listTables(bigQueryDataset);
-    for (com.google.cloud.bigquery.Table table : page.iterateAll()) {
-      numTables++;
-    }
-
-    return numTables;
   }
 }
