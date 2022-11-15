@@ -17,6 +17,7 @@
 package io.cdap.cdap.app.etl.gcp;
 
 import com.google.api.gax.paging.Page;
+
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.DatasetInfo;
 import com.google.common.base.Joiner;
@@ -183,7 +184,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   }
 
   @Category({
-    RequiresSpark.class
+          RequiresSpark.class
   })
   @Test
   public void testSQLEngineWindowSpark() throws Exception {
@@ -206,6 +207,11 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     if (useConnection) {
       props.put(ConfigUtil.NAME_CONNECTION, connectionId);
       props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
+    } 
+    props.put("dataset", bigQueryDataset);
+    props.put("retainTables", "true");
+    if (includedStages != null) {
+      props.put("includedStages", includedStages);
     }
     props.put("dataset", bigQueryDataset);
     props.put("retainTables", "true");
@@ -235,8 +241,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-            BatchAggregator.PLUGIN_TYPE,
-                                                                         CONFIG_MAP_DEDUPE, null));
+            BatchAggregator.PLUGIN_TYPE, CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
             new ETLTransformationPushdown(
