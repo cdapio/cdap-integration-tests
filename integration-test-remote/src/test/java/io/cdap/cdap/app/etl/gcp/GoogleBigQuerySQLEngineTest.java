@@ -109,7 +109,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   private String bigQueryDataset;
 
   
-  private static final Map<String, String> CONFIG_MAP = new ImmutableMap.Builder<String, String>()
+  private static final Map<String, String> CONFIG_MAP_DEDUPE = new ImmutableMap.Builder<String, String>()
           .put("uniqueFields", "profession")
           .put("filterOperation", "age:Min")
           .build();
@@ -223,7 +223,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
             BatchAggregator.PLUGIN_TYPE,
-            CONFIG_MAP, null));
+            CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
             new ETLTransformationPushdown(
