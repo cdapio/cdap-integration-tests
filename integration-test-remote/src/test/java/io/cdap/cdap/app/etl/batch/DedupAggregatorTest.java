@@ -108,8 +108,7 @@ public class DedupAggregatorTest extends ETLTestBase {
                         .build(), null));
 
         ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-                BatchAggregator.PLUGIN_TYPE,
-                                                                             CONFIG_MAP_DEDUPE, null));
+                BatchAggregator.PLUGIN_TYPE, CONFIG_MAP_DEDUPE, null));
 
 
         ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")

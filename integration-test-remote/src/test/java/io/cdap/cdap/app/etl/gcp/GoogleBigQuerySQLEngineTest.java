@@ -17,6 +17,7 @@
 package io.cdap.cdap.app.etl.gcp;
 
 import com.google.api.gax.paging.Page;
+
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.DatasetInfo;
 import com.google.common.base.Joiner;
@@ -108,7 +109,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   private static BigQuery bq;
   private String bigQueryDataset;
 
-  
   private static final Map<String, String> CONFIG_MAP_DEDUPE = new ImmutableMap.Builder<String, String>()
           .put("uniqueFields", "profession")
           .put("filterOperation", "age:Min")
@@ -204,7 +204,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     if (useConnection) {
       props.put(ConfigUtil.NAME_CONNECTION, connectionId);
       props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
+    } 
+    props.put("dataset", bigQueryDataset);
+    props.put("retainTables", "true");
+    if (includedStages != null) {
+      props.put("includedStages", includedStages);
     }
+
     props.put("dataset", bigQueryDataset);
     props.put("retainTables", "true");
     if (includedStages != null) {
@@ -233,8 +239,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-            BatchAggregator.PLUGIN_TYPE,
-                                                                         CONFIG_MAP_DEDUPE, null));
+            BatchAggregator.PLUGIN_TYPE, CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
             new ETLTransformationPushdown(
@@ -257,7 +262,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             .setPushdownEnabled(true)
             .setTransformationPushdown(transformationPushdown)
             .build();
-
 
     ingestInputData(USER_SOURCE);
 
@@ -400,7 +404,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, WindowAggregationTest.USER_SCHEMA));
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }
-
 
   private void testSQLEngineJoin(Engine engine, boolean useConnection) throws Exception {
     String filmDatasetName = "film-sqlenginejoinertest";
