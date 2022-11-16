@@ -30,6 +30,7 @@ import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.api.dataset.table.Put;
 import io.cdap.cdap.api.dataset.table.Table;
 import io.cdap.cdap.app.etl.batch.DedupAggregatorTest;
+import io.cdap.cdap.app.etl.batch.WindowAggregationTest;
 import io.cdap.cdap.app.etl.dataset.DatasetAccessApp;
 import io.cdap.cdap.app.etl.dataset.SnapshotFilesetService;
 import io.cdap.cdap.common.ArtifactNotFoundException;
@@ -100,8 +101,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   public static final String PURCHASE_SOURCE = "purchaseSource";
   public static final String ITEM_SINK = "itemSink";
   public static final String USER_SINK = "userSink";
-  public static final String DEDUPLICATE_SOURCE = "userSource";
-  public static final String DEDUPLICATE_SINK = "userSink";
+  public static final String USER_SOURCE = "userSource";
   public static final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
   public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS");
 
@@ -109,10 +109,15 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   private String bigQueryDataset;
 
   
-  private static final Map<String, String> CONFIG_MAP = new ImmutableMap.Builder<String, String>()
+  private static final Map<String, String> CONFIG_MAP_DEDUPE = new ImmutableMap.Builder<String, String>()
           .put("uniqueFields", "profession")
           .put("filterOperation", "age:Min")
           .build();
+
+  private static final Map<String, String> CONFIG_MAP_WINDOW = new ImmutableMap.Builder<String, String>()
+    .put("partitionFields", "profession")
+    .put("aggregates", "age:Rank")
+    .build();
 
   public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
           "purchase",
@@ -187,6 +192,12 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
      testSQLEngineDeduplicate(Engine.SPARK, true);
   }
 
+  @Test
+  public void testSQLEngineWindowAggregationSpark() throws Exception {
+    testSQLEngineWindowAggregation(Engine.SPARK, false);
+    testSQLEngineWindowAggregation(Engine.SPARK, true);
+  }
+
   private Map<String, String> getProps(boolean useConnection, String includedStages) {
     String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
     Map<String, String> props = new HashMap<>();
@@ -207,13 +218,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             new ETLStage("users", new ETLPlugin("Table",
                     BatchSource.PLUGIN_TYPE,
                     ImmutableMap.of(
-                            Properties.BatchReadableWritable.NAME, DEDUPLICATE_SOURCE,
+                            Properties.BatchReadableWritable.NAME, USER_SOURCE,
                             Properties.Table.PROPERTY_SCHEMA, DedupAggregatorTest.USER_SCHEMA.toString()),
                     null));
 
-    ETLStage userSinkStage =  new ETLStage(DEDUPLICATE_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
+    ETLStage userSinkStage =  new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
             ImmutableMap.<String, String>builder()
-                    .put(Properties.BatchReadableWritable.NAME, DEDUPLICATE_SINK)
+                    .put(Properties.BatchReadableWritable.NAME, USER_SINK)
                     .put("schema", DedupAggregatorTest.USER_SCHEMA.toString())
                     .build(), null));
 
@@ -223,7 +234,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
             BatchAggregator.PLUGIN_TYPE,
-            CONFIG_MAP, null));
+                                                                         CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
             new ETLTransformationPushdown(
@@ -248,7 +259,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             .build();
 
 
-    ingestInputDataDeduplicate(DEDUPLICATE_SOURCE);
+    ingestInputData(USER_SOURCE);
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
     ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-deduplicate-test");
@@ -292,9 +303,104 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
     // verfiy output
-    Assert.assertEquals(expected, readOutput(serviceManager, DEDUPLICATE_SINK, DedupAggregatorTest.USER_SCHEMA));
+    Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA));
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }
+
+  private void testSQLEngineWindowAggregation(Engine engine, boolean useConnection) throws Exception {
+    ETLStage userSourceStage =
+      new ETLStage("users", new ETLPlugin("Table",
+                                          BatchSource.PLUGIN_TYPE,
+                                          ImmutableMap.of(
+                                            Properties.BatchReadableWritable.NAME, USER_SOURCE,
+                                            Properties.Table.PROPERTY_SCHEMA, WindowAggregationTest.USER_SCHEMA.toString()),
+                                          null));
+
+    ETLStage userSinkStage =  new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
+                                                                    ImmutableMap.<String, String>builder()
+                                                                                .put(Properties.BatchReadableWritable.NAME, USER_SINK)
+                                                                                .put("schema", WindowAggregationTest.USER_SCHEMA.toString())
+                                                                                .build(), null));
+
+    ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(null,
+                                                                       "google-cloud",
+                                                                       "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
+
+    ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("WindowAggregation",
+                                                                         BatchAggregator.PLUGIN_TYPE,
+                                                                         CONFIG_MAP_WINDOW, null));
+
+    ETLTransformationPushdown transformationPushdown =
+      new ETLTransformationPushdown(
+        new ETLPlugin(BQ_SQLENGINE_PLUGIN_NAME,
+                      BatchSQLEngine.PLUGIN_TYPE,
+                      getProps(useConnection, "KeyAggregate"),
+                      selectorConfig
+        )
+      );
+
+    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
+                                          .addStage(userSourceStage)
+                                          .addStage(userSinkStage)
+                                          .addStage(userGroupStage)
+                                          .addConnection(userSourceStage.getName(), userGroupStage.getName())
+                                          .addConnection(userGroupStage.getName(), userSinkStage.getName())
+                                          .setDriverResources(new Resources(2048))
+                                          .setResources(new Resources(2048))
+                                          .setEngine(engine)
+                                          .setPushdownEnabled(true)
+                                          .setTransformationPushdown(transformationPushdown)
+                                          .build();
+
+
+    ingestInputData(USER_SOURCE);
+
+    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
+    ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-windowaggregation-test");
+    ApplicationManager appManager = deployApplication(appId, request);
+
+    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
+    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
+
+    // Deploy an application with a service to get partitionedFileset data for verification
+    ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
+    ServiceManager serviceManager = applicationManager.getServiceManager
+                                                        (SnapshotFilesetService.class.getSimpleName());
+    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
+
+    org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser()
+      .parse(WindowAggregationTest.USER_SCHEMA.toString());
+    // output has these records:
+    // 1: shelton, alex, professor, 45
+    // 3: schuster, chris, accountant, 23
+    // 5: gamal , ali , engineer, 28
+    GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Shelton")
+      .set("Firstname", "Alex")
+      .set("profession", "professor")
+      .set("age", 45)
+      .build();
+
+    GenericRecord record2 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Schuster")
+      .set("Firstname", "Chris")
+      .set("profession", "accountant")
+      .set("age", 23)
+      .build();
+
+    GenericRecord record3 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Gamal")
+      .set("Firstname", "Ali")
+      .set("profession", "engineer")
+      .set("age", 28)
+      .build();
+
+    Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
+    // verfiy output
+    Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, WindowAggregationTest.USER_SCHEMA));
+    Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
+  }
+
 
   private void testSQLEngineJoin(Engine engine, boolean useConnection) throws Exception {
     String filmDatasetName = "film-sqlenginejoinertest";
@@ -609,7 +715,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     purchaseManager.flush();
   }
 
-  private void ingestInputDataDeduplicate(String inputDatasetName) throws Exception {
+  private void ingestInputData(String inputDatasetName) throws Exception {
     // 1: shelton, alex, professor, 45
     // 2: seitz, bob, professor, 50
     // 3: schuster, chris, accountant, 23
