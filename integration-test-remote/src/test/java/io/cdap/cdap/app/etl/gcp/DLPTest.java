@@ -86,10 +86,10 @@ public class DLPTest extends DataprocETLTestBase {
   @Override
   protected void innerSetup() throws Exception {
     try {
-      artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("dlp", "1.3.0"),
+      artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("dlp", "1.4.0"),
                                         Transform.PLUGIN_TYPE);
     } catch (ArtifactNotFoundException e) {
-      installPluginFromHub("plugin-dlp-redact-filter", "dlp", "1.3.0");
+      installPluginFromHub("plugin-dlp-redact-filter", "dlp", "1.4.0");
     }
   }
 
