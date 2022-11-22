@@ -223,20 +223,20 @@ public class PubSubTest extends DataprocETLTestBase {
 
   @Override
   public void innerTearDown() {
-    for (ProjectTopicName topic : topicsToDelete) {
-      try {
-        topicAdmin.deleteTopic(topic);
-        LOG.info("Deleted topic {}", topic.toString());
-      } catch (ApiException ex) {
-        LOG.error(String.format("Failed to delete topic %s", topic.toString()), ex);
-      }
-    }
     for (ProjectSubscriptionName subscription : subscriptionsToDelete) {
       try {
         subscriptionAdmin.deleteSubscription(subscription);
         LOG.info("Deleted subscription {}", subscription.toString());
       } catch (ApiException ex) {
         LOG.error(String.format("Failed to delete subscription %s", subscription.toString()), ex);
+      }
+    }
+    for (ProjectTopicName topic : topicsToDelete) {
+      try {
+        topicAdmin.deleteTopic(topic);
+        LOG.info("Deleted topic {}", topic.toString());
+      } catch (ApiException ex) {
+        LOG.error(String.format("Failed to delete topic %s", topic.toString()), ex);
       }
     }
     for (String bucketName : bucketsToDelete) {
@@ -315,38 +315,42 @@ public class PubSubTest extends DataprocETLTestBase {
     ProjectSubscriptionName testSubscriptionPSN = createSubscription(sinkTopicName, testSubscriptionName);
 
     TestMessageReceiver receiver = new TestMessageReceiver();
-    Subscriber subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
-      .setCredentialsProvider(getCredentialProvider()).build();
-
-    subscriber.addListener(new Subscriber.Listener() {
-      public void failed(Subscriber.State from, Throwable failure) {
-        LOG.error("State {}:", from.toString(), failure);
-      }
-    }, MoreExecutors.directExecutor());
-
-    subscriber.startAsync().awaitRunning();
-
-    ETLStage ss = createSubscriberStage(sourceTopicName, pipelineReadSubscriptionName);
-    ETLStage ps = createPublisherStage(sinkTopicName);
-    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
-    Bucket bucket = createBucket(bucketName);
-    String checkpointDir = "cp-dir/";
-    bucket.create(checkpointDir, new byte[] { });
-
-    DataStreamsConfig config = DataStreamsConfig.builder()
-      .addStage(ss)
-      .addStage(ps)
-      .addConnection(ss.getName(), ps.getName())
-      .setBatchInterval("30s")
-      .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
-      .build();
-
-    ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
-    AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-
-    SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+    Subscriber subscriber = null;
+    SparkManager sparkManager = null;
     try {
+      subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
+        .setCredentialsProvider(getCredentialProvider()).build();
+
+      subscriber.addListener(new Subscriber.Listener() {
+        public void failed(Subscriber.State from, Throwable failure) {
+          LOG.error("State {}:", from.toString(), failure);
+        }
+      }, MoreExecutors.directExecutor());
+
+      subscriber.startAsync().awaitRunning();
+
+      ETLStage ss = createSubscriberStage(sourceTopicName, pipelineReadSubscriptionName);
+      ETLStage ps = createPublisherStage(sinkTopicName);
+      String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+      Bucket bucket = createBucket(bucketName);
+      String checkpointDir = "cp-dir/";
+      bucket.create(checkpointDir, new byte[]{});
+
+      DataStreamsConfig config = DataStreamsConfig.builder()
+        .addStage(ss)
+        .addStage(ps)
+        .addConnection(ss.getName(), ps.getName())
+        .setBatchInterval("30s")
+        .setStopGracefully(false)
+        .setCheckpointDir(String.format("gs://%s/%s", bucketName, checkpointDir))
+        .build();
+
+      ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
+      AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
+      ApplicationManager appManager = deployApplication(appId, appRequest);
+
+      sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+
       // it takes time to spin-up dataproc cluster, lets wait a little bit
       startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING,
                          Collections.singletonMap("system.profile.name", getProfileName()), 10, TimeUnit.MINUTES);
@@ -358,15 +362,18 @@ public class PubSubTest extends DataprocETLTestBase {
       publishMessages(sourceTopicNamePTN, "message1", "message3", "message2");
       // ... and ensure they are passed through pipeline to our subscriber
       receiver.assertRetrievedMessagesContain(10, TimeUnit.MINUTES, "message1", "message3", "message2");
-
-      subscriber.stopAsync().awaitTerminated();
     } finally {
-      try {
-        sparkManager.stop();
-        sparkManager.waitForStopped(5, TimeUnit.MINUTES);
-      } catch (Exception e) {
-        // don't treat this as a test failure, but log a warning
-        LOG.warn("Pipeline failed to stop gracefully", e);
+      if (subscriber != null && subscriber.isRunning()) {
+        subscriber.stopAsync().awaitTerminated();
+      }
+      if (sparkManager != null) {
+        try {
+          sparkManager.stop();
+          sparkManager.waitForStopped(5, TimeUnit.MINUTES);
+        } catch (Exception e) {
+          // don't treat this as a test failure, but log a warning
+          LOG.warn("Pipeline failed to stop gracefully", e);
+        }
       }
     }
   }
@@ -389,38 +396,42 @@ public class PubSubTest extends DataprocETLTestBase {
     ProjectSubscriptionName testSubscriptionPSN = createSubscription(sinkTopicName, testSubscriptionName);
 
     TestMessageReceiver receiver = new TestMessageReceiver();
-    Subscriber subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
-      .setCredentialsProvider(getCredentialProvider()).build();
-
-    subscriber.addListener(new Subscriber.Listener() {
-      public void failed(Subscriber.State from, Throwable failure) {
-        LOG.error("State {}:", from.toString(), failure);
-      }
-    }, MoreExecutors.directExecutor());
-
-    subscriber.startAsync().awaitRunning();
-
-    ETLStage ss = createSubscriberStage(sourceTopicName, "${subscription}");
-    ETLStage ps = createPublisherStage(sinkTopicName);
-    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
-    Bucket bucket = createBucket(bucketName);
-    String checkpointDir = "cp-dir/";
-    bucket.create(checkpointDir, new byte[] { });
-
-    DataStreamsConfig config = DataStreamsConfig.builder()
-      .addStage(ss)
-      .addStage(ps)
-      .addConnection(ss.getName(), ps.getName())
-      .setBatchInterval("30s")
-      .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
-      .build();
-
-    ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
-    AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-
-    SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+    Subscriber subscriber = null;
+    SparkManager sparkManager = null;
     try {
+      subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
+        .setCredentialsProvider(getCredentialProvider()).build();
+
+      subscriber.addListener(new Subscriber.Listener() {
+        public void failed(Subscriber.State from, Throwable failure) {
+          LOG.error("State {}:", from.toString(), failure);
+        }
+      }, MoreExecutors.directExecutor());
+
+      subscriber.startAsync().awaitRunning();
+
+      ETLStage ss = createSubscriberStage(sourceTopicName, "${subscription}");
+      ETLStage ps = createPublisherStage(sinkTopicName);
+      String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+      Bucket bucket = createBucket(bucketName);
+      String checkpointDir = "cp-dir/";
+      bucket.create(checkpointDir, new byte[]{});
+
+      DataStreamsConfig config = DataStreamsConfig.builder()
+        .addStage(ss)
+        .addStage(ps)
+        .addConnection(ss.getName(), ps.getName())
+        .setBatchInterval("30s")
+        .setStopGracefully(false)
+        .setCheckpointDir(String.format("gs://%s/%s", bucketName, checkpointDir))
+        .build();
+
+      ApplicationId appId = TEST_NAMESPACE.app("PubSubTest");
+      AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
+      ApplicationManager appManager = deployApplication(appId, appRequest);
+
+      sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+
       Map<String, String> args = new HashMap<>();
       args.put("system.profile.name", getProfileName());
       args.put("subscription", pipelineReadSubscriptionName);
@@ -435,14 +446,19 @@ public class PubSubTest extends DataprocETLTestBase {
       // ... and ensure they are passed through pipeline to our subscriber
       receiver.assertRetrievedMessagesContain(10, TimeUnit.MINUTES, "message1", "message3", "message2");
 
-      subscriber.stopAsync().awaitTerminated();
     } finally {
-      try {
-        sparkManager.stop();
-        sparkManager.waitForStopped(5, TimeUnit.MINUTES);
-      } catch (Exception e) {
-        // don't treat this as a test failure, but log a warning
-        LOG.warn("Pipeline failed to stop gracefully", e);
+      if (subscriber != null && subscriber.isRunning()) {
+        subscriber.stopAsync().awaitTerminated();
+      }
+
+      if (sparkManager != null) {
+        try {
+          sparkManager.stop();
+          sparkManager.waitForStopped(5, TimeUnit.MINUTES);
+        } catch (Exception e) {
+          // don't treat this as a test failure, but log a warning
+          LOG.warn("Pipeline failed to stop gracefully", e);
+        }
       }
     }
   }
@@ -616,47 +632,51 @@ public class PubSubTest extends DataprocETLTestBase {
 
     ProjectSubscriptionName testSubscriptionPSN = createSubscription(sinkTopicName, testSubscriptionName);
 
-    Subscriber subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
-      .setCredentialsProvider(getCredentialProvider()).build();
-
-    subscriber.addListener(new Subscriber.Listener() {
-      public void failed(Subscriber.State from, Throwable failure) {
-        LOG.error("State {}:", from.toString(), failure);
-      }
-    }, MoreExecutors.directExecutor());
-
-    subscriber.startAsync().awaitRunning();
-
-    Schema schema = RECORD_SCHEMA;
-
-    if (sourceFormat == null || sourceFormat.equalsIgnoreCase(TEXT) || sourceFormat.equalsIgnoreCase(BLOB)) {
-      schema = DEFAULT_SCHEMA;
-    }
-
-    final Map<String, String> sourceConfig = createSourceConfig(sourceTopicName, pipelineReadSubscriptionName,
-                                                                sourceFormat, schema.toString(), delimiter);
-    ETLStage ss = createSubscriberStage(sourceTopicName, sourceConfig);
-    final Map<String, String> sinkConfig = createSinkConfig(sinkTopicName, sinkFormat, delimiter);
-    ETLStage ps = createPublisherStage(sinkTopicName, sinkConfig);
-    String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
-    Bucket bucket = createBucket(bucketName);
-    String checkpointDir = "cp-dir/";
-    bucket.create(checkpointDir, new byte[] { });
-
-    DataStreamsConfig config = DataStreamsConfig.builder()
-      .addStage(ss)
-      .addStage(ps)
-      .addConnection(ss.getName(), ps.getName())
-      .setBatchInterval("30s")
-      .setCheckpointDir(String.valueOf(bucket.get(checkpointDir)))
-      .build();
-
-    ApplicationId appId = TEST_NAMESPACE.app(String.format("PubSubTestFormat-%s-to-%s", sourceFormat, sinkFormat));
-    AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
-    ApplicationManager appManager = deployApplication(appId, appRequest);
-
-    SparkManager sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+    Subscriber subscriber = null;
+    SparkManager sparkManager = null;
     try {
+      subscriber = Subscriber.newBuilder(testSubscriptionPSN, receiver)
+        .setCredentialsProvider(getCredentialProvider()).build();
+
+      subscriber.addListener(new Subscriber.Listener() {
+        public void failed(Subscriber.State from, Throwable failure) {
+          LOG.error("State {}:", from.toString(), failure);
+        }
+      }, MoreExecutors.directExecutor());
+
+      subscriber.startAsync().awaitRunning();
+
+      Schema schema = RECORD_SCHEMA;
+
+      if (sourceFormat == null || sourceFormat.equalsIgnoreCase(TEXT) || sourceFormat.equalsIgnoreCase(BLOB)) {
+        schema = DEFAULT_SCHEMA;
+      }
+
+      final Map<String, String> sourceConfig = createSourceConfig(sourceTopicName, pipelineReadSubscriptionName,
+                                                                  sourceFormat, schema.toString(), delimiter);
+      ETLStage ss = createSubscriberStage(sourceTopicName, sourceConfig);
+      final Map<String, String> sinkConfig = createSinkConfig(sinkTopicName, sinkFormat, delimiter);
+      ETLStage ps = createPublisherStage(sinkTopicName, sinkConfig);
+      String bucketName = String.format("%s-1-%s", prefix, UUID.randomUUID());
+      Bucket bucket = createBucket(bucketName);
+      String checkpointDir = "cp-dir/";
+      bucket.create(checkpointDir, new byte[]{});
+
+      DataStreamsConfig config = DataStreamsConfig.builder()
+        .addStage(ss)
+        .addStage(ps)
+        .addConnection(ss.getName(), ps.getName())
+        .setBatchInterval("30s")
+        .setStopGracefully(false)
+        .setCheckpointDir(String.format("gs://%s/%s", bucketName, checkpointDir))
+        .build();
+
+      ApplicationId appId = TEST_NAMESPACE.app(String.format("PubSubTestFormat-%s-to-%s", sourceFormat, sinkFormat));
+      AppRequest<DataStreamsConfig> appRequest = getStreamingAppRequest(config);
+      ApplicationManager appManager = deployApplication(appId, appRequest);
+
+      sparkManager = appManager.getSparkManager(DataStreamsSparkLauncher.NAME);
+
       // it takes time to spin-up dataproc cluster, lets wait a little bit
       startAndWaitForRun(sparkManager, ProgramRunStatus.RUNNING,
                          Collections.singletonMap("system.profile.name", getProfileName()), 10, TimeUnit.MINUTES);
@@ -668,15 +688,18 @@ public class PubSubTest extends DataprocETLTestBase {
       publishByteMessages(sourceTopicNamePTN, messages);
       // ... and ensure they are passed through pipeline to our subscriber
       receiver.assertRetrievedMessagesContain(10, TimeUnit.MINUTES, expectedMessage);
-
-      subscriber.stopAsync().awaitTerminated();
     } finally {
-      try {
-        sparkManager.stop();
-        sparkManager.waitForStopped(5, TimeUnit.MINUTES);
-      } catch (Exception e) {
-        // don't treat this as a test failure, but log a warning
-        LOG.warn("Pipeline failed to stop gracefully", e);
+      if (subscriber != null && subscriber.isRunning()) {
+        subscriber.stopAsync().awaitTerminated();
+      }
+      if (sparkManager != null) {
+        try {
+          sparkManager.stop();
+          sparkManager.waitForStopped(5, TimeUnit.MINUTES);
+        } catch (Exception e) {
+          // don't treat this as a test failure, but log a warning
+          LOG.warn("Pipeline failed to stop gracefully", e);
+        }
       }
     }
   }
@@ -733,18 +756,20 @@ public class PubSubTest extends DataprocETLTestBase {
     for (String message : messages) {
       ByteString data = ByteString.copyFromUtf8(message);
       PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
-      publisher.publish(pubsubMessage);
+      publisher.publish(pubsubMessage).get(1, TimeUnit.MINUTES);
     }
     publisher.shutdown();
+    publisher.awaitTermination(5, TimeUnit.MINUTES);
   }
 
   private void publishByteMessages(ProjectTopicName topicName, ByteString... messages) throws Exception {
     Publisher publisher = Publisher.newBuilder(topicName).setCredentialsProvider(getCredentialProvider()).build();
     for (ByteString message : messages) {
       PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(message).build();
-      publisher.publish(pubsubMessage);
+      publisher.publish(pubsubMessage).get(1, TimeUnit.MINUTES);
     }
     publisher.shutdown();
+    publisher.awaitTermination(5, TimeUnit.MINUTES);
   }
 
   private ETLStage createSubscriberStage(String topicName, String subscription) {
@@ -769,13 +794,13 @@ public class PubSubTest extends DataprocETLTestBase {
                                                       GenericData.Record record) throws IOException {
     final byte[] serializedBytes;
     DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(avroSchema);
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
-    datumWriter.write(record, encoder);
-    encoder.flush();
-    out.close();
-    serializedBytes = out.toByteArray();
-    return ByteString.copyFrom(serializedBytes);
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(out, null);
+      datumWriter.write(record, encoder);
+      encoder.flush();
+      serializedBytes = out.toByteArray();
+      return ByteString.copyFrom(serializedBytes);
+    }
   }
 
   private ETLStage createPublisherStage(String topicName, Map<String, String> config) {
