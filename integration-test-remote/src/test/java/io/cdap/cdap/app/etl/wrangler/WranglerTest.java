@@ -73,11 +73,6 @@ import java.util.concurrent.TimeoutException;
  */
 public class WranglerTest extends ETLTestBase {
 
-  @Test
-  public void testWranglerMR() throws Exception {
-    testWrangler(Engine.MAPREDUCE);
-  }
-
   @Category({
     RequiresSpark.class,
   })
