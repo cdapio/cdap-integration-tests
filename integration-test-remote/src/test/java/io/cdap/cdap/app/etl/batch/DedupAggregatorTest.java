@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Cask Data, Inc.
+ * Copyright © 2016-2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -80,7 +80,7 @@ public class DedupAggregatorTest extends ETLTestBase {
             Schema.Field.of("profession", Schema.of(Schema.Type.STRING)),
             Schema.Field.of("age", Schema.of(Schema.Type.INT)));
 
-    private static final Map<String, String> CONFIG_MAP = new ImmutableMap.Builder<String, String>()
+    private static final Map<String, String> CONFIG_MAP_DEDUPE = new ImmutableMap.Builder<String, String>()
             .put("uniqueFields", "profession")
             .put("filterOperation", "age:Min")
             .build();
@@ -109,7 +109,7 @@ public class DedupAggregatorTest extends ETLTestBase {
 
         ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
                 BatchAggregator.PLUGIN_TYPE,
-                CONFIG_MAP, null));
+                CONFIG_MAP_DEDUPE, null));
 
 
         ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")

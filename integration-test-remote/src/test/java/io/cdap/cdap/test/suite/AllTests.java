@@ -29,6 +29,7 @@ import io.cdap.cdap.app.etl.batch.NormalizeTest;
 import io.cdap.cdap.app.etl.batch.RowDenormalizerTest;
 import io.cdap.cdap.app.etl.batch.TPFSParquetSinkSourceTest;
 import io.cdap.cdap.app.etl.batch.ValueMapperTest;
+import io.cdap.cdap.app.etl.batch.WindowAggregatorTest;
 import io.cdap.cdap.app.etl.batch.XMLReaderTest;
 import io.cdap.cdap.app.etl.realtime.DataStreamsTest;
 import io.cdap.cdap.app.etl.wrangler.WranglerServiceTest;
@@ -89,6 +90,7 @@ import org.junit.runners.Suite;
   TPFSAvroSinkSourceTest.class,
   TPFSParquetSinkSourceTest.class,
   ValueMapperTest.class,
+  WindowAggregatorTest.class,
   WorkflowTest.class,
   WranglerServiceTest.class,
   WranglerTest.class,

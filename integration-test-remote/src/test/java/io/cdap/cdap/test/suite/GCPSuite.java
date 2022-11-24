@@ -31,13 +31,13 @@ import org.junit.runners.Suite;
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+  DLPTest.class,
   GCSTest.class,
   GoogleBigQueryTest.class,
   GoogleCloudBigtableTest.class,
   GoogleCloudDatastoreTest.class,
   GoogleCloudSpannerTest.class,
-  PubSubTest.class,
-  DLPTest.class
+  PubSubTest.class
 })
 public class GCPSuite {
 
