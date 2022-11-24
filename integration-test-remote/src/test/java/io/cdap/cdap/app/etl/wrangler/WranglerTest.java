@@ -79,16 +79,6 @@ public class WranglerTest extends ETLTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(WranglerTest.class);
 
-  @Category({
-    RequiresSpark.class,
-  })
-  @Test
-  public void testWranglerSpark() throws Exception {
-    LOG.info("Starting testWranglerSpark");
-    testWrangler(Engine.SPARK);
-    LOG.info("Ending testWranglerSpark");
-  }
-
   @BeforeClass
   public static void initialize() {
     LOG.info("Starting to run WranglerTest..");
@@ -99,6 +89,16 @@ public class WranglerTest extends ETLTestBase {
     LOG.info("Exiting WranglerTest..");
   }
 
+  @Category({
+    RequiresSpark.class,
+  })
+  @Test
+  public void testWranglerSpark() throws Exception {
+    LOG.info("Starting testWranglerSpark");
+    testWrangler(Engine.SPARK);
+    LOG.info("Ending testWranglerSpark");
+  }
+  
   private void testWrangler(Engine engine) throws Exception {
     String datasetName = "personal_info";
     ingestDataForWrangler(datasetName);
