@@ -53,7 +53,11 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.io.DatumReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -73,12 +77,26 @@ import java.util.concurrent.TimeoutException;
  */
 public class WranglerTest extends ETLTestBase {
 
+  private static final Logger LOG = LoggerFactory.getLogger(WranglerTest.class);
+
   @Category({
     RequiresSpark.class,
   })
   @Test
   public void testWranglerSpark() throws Exception {
+    LOG.info("Starting testWranglerSpark");
     testWrangler(Engine.SPARK);
+    LOG.info("Ending testWranglerSpark");
+  }
+
+  @BeforeClass
+  public static void initialize() {
+    LOG.info("Starting to run WranglerTest..");
+  }
+
+  @AfterClass
+  public static void shutdown() {
+    LOG.info("Exiting WranglerTest..");
   }
 
   private void testWrangler(Engine engine) throws Exception {
