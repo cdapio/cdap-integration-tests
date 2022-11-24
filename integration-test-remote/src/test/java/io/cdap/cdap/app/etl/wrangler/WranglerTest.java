@@ -72,7 +72,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-
 /**
  * Wrangler test to test Wrangler Transform functionalities
  */
