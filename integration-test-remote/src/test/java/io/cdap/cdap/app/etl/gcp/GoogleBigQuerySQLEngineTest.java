@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Cask Data, Inc.
+ * Copyright © 2021-2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -36,7 +36,12 @@ import io.cdap.cdap.app.etl.dataset.SnapshotFilesetService;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.api.Engine;
-import io.cdap.cdap.etl.api.batch.*;
+import io.cdap.cdap.etl.api.Transform;
+import io.cdap.cdap.etl.api.batch.BatchAggregator;
+import io.cdap.cdap.etl.api.batch.BatchJoiner;
+import io.cdap.cdap.etl.api.batch.BatchSink;
+import io.cdap.cdap.etl.api.batch.BatchSource;
+import io.cdap.cdap.etl.api.batch.SparkCompute;
 import io.cdap.cdap.etl.api.engine.sql.BatchSQLEngine;
 import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
@@ -113,7 +118,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private static final Map<String, String> CONFIG_MAP_WINDOW = new ImmutableMap.Builder<String, String>()
     .put("partitionFields", "profession")
-    .put("aggregates", "age:Rank")
+    .put("aggregates", "age:first(age,1,true)")
     .build();
 
   public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
@@ -144,10 +149,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   protected void innerSetup() throws Exception {
     Tasks.waitFor(true, () -> {
       try {
+        artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", "1.0.2"),
+                                          Transform.PLUGIN_TYPE);
         final ArtifactId dataPipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
         return GoogleBigQueryUtils
           .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSQLEngine.PLUGIN_TYPE, BQ_SQLENGINE_PLUGIN_NAME);
       } catch (ArtifactNotFoundException e) {
+        installPluginFromHub("plugin-window-aggregation", "window-aggregator", "1.0.2");
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
@@ -216,14 +224,14 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   private void testSQLEngineWindow(Engine engine, boolean useConnection) throws Exception {
     ETLStage userSourceStage =
       new ETLStage("users", new ETLPlugin("Table",
-        BatchSource.PLUGIN_TYPE,
-        ImmutableMap.of(
+                                          BatchSource.PLUGIN_TYPE,
+                                          ImmutableMap.of(
           Properties.BatchReadableWritable.NAME, USER_SOURCE,
           Properties.Table.PROPERTY_SCHEMA, DedupAggregatorTest.USER_SCHEMA.toString()),
-        null));
+                                          null));
 
     ETLStage userSinkStage =  new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-       ImmutableMap.<String, String>builder()
+                                                                    ImmutableMap.<String, String>builder()
                    .put(Properties.BatchReadableWritable.NAME, USER_SINK)
                    .put("schema", WindowAggregatorTest.USER_SCHEMA.toString())
                    .build(), null));
@@ -231,10 +239,12 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(null,
                                                                        "google-cloud",
                                                                        "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
+    ArtifactSelectorConfig WINDOW_ARTIFACT =
+      new ArtifactSelectorConfig("USER", "window-aggregator", "1.0.2");
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("WindowAggregation",
                                                                          SparkCompute.PLUGIN_TYPE,
-                                                                         CONFIG_MAP_WINDOW, null));
+                                                                         CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
 
     ETLTransformationPushdown transformationPushdown =
       new ETLTransformationPushdown(
@@ -262,7 +272,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     ingestInputData(USER_SOURCE);
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-deduplicate-test");
+    ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-windowaggregation-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -275,33 +285,44 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser()
-      .parse(DedupAggregatorTest.USER_SCHEMA.toString());
-    // output has these records:
-    // 1: shelton, alex, professor, 45
-    // 3: schuster, chris, accountant, 23
-    // 5: gamal , ali , engineer, 28
-    GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
-      .set("Lastname", "Shelton")
-      .set("Firstname", "Alex")
-      .set("profession", "professor")
-      .set("age", 45)
-      .build();
+      .parse(WindowAggregatorTest.USER_SCHEMA.toString());
 
-    GenericRecord record2 = new GenericRecordBuilder(avroOutputSchema)
+    GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
       .set("Lastname", "Schuster")
       .set("Firstname", "Chris")
       .set("profession", "accountant")
       .set("age", 23)
       .build();
 
+    GenericRecord record2 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Bolt")
+      .set("Firstname", "Henry")
+      .set("profession", "engineer")
+      .set("age", 30)
+      .build();
+
     GenericRecord record3 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Seitz")
+      .set("Firstname", "Bob")
+      .set("profession", "professor")
+      .set("age", 45)
+      .build();
+
+    GenericRecord record4 = new GenericRecordBuilder(avroOutputSchema)
+      .set("Lastname", "Shelton")
+      .set("Firstname", "Alex")
+      .set("profession", "professor")
+      .set("age", 45)
+      .build();
+
+    GenericRecord record5 = new GenericRecordBuilder(avroOutputSchema)
       .set("Lastname", "Gamal")
       .set("Firstname", "Ali")
       .set("profession", "engineer")
-      .set("age", 28)
+      .set("age", 30)
       .build();
 
-    Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3);
+    Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3, record4, record5);
     // verfiy output
     Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA));
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
@@ -327,7 +348,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-            BatchAggregator.PLUGIN_TYPE,
+                                                                         BatchAggregator.PLUGIN_TYPE,
                                                                          CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
@@ -456,13 +477,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     ETLStage innerJoinStage =
       new ETLStage("innerJoin",
-                   new ETLPlugin("Joiner",
-                                 BatchJoiner.PLUGIN_TYPE,
-                                 ImmutableMap.of(
-                                   "joinKeys", "film.film_id=filmActor.film_id&film.film_name=filmActor.film_name",
-                                   "selectedFields", selectedFields1,
-                                   "requiredInputs", "film,filmActor"),
-                                 null));
+        new ETLPlugin("Joiner",
+           BatchJoiner.PLUGIN_TYPE,
+           ImmutableMap.of(
+             "joinKeys", "film.film_id=filmActor.film_id&film.film_name=filmActor.film_name",
+             "selectedFields", selectedFields1,
+             "requiredInputs", "film,filmActor"),
+           null));
 
     String selectedFields2 = "innerJoin.film_id, innerJoin.film_name, innerJoin.renamed_actor, " +
       "filmCategory.category_name as renamed_category";
@@ -669,9 +690,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
-    Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-            response, new TypeToken<Map<String, byte[]>>() {
-            }.getType()).getResponseObject();
+    Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody( response, new
+      TypeToken<Map<String, byte[]>>() {}.getType()).getResponseObject();
 
     return parseOutputGroupBy(map, schema);
   }
@@ -683,7 +703,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     for (Map.Entry<String, byte[]> entry : contents.entrySet()) {
       DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(avroSchema);
       DataFileStream<GenericRecord> fileStream = new DataFileStream<>(
-              new ByteArrayInputStream(entry.getValue()), datumReader);
+        new ByteArrayInputStream(entry.getValue()), datumReader);
       for (GenericRecord record : fileStream) {
         List<Schema.Field> fields = schema.getFields();
         List<Long> values = new ArrayList<>();
@@ -730,8 +750,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     inputManager.flush();
   }
 
-  private void putValues(Table inputTable, int index, String lastname, String firstname, String profession,
-                         int age) {
+  private void putValues(Table inputTable, int index, String lastname, String firstname, String profession, int age) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("Lastname", lastname);
     put.add("Firstname", firstname);
@@ -740,8 +759,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     inputTable.put(put);
   }
 
-  private void putValues(Table purchaseTable, int index, long timestamp,
-                         String user, String item, long price) {
+  private void putValues(Table purchaseTable, int index, long timestamp, String user, String item, long price) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("ts", timestamp);
     put.add("user", user);
@@ -782,19 +800,14 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private ETLStage getSink(String name, Schema schema) {
     return new ETLStage(name, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-            ImmutableMap.<String, String>builder()
-                    .put(Properties.BatchReadableWritable.NAME, name)
-                    .put("schema", schema.toString())
-                    .build(), null));
+      ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, name)
+        .put("schema", schema.toString()).build(), null));
   }
 
   private ETLStage getGroupStage(String name, String field, String condition) {
     return new ETLStage(name,
-            new ETLPlugin("GroupByAggregate",
-                    BatchAggregator.PLUGIN_TYPE,
-                    ImmutableMap.of(
-                            "groupByFields", field,
-                            "aggregates", condition), null));
+      new ETLPlugin("GroupByAggregate", BatchAggregator.PLUGIN_TYPE,  ImmutableMap.of("groupByFields", field,
+        "aggregates", condition), null));
   }
 
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)

@@ -30,13 +30,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 @Category({
   // this is a flaky test when run against SDK, because of CDAP-7227
@@ -52,7 +49,7 @@ public class ReadlessIncrementTest extends AudiTestBase {
 
   @Test
   public void testReadlessIncrementsInMapReduce()
-    throws IOException, InterruptedException, TimeoutException, ExecutionException {
+    throws Exception {
 
     ApplicationManager appManager = deployApplication(ReadlessApp.class);
 
