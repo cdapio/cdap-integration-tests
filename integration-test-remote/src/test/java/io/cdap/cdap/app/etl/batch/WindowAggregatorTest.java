@@ -119,10 +119,10 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
                                             Properties.Table.PROPERTY_SCHEMA, USER_SCHEMA.toString()), null));
 
     ETLStage userSinkStage = new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-                                                                   ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
-                                                                     .put("schema", USER_SCHEMA.toString()).build(), null));
+      ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
+       .put("schema", USER_SCHEMA.toString()).build(), null));
     ETLStage userGroupStage = new ETLStage("WindowAggregate", new ETLPlugin("WindowAggregation",
-                                                                            SparkCompute.PLUGIN_TYPE, CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
+      SparkCompute.PLUGIN_TYPE, CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *").addStage(userSourceStage)
       .addStage(userSinkStage).addStage(userGroupStage)
@@ -239,6 +239,5 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
     put.add("age", age);
     inputTable.put(put);
   }
-
-
 }
+

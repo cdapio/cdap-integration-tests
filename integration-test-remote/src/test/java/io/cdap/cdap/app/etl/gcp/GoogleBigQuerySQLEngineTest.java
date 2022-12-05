@@ -115,12 +115,12 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
           .put("uniqueFields", "profession")
           .put("filterOperation", "age:Min")
           .build();
-
+  
   private static final Map<String, String> CONFIG_MAP_WINDOW = new ImmutableMap.Builder<String, String>()
           .put("partitionFields", "profession")
           .put("aggregates", "age:first(age,1,true)")
           .build();
-
+    
   public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
           "purchase",
           Schema.Field.of("ts", Schema.of(Schema.Type.LONG)),
@@ -150,12 +150,12 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Tasks.waitFor(true, () -> {
       try {
         artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", "1.0.2"),
-                                          Transform.PLUGIN_TYPE);
+          Transform.PLUGIN_TYPE);
         final ArtifactId dataPipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
         return GoogleBigQueryUtils
           .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSQLEngine.PLUGIN_TYPE, BQ_SQLENGINE_PLUGIN_NAME);
       } catch (ArtifactNotFoundException e) {
-        installPluginFromHub("plugin-window-aggregation", "window-aggregator", "1.0.2");
+          installPluginFromHub("plugin-window-aggregation", "window-aggregator", "1.0.2");
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
@@ -196,7 +196,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
      testSQLEngineDeduplicate(Engine.SPARK, false);
      testSQLEngineDeduplicate(Engine.SPARK, true);
   }
-
+    
   @Category({
     RequiresSpark.class
   })
@@ -205,23 +205,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     testSQLEngineWindow(Engine.SPARK, false);
     testSQLEngineWindow(Engine.SPARK, true);
   }
-
-  private Map<String, String> getProps(boolean useConnection, String includedStages) {
-    String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
-    Map<String, String> props = new HashMap<>();
-    if (useConnection) {
-      props.put(ConfigUtil.NAME_CONNECTION, connectionId);
-      props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
-    }
-    props.put("dataset", bigQueryDataset);
-    props.put("retainTables", "true");
-    if (includedStages != null) {
-      props.put("includedStages", includedStages);
-    }
-    return new ImmutableMap.Builder<String, String>().putAll(props).build();
-  }
-
-  private void testSQLEngineWindow(Engine engine, boolean useConnection) throws Exception {
+    
+   private void testSQLEngineWindow(Engine engine, boolean useConnection) throws Exception {
     ETLStage userSourceStage =
       new ETLStage("users", new ETLPlugin("Table",
                                           BatchSource.PLUGIN_TYPE,
@@ -326,6 +311,21 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     // verfiy output
     Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA));
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
+  }  
+    
+  private Map<String, String> getProps(boolean useConnection, String includedStages) {
+    String connectionId = String.format("${conn(%s)}", CONNECTION_NAME);
+    Map<String, String> props = new HashMap<>();
+    if (useConnection) {
+      props.put(ConfigUtil.NAME_CONNECTION, connectionId);
+      props.put(ConfigUtil.NAME_USE_CONNECTION, "true");
+    }
+    props.put("dataset", bigQueryDataset);
+    props.put("retainTables", "true");
+    if (includedStages != null) {
+      props.put("includedStages", includedStages);
+    }
+    return new ImmutableMap.Builder<String, String>().putAll(props).build();
   }
 
   private void testSQLEngineDeduplicate(Engine engine, boolean useConnection) throws Exception {
@@ -348,8 +348,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-                                                                         BatchAggregator.PLUGIN_TYPE,
-                                                                         CONFIG_MAP_DEDUPE, null));
+            BatchAggregator.PLUGIN_TYPE,
+            CONFIG_MAP_DEDUPE, null));
 
     ETLTransformationPushdown transformationPushdown =
             new ETLTransformationPushdown(
@@ -477,13 +477,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     ETLStage innerJoinStage =
       new ETLStage("innerJoin",
-        new ETLPlugin("Joiner",
-           BatchJoiner.PLUGIN_TYPE,
-           ImmutableMap.of(
-             "joinKeys", "film.film_id=filmActor.film_id&film.film_name=filmActor.film_name",
-             "selectedFields", selectedFields1,
-             "requiredInputs", "film,filmActor"),
-           null));
+                   new ETLPlugin("Joiner",
+                                 BatchJoiner.PLUGIN_TYPE,
+                                 ImmutableMap.of(
+                                   "joinKeys", "film.film_id=filmActor.film_id&film.film_name=filmActor.film_name",
+                                   "selectedFields", selectedFields1,
+                                   "requiredInputs", "film,filmActor"),
+                                 null));
 
     String selectedFields2 = "innerJoin.film_id, innerJoin.film_name, innerJoin.renamed_actor, " +
       "filmCategory.category_name as renamed_category";
@@ -691,7 +691,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
     Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-      response, new TypeToken<Map<String, byte[]>>() {}.getType()).getResponseObject();
+            response, new TypeToken<Map<String, byte[]>>() {
+            }.getType()).getResponseObject();
 
     return parseOutputGroupBy(map, schema);
   }
@@ -703,7 +704,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     for (Map.Entry<String, byte[]> entry : contents.entrySet()) {
       DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(avroSchema);
       DataFileStream<GenericRecord> fileStream = new DataFileStream<>(
-        new ByteArrayInputStream(entry.getValue()), datumReader);
+              new ByteArrayInputStream(entry.getValue()), datumReader);
       for (GenericRecord record : fileStream) {
         List<Schema.Field> fields = schema.getFields();
         List<Long> values = new ArrayList<>();
@@ -750,7 +751,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     inputManager.flush();
   }
 
-  private void putValues(Table inputTable, int index, String lastname, String firstname, String profession, int age) {
+  private void putValues(Table inputTable, int index, String lastname, String firstname, String profession,
+                         int age) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("Lastname", lastname);
     put.add("Firstname", firstname);
@@ -801,10 +803,10 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private ETLStage getSink(String name, Schema schema) {
     return new ETLStage(name, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-      ImmutableMap.<String, String>builder()
-              .put(Properties.BatchReadableWritable.NAME, name)
-              .put("schema", schema.toString())
-              .build(), null));
+            ImmutableMap.<String, String>builder()
+                    .put(Properties.BatchReadableWritable.NAME, name)
+                    .put("schema", schema.toString())
+                    .build(), null));
   }
 
   private ETLStage getGroupStage(String name, String field, String condition) {
@@ -812,8 +814,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             new ETLPlugin("GroupByAggregate",
                     BatchAggregator.PLUGIN_TYPE,
                     ImmutableMap.of(
-                         "groupByFields", field,
-                         "aggregates", condition), null));
+                            "groupByFields", field,
+                            "aggregates", condition), null));
   }
 
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)
