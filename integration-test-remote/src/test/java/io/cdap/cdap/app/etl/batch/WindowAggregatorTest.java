@@ -91,7 +91,7 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
   protected void innerSetup() throws Exception {
     try {
       artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", "1.0.2"),
-        Transform.PLUGIN_TYPE);
+                                        Transform.PLUGIN_TYPE);
     } catch (ArtifactNotFoundException e) {
       installPluginFromHub("plugin-window-aggregation", "window-aggregator", "1.0.2");
 
@@ -113,16 +113,16 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
   private void testWindow(Engine spark) throws Exception {
     ETLStage userSourceStage =
       new ETLStage("users", new ETLPlugin("Table",
-        BatchSource.PLUGIN_TYPE,
-        ImmutableMap.of(
-          Properties.BatchReadableWritable.NAME, USER_SOURCE,
-          Properties.Table.PROPERTY_SCHEMA, USER_SCHEMA.toString()), null));
+                                          BatchSource.PLUGIN_TYPE,
+                                          ImmutableMap.of(
+                                            Properties.BatchReadableWritable.NAME, USER_SOURCE,
+                                            Properties.Table.PROPERTY_SCHEMA, USER_SCHEMA.toString()), null));
 
     ETLStage userSinkStage = new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-       ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
-         .put("schema", USER_SCHEMA.toString()).build(), null));
+                                                                   ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
+                                                                     .put("schema", USER_SCHEMA.toString()).build(), null));
     ETLStage userGroupStage = new ETLStage("WindowAggregate", new ETLPlugin("WindowAggregation",
-      SparkCompute.PLUGIN_TYPE,  CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
+                                                                            SparkCompute.PLUGIN_TYPE, CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *").addStage(userSourceStage)
       .addStage(userSinkStage).addStage(userGroupStage)
@@ -190,7 +190,7 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)
     throws IOException {
     URL pfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
-       String.format("read/%s", sink));
+                         String.format("read/%s", sink));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, pfsURL, getClientConfig().getAccessToken());
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
     Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
@@ -231,7 +231,7 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
   }
 
   private void putValues(Table inputTable, int index, String lastname, String firstname, String profession,
-    int age) {
+                         int age) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("Lastname", lastname);
     put.add("Firstname", firstname);

@@ -117,9 +117,9 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
           .build();
 
   private static final Map<String, String> CONFIG_MAP_WINDOW = new ImmutableMap.Builder<String, String>()
-    .put("partitionFields", "profession")
-    .put("aggregates", "age:first(age,1,true)")
-    .build();
+          .put("partitionFields", "profession")
+          .put("aggregates", "age:first(age,1,true)")
+          .build();
 
   public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
           "purchase",
@@ -690,8 +690,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
 
-    Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody( response, new
-      TypeToken<Map<String, byte[]>>() {}.getType()).getResponseObject();
+    Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
+      response, new TypeToken<Map<String, byte[]>>() {}.getType()).getResponseObject();
 
     return parseOutputGroupBy(map, schema);
   }
@@ -759,7 +759,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     inputTable.put(put);
   }
 
-  private void putValues(Table purchaseTable, int index, long timestamp, String user, String item, long price) {
+  private void putValues(Table purchaseTable, int index, long timestamp,
+                         String user, String item, long price) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("ts", timestamp);
     put.add("user", user);
@@ -800,14 +801,19 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
   private ETLStage getSink(String name, Schema schema) {
     return new ETLStage(name, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-      ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, name)
-        .put("schema", schema.toString()).build(), null));
+      ImmutableMap.<String, String>builder()
+              .put(Properties.BatchReadableWritable.NAME, name)
+              .put("schema", schema.toString())
+              .build(), null));
   }
 
   private ETLStage getGroupStage(String name, String field, String condition) {
     return new ETLStage(name,
-      new ETLPlugin("GroupByAggregate", BatchAggregator.PLUGIN_TYPE,  ImmutableMap.of("groupByFields", field,
-        "aggregates", condition), null));
+            new ETLPlugin("GroupByAggregate",
+                    BatchAggregator.PLUGIN_TYPE,
+                    ImmutableMap.of(
+                         "groupByFields", field,
+                         "aggregates", condition), null));
   }
 
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016-2022 Cask Data, Inc.
+ * Copyright © 2016 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -66,19 +66,24 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Tests DedupAggregator
+ *   Tests DedupAggregator
  */
 public class DedupAggregatorTest extends ETLTestBase {
   public static final String SMARTWORKFLOW_NAME = SmartWorkflow.NAME;
   public static final String USER_SOURCE = "userSource";
   public static final String USER_SINK = "userSink";
-  public static final Schema USER_SCHEMA = Schema.recordOf("user",
+
+  public static final Schema USER_SCHEMA = Schema.recordOf(
+    "user",
     Schema.Field.of("Lastname", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("Firstname", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("profession", Schema.of(Schema.Type.STRING)),
     Schema.Field.of("age", Schema.of(Schema.Type.INT)));
-  private static final Map<String, String> CONFIG_MAP_DEDUPE = new ImmutableMap.Builder<String, String>()
-    .put("uniqueFields", "profession").put("filterOperation", "age:Min").build();
+
+  private static final Map<String, String> CONFIG_MAP = new ImmutableMap.Builder<String, String>()
+    .put("uniqueFields", "profession")
+    .put("filterOperation", "age:Min")
+    .build();
 
   @Category({
     RequiresSpark.class
@@ -88,25 +93,39 @@ public class DedupAggregatorTest extends ETLTestBase {
     testDeduplicate(Engine.SPARK);
   }
 
-  private void testDeduplicate(Engine spark) throws Exception {
-    ETLStage userSourceStage = new ETLStage("users", new ETLPlugin("Table", BatchSource.PLUGIN_TYPE,
-      ImmutableMap.of(Properties.BatchReadableWritable.NAME, USER_SOURCE,
-        Properties.Table.PROPERTY_SCHEMA, USER_SCHEMA.toString()), null));
+  private void testDeduplicate(Engine spark) throws  Exception {
+    ETLStage userSourceStage =
+      new ETLStage("users", new ETLPlugin("Table",
+                                          BatchSource.PLUGIN_TYPE,
+                                          ImmutableMap.of(
+                                            Properties.BatchReadableWritable.NAME, USER_SOURCE,
+                                            Properties.Table.PROPERTY_SCHEMA, USER_SCHEMA.toString()), null));
 
-    ETLStage userSinkStage = new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
-      ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
-        .put("schema", USER_SCHEMA.toString()).build(), null));
+    ETLStage userSinkStage =  new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
+                                                                    ImmutableMap.<String, String>builder()
+                                                                      .put(Properties.BatchReadableWritable.NAME, USER_SINK)
+                                                                      .put("schema", USER_SCHEMA.toString())
+                                                                      .build(), null));
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("Deduplicate",
-      BatchAggregator.PLUGIN_TYPE, CONFIG_MAP_DEDUPE, null));
+                                                                         BatchAggregator.PLUGIN_TYPE,
+                                                                         CONFIG_MAP, null));
 
-    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *").addStage(userSourceStage)
-      .addStage(userSinkStage).addStage(userGroupStage).addConnection(userGroupStage.getName(), userSinkStage.getName())
+
+    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
+      .addStage(userSourceStage)
+      .addStage(userSinkStage)
+      .addStage(userGroupStage)
       .addConnection(userSourceStage.getName(), userGroupStage.getName())
-      .setDriverResources(new Resources(2048)).setResources(new Resources(2048)).build();
+      .addConnection(userGroupStage.getName(), userSinkStage.getName())
+      .setDriverResources(new Resources(2048))
+      .setResources(new Resources(2048))
+      .build();
+
+
+    ingestInputData(USER_SOURCE);
 
     AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ingestInputData(USER_SOURCE);
     ApplicationId appId = TEST_NAMESPACE.app("deduplicate-test");
     ApplicationManager appManager = deployApplication(appId, request);
 
@@ -115,7 +134,8 @@ public class DedupAggregatorTest extends ETLTestBase {
 
     // Deploy an application with a service to get partitionedFileset data for verification
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager(SnapshotFilesetService.class.getSimpleName());
+    ServiceManager serviceManager = applicationManager.getServiceManager
+      (SnapshotFilesetService.class.getSimpleName());
     startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
 
     org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser().parse(USER_SCHEMA.toString());
@@ -152,12 +172,14 @@ public class DedupAggregatorTest extends ETLTestBase {
   private Set<GenericRecord> readOutput(ServiceManager serviceManager, String sink, Schema schema)
     throws IOException {
     URL pfsURL = new URL(serviceManager.getServiceURL(PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS),
-      String.format("read/%s", sink));
+                         String.format("read/%s", sink));
     HttpResponse response = getRestClient().execute(HttpMethod.GET, pfsURL, getClientConfig().getAccessToken());
+
     Assert.assertEquals(HttpURLConnection.HTTP_OK, response.getResponseCode());
+
     Map<String, byte[]> map = ObjectResponse.<Map<String, byte[]>>fromJsonBody(
-      response, new TypeToken<Map<String, byte[]>>() {
-      }.getType()).getResponseObject();
+      response, new TypeToken<Map<String, byte[]>>() { }.getType()).getResponseObject();
+
     return parseOutput(map, schema);
   }
 
@@ -184,16 +206,16 @@ public class DedupAggregatorTest extends ETLTestBase {
     // 5: gamal , ali , engineer, 28
     DataSetManager<Table> inputManager = getTableDataset(inputDatasetName);
     Table inputTable = inputManager.get();
-    putValues(inputTable, 1, "Shelton", "Alex", "professor", 45);
-    putValues(inputTable, 2, "Seitz", "Bob", "professor", 50);
-    putValues(inputTable, 3, "Schuster", "Chris", "accountant", 23);
-    putValues(inputTable, 4, "Bolt", "Henry", "engineer", 30);
-    putValues(inputTable, 5, "Gamal", "Ali", "engineer", 28);
+    putValues(inputTable, 1, "Shelton", "Alex", "professor",  45);
+    putValues(inputTable, 2, "Seitz", "Bob", "professor",  50);
+    putValues(inputTable, 3, "Schuster", "Chris", "accountant",  23);
+    putValues(inputTable, 4, "Bolt", "Henry", "engineer",  30);
+    putValues(inputTable, 5, "Gamal", "Ali", "engineer",  28);
     inputManager.flush();
   }
 
   private void putValues(Table inputTable, int index, String lastname, String firstname, String profession,
-    int age) {
+                         int age) {
     Put put = new Put(Bytes.toBytes(index));
     put.add("Lastname", lastname);
     put.add("Firstname", firstname);
