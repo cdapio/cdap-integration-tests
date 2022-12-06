@@ -104,6 +104,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   public static final String ITEM_SINK = "itemSink";
   public static final String USER_SINK = "userSink";
   public static final String USER_SOURCE = "userSource";
+  private static final String WINDOW_AGGREGATOR_VERSION = "1.0.2";
   public static final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
   public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS");
 
@@ -149,13 +150,15 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   protected void innerSetup() throws Exception {
     Tasks.waitFor(true, () -> {
       try {
-        artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", "1.0.2"),
+        artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation",
+                                                                  WINDOW_AGGREGATOR_VERSION),
           Transform.PLUGIN_TYPE);
         final ArtifactId dataPipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
         return GoogleBigQueryUtils
           .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSQLEngine.PLUGIN_TYPE, BQ_SQLENGINE_PLUGIN_NAME);
       } catch (ArtifactNotFoundException e) {
-          installPluginFromHub("plugin-window-aggregation", "window-aggregator", "1.0.2");
+          installPluginFromHub("plugin-window-aggregation", "window-aggregator",
+                               WINDOW_AGGREGATOR_VERSION);
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
@@ -225,7 +228,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
                                                                        "google-cloud",
                                                                        "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
     ArtifactSelectorConfig WINDOW_ARTIFACT =
-      new ArtifactSelectorConfig("USER", "window-aggregator", "1.0.2");
+      new ArtifactSelectorConfig("USER", "window-aggregator", WINDOW_AGGREGATOR_VERSION);
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("WindowAggregation",
                                                                          SparkCompute.PLUGIN_TYPE,

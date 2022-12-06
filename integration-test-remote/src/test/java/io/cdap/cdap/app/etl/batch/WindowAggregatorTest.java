@@ -72,6 +72,7 @@ import java.util.concurrent.TimeUnit;
  * Tests WindowAggregator
  */
 public class WindowAggregatorTest extends DataprocETLTestBase {
+  private static final String VERSION = "1.0.2";
   public static final String USER_SOURCE = "userSource";
   public static final String USER_SINK = "userSink";
   public static final Schema USER_SCHEMA = Schema.recordOf(
@@ -85,15 +86,15 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
     .put("partitionFields", "profession").put("aggregates", "age:first(age,1,true)").build();
 
   private static final ArtifactSelectorConfig WINDOW_ARTIFACT =
-    new ArtifactSelectorConfig("USER", "window-aggregator", "1.0.2");
+    new ArtifactSelectorConfig("USER", "window-aggregator", VERSION);
 
   @Override
   protected void innerSetup() throws Exception {
     try {
-      artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", "1.0.2"),
+      artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", VERSION),
                                         Transform.PLUGIN_TYPE);
     } catch (ArtifactNotFoundException e) {
-      installPluginFromHub("plugin-window-aggregation", "window-aggregator", "1.0.2");
+      installPluginFromHub("plugin-window-aggregation", "window-aggregator", VERSION);
 
     }
   }
@@ -121,13 +122,13 @@ public class WindowAggregatorTest extends DataprocETLTestBase {
     ETLStage userSinkStage = new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
       ImmutableMap.<String, String>builder().put(Properties.BatchReadableWritable.NAME, USER_SINK)
        .put("schema", USER_SCHEMA.toString()).build(), null));
-    ETLStage userGroupStage = new ETLStage("WindowAggregate", new ETLPlugin("WindowAggregation",
+    ETLStage userGroupWindowStage = new ETLStage("WindowAggregate", new ETLPlugin("WindowAggregation",
       SparkCompute.PLUGIN_TYPE, CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder("* * * * *").addStage(userSourceStage)
-      .addStage(userSinkStage).addStage(userGroupStage)
-      .addConnection(userSourceStage.getName(), userGroupStage.getName())
-      .addConnection(userGroupStage.getName(), userSinkStage.getName())
+      .addStage(userSinkStage).addStage(userGroupWindowStage)
+      .addConnection(userSourceStage.getName(), userGroupWindowStage.getName())
+      .addConnection(userGroupWindowStage.getName(), userSinkStage.getName())
       .setDriverResources(new Resources(2048))
       .setResources(new Resources(2048))
       .build();
