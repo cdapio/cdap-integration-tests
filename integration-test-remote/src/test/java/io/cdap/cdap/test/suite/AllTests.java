@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015-2017 Cask Data, Inc.
+ * Copyright © 2015-2022 Cask Data, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -29,6 +29,7 @@ import io.cdap.cdap.app.etl.batch.NormalizeTest;
 import io.cdap.cdap.app.etl.batch.RowDenormalizerTest;
 import io.cdap.cdap.app.etl.batch.TPFSParquetSinkSourceTest;
 import io.cdap.cdap.app.etl.batch.ValueMapperTest;
+import io.cdap.cdap.app.etl.batch.WindowAggregatorTest;
 import io.cdap.cdap.app.etl.batch.XMLReaderTest;
 import io.cdap.cdap.app.etl.realtime.DataStreamsTest;
 import io.cdap.cdap.app.etl.wrangler.WranglerServiceTest;
@@ -89,6 +90,7 @@ import org.junit.runners.Suite;
   TPFSAvroSinkSourceTest.class,
   TPFSParquetSinkSourceTest.class,
   ValueMapperTest.class,
+  WindowAggregatorTest.class,
   WorkflowTest.class,
   WranglerServiceTest.class,
   WranglerTest.class,
