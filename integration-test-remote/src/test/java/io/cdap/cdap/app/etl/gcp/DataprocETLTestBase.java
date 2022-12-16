@@ -146,6 +146,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Gson gson = new Gson();
     JsonArray properties = new JsonArray();
     properties.add(ofProperty("accountKey", getServiceAccountCredentials()));
+    properties.add(ofProperty("serviceAccount", getServiceAccountCredentials()));
     properties.add(ofProperty("network", network));
     properties.add(ofProperty("region", "us-central1"));
     properties.add(ofProperty("projectId", getProjectId()));
