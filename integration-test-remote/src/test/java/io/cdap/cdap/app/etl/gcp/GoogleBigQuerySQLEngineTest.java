@@ -227,12 +227,10 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(null,
                                                                        "google-cloud",
                                                                        "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)");
-    ArtifactSelectorConfig WINDOW_ARTIFACT =
-      new ArtifactSelectorConfig("USER", "window-aggregator", WINDOW_AGGREGATOR_VERSION);
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("WindowAggregation",
-                                                                         SparkCompute.PLUGIN_TYPE,
-                                                                         CONFIG_MAP_WINDOW, WINDOW_ARTIFACT));
+      SparkCompute.PLUGIN_TYPE, CONFIG_MAP_WINDOW,
+        new ArtifactSelectorConfig("USER", "window-aggregator", WINDOW_AGGREGATOR_VERSION)));
 
     ETLTransformationPushdown transformationPushdown =
       new ETLTransformationPushdown(
