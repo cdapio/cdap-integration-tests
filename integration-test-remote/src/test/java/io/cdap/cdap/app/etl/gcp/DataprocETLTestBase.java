@@ -60,6 +60,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
 
   private static String projectId;
   private static String serviceAccountCredentials;
+  private static String serviceAccountEmail;
   private static String network;
   private static int workerCPUs;
   private static int workerMemMB;
@@ -83,6 +84,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
 
     JsonObject serviceAccountJson = new JsonParser().parse(serviceAccountCredentials).getAsJsonObject();
     projectId = serviceAccountJson.get("project_id").getAsString();
+    serviceAccountEmail = serviceAccountJson.get("client_email").getAsString();
 
     network = System.getProperty("google.dataproc.network", "default");
     workerCPUs = Integer.parseInt(System.getProperty("google.dataproc.worker.cpu", "4"));
@@ -138,6 +140,10 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     return projectId;
   }
 
+  protected static String getServiceAccountEmail() {
+    return serviceAccountEmail;
+  }
+
   protected abstract void innerSetup() throws Exception;
 
   protected abstract void innerTearDown() throws Exception;
@@ -146,7 +152,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Gson gson = new Gson();
     JsonArray properties = new JsonArray();
     properties.add(ofProperty("accountKey", getServiceAccountCredentials()));
-    properties.add(ofProperty("serviceAccount", getServiceAccountCredentials()));
+    properties.add(ofProperty("serviceAccount", getServiceAccountEmail()));
     properties.add(ofProperty("network", network));
     properties.add(ofProperty("region", "us-central1"));
     properties.add(ofProperty("projectId", getProjectId()));
