@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "prime-hologram-349119",
+  "private_key_id": "ba26baeafb5e5e978ab0c32c1522e7d681251daf",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDEsVECVS7hlme8\nhMuSwIPgG87whGUdeVv5JUB2p5bVUnosA1DN+mwFU0XUod/Op+k/xz1scJqeB4z5\n5QM6kN/7u5BFGldg2QrywpYHlXAm7IZ/2jDVibY6J2zud4S8f6WSNMtwmoWXEx1U\nqwwbCepE5pzNDJ3BtZLpq9IqGaVqPAJoovSIQkxqBEFXgXyMz5jc5yuyKNdxP6YG\nSHfGIHg1vetyMY6oRqLgDJcIAM8G3/olYe4vGENTj9vox36xM7HQNNhOyQ7vAq4K\n7Nf8ssnmobx+/WKKYs8iUB6aIR8oKrhXQnrWqu27xN6pnI8nzDfSPZz0aDyuxChe\n6iQnUYeVAgMBAAECggEAI7pz1SElDWw1NrzGf8dBjTVv7yeVeHehec3G+max0tkT\nASivBmNdONBqCFhJH7BHgcLOyQJhS6BifsgXQI2tafwlli/VPG3ge71V5FXEVAW1\n3saDBV7o/4JG2sBSF612JWs6ox8mcg1SUB1r6wNvjwl25RZMF7JEV/bSi7wx3Gxt\nP6VW0SjeAV8Qjyu53/LDRAu0MoOkqv6v2xvTfBfsGAFrhzuuMkNQ30EfN5qXvGwY\nM1tAg+g5mVkLXwsxOBgZQQzyoXkWPATaGpYhAVF/gyYJj7rWsNZ+vFlU1VP6a+qO\nDTdXS9zoqL3jk2z9rUjFZ/sBepWAJrZN+/ZYRnbmAQKBgQD2g4LcQEA8zrToiMxL\n2TVIyd3xeNdrI9hhIdeU5tBJINqhMfCLC2ZjN1cJlZPPAHStJn7ykHnP889s2f6O\nVf26iZX8Xq4Bwf8OtjN0w0+avqYkErMa+3Z4HNLnItKRGrufYMHqKD+/8agRg1g/\nKswyKFRyfNsaiB6Ul41JuV43AQKBgQDMQwBSojniDhltCcC/d00g7g9MFuSQQT7o\njnkREM7Jl8DGTpfMA6KEZYTCbdw0AwZrrv+hLdrmTZlNPXWBsujzbyFw7vCTX0ot\nCTeKp1x6e7LaHQmeBiPXZU/GF03fRDIUSmS6M7syUB3ZJyhof1m+1VSJ4WLRe60q\nA5b0Bh+ElQKBgQDXlk4El0BWraQzVSfuEYjzHnA2tSsYLSIYWIN0WqO/wLbTkJxA\nzfh+PrCk1iaNO2XO5ELTmhyeDCjUlpV0H6ol0BvWuWrOaL3KPPglXoYo3CDqnVv7\n9f02sGaV87NZaZq6mOEeCpMuJ4aHwmmT3Lb2CqVH9v+bZX3xD9Vlq3LFAQKBgC9k\npGCH73I530BjcOt73NN1KOt4rFOkL9p5pDGHetNfeIUKm0Hk3gJmI6WRI/SVdxnp\nIrrdDts8ygMX7XnIbzB8an/vkLZA9873QoHTTyvEI71j22Vk+0/w28+UfKb/Bbeb\ngz+I3ThRSnumEEQeuE4E5XaQawM79PO4nX/FI+75AoGAeIullIwxkwejWx4H2+pX\nnypRW3xYt7RueSMtOqpVu79P2Rq1WkHcuSehy//0+jdqzHK7X+ywx03iaBS+mU5p\nsuObs5flhglWaXPL7KJpmXS5C3jwbUED22wD9/v1y5PEpQ+GXXZ9cmsCe4rTsi8/\nXuh9inNy/PalbrxYm+oE/3I=\n-----END PRIVATE KEY-----\n",
+  "client_email": "cdap-service-account@prime-hologram-349119.iam.gserviceaccount.com",
+  "client_id": "104040886189077096947",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/cdap-service-account%40prime-hologram-349119.iam.gserviceaccount.com"
+}
