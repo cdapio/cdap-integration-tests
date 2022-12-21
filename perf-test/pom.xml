@@ -27,7 +27,7 @@
 
   <artifactId>perf-test</artifactId>
   <properties>
-    <sdk.hadoop.version>2.10.2</sdk.hadoop.version>
+    <sdk.hadoop.version>3.2.4</sdk.hadoop.version>
   </properties>
 
   <dependencies>
