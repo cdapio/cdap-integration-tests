@@ -27,7 +27,7 @@
 
   <artifactId>perf-test</artifactId>
   <properties>
-    <sdk.hadoop.version>2.8.0</sdk.hadoop.version>
+    <sdk.hadoop.version>2.10.2</sdk.hadoop.version>
   </properties>
 
   <dependencies>
@@ -174,6 +174,12 @@
       <version>${cdap.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
