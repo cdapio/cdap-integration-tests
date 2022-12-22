@@ -323,6 +323,7 @@
                 <exclude>**/*.csv</exclude>
                 <exclude>**/*.conf</exclude>
                 <exclude>**/*.iml</exclude>
+                <exclude>**/*.md</exclude>
               </excludes>
             </configuration>
           </execution>
