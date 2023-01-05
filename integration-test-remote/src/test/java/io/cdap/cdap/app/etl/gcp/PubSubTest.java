@@ -813,7 +813,7 @@ public class PubSubTest extends DataprocETLTestBase {
     final Gson gson = new Gson();
 
     void assertRetrievedMessagesContain(long timeout, TimeUnit unit, Object... expectedMessages) throws Exception {
-      Tasks.waitFor(true, () -> messages.size() == expectedMessages.length, timeout, unit);
+      Tasks.waitFor(expectedMessages.length, () -> messages.size(), timeout, unit);
       Assert.assertEquals("Retrieved messages is not same as expected",
                           new HashSet<>(Arrays.asList(expectedMessages)),
                           new HashSet<>(messages));
