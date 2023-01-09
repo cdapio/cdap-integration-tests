@@ -27,7 +27,7 @@ import org.junit.runners.Suite;
 @Suite.SuiteClasses({
   // TODO: Currently impersonation integration test runs on CDH5.5 clusters only. Once we support running on different
   // distros, this should be AllTests.class
-  CDH55Suite.class
+  CDH55Suite.class,
 })
 public class ImpersonationSuite {
 }
