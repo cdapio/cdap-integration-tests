@@ -77,18 +77,11 @@ public class FileGeneratorApp extends AbstractApplication<FileGeneratorApp.FileG
     if (config.resultPerms != null) {
       builder.setFilePermissions(config.resultPerms);
     }
-    if (config.resultDatabase != null) {
-      builder.setExploreDatabaseName(config.resultDatabase);
-    }
 
     createDataset(RAW, PartitionedFileSet.class, builder
       // Properties for file set
       .setInputFormat(TextInputFormat.class)
       .setOutputFormat(TextOutputFormat.class)
-      // enable explore
-      .setEnableExploreOnCreate(true)
-      .setExploreFormat("text")
-      .setExploreSchema("record STRING")
       .build());
     addWorker(new FileGeneratorWorker());
   }

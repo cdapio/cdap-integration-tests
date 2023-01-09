@@ -228,8 +228,6 @@ public class ProgramMetadataTest extends AudiTestBase {
     );
     result = searchMetadata(TEST_NAMESPACE, "batch", MetadataEntity.DATASET);
     Assert.assertEquals(expectedKvTables, result);
-    result = searchMetadata(TEST_NAMESPACE, "explore", MetadataEntity.DATASET);
-    Assert.assertEquals(expectedKvTables, result);
     result = searchMetadata(TEST_NAMESPACE, KeyValueTable.class.getName(), null);
     Assert.assertEquals(expectedKvTables, result);
     result = searchMetadata(TEST_NAMESPACE, "type:*", null);

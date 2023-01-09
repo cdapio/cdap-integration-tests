@@ -96,7 +96,7 @@ public class ProgramMetadataApp extends AbstractApplication {
       Assert.assertEquals(INPUT_DATASET_NAME,
                           inputDsMetadata.get(MetadataScope.SYSTEM).getProperties().get("entity-name"));
       Assert.assertTrue(inputDsMetadata.get(MetadataScope.SYSTEM).getTags()
-                          .containsAll(Arrays.asList("explore", "batch")));
+                          .contains("batch"));
       // verify user metadata
       Assert.assertFalse(inputDsMetadata.get(MetadataScope.USER).getProperties().isEmpty());
       Assert.assertFalse(inputDsMetadata.get(MetadataScope.USER).getTags().isEmpty());

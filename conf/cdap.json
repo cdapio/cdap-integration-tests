@@ -2,7 +2,6 @@
   "config": {
     "cdap": {
       "cdap_site": {
-        "explore.enabled": "true",
         "cdap.ugi.cache.expiration.ms": "60000",
         "cdap.http.client.read.timeout.ms":"120000",
         "dataset.executor.container.memory.mb": "1024",
