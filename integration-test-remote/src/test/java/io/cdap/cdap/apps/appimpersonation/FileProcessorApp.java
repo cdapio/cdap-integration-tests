@@ -68,10 +68,6 @@ public class FileProcessorApp extends AbstractApplication {
       // Properties for file set
       .setInputFormat(TextInputFormat.class)
       .setOutputFormat(TextOutputFormat.class)
-      // enable explore
-      .setEnableExploreOnCreate(true)
-      .setExploreFormat("text")
-      .setExploreSchema("record STRING")
       .build());
     addWorkflow(new FileProcessWorkflow());
     addMapReduce(new FileProcessMapReduce());

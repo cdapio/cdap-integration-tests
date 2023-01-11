@@ -2,7 +2,6 @@
   "config": {
     "cdap": {
       "cdap_site": {
-        "explore.executor.container.memory.mb": "2048",
         "metrics.processor.memory.mb": "512"
       }
     },

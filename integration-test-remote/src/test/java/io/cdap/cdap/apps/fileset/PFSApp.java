@@ -23,7 +23,6 @@ import io.cdap.cdap.api.dataset.lib.PartitionOutput;
 import io.cdap.cdap.api.dataset.lib.PartitionedFileSet;
 import io.cdap.cdap.api.dataset.lib.PartitionedFileSetProperties;
 import io.cdap.cdap.api.dataset.lib.Partitioning;
-import io.cdap.cdap.api.dataset.lib.app.partitioned.PartitionExploreCorrector;
 import io.cdap.cdap.api.service.AbstractService;
 import io.cdap.cdap.api.service.http.AbstractHttpServiceHandler;
 import io.cdap.cdap.api.service.http.HttpServiceRequest;
@@ -53,15 +52,11 @@ public class PFSApp extends AbstractApplication {
         addHandler(new PFSHandler());
       }
     });
-    addWorker(new PartitionExploreCorrector.PartitionWorker());
     createDataset("pfs", PartitionedFileSet.class.getName(),
                   PartitionedFileSetProperties.builder()
                     .setPartitioning(Partitioning.builder().addStringField("key").build())
                     .setInputFormat(TextInputFormat.class)
                     .setOutputFormat(TextOutputFormat.class)
-                    .setEnableExploreOnCreate(true)
-                    .setExploreFormat("csv")
-                    .setExploreSchema("a string, b string")
                     .setDescription("a pfs with text files")
                     .build());
   }

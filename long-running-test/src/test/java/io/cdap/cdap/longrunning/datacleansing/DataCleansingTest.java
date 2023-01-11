@@ -18,14 +18,10 @@ package io.cdap.cdap.longrunning.datacleansing;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.Gson;
 import io.cdap.cdap.api.common.Bytes;
 import io.cdap.cdap.api.dataset.lib.KeyValueTable;
-import io.cdap.cdap.client.QueryClient;
-import io.cdap.cdap.explore.client.ExploreExecutionResult;
 import io.cdap.cdap.proto.ProgramRunStatus;
-import io.cdap.cdap.proto.QueryResult;
 import io.cdap.cdap.proto.RunRecord;
 import io.cdap.cdap.proto.id.DatasetId;
 import io.cdap.cdap.test.ApplicationManager;
@@ -94,9 +90,6 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     LOG.info("verifying runs for data cleaning");
     // For now, check total number of clean records and invalid records
     Assert.assertEquals(state.getEndInvalidRecordPid(), getTotalRecords(true) + getTotalRecords(false));
-
-    // verify segregated records
-    Assert.assertTrue(verifyRecordsWithExplore(state));
     return state;
   }
 
@@ -159,39 +152,6 @@ public class DataCleansingTest extends LongRunningTestBase<DataCleansingTestStat
     KeyValueTable totalRecordsTable = getKVTableDataset(totalRecordsTableId).get();
     byte[] recordKey = invalid ? DataCleansingApp.INVALID_RECORD_KEY : DataCleansingApp.CLEAN_RECORD_KEY;
     return readLong(totalRecordsTable.read(recordKey));
-  }
-
-  // TODO: Use service instead of explore as Explore is slower
-  private boolean verifyRecordsWithExplore(DataCleansingTestState state) throws Exception {
-    QueryClient queryClient = new QueryClient(getClientConfig());
-    String cleanRecordsQuery = "SELECT * FROM dataset_" + CLEAN_RECORDS_DATASET + " where TIME = "
-      + state.getTimestamp();
-    String invalidRecordsQuery = "SELECT * FROM dataset_" + INVALID_RECORDS_DATASET + " where TIME = "
-      + state.getTimestamp();
-
-    // Reduce wait time by submitting both the queries
-    ListenableFuture<ExploreExecutionResult> cleanRecordsExecute =
-      queryClient.execute(getLongRunningNamespace(), cleanRecordsQuery);
-    ListenableFuture<ExploreExecutionResult> invalidRecordsExecute =
-      queryClient.execute(getLongRunningNamespace(), invalidRecordsQuery);
-    ExploreExecutionResult cleanRecordsResult = cleanRecordsExecute.get();
-    ExploreExecutionResult invalidRecordsResult = invalidRecordsExecute.get();
-
-    return (verifyResults(cleanRecordsResult, state.getStartCleanRecordPid(), false) &&
-      verifyResults(invalidRecordsResult, state.getStartInvalidRecordPid(), true));
-  }
-
-  private boolean verifyResults(ExploreExecutionResult result, long index, boolean invalid) {
-    while (result.hasNext()) {
-      QueryResult next = result.next();
-      List<Object> columns = next.getColumns();
-      String expectedRecord = getRecord(index, invalid);
-      if (!expectedRecord.equalsIgnoreCase((String) columns.get(0))) {
-        return false;
-      }
-      index++;
-    }
-    return true;
   }
 
   private long readLong(byte[] bytes) {

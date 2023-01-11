@@ -20,13 +20,8 @@ import io.cdap.cdap.api.artifact.ArtifactSummary;
 import io.cdap.cdap.apps.appimpersonation.FileGeneratorApp;
 import io.cdap.cdap.apps.appimpersonation.FileProcessorApp;
 import io.cdap.cdap.client.NamespaceClient;
-import io.cdap.cdap.client.QueryClient;
 import io.cdap.cdap.common.NamespaceNotFoundException;
-import io.cdap.cdap.explore.client.ExploreExecutionResult;
-import io.cdap.cdap.explore.service.ExploreException;
 import io.cdap.cdap.proto.NamespaceMeta;
-import io.cdap.cdap.proto.ProgramRunStatus;
-import io.cdap.cdap.proto.QueryStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
@@ -36,10 +31,8 @@ import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.WorkerManager;
 import io.cdap.cdap.test.WorkflowManager;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Tests basic impersonation for different users across the same namespace.
@@ -52,6 +45,8 @@ public class AppImpersonationTest extends AudiTestBase {
   private static final String GROUP = "deployers";
   private static final String VERSION = "1.0.0";
 
+  // TODO: (CDAP-20261) fix and un-ignore
+  @Ignore
   @Test
   public void test() throws Exception {
     NamespaceClient namespaceClient = getNamespaceClient();
@@ -97,45 +92,5 @@ public class AppImpersonationTest extends AudiTestBase {
       = generatorAppManager.getWorkerManager(FileGeneratorApp.FileGeneratorWorker.class.getSimpleName());
     WorkflowManager processorWorkflowManager
       = processorAppManager.getWorkflowManager(FileProcessorApp.FileProcessWorkflow.class.getSimpleName());
-
-    // Ensure that there are no results before starting
-    ExploreExecutionResult results = new QueryClient(getClientConfig())
-      .execute(NAMESPACE_ID,
-               String.format("SELECT * FROM cdap_%s.dataset_consumingstate LIMIT 5", NAMESPACE_ID.getNamespace()))
-      .get();
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
-    Assert.assertFalse(results.hasNext());
-
-    startAndWaitForRun(generatorWorkerManager, ProgramRunStatus.RUNNING);
-
-    TimeUnit.SECONDS.sleep(15);
-
-    generatorWorkerManager.stop();
-    generatorWorkerManager.waitForRuns(ProgramRunStatus.KILLED, 1, PROGRAM_START_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS,
-                                       POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
-
-    startAndWaitForRun(processorWorkflowManager, ProgramRunStatus.COMPLETED, 5, TimeUnit.MINUTES);
-
-    // Ensure that there is at least one result
-    results = new QueryClient(getClientConfig())
-      .execute(NAMESPACE_ID,
-               String.format("SELECT * FROM cdap_%s.dataset_consumingstate LIMIT 5", NAMESPACE_ID.getNamespace()))
-      .get();
-    Assert.assertEquals(QueryStatus.OpStatus.FINISHED, results.getStatus().getStatus());
-    Assert.assertTrue(results.hasNext());
-
-    // Update the namespaceClient to disable explore as principal
-    namespaceClient.updateProperties(NAMESPACE_ID, nsMetaBuilder.setExploreAsPrincipal(false).build());
-
-    try {
-      new QueryClient(getClientConfig())
-        .execute(NAMESPACE_ID,
-                 String.format("SELECT * FROM cdap_%s.dataset_consumingstate LIMIT 5", NAMESPACE_ID.getNamespace()))
-        .get();
-      Assert.fail("Expected an ExecutionException to be thrown");
-    } catch (ExecutionException e) {
-      // expected
-      Assert.assertTrue(e.getCause() instanceof ExploreException);
-    }
   }
 }

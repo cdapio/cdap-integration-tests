@@ -24,7 +24,6 @@ import io.cdap.cdap.app.etl.batch.BatchJoinerTest;
 import io.cdap.cdap.app.etl.batch.DedupAggregatorTest;
 import io.cdap.cdap.app.etl.batch.ETLMapReduceTest;
 import io.cdap.cdap.app.etl.batch.ExcelInputReaderTest;
-import io.cdap.cdap.app.etl.batch.HivePluginTest;
 import io.cdap.cdap.app.etl.batch.NormalizeTest;
 import io.cdap.cdap.app.etl.batch.RowDenormalizerTest;
 import io.cdap.cdap.app.etl.batch.TPFSParquetSinkSourceTest;
@@ -42,8 +41,6 @@ import io.cdap.cdap.apps.ApplicationTest;
 import io.cdap.cdap.apps.NamespaceTest;
 import io.cdap.cdap.apps.dataset.DatasetTest;
 import io.cdap.cdap.apps.fileset.FileSetTest;
-import io.cdap.cdap.apps.fileset.PartitionCorrectorTest;
-import io.cdap.cdap.apps.fileset.PartitionedFileSetUpdateTest;
 import io.cdap.cdap.apps.metadata.ProgramMetadataTest;
 import io.cdap.cdap.apps.workflow.WorkflowTest;
 import io.cdap.cdap.operations.OperationalStatsTest;
@@ -72,13 +69,10 @@ import org.junit.runners.Suite;
   ExcelInputReaderTest.class,
   FileSetTest.class,
   HangingWorkerTest.class,
-  HivePluginTest.class,
   KVTableWithProjectionTest.class,
   NamespaceTest.class,
   NormalizeTest.class,
   OperationalStatsTest.class,
-  PartitionCorrectorTest.class,
-  PartitionedFileSetUpdateTest.class,
   PermissionTest.class,
   ProgramMetadataTest.class,
   ReadlessIncrementTest.class,
