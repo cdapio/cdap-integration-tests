@@ -27,6 +27,7 @@ import io.cdap.cdap.test.suite.category.SDKIncompatible;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -47,6 +48,8 @@ public class ReadlessIncrementTest extends AudiTestBase {
   // - one is written by the reducer after it has summed up all the counts
   // The three values must be the same.
 
+  // TODO: (CDAP-20464) re-enable after logging deadlock is fixed
+  @Ignore
   @Test
   public void testReadlessIncrementsInMapReduce()
     throws Exception {

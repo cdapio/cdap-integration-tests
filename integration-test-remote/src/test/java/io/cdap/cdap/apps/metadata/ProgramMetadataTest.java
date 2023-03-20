@@ -45,6 +45,7 @@ import io.cdap.cdap.test.AudiTestBase;
 import io.cdap.cdap.test.MapReduceManager;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -75,6 +76,8 @@ public class ProgramMetadataTest extends AudiTestBase {
     lineageClient = new LineageClient(getClientConfig(), getRestClient());
   }
 
+  // TODO: (CDAP-20464) re-enable after logging deadlock is fixed
+  @Ignore
   @Test
   public void testWithLineage() throws Exception {
     ProgramClient programClient = getProgramClient();
