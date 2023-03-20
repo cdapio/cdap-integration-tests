@@ -33,6 +33,7 @@ import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.URL;
@@ -48,6 +49,8 @@ public class FileSetTest extends AudiTestBase {
     Lists.newArrayList("Hello World", "My Hello Hello World", "World Hello");
   private static final String DATA_UPLOAD = Joiner.on("\n").join(DATA_LIST);
 
+  // TODO: (CDAP-20464) re-enable after logging deadlock is fixed
+  @Ignore
   @Test
   public void test() throws Exception {
     ApplicationManager applicationManager = deployApplication(FileSetExample.class);
