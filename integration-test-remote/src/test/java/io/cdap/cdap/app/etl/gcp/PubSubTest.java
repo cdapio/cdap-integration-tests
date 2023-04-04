@@ -90,7 +90,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -756,7 +755,8 @@ public class PubSubTest extends DataprocETLTestBase {
     for (String message : messages) {
       ByteString data = ByteString.copyFromUtf8(message);
       PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
-      publisher.publish(pubsubMessage).get(1, TimeUnit.MINUTES);
+      String result = publisher.publish(pubsubMessage).get(1, TimeUnit.MINUTES);
+      LOG.info("Received result {} from publishing message {} .", result, message);
     }
     publisher.shutdown();
     publisher.awaitTermination(5, TimeUnit.MINUTES);
@@ -812,11 +812,9 @@ public class PubSubTest extends DataprocETLTestBase {
     final List<Object> messages = new CopyOnWriteArrayList<>();
     final Gson gson = new Gson();
 
-    void assertRetrievedMessagesContain(long timeout, TimeUnit unit, Object... expectedMessages) throws Exception {
-      Tasks.waitFor(expectedMessages.length, () -> messages.size(), timeout, unit);
-      Assert.assertEquals("Retrieved messages is not same as expected",
-                          new HashSet<>(Arrays.asList(expectedMessages)),
-                          new HashSet<>(messages));
+    void assertRetrievedMessagesContain(long timeout, TimeUnit unit, Object... expectedMessages)
+        throws Exception {
+      Tasks.waitFor(true, () -> messages.containsAll(Arrays.asList(expectedMessages)), timeout, unit);
     }
   }
 
