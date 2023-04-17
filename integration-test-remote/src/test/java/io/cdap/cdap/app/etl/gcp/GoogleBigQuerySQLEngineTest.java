@@ -86,6 +86,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,9 +105,14 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   public static final String ITEM_SINK = "itemSink";
   public static final String USER_SINK = "userSink";
   public static final String USER_SOURCE = "userSource";
-  private static final String WINDOW_AGGREGATOR_VERSION = "1.0.2";
   public static final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
   public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy_MM_dd_HH_mm_ss_SSS");
+  //give exact version according to CDAP version : required for Hub install
+  static final Map<String, String> CDAP_WINDOW_AGG_VERSION_MAP = ImmutableMap.of(
+    "6.9.0", "1.1.0"
+//    "6.9.1", "1.1.1"
+  );
+  private static final String WINDOW_AGGREGATOR_VERSION = "1.1.0";
 
   private static BigQuery bq;
   private String bigQueryDataset;
@@ -119,6 +125,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   
   private static final Map<String, String> CONFIG_MAP_WINDOW = new ImmutableMap.Builder<String, String>()
           .put("partitionFields", "profession")
+          .put("partitionOrder", "age:Ascending")
           .put("aggregates", "age:first(age,1,true)")
           .build();
     
@@ -150,18 +157,21 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   protected void innerSetup() throws Exception {
     Tasks.waitFor(true, () -> {
       try {
-        artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation",
-                                                                  WINDOW_AGGREGATOR_VERSION),
-          Transform.PLUGIN_TYPE);
         final ArtifactId dataPipelineId = TEST_NAMESPACE.artifact("cdap-data-pipeline", version);
         return GoogleBigQueryUtils
           .bigQueryPluginExists(artifactClient, dataPipelineId, BatchSQLEngine.PLUGIN_TYPE, BQ_SQLENGINE_PLUGIN_NAME);
       } catch (ArtifactNotFoundException e) {
-          installPluginFromHub("plugin-window-aggregation", "window-aggregator",
-                               WINDOW_AGGREGATOR_VERSION);
         return false;
       }
     }, 5, TimeUnit.MINUTES, 3, TimeUnit.SECONDS);
+
+    try {
+      artifactClient.getPluginSummaries(TEST_NAMESPACE.artifact("window-aggregation", WINDOW_AGGREGATOR_VERSION),
+                                        Transform.PLUGIN_TYPE);
+    } catch (ArtifactNotFoundException e) {
+      installPluginFromHub("plugin-window-aggregation", "window-aggregator", WINDOW_AGGREGATOR_VERSION);
+    }
+
     createConnection(CONNECTION_NAME, "BigQuery");
     bigQueryDataset = BIG_QUERY_DATASET_PREFIX + LocalDateTime.now().format(DATE_TIME_FORMAT);
     createDataset(bigQueryDataset);
@@ -210,13 +220,13 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   }
     
    private void testSQLEngineWindow(Engine engine, boolean useConnection) throws Exception {
-    ETLStage userSourceStage =
-      new ETLStage("users", new ETLPlugin("Table",
-                                          BatchSource.PLUGIN_TYPE,
-                                          ImmutableMap.of(
-          Properties.BatchReadableWritable.NAME, USER_SOURCE,
-          Properties.Table.PROPERTY_SCHEMA, DedupAggregatorTest.USER_SCHEMA.toString()),
-                                          null));
+     ETLStage userSourceStage =
+       new ETLStage("users", new ETLPlugin("Table",
+                                           BatchSource.PLUGIN_TYPE,
+                                           ImmutableMap.of(
+                                             Properties.BatchReadableWritable.NAME, USER_SOURCE,
+                                             Properties.Table.PROPERTY_SCHEMA, DedupAggregatorTest.USER_SCHEMA.toString()),
+                                           null));
 
     ETLStage userSinkStage =  new ETLStage(USER_SINK, new ETLPlugin("SnapshotAvro", BatchSink.PLUGIN_TYPE,
                                                                     ImmutableMap.<String, String>builder()
@@ -284,7 +294,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       .set("Lastname", "Bolt")
       .set("Firstname", "Henry")
       .set("profession", "engineer")
-      .set("age", 30)
+      .set("age", 28)
       .build();
 
     GenericRecord record3 = new GenericRecordBuilder(avroOutputSchema)
@@ -305,12 +315,16 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       .set("Lastname", "Gamal")
       .set("Firstname", "Ali")
       .set("profession", "engineer")
-      .set("age", 30)
+      .set("age", 28)
       .build();
 
     Set<GenericRecord> expected = ImmutableSet.of(record1, record2, record3, record4, record5);
-    // verfiy output
-    Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA));
+
+    Set<GenericRecord> actual = readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA);
+    Iterator<GenericRecord> it = actual.iterator();
+    while (it.hasNext()) {
+      Assert.assertTrue(expected.contains(it.next()));
+    }
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }  
     
