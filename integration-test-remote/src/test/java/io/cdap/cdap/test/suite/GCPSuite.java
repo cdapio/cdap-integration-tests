@@ -18,6 +18,7 @@ package io.cdap.cdap.test.suite;
 
 import io.cdap.cdap.app.etl.gcp.DLPTest;
 import io.cdap.cdap.app.etl.gcp.GCSTest;
+import io.cdap.cdap.app.etl.gcp.GoogleBigQuerySQLEngineTest;
 import io.cdap.cdap.app.etl.gcp.GoogleBigQueryTest;
 import io.cdap.cdap.app.etl.gcp.GoogleCloudBigtableTest;
 import io.cdap.cdap.app.etl.gcp.GoogleCloudDatastoreTest;
@@ -37,7 +38,9 @@ import org.junit.runners.Suite;
   GoogleCloudBigtableTest.class,
   GoogleCloudDatastoreTest.class,
   GoogleCloudSpannerTest.class,
-  PubSubTest.class
+  PubSubTest.class,
+  GoogleBigQuerySQLEngineTest.class
+
 })
 public class GCPSuite {
 
