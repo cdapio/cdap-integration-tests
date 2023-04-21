@@ -213,7 +213,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineWindowSpark() throws Exception {
-    if (computeWindowAggVersionAndInstall(version)){
+    if (computeWindowAggVersionAndInstall(version)) {
       testSQLEngineWindow(Engine.SPARK, false);
       testSQLEngineWindow(Engine.SPARK, true);
     }
@@ -990,8 +990,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       windowAggVersion = CDAP_WINDOW_AGG_VERSION_MAP.get(cdapVersion);
       installWindowAggFromHub(windowAggVersion);
       return true;
-    }
-    else {
+    } else {
       List<String> descendingVersions = CDAP_WINDOW_AGG_VERSION_MAP.values().stream().distinct()
         .map(s -> new DefaultArtifactVersion(s))
         .sorted(Comparator.reverseOrder())
