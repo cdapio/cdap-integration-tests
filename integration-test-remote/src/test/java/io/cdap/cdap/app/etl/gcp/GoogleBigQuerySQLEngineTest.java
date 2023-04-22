@@ -251,7 +251,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
 
     ETLStage userGroupStage = new ETLStage("KeyAggregate", new ETLPlugin("WindowAggregation",
       SparkCompute.PLUGIN_TYPE, CONFIG_MAP_WINDOW,
-        new ArtifactSelectorConfig("SYSTEM", "window-aggregator", windowAggVersion)));
+        new ArtifactSelectorConfig("USER", "window-aggregator", windowAggVersion)));
 
     ETLTransformationPushdown transformationPushdown =
       new ETLTransformationPushdown(
