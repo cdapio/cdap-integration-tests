@@ -85,8 +85,18 @@ public class WranglerTest extends ETLTestBase {
   @Test
   public void testWranglerSpark() throws Exception {
     LOG.info("Starting testWranglerSpark");
-    testWrangler(Engine.SPARK);
+    testWrangler(Engine.SPARK, false);
     LOG.info("Ending testWranglerSpark");
+  }
+
+  @Category({
+          RequiresSpark.class,
+  })
+  @Test
+  public void testWranglerSparkSQL() throws Exception {
+    LOG.info("Starting testWranglerSparkSQL");
+    testWrangler(Engine.SPARK, true);
+    LOG.info("Ending testWranglerSparkSQL");
   }
 
   @BeforeClass
@@ -99,7 +109,7 @@ public class WranglerTest extends ETLTestBase {
     LOG.info("Exiting WranglerTest..");
   }
 
-  private void testWrangler(Engine engine) throws Exception {
+  private void testWrangler(Engine engine, boolean isConditionSQL) throws Exception {
     String datasetName = "personal_info";
     ingestDataForWrangler(datasetName);
     Schema datasetSchema = Schema.recordOf("etlSchemaBody",
@@ -137,6 +147,24 @@ public class WranglerTest extends ETLTestBase {
       new ETLStage("Wrangler",
                    new ETLPlugin("Wrangler", Transform.PLUGIN_TYPE, builder.build(), null));
 
+    // Properties for wranglerFilterStage
+    ImmutableMap.Builder<String, String> filterBuilder = new ImmutableMap.Builder<>();
+    filterBuilder.put("field", "*")
+            .put("threshold", "1")
+            .put("schema", wranglerSchema.toString());
+
+    if (isConditionSQL) {
+      filterBuilder.put("expressionLanguage", "sql")
+              .put("preconditionSQL", "id <= 5")
+              .put("precondition", "false");
+    } else {
+      filterBuilder.put("precondition", "id > 5");
+    }
+
+    ETLStage wranglerFilterStage =
+            new ETLStage("WranglerFilter",
+                    new ETLPlugin("Wrangler", Transform.PLUGIN_TYPE, filterBuilder.build(), null));
+
     ETLStage groupStage =
       new ETLStage("GroupByAggregate",
                    new ETLPlugin("GroupByAggregate",
@@ -157,10 +185,12 @@ public class WranglerTest extends ETLTestBase {
     ETLBatchConfig config = ETLBatchConfig.builder("0 * * * *")
       .addStage(tableSourceStage)
       .addStage(wranglerTransformStage)
+      .addStage(wranglerFilterStage)
       .addStage(groupStage)
       .addStage(sinkStage)
       .addConnection(tableSourceStage.getName(), wranglerTransformStage.getName())
-      .addConnection(wranglerTransformStage.getName(), groupStage.getName())
+      .addConnection(wranglerTransformStage.getName(), wranglerFilterStage.getName())
+      .addConnection(wranglerFilterStage.getName(), groupStage.getName())
       .addConnection(groupStage.getName(), sinkStage.getName())
       .setEngine(engine)
       .setDriverResources(new Resources(1024))
@@ -252,6 +282,7 @@ public class WranglerTest extends ETLTestBase {
     putValues(table, 3, "3,Daniel,789 Everett St,94305,123-456-7870");
     putValues(table, 4, "4,Alex,000 Everett St,94306,123-456-7860");
     putValues(table, 5, "5,Daniel,789 Everett St,94303,123-456-7870");
+    putValues(table, 6, "6,John,789 Everett St,94303,123-456-7870");
     datasetManager.flush();
   }
 
