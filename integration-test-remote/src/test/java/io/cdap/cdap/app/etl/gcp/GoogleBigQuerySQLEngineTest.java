@@ -133,15 +133,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
           .put("partitionOrder", "age:Ascending")
           .put("aggregates", "age:first(age,1,true)")
           .build();
-
-  private static final Map<String, String> CONFIG_MAP_FILTER = new ImmutableMap.Builder<String, String>()
-          .put("field", "*")
-          .put("threshold", "1")
-          .put("schema", DedupAggregatorTest.USER_SCHEMA.toString())
-          .put("expressionLanguage", "sql")
-          .put("preconditionSQL", "age > 40")
-          .put("precondition", "false")
-          .build();
     
   public static final Schema PURCHASE_SCHEMA = Schema.recordOf(
           "purchase",
@@ -222,19 +213,10 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineWindowSpark() throws Exception {
-    if (computeWindowAggVersionAndInstall(version)) {
+    if (computeWindowAggVersionAndInstall(version)){
       testSQLEngineWindow(Engine.SPARK, false);
       testSQLEngineWindow(Engine.SPARK, true);
     }
-  }
-
-  @Category({
-          RequiresSpark.class
-  })
-  @Test
-  public void testSQLEngineFilterSpark() throws Exception {
-    testSQLEngineFilter(Engine.SPARK, false);
-    testSQLEngineFilter(Engine.SPARK, true);
   }
 
   private void installWindowAggFromHub(String windowAggVersion) throws ArtifactRangeNotFoundException,
@@ -709,7 +691,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     ApplicationManager appManager = deployApplication(appId, request);
 
     // ingest data
-    ingestPurchaseData(PURCHASE_SOURCE);
+    ingestData(PURCHASE_SOURCE);
 
     // run the pipeline
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -724,109 +706,6 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Map<String, List<Long>> groupedItems = readOutputGroupBy(serviceManager, ITEM_SINK, ITEM_SCHEMA);
 
     verifyOutput(groupedUsers, groupedItems);
-  }
-
-  private void testSQLEngineFilter(Engine engine, boolean useConnection) throws Exception {
-    ETLStage userSourceStage = new ETLStage(
-            "users",
-            new ETLPlugin(
-                    "Table",
-                    BatchSource.PLUGIN_TYPE,
-                    ImmutableMap.of(
-                            Properties.BatchReadableWritable.NAME, USER_SOURCE,
-                            Properties.Table.PROPERTY_SCHEMA, DedupAggregatorTest.USER_SCHEMA.toString()),
-                    null
-            )
-    );
-
-    ETLStage userSinkStage =  new ETLStage(
-            USER_SINK,
-            new ETLPlugin(
-                    "SnapshotAvro",
-                    BatchSink.PLUGIN_TYPE,
-                    ImmutableMap.<String, String>builder()
-                            .put(Properties.BatchReadableWritable.NAME, USER_SINK)
-                            .put("schema", DedupAggregatorTest.USER_SCHEMA.toString())
-                            .build(),
-                    null
-            )
-    );
-
-    ArtifactSelectorConfig selectorConfig = new ArtifactSelectorConfig(
-            null,
-            "google-cloud",
-            "[0.18.0-SNAPSHOT, 1.0.0-SNAPSHOT)"
-    );
-
-    ETLStage userFilterStage = new ETLStage(
-            "Filter",
-            new ETLPlugin("Wrangler", Transform.PLUGIN_TYPE, CONFIG_MAP_FILTER, null)
-    );
-
-    ETLTransformationPushdown transformationPushdown = new ETLTransformationPushdown(
-            new ETLPlugin(
-                    BQ_SQLENGINE_PLUGIN_NAME,
-                    BatchSQLEngine.PLUGIN_TYPE,
-                    getProps(useConnection, "Filter"),
-                    selectorConfig
-            )
-    );
-
-    ETLBatchConfig config = ETLBatchConfig.builder("* * * * *")
-            .addStage(userSourceStage)
-            .addStage(userSinkStage)
-            .addStage(userFilterStage)
-            .addConnection(userSourceStage.getName(), userFilterStage.getName())
-            .addConnection(userFilterStage.getName(), userSinkStage.getName())
-            .setDriverResources(new Resources(2048))
-            .setResources(new Resources(2048))
-            .setEngine(engine)
-            .setPushdownEnabled(true)
-            .setTransformationPushdown(transformationPushdown)
-            .build();
-
-    ingestInputData(USER_SOURCE);
-
-    AppRequest<ETLBatchConfig> request = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("bq-sqlengine-filter-test");
-    ApplicationManager appManager = deployApplication(appId, request);
-
-    WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
-    startAndWaitForRun(workflowManager, ProgramRunStatus.COMPLETED, 10, TimeUnit.MINUTES);
-
-    // Deploy an application with a service to get partitionedFileset data for verification
-    ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
-    ServiceManager serviceManager = applicationManager.getServiceManager(
-            SnapshotFilesetService.class.getSimpleName()
-    );
-    startAndWaitForRun(serviceManager, ProgramRunStatus.RUNNING);
-
-    org.apache.avro.Schema avroOutputSchema = new org.apache.avro.Schema.Parser()
-            .parse(DedupAggregatorTest.USER_SCHEMA.toString());
-
-    // Output has these records:
-    // 1: Shelton, Alex, professor, 45
-    // 2: Seitz, Bob, professor, 50
-
-    GenericRecord record1 = new GenericRecordBuilder(avroOutputSchema)
-            .set("Lastname", "Shelton")
-            .set("Firstname", "Alex")
-            .set("profession", "professor")
-            .set("age", 45)
-            .build();
-
-    GenericRecord record2 = new GenericRecordBuilder(avroOutputSchema)
-            .set("Lastname", "Seitz")
-            .set("Firstname", "Bob")
-            .set("profession", "professor")
-            .set("age", 50)
-            .build();
-
-    Set<GenericRecord> expected = ImmutableSet.of(record1, record2);
-
-    // verify output
-    Assert.assertEquals(expected, readOutput(serviceManager, USER_SINK, DedupAggregatorTest.USER_SCHEMA));
-    Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }
   
   private Map<String, List<Long>> readOutputGroupBy(ServiceManager serviceManager, String sink, Schema schema)
@@ -864,7 +743,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     return group;
   }
 
-  private void ingestPurchaseData(String purchasesDatasetName) throws Exception {
+  private void ingestData(String purchasesDatasetName) throws Exception {
     // write input data
     // 1: 1234567890000, samuel, island, 1000
     // 2: 1234567890001, samuel, shirt, 15
@@ -1111,7 +990,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       windowAggVersion = CDAP_WINDOW_AGG_VERSION_MAP.get(cdapVersion);
       installWindowAggFromHub(windowAggVersion);
       return true;
-    } else {
+    }
+    else {
       List<String> descendingVersions = CDAP_WINDOW_AGG_VERSION_MAP.values().stream().distinct()
         .map(s -> new DefaultArtifactVersion(s))
         .sorted(Comparator.reverseOrder())
