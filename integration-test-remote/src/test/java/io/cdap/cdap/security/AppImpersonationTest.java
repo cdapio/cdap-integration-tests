@@ -62,7 +62,7 @@ public class AppImpersonationTest extends AudiTestBase {
       .setName(NAMESPACE_ID)
       .setPrincipal(ALICE)
       .setGroupName(GROUP)
-      .setKeytabURI(SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()));
+      .setKeytabUri(SecurityTestUtils.getKeytabURIforPrincipal(ALICE, getMetaClient().getCDAPConfig()));
     namespaceClient.create(nsMetaBuilder.build());
     // test if namespace exists
     namespaceClient.get(NAMESPACE_ID);
