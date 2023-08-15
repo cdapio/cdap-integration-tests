@@ -142,7 +142,29 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Map<String, String> fullArgs = new HashMap<>();
     fullArgs.put("system.profile.name", getProfileName());
     fullArgs.putAll(args);
-    startAndWaitForRun(workflowManager, expectedStatus, fullArgs, 30, TimeUnit.MINUTES);
+    try {
+      startAndWaitForRun(workflowManager, expectedStatus, fullArgs, 30, TimeUnit.MINUTES);
+    } catch (Throwable e) {
+      dumpLogs(appManager);
+      throw e;
+    }
+  }
+
+  private void dumpLogs(ApplicationManager applicationManager) throws Exception {
+    LOG.info("Dumping logs for pipeline");
+    try {
+      URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "apps/"
+        + applicationManager.getInfo().getName() + "/workflows/DataPipelineWorkflow/logs");
+      HttpResponse res = getRestClient().execute(HttpRequest.get(url).build(),
+                                                 getClientConfig().getAccessToken());
+      String[] resStr = res.getResponseBodyAsString().split("[\\r\\n]+");
+      LOG.info(String.format("Logs for pipeline '%s'", applicationManager.getInfo().getName()));
+      for (String line : resStr) {
+        LOG.info(line);
+      }
+    } catch (Throwable e) {
+      LOG.info("Failed to dump logs for pipeline", e);
+    }
   }
 
   protected static String getServiceAccountCredentials() {
