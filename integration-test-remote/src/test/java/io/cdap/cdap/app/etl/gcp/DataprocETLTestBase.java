@@ -146,7 +146,7 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     boolean shouldDumpLogs = true;
     try {
       startAndWaitForRun(workflowManager, expectedStatus, fullArgs, 30, TimeUnit.MINUTES);
-      shouldDumpLogs = false;
+      //shouldDumpLogs = false;
     } finally {
       if (shouldDumpLogs) {
         dumpLogs(appManager, workflowManager);
@@ -201,10 +201,12 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     properties.add(ofProperty("projectId", getProjectId()));
 
     properties.add(ofProperty("masterNumNodes", "1"));
+    properties.add(ofProperty("masterMachineType", "e2"));
     properties.add(ofProperty("masterCPUs", "2"));
     properties.add(ofProperty("masterMemoryMB", "8192"));
     properties.add(ofProperty("masterDiskGB", "1000"));
     properties.add(ofProperty("workerNumNodes", String.valueOf(workerCount)));
+    properties.add(ofProperty("workerMachineType", "e2"));
     properties.add(ofProperty("workerCPUs", String.valueOf(workerCPUs)));
     properties.add(ofProperty("workerMemoryMB", String.valueOf(workerMemMB)));
     properties.add(ofProperty("workerDiskGB", "500"));
