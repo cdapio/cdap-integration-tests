@@ -26,6 +26,7 @@ import io.cdap.cdap.app.etl.ETLTestBase;
 import io.cdap.cdap.datapipeline.SmartWorkflow;
 import io.cdap.cdap.etl.proto.ArtifactSelectorConfig;
 import io.cdap.cdap.proto.ProgramRunStatus;
+import io.cdap.cdap.proto.RunRecord;
 import io.cdap.cdap.proto.id.NamespaceId;
 import io.cdap.cdap.proto.profile.Profile;
 import io.cdap.cdap.runtime.spi.profile.ProfileStatus;
@@ -142,7 +143,36 @@ public abstract class DataprocETLTestBase extends ETLTestBase {
     Map<String, String> fullArgs = new HashMap<>();
     fullArgs.put("system.profile.name", getProfileName());
     fullArgs.putAll(args);
-    startAndWaitForRun(workflowManager, expectedStatus, fullArgs, 30, TimeUnit.MINUTES);
+    boolean shouldDumpLogs = true;
+    try {
+      startAndWaitForRun(workflowManager, expectedStatus, fullArgs, 30, TimeUnit.MINUTES);
+      shouldDumpLogs = false;
+    } finally {
+      if (shouldDumpLogs) {
+        dumpLogs(appManager, workflowManager);
+      }
+    }
+  }
+
+  private void dumpLogs(ApplicationManager applicationManager, WorkflowManager workflowManager) throws Exception {
+    // Most recent record returned by ProgramLifecycleHttpHandler#programHistoryVersioned is listed first.
+    RunRecord runRecord = workflowManager.getHistory().get(0);
+    String runId = runRecord.getPid();
+    String appName = applicationManager.getInfo().getName();
+    LOG.info("Dumping logs for pipeline {} run {}", appName, runId);
+    try {
+      URL url = getClientConfig().resolveNamespacedURLV3(TEST_NAMESPACE, "apps/"
+        + applicationManager.getInfo().getName() + "/workflows/DataPipelineWorkflow/runs/" + runId + "/logs");
+      HttpResponse res = getRestClient().execute(HttpRequest.get(url).build(),
+                                                 getClientConfig().getAccessToken());
+      String[] resStr = res.getResponseBodyAsString().split("[\\r\\n]+");
+      LOG.info(String.format("Logs for pipeline '%s'", appName));
+      for (String line : resStr) {
+        LOG.info(line);
+      }
+    } catch (Exception e) {
+      LOG.info("Failed to dump logs for pipeline", e);
+    }
   }
 
   protected static String getServiceAccountCredentials() {
