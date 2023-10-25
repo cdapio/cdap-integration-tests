@@ -153,7 +153,7 @@ public class PermissionTest extends AudiTestBase {
     String thirdPath = "third/path";
     String fourthPath = "fourth/path";
 
-    MapReduceManager mrManager = applicationManager.getMapReduceManager(PermissionTestApp.MAPREDUCE);
+    MapReduceManager mrManager = applicationManager.getMapReduceManager(PermissionTestApp.APP_NAME);
 
     // 6. run the mapreduce three times, each writing to one dataset, then validate permissions
     // writes to file set

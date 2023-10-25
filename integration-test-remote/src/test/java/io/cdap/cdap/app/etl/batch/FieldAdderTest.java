@@ -189,11 +189,6 @@ public class FieldAdderTest extends DataprocETLTestBase {
 
   @Test
   public void testMultiFieldAdderNonMacroValues() throws Exception {
-    testMultiFieldAdderNonMacroValues(Engine.SPARK);
-    testMultiFieldAdderNonMacroValues(Engine.MAPREDUCE);
-  }
-
-  private void testMultiFieldAdderNonMacroValues(Engine engine) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
@@ -204,8 +199,8 @@ public class FieldAdderTest extends DataprocETLTestBase {
     Map<String, String> args = new HashMap<>();
     args.put("schema", OUTPUT_SCHEMA.toString());
 
-    multiFieldAdderConfig(MULTI_FIELD_ADDER_PLUGIN_NAME + engine + "-nonMacroValues", sourceTableName,
-                          destinationTableName, engine, NON_MACRO_FIELD_VALUE, args);
+    multiFieldAdderConfig(MULTI_FIELD_ADDER_PLUGIN_NAME + "-nonMacroValues", sourceTableName,
+                          destinationTableName, NON_MACRO_FIELD_VALUE, args);
 
     Assert.assertNotNull(dataset.get(destinationTableName));
     assertTableData(destinationTableName);
@@ -214,11 +209,6 @@ public class FieldAdderTest extends DataprocETLTestBase {
 
   @Test
   public void testMultiFieldAdderMacroValues() throws Exception {
-    testMultiFieldAdderMacroValues(Engine.SPARK);
-    testMultiFieldAdderMacroValues(Engine.MAPREDUCE);
-  }
-
-  private void testMultiFieldAdderMacroValues(Engine engine) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
@@ -231,8 +221,8 @@ public class FieldAdderTest extends DataprocETLTestBase {
     args.put("value1", "value1");
     args.put("key2", "key2");
 
-    multiFieldAdderConfig(MULTI_FIELD_ADDER_PLUGIN_NAME + engine + "-macroValues", sourceTableName,
-                          destinationTableName, engine, MACRO_FIELD_VALUE, args);
+    multiFieldAdderConfig(MULTI_FIELD_ADDER_PLUGIN_NAME + "-macroValues", sourceTableName,
+                          destinationTableName, MACRO_FIELD_VALUE, args);
 
     Assert.assertNotNull(dataset.get(destinationTableName));
     assertTableData(destinationTableName);
@@ -241,11 +231,6 @@ public class FieldAdderTest extends DataprocETLTestBase {
 
   @Test
   public void testMultiFieldAdderWholeMacroValue() throws Exception {
-    testMultiFieldAdderWholeMacroValue(Engine.SPARK);
-    testMultiFieldAdderWholeMacroValue(Engine.MAPREDUCE);
-  }
-
-  private void testMultiFieldAdderWholeMacroValue(Engine engine) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
     String destinationTableName = SINK_TABLE_NAME_TEMPLATE + testId;
@@ -257,23 +242,24 @@ public class FieldAdderTest extends DataprocETLTestBase {
     args.put("schema", OUTPUT_SCHEMA.toString());
     args.put("fieldValue", NON_MACRO_FIELD_VALUE);
 
-    multiFieldAdderConfig(MULTI_FIELD_ADDER_PLUGIN_NAME + engine + "-wholeMacroValues", sourceTableName,
-                          destinationTableName, engine, WHOLE_MACRO_FIELD_VALUE, args);
+    multiFieldAdderConfig(MULTI_FIELD_ADDER_PLUGIN_NAME + "-wholeMacroValues", sourceTableName,
+                          destinationTableName, WHOLE_MACRO_FIELD_VALUE, args);
 
     Assert.assertNotNull(dataset.get(destinationTableName));
     assertTableData(destinationTableName);
     assertSchemaEquals(destinationTableName);
   }
 
-  private void multiFieldAdderConfig(String applicationName, String sourceTableName, String destinationTableName,
-                                     Engine engine, String fieldValue, Map<String, String> args) throws Exception {
+  private void multiFieldAdderConfig(
+      String applicationName, String sourceTableName, String destinationTableName,
+      String fieldValue, Map<String, String> args) throws Exception {
     installPluginFromHub("hydrator-plugin-add-field-transform", "field-adder", "2.1.1");
 
     ETLStage source = getSourceStage(sourceTableName);
     ETLStage transform = getTransformStage(fieldValue);
     ETLStage sink = getBigQuerySink(destinationTableName);
     ETLBatchConfig pipelineConfig = ETLBatchConfig.builder()
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .addStage(source)
       .addStage(transform)
       .addStage(sink)

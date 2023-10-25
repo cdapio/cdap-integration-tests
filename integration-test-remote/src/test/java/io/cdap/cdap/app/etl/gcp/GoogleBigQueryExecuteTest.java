@@ -27,7 +27,6 @@ import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.common.ArtifactNotFoundException;
 import io.cdap.cdap.common.conf.Constants;
-import io.cdap.cdap.etl.api.Engine;
 import io.cdap.cdap.etl.api.action.Action;
 import io.cdap.cdap.etl.api.batch.BatchSink;
 import io.cdap.cdap.etl.api.batch.BatchSource;
@@ -40,19 +39,18 @@ import io.cdap.cdap.proto.id.ApplicationId;
 import io.cdap.cdap.proto.id.ArtifactId;
 import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.Tasks;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests Big Query Execute Plugin, action before and after pipeline run.
@@ -111,11 +109,6 @@ public class GoogleBigQueryExecuteTest extends DataprocETLTestBase {
 
   @Test
   public void testBigQueryExecutePlugin() throws Exception {
-    testBigQueryExecutePlugin(Engine.MAPREDUCE);
-    testBigQueryExecutePlugin(Engine.SPARK);
-  }
-
-  private void testBigQueryExecutePlugin(Engine engine) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -168,7 +161,7 @@ public class GoogleBigQueryExecuteTest extends DataprocETLTestBase {
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app(BIG_QUERY_EXECUTE_PLUGIN_NAME + engine);
+    ApplicationId appId = TEST_NAMESPACE.app(BIG_QUERY_EXECUTE_PLUGIN_NAME);
     ApplicationManager applicationManager = deployApplication(appId, appRequest);
 
     Map<String, String> args = new HashMap<>();

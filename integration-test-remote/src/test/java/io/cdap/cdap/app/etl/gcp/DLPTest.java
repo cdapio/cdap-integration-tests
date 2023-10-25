@@ -201,11 +201,6 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Test
   public void testRedaction() throws Exception {
-    testRedaction(Engine.MAPREDUCE);
-    testRedaction(Engine.SPARK);
-  }
-
-  private void testRedaction(Engine engine) throws Exception {
     String fieldsToTransform = GSON.toJson(Collections.singletonList(
       GSON.toJson(new ImmutableMap.Builder<String, Object>()
         .put("fields", "body")
@@ -235,7 +230,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-redaction")
-        .put("path", createPath(bucket, "test-output-" + engine)).build(), GOOGLE_CLOUD_ARTIFACT));
+        .put("path", createPath(bucket, "test-output")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -243,17 +238,17 @@ public class DLPTest extends DataprocETLTestBase {
       .addStage(sinkStage)
       .addConnection(gcsSourceStage.getName(), redactStage.getName())
       .addConnection(redactStage.getName(), sinkStage.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("DLPRedactTest" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("DLPRedactTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    assertGCSContentsMatch(bucket, "test-output-" + engine + "/",
+    assertGCSContentsMatch(bucket, "test-output/",
       Sets.newHashSet(
         "0,alice,#################",
         "1,bob,###############",
@@ -262,11 +257,6 @@ public class DLPTest extends DataprocETLTestBase {
 
   @Test
   public void testFilter() throws Exception {
-    testFilter(Engine.MAPREDUCE);
-    testFilter(Engine.SPARK);
-  }
-
-  private void testFilter(Engine engine) throws Exception {
     ETLStage filterStage =
       new ETLStage("PII Filter",
         new ETLPlugin("SensitiveRecordFilter", SplitterTransform.PLUGIN_TYPE, new ImmutableMap.Builder<String, String>()
@@ -285,7 +275,7 @@ public class DLPTest extends DataprocETLTestBase {
         .put("serviceFilePath", "auto-detect")
         .put("location", "us")
         .put("referenceName", "sink-emails-with-filter")
-        .put("path", createPath(bucket, "test-output-sensitive-" + engine)).build(), GOOGLE_CLOUD_ARTIFACT));
+        .put("path", createPath(bucket, "test-output-sensitive")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLStage sinkStage2 =
       new ETLStage("copy of GCS2", new ETLPlugin("GCS", BatchSink.PLUGIN_TYPE,
@@ -295,7 +285,7 @@ public class DLPTest extends DataprocETLTestBase {
           .put("serviceFilePath", "auto-detect")
           .put("location", "us")
           .put("referenceName", "sink-emails-with-filter")
-          .put("path", createPath(bucket, "test-output-nonsensitive-" + engine)).build(), GOOGLE_CLOUD_ARTIFACT));
+          .put("path", createPath(bucket, "test-output-nonsensitive")).build(), GOOGLE_CLOUD_ARTIFACT));
 
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(gcsSourceStage)
@@ -305,21 +295,21 @@ public class DLPTest extends DataprocETLTestBase {
       .addConnection(gcsSourceStage.getName(), filterStage.getName())
       .addConnection(filterStage.getName(), sinkStage1.getName(), "Sensitive")
       .addConnection(filterStage.getName(), sinkStage2.getName(), "Non-Sensitive")
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("DLPFilterTest" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("DLPFilterTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
-    assertGCSContentsMatch(bucket, "test-output-sensitive-" + engine + "/",
+    assertGCSContentsMatch(bucket, "test-output-sensitive/",
       Sets.newHashSet(
         "0,alice,alice@example.com",
         "1,bob,bob@example.com",
         "2,craig,craig@example.com"));
-    assertGCSContentsMatch(bucket, "test-output-nonsensitive-" + engine + "/", Sets.newHashSet());
+    assertGCSContentsMatch(bucket, "test-output-nonsensitive/", Sets.newHashSet());
   }
 }

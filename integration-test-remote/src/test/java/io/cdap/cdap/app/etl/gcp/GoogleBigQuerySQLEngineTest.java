@@ -195,8 +195,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineJoinSpark() throws Exception {
-    testSQLEngineJoin(Engine.SPARK, false);
-    testSQLEngineJoin(Engine.SPARK, true);
+    testSQLEngineJoin(false);
+    testSQLEngineJoin(true);
   }
 
   @Category({
@@ -204,8 +204,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineGroupBySpark() throws Exception {
-     testSQLEngineGroupBy(Engine.SPARK, false);
-     testSQLEngineGroupBy(Engine.SPARK, true);
+     testSQLEngineGroupBy(false);
+     testSQLEngineGroupBy(true);
   }
 
   @Category({
@@ -213,8 +213,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineDeduplicateSpark() throws Exception {
-     testSQLEngineDeduplicate(Engine.SPARK, false);
-     testSQLEngineDeduplicate(Engine.SPARK, true);
+     testSQLEngineDeduplicate(false);
+     testSQLEngineDeduplicate(true);
   }
     
   @Category({
@@ -223,8 +223,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   @Test
   public void testSQLEngineWindowSpark() throws Exception {
     if (computeWindowAggVersionAndInstall(version)) {
-      testSQLEngineWindow(Engine.SPARK, false);
-      testSQLEngineWindow(Engine.SPARK, true);
+      testSQLEngineWindow(false);
+      testSQLEngineWindow(true);
     }
   }
 
@@ -233,8 +233,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   })
   @Test
   public void testSQLEngineFilterSpark() throws Exception {
-    testSQLEngineFilter(Engine.SPARK, false);
-    testSQLEngineFilter(Engine.SPARK, true);
+    testSQLEngineFilter(false);
+    testSQLEngineFilter(true);
   }
 
   private void installWindowAggFromHub(String windowAggVersion) throws ArtifactRangeNotFoundException,
@@ -247,7 +247,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     }
   }
     
-   private void testSQLEngineWindow(Engine engine, boolean useConnection) throws Exception {
+   private void testSQLEngineWindow(boolean useConnection) throws Exception {
      ETLStage userSourceStage =
        new ETLStage("users", new ETLPlugin("Table",
                                            BatchSource.PLUGIN_TYPE,
@@ -288,7 +288,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
                                           .addConnection(userGroupStage.getName(), userSinkStage.getName())
                                           .setDriverResources(new Resources(2048))
                                           .setResources(new Resources(2048))
-                                          .setEngine(engine)
+                                          .setEngine(Engine.SPARK)
                                           .setPushdownEnabled(true)
                                           .setTransformationPushdown(transformationPushdown)
                                           .build();
@@ -372,7 +372,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     return new ImmutableMap.Builder<String, String>().putAll(props).build();
   }
 
-  private void testSQLEngineDeduplicate(Engine engine, boolean useConnection) throws Exception {
+  private void testSQLEngineDeduplicate(boolean useConnection) throws Exception {
     ETLStage userSourceStage =
             new ETLStage("users", new ETLPlugin("Table",
                     BatchSource.PLUGIN_TYPE,
@@ -412,7 +412,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             .addConnection(userGroupStage.getName(), userSinkStage.getName())
             .setDriverResources(new Resources(2048))
             .setResources(new Resources(2048))
-            .setEngine(engine)
+            .setEngine(Engine.SPARK)
             .setPushdownEnabled(true)
             .setTransformationPushdown(transformationPushdown)
             .build();
@@ -466,7 +466,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Assert.assertTrue(countTablesInDataset(bigQueryDataset) > 0);
   }
 
-  private void testSQLEngineJoin(Engine engine, boolean useConnection) throws Exception {
+  private void testSQLEngineJoin(boolean useConnection) throws Exception {
     String filmDatasetName = "film-sqlenginejoinertest";
     String filmCategoryDatasetName = "film-category-sqlenginejoinertest";
     String filmActorDatasetName = "film-actor-sqlenginejoinertest";
@@ -577,7 +577,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
       .addConnection(filmCategoryStage.getName(), outerJoinStage.getName())
       .addConnection(innerJoinStage.getName(), outerJoinStage.getName())
       .addConnection(outerJoinStage.getName(), joinSinkStage.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .setPushdownEnabled(true)
       .setTransformationPushdown(transformationPushdown)
       .setDriverResources(new Resources(1024))
@@ -650,7 +650,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     Assert.assertEquals(expected, readOutput(serviceManager, joinedDatasetName, outputSchema));
   }
 
-  private void testSQLEngineGroupBy(Engine engine, boolean useConnection) throws Exception {
+  private void testSQLEngineGroupBy(boolean useConnection) throws Exception {
     ETLStage purchaseStage =
             new ETLStage("purchases", new ETLPlugin("Table",
                     BatchSource.PLUGIN_TYPE,
@@ -697,7 +697,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             .addConnection(purchaseStage.getName(), itemGroupStage.getName())
             .addConnection(userGroupStage.getName(), userSinkStage.getName())
             .addConnection(itemGroupStage.getName(), itemSinkStage.getName())
-            .setEngine(engine)
+            .setEngine(Engine.SPARK)
             .setPushdownEnabled(true)
             .setTransformationPushdown(transformationPushdown)
             .setDriverResources(new Resources(2048))
@@ -726,7 +726,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
     verifyOutput(groupedUsers, groupedItems);
   }
 
-  private void testSQLEngineFilter(Engine engine, boolean useConnection) throws Exception {
+  private void testSQLEngineFilter(boolean useConnection) throws Exception {
     ETLStage userSourceStage = new ETLStage(
             "users",
             new ETLPlugin(
@@ -780,7 +780,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
             .addConnection(userFilterStage.getName(), userSinkStage.getName())
             .setDriverResources(new Resources(2048))
             .setResources(new Resources(2048))
-            .setEngine(engine)
+            .setEngine(Engine.SPARK)
             .setPushdownEnabled(true)
             .setTransformationPushdown(transformationPushdown)
             .build();

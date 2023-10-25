@@ -79,7 +79,7 @@ public class PermissionTestApp extends AbstractApplication {
   static final String TPFS = "tpfs";
   static final String INPUT_PATH = "some/input.txt";
   static final String SERVICE = "FileService";
-  static final String MAPREDUCE = "Tokenizer";
+  static final String APP_NAME = "Tokenizer";
 
   @Override
   public void configure() {
@@ -228,7 +228,7 @@ public class PermissionTestApp extends AbstractApplication {
 
     @Override
     public void configure() {
-      setName(MAPREDUCE);
+      setName(APP_NAME);
       setMapperResources(new Resources(1024));
     }
 
