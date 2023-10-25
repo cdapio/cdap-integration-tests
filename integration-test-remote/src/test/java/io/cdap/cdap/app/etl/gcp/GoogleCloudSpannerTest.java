@@ -241,13 +241,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStoreInNewTable() throws Exception {
-    testReadAndStoreInNewTable(Engine.MAPREDUCE, false);
-    testReadAndStoreInNewTable(Engine.SPARK, false);
-    testReadAndStoreInNewTable(Engine.MAPREDUCE, true);
-    testReadAndStoreInNewTable(Engine.SPARK, true);
+    testReadAndStoreInNewTable(false);
+    testReadAndStoreInNewTable(true);
   }
 
-  private void testReadAndStoreInNewTable(Engine engine, boolean useConnection) throws Exception {
+  private void testReadAndStoreInNewTable(boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
@@ -257,9 +255,9 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .build();
 
     String applicationName =
-      SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTable" + (useConnection ? "WithConnection" : "");
+      SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTable" + (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
-                                                              applicationName, engine);
+                                                              applicationName);
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -277,13 +275,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   @Test
   public void testReadAndStore() throws Exception {
-    testReadAndStore(Engine.MAPREDUCE, false);
-    testReadAndStore(Engine.SPARK, false);
-    testReadAndStore(Engine.MAPREDUCE, true);
-    testReadAndStore(Engine.SPARK, true);
+    testReadAndStore(false);
+    testReadAndStore(true);
   }
 
-  private void testReadAndStore(Engine engine, boolean useConnection) throws Exception {
+  private void testReadAndStore(boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", SCHEMA);
 
     Map<String, String> sinkProperties = new ImmutableMap.Builder<String, String>()
@@ -291,11 +287,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("keys", "ID")
       .build();
 
-    String sinkTable = SINK_TABLE_NAME + engine;
+    String sinkTable = SINK_TABLE_NAME;
     String applicationName =
-      SPANNER_PLUGIN_NAME + engine + "-testReadAndStore" + (useConnection ? "WithConnection" : "");
+      SPANNER_PLUGIN_NAME + "-testReadAndStore" + (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
-                                                              applicationName, engine);
+                                                              applicationName);
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -318,13 +314,11 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreInNewTableWithNoSourceSchema() throws Exception {
-    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE, false);
-    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK, false);
-    testReadAndStoreInNewTableWithNoSourceSchema(Engine.MAPREDUCE, true);
-    testReadAndStoreInNewTableWithNoSourceSchema(Engine.SPARK, true);
+    testReadAndStoreInNewTableWithNoSourceSchema(false);
+    testReadAndStoreInNewTableWithNoSourceSchema(true);
   }
 
-  private void testReadAndStoreInNewTableWithNoSourceSchema(Engine engine, boolean useConnection) throws Exception {
+  private void testReadAndStoreInNewTableWithNoSourceSchema(boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", null);
 
     String nonExistentSinkTableName = "nonexistent_" + UUID.randomUUID().toString().replaceAll("-", "_");
@@ -333,10 +327,10 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .put("keys", "${keys}")
       .build();
 
-    String applicationName = SPANNER_PLUGIN_NAME + engine + "-testReadAndStoreInNewTableWithNoSourceSchema" +
+    String applicationName = SPANNER_PLUGIN_NAME + "-testReadAndStoreInNewTableWithNoSourceSchema" +
       (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
-                                                              applicationName, engine);
+                                                              applicationName);
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -354,22 +348,20 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
   //TODO:(CDAP-16040) re-enable once plugin is fixed
   //@Test
   public void testReadAndStoreWithNoSourceSchema() throws Exception {
-    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE, false);
-    testReadAndStoreWithNoSourceSchema(Engine.SPARK, false);
-    testReadAndStoreWithNoSourceSchema(Engine.MAPREDUCE, true);
-    testReadAndStoreWithNoSourceSchema(Engine.SPARK, true);
+    testReadAndStoreWithNoSourceSchema(false);
+    testReadAndStoreWithNoSourceSchema(true);
   }
 
-  private void testReadAndStoreWithNoSourceSchema(Engine engine, boolean useConnection) throws Exception {
+  private void testReadAndStoreWithNoSourceSchema(boolean useConnection) throws Exception {
     Map<String, String> sourceProperties = getProps(useConnection, "spanner_source", "${srcTable}", null);
 
     Map<String, String> sinkProperties = getProps(useConnection, "spanner_sink", "${dstTable}", SCHEMA);
 
-    String sinkTable = SINK_TABLE_NAME + engine;
+    String sinkTable = SINK_TABLE_NAME;
     String applicationName =
       SPANNER_PLUGIN_NAME + "-testReadAndStoreWithNoSourceSchema" + (useConnection ? "WithConnection" : "");
     ApplicationManager applicationManager = deployApplication(sourceProperties, sinkProperties,
-                                                              applicationName, engine);
+                                                              applicationName);
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -460,8 +452,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
     Database database = spanner.getDatabaseAdminClient()
       .createDatabase(instance.getId().getInstance(), databaseName, ImmutableList.of(
         String.format(TABLE_FORMAT, SOURCE_TABLE_NAME),
-        String.format(TABLE_FORMAT, SINK_TABLE_NAME + Engine.MAPREDUCE),
-        String.format(TABLE_FORMAT, SINK_TABLE_NAME + Engine.SPARK)))
+        String.format(TABLE_FORMAT, SINK_TABLE_NAME)))
       .get();
     LOG.info("Created instance {}", databaseName);
 
@@ -470,7 +461,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
 
   private ApplicationManager deployApplication(Map<String, String> sourceProperties,
                                                Map<String, String> sinkProperties,
-                                               String applicationName, Engine engine) throws Exception {
+                                               String applicationName) throws Exception {
 
     ETLPlugin sourcePlugin = new ETLPlugin(SPANNER_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties,
                                            GOOGLE_CLOUD_ARTIFACT);
@@ -481,7 +472,7 @@ public class GoogleCloudSpannerTest extends DataprocETLTestBase {
       .addStage(new ETLStage(SPANNER_SOURCE_STAGE_NAME, sourcePlugin))
       .addStage(new ETLStage(SPANNER_SINK_STAGE_NAME, sinkPlugin))
       .addConnection(SPANNER_SOURCE_STAGE_NAME, SPANNER_SINK_STAGE_NAME)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);

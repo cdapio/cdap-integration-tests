@@ -43,12 +43,19 @@ import io.cdap.cdap.test.ApplicationManager;
 import io.cdap.cdap.test.DataSetManager;
 import io.cdap.cdap.test.ServiceManager;
 import io.cdap.cdap.test.WorkflowManager;
-import io.cdap.cdap.test.suite.category.MapR5Incompatible;
 import io.cdap.cdap.test.suite.category.RequiresSpark;
 import io.cdap.common.http.HttpMethod;
 import io.cdap.common.http.HttpResponse;
 import io.cdap.common.http.ObjectResponse;
 import io.cdap.plugin.common.Properties;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericDatumReader;
@@ -59,39 +66,16 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
 /**
  * Tests inner join, outer join for map reduce and spark.
  */
 public class BatchJoinerTest extends ETLTestBase {
 
   @Category({
-    // Temporarily disable this test on MapR clusters till we increase the memory on cluster. Enable it
-    // once as per CDAP-7421
-    MapR5Incompatible.class
-  })
-  @Test
-  public void testJoinerMR() throws Exception {
-    testJoiner(Engine.MAPREDUCE);
-  }
-
-  @Category({
     RequiresSpark.class
   })
   @Test
   public void testJoinerSpark() throws Exception {
-    testJoiner(Engine.SPARK);
-  }
-
-  private void testJoiner(Engine engine) throws Exception {
     String filmDatasetName = "film-joinertest";
     String filmCategoryDatasetName = "film-category-joinertest";
     String filmActorDatasetName = "film-actor-joinertest";
@@ -194,7 +178,7 @@ public class BatchJoinerTest extends ETLTestBase {
       .addConnection(filmCategoryStage.getName(), outerJoinStage.getName())
       .addConnection(innerJoinStage.getName(), outerJoinStage.getName())
       .addConnection(outerJoinStage.getName(), joinSinkStage.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .setDriverResources(new Resources(1024))
       .setResources(new Resources(1024))
       .build();

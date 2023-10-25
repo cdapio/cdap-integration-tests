@@ -42,7 +42,6 @@ import io.cdap.cdap.etl.api.batch.PostAction;
 import io.cdap.cdap.etl.proto.v2.ETLBatchConfig;
 import io.cdap.cdap.etl.proto.v2.ETLPlugin;
 import io.cdap.cdap.etl.proto.v2.ETLStage;
-import io.cdap.cdap.etl.proto.v2.validation.StageValidationResponse;
 import io.cdap.cdap.proto.ProgramRunStatus;
 import io.cdap.cdap.proto.artifact.AppRequest;
 import io.cdap.cdap.proto.artifact.PluginSummary;
@@ -54,20 +53,6 @@ import io.cdap.common.http.HttpRequest;
 import io.cdap.common.http.HttpResponse;
 import io.cdap.plugin.common.ConfigUtil;
 import io.cdap.plugin.common.batch.action.Condition;
-import org.apache.avro.file.DataFileWriter;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumWriter;
-import org.apache.parquet.Strings;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -89,6 +74,19 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.DatumWriter;
+import org.apache.parquet.Strings;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests reading from GCS (Google Cloud Storage) and writing to GCS from within a Dataproc cluster.
@@ -216,11 +214,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGCSCopy() throws Exception {
-    testGCSCopy(Engine.MAPREDUCE);
-    testGCSCopy(Engine.SPARK);
-  }
-
-  private void testGCSCopy(Engine engine) throws Exception {
     String prefix = "cdap-gcs-cp-test";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
@@ -324,11 +317,11 @@ public class GCSTest extends DataprocETLTestBase {
       .addConnection(cp4.getName(), cp5.getName())
       .addConnection(cp5.getName(), cp6.getName())
       .addConnection(cp6.getName(), cp7.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSCopyTest" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSCopyTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -385,11 +378,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGCSMoveNonRecursives() throws Exception {
-    testGCSMoveNonRecursive(Engine.MAPREDUCE);
-    testGCSMoveNonRecursive(Engine.SPARK);
-  }
-
-  private void testGCSMoveNonRecursive(Engine engine) throws Exception {
     String prefix = "cdap-gcs-mv-rec";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
@@ -409,11 +397,11 @@ public class GCSTest extends DataprocETLTestBase {
     // deploy the pipeline
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTest" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -432,11 +420,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGCSMoveRecursive() throws Exception {
-    testGCSMoveRecursive(Engine.MAPREDUCE);
-    testGCSMoveRecursive(Engine.SPARK);
-  }
-
-  private void testGCSMoveRecursive(Engine engine) throws Exception {
     String prefix = "cdap-gcs-mv-nonrec";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String bucket2Name = String.format("%s-2-%s", prefix, UUID.randomUUID());
@@ -456,11 +439,11 @@ public class GCSTest extends DataprocETLTestBase {
     // deploy the pipeline
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTestRecursive" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSMoveTestRecursive");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -640,11 +623,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGSCCreate() throws Exception {
-    testGSCCreate(Engine.MAPREDUCE);
-    testGSCCreate(Engine.SPARK);
-  }
-
-  private void testGSCCreate(Engine engine) throws Exception {
     String prefix = "cdap-gcs-create-test";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String path = String.format("gs://%s/testFolder,gs://%s/testFolder2", bucket1Name, bucket1Name);
@@ -655,11 +633,11 @@ public class GCSTest extends DataprocETLTestBase {
                                                             GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSCreateTest" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSCreateTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // mark possibly created in future bucket for deletion
@@ -676,11 +654,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGSCDelete() throws Exception {
-    testGSCDelete(Engine.MAPREDUCE);
-    testGSCDelete(Engine.SPARK);
-  }
-
-  private void testGSCDelete(Engine engine) throws Exception {
     String prefix = "cdap-gcs-delete-test";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
 
@@ -701,11 +674,11 @@ public class GCSTest extends DataprocETLTestBase {
                                                             GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTest" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTest");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -718,11 +691,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGSCDeleteWildcard() throws Exception {
-    testGSCDeleteWildcard(Engine.MAPREDUCE);
-    testGSCDeleteWildcard(Engine.SPARK);
-  }
-
-  private void testGSCDeleteWildcard(Engine engine) throws Exception {
     String prefix = "cdap-gcs-deletewild-test";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
 
@@ -746,11 +714,11 @@ public class GCSTest extends DataprocETLTestBase {
                                                             GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestWildcard" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestWildcard");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -768,11 +736,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGCSDeleteMultiBucket() throws Exception {
-    testGCSDeleteMultiBucket(Engine.MAPREDUCE);
-    testGCSDeleteMultiBucket(Engine.SPARK);
-  }
-
-  private void testGCSDeleteMultiBucket(Engine engine) throws Exception {
     String prefix = "cdap-gcs-delete-test";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String bucket2Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
@@ -795,11 +758,11 @@ public class GCSTest extends DataprocETLTestBase {
                                                             GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestMultiBucket" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestMultiBucket");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -813,11 +776,6 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGCSDeleteMultiBucketWildcard() throws Exception {
-    testGCSDeleteMultiBucketWildcard(Engine.MAPREDUCE);
-    testGCSDeleteMultiBucketWildcard(Engine.SPARK);
-  }
-
-  private void testGCSDeleteMultiBucketWildcard(Engine engine) throws Exception {
     String prefix = "cdap-gcs-delete-test";
     String bucket1Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
     String bucket2Name = String.format("%s-1-%s", prefix, UUID.randomUUID());
@@ -842,11 +800,11 @@ public class GCSTest extends DataprocETLTestBase {
                                                             GOOGLE_CLOUD_ARTIFACT));
     ETLBatchConfig config = ETLBatchConfig.builder()
       .addStage(cp1)
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(config);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestMultiBucketWildcard" + engine);
+    ApplicationId appId = TEST_NAMESPACE.app("GCSDeleteTestMultiBucketWildcard");
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     // start the pipeline and wait for it to finish
@@ -908,17 +866,15 @@ public class GCSTest extends DataprocETLTestBase {
   
   @Test
   public void testAllTypes() throws Exception {
-    testAllTypes(Engine.MAPREDUCE, true);
-    testAllTypes(Engine.SPARK, true);
-    testAllTypes(Engine.MAPREDUCE, false);
-    testAllTypes(Engine.SPARK, false);
+    testAllTypes(true);
+    testAllTypes(false);
   }
 
-  private void testAllTypes(Engine engine, boolean useConnection) throws Exception {
+  private void testAllTypes(boolean useConnection) throws Exception {
     String bucketName = "co-cask-test-bucket-" + System.currentTimeMillis();
     Bucket bucket = createBucket(bucketName);
-    String inputBlobName = "gcs-types/" + engine + "/test.avro";
-    String outputBlobName = "output/" + engine + "/gcs-types/json";
+    String inputBlobName = "gcs-types/test.avro";
+    String outputBlobName = "output/gcs-types/json";
 
     String schema = ALL_DT_SCHEMA.toString();
 
@@ -1011,11 +967,11 @@ public class GCSTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
-    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS" + engine + (useConnection ? "WithConnection" : ""));
+    ApplicationId appId = TEST_NAMESPACE.app("GCSToGCS" + (useConnection ? "WithConnection" : ""));
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -1072,13 +1028,11 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testGcsSourceFormats() throws Exception {
-    testGcsSourceFormats(Engine.MAPREDUCE, true);
-    testGcsSourceFormats(Engine.SPARK, true);
-    testGcsSourceFormats(Engine.MAPREDUCE, false);
-    testGcsSourceFormats(Engine.SPARK, false);
+    testGcsSourceFormats(true);
+    testGcsSourceFormats(false);
   }
 
-  public void testGcsSourceFormats(Engine engine, boolean useConnection) throws Exception {
+  public void testGcsSourceFormats(boolean useConnection) throws Exception {
     String bucketName = "cask-gcs-formats-" + UUID.randomUUID().toString();
     Bucket bucket = createBucket(bucketName);
 
@@ -1120,10 +1074,10 @@ public class GCSTest extends DataprocETLTestBase {
       pipelineConfig.addStage(sink).addConnection(source.getName(), sink.getName());
     }
 
-    pipelineConfig.setEngine(engine);
+    pipelineConfig.setEngine(Engine.SPARK);
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig.build());
-    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks" + engine + (useConnection ? "WithConnection" : ""));
+    ApplicationId appId = TEST_NAMESPACE.app("GCSFormatSinks" + (useConnection ? "WithConnection" : ""));
     ApplicationManager appManager = deployApplication(appId, appRequest);
 
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -1151,10 +1105,10 @@ public class GCSTest extends DataprocETLTestBase {
       pipelineConfig.addStage(source).addConnection(source.getName(), sink.getName());
     }
 
-    pipelineConfig.setEngine(engine);
+    pipelineConfig.setEngine(Engine.SPARK);
 
     appRequest = getBatchAppRequestV2(pipelineConfig.build());
-    appId = TEST_NAMESPACE.app("GCSFormatSources" + engine + (useConnection ? "WithConnection" : ""));
+    appId = TEST_NAMESPACE.app("GCSFormatSources" + (useConnection ? "WithConnection" : ""));
     appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
 
@@ -1175,13 +1129,11 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testSchemaDetectionOnSingleFile() throws Exception {
-    testSchemaDetectionOnSingleFile(Engine.MAPREDUCE, true);
-    testSchemaDetectionOnSingleFile(Engine.SPARK, true);
-    testSchemaDetectionOnSingleFile(Engine.MAPREDUCE, false);
-    testSchemaDetectionOnSingleFile(Engine.SPARK, false);
+    testSchemaDetectionOnSingleFile(true);
+    testSchemaDetectionOnSingleFile(false);
   }
 
-  public void testSchemaDetectionOnSingleFile(Engine engine, boolean useConnection) throws Exception {
+  public void testSchemaDetectionOnSingleFile(boolean useConnection) throws Exception {
     // source bucket
     String sourceBucketName = "source-schema-detection-" + UUID.randomUUID().toString();
     Bucket sourceBucket = createBucket(sourceBucketName);
@@ -1230,11 +1182,11 @@ public class GCSTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
-    String appName = "GCS_Source_Sink_" + engine + (useConnection ? "WithConnection" : "");
+    String appName = "GCS_Source_Sink_" + (useConnection ? "WithConnection" : "");
     ApplicationId appId = TEST_NAMESPACE.app(appName);
     ApplicationManager appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);
@@ -1374,14 +1326,12 @@ public class GCSTest extends DataprocETLTestBase {
 
   @Test
   public void testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided() throws Exception {
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.MAPREDUCE, true);
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.SPARK, true);
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.MAPREDUCE, false);
-    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine.SPARK, false);
+    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(true);
+    testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(false);
   }
   
-  public void testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(Engine engine,
-                                                                                               boolean useConnection)
+  public void testSchemaDetectionOfMultipleFilesWithDifferentSchemaWithFileFilterRegexProvided(
+      boolean useConnection)
     throws Exception {
     /*
     In this test case, the plugin will filter out all the files from the source bucket that do not match the given file
@@ -1459,11 +1409,11 @@ public class GCSTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(pipelineConfig);
-    String appName = "GCS_Source_Sink_" + engine + (useConnection ? "WithConnection" : "");
+    String appName = "GCS_Source_Sink_" + (useConnection ? "WithConnection" : "");
     ApplicationId appId = TEST_NAMESPACE.app(appName);
     ApplicationManager appManager = deployApplication(appId, appRequest);
     startWorkFlow(appManager, ProgramRunStatus.COMPLETED);

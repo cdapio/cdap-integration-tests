@@ -54,20 +54,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class TPFSParquetSinkSourceTest extends ETLTestBase {
 
-  @Test
-  public void testMR() throws Exception {
-    testTPFSWithProjection(Engine.MAPREDUCE);
-  }
-
   @Category({
     RequiresSpark.class
   })
   @Test
   public void testSpark() throws Exception {
-    testTPFSWithProjection(Engine.SPARK);
-  }
-
-  private void testTPFSWithProjection(Engine engine) throws Exception {
     // 1. Deploy an application with a service to get TPFS data for verification
     ApplicationManager applicationManager = deployApplication(DatasetAccessApp.class);
     ServiceManager serviceManager = applicationManager.getServiceManager(TPFSService.class.getSimpleName());
@@ -78,7 +69,7 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
 
     // 3. Run Stream To TPFS with Projection Transform pipeline
     ApplicationId tableToTPFSAppId = TEST_NAMESPACE.app("DatasetToTPFSWithProjection");
-    ETLBatchConfig etlBatchConfig = constructTableToTPFSConfig(engine);
+    ETLBatchConfig etlBatchConfig = constructTableToTPFSConfig();
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlBatchConfig);
     ApplicationManager appManager = deployApplication(tableToTPFSAppId, appRequest);
     WorkflowManager workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -90,7 +81,7 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
 
     // 4. Run TPFS to TPFS pipeline where the source is the sink from the above pipeline
     ApplicationId tpfsToTPFSAppId = TEST_NAMESPACE.app("TPFSToTPFSWithProjection");
-    etlBatchConfig = constructTPFSToTPFSConfig(engine);
+    etlBatchConfig = constructTPFSToTPFSConfig();
     appRequest = getBatchAppRequestV2(etlBatchConfig);
     appManager = getTestManager().deployApplication(tpfsToTPFSAppId, appRequest);
     workflowManager = appManager.getWorkflowManager(SmartWorkflow.NAME);
@@ -122,7 +113,7 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
 
   }
 
-  private ETLBatchConfig constructTableToTPFSConfig(Engine engine) {
+  private ETLBatchConfig constructTableToTPFSConfig() {
     ETLStage source = new ETLStage("TableSource",
                                    new ETLPlugin("Table", BatchSource.PLUGIN_TYPE,
                                                  ImmutableMap.of(Properties.BatchReadableWritable.NAME, SOURCE_DATASET,
@@ -142,11 +133,11 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
       .addStage(transform)
       .addConnection(source.getName(), transform.getName())
       .addConnection(transform.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
   }
 
-  private ETLBatchConfig constructTPFSToTPFSConfig(Engine engine) {
+  private ETLBatchConfig constructTPFSToTPFSConfig() {
 
     ETLStage source = new ETLStage("source",
                                    new ETLPlugin("TPFSParquet", BatchSource.PLUGIN_TYPE,
@@ -162,7 +153,7 @@ public class TPFSParquetSinkSourceTest extends ETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
   }
 

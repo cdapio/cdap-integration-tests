@@ -234,10 +234,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testReadDataAndStoreInNewTable() throws Exception {
-    testReadDataAndStoreInNewTable(Engine.MAPREDUCE, false);
-    testReadDataAndStoreInNewTable(Engine.SPARK, false);
-    testReadDataAndStoreInNewTable(Engine.MAPREDUCE, true);
-    testReadDataAndStoreInNewTable(Engine.SPARK, true);
+    testReadDataAndStoreInNewTable(false);
+    testReadDataAndStoreInNewTable(true);
   }
 
   /* Test check read data from exists table and store them in new table.
@@ -257,7 +255,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "float_value": 0.1
    *  "boolean_value": true
    */
-  private void testReadDataAndStoreInNewTable(Engine engine, boolean useConnection) throws Exception {
+  private void testReadDataAndStoreInNewTable(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -284,8 +282,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-storeInNewTable" +
-        (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInNewTable" +
+        (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -311,10 +309,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testReadDataAndStoreInExistingTable() throws Exception {
-    testReadDataAndStoreInExistingTable(Engine.MAPREDUCE, false);
-    testReadDataAndStoreInExistingTable(Engine.SPARK, false);
-    testReadDataAndStoreInExistingTable(Engine.MAPREDUCE, true);
-    testReadDataAndStoreInExistingTable(Engine.SPARK, true);
+    testReadDataAndStoreInExistingTable(false);
+    testReadDataAndStoreInExistingTable(true);
   }
 
   /* Test check read data from exists table and store them in exist table.
@@ -334,7 +330,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "float_value": 0.1
    *  "boolean_value": true
    */
-  private void testReadDataAndStoreInExistingTable(Engine engine, boolean useConnection) throws Exception {
+  private void testReadDataAndStoreInExistingTable(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -363,8 +359,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-storeInExistingTable" +
-        (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInExistingTable" +
+        (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -389,10 +385,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testSchemaNullTableNotExist() throws Exception {
-    testSchemaNullTableNotExist(Engine.MAPREDUCE, false);
-    testSchemaNullTableNotExist(Engine.SPARK, false);
-    testSchemaNullTableNotExist(Engine.MAPREDUCE, true);
-    testSchemaNullTableNotExist(Engine.SPARK, true);
+    testSchemaNullTableNotExist(false);
+    testSchemaNullTableNotExist(true);
   }
 
   /* Test check read data from existing table but schema is missing and store them in new table.
@@ -412,7 +406,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "float_value": 0.1
    *  "boolean_value": true
    */
-  private void testSchemaNullTableNotExist(Engine engine, boolean useConnection) throws Exception {
+  private void testSchemaNullTableNotExist(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -435,8 +429,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-nullSchemaNewTable" +
-              (useConnection ? "WithConnection" : ""), engine);
+            deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-nullSchemaNewTable" +
+              (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -462,10 +456,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testReadDataAndStoreWithUpdateTableSchema() throws Exception {
-    testReadDataAndStoreWithUpdateTableSchema(Engine.MAPREDUCE, false);
-    testReadDataAndStoreWithUpdateTableSchema(Engine.SPARK, false);
-    testReadDataAndStoreWithUpdateTableSchema(Engine.MAPREDUCE, true);
-    testReadDataAndStoreWithUpdateTableSchema(Engine.SPARK, true);
+    testReadDataAndStoreWithUpdateTableSchema(false);
+    testReadDataAndStoreWithUpdateTableSchema(true);
   }
 
   /* Test check read data from exists table and store them in exist table with updating table schema.
@@ -507,7 +499,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "timestamp_value", LegacySQLTypeName.TIMESTAMP
    *  "date_value", LegacySQLTypeName.DATE
    */
-  private void testReadDataAndStoreWithUpdateTableSchema(Engine engine, boolean useConnection) throws Exception {
+  private void testReadDataAndStoreWithUpdateTableSchema(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -535,7 +527,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
-        engine + "-storeWithUpdateTableSchema" + (useConnection ? "WithConnection" : ""), engine);
+        "-storeWithUpdateTableSchema" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -560,10 +552,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testProcessingAllBigQuerySupportTypes() throws Exception {
-    testProcessingAllBigQuerySupportTypes(Engine.MAPREDUCE, false);
-    testProcessingAllBigQuerySupportTypes(Engine.SPARK, false);
-    testProcessingAllBigQuerySupportTypes(Engine.MAPREDUCE, true);
-    testProcessingAllBigQuerySupportTypes(Engine.SPARK, true);
+    testProcessingAllBigQuerySupportTypes(false);
+    testProcessingAllBigQuerySupportTypes(true);
   }
 
   /* Test check processing all BigQuery types.
@@ -611,7 +601,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  "complex_record": {"simple_record":{"boolean_value":true,"record_string":"r_string"},"float_value":0.25}
    *  "record_array":[{"r_a_string":"r_a_string_1","r_a_int":100},{"r_a_string":"r_a_string_2","r_a_int":200}]}
    */
-  private void testProcessingAllBigQuerySupportTypes(Engine engine, boolean useConnection) throws Exception {
+  private void testProcessingAllBigQuerySupportTypes(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -636,8 +626,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-allBigQueryTypes" +
-        (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-allBigQueryTypes" +
+        (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -664,10 +654,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testUpdateOperationWithoutSchemaUpdate() throws Exception {
-    testUpdateOperationWithoutSchemaUpdate(Engine.MAPREDUCE, false);
-    testUpdateOperationWithoutSchemaUpdate(Engine.SPARK, false);
-    testUpdateOperationWithoutSchemaUpdate(Engine.MAPREDUCE, true);
-    testUpdateOperationWithoutSchemaUpdate(Engine.SPARK, true);
+    testUpdateOperationWithoutSchemaUpdate(false);
+    testUpdateOperationWithoutSchemaUpdate(true);
   }
 
   /* Test check the Update operation without updating destination table schema.
@@ -686,7 +674,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    */
-  private void testUpdateOperationWithoutSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
+  private void testUpdateOperationWithoutSchemaUpdate(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -716,7 +704,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
       deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
-        engine + "-updateWithoutSchemaUpdate" + (useConnection ? "WithConnection" : ""), engine);
+        "-updateWithoutSchemaUpdate" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -759,10 +747,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testUpsertOperationWithoutSchemaUpdate() throws Exception {
-    testUpsertOperationWithoutSchemaUpdate(Engine.MAPREDUCE, false);
-    testUpsertOperationWithoutSchemaUpdate(Engine.SPARK, false);
-    testUpsertOperationWithoutSchemaUpdate(Engine.MAPREDUCE, true);
-    testUpsertOperationWithoutSchemaUpdate(Engine.SPARK, true);
+    testUpsertOperationWithoutSchemaUpdate(false);
+    testUpsertOperationWithoutSchemaUpdate(true);
   }
 
   /* Test check the Upsert operation without updating destination table schema.
@@ -783,7 +769,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testUpsertOperationWithoutSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
+  private void testUpsertOperationWithoutSchemaUpdate(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -812,8 +798,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-upsertWithoutSchemaUpdate" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-upsertWithoutSchemaUpdate" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -870,10 +856,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testInsertOperationWithSchemaUpdate() throws Exception {
-    testInsertOperationWithSchemaUpdate(Engine.MAPREDUCE, false);
-    testInsertOperationWithSchemaUpdate(Engine.SPARK, false);
-    testInsertOperationWithSchemaUpdate(Engine.MAPREDUCE, true);
-    testInsertOperationWithSchemaUpdate(Engine.SPARK, true);
+    testInsertOperationWithSchemaUpdate(false);
+    testInsertOperationWithSchemaUpdate(true);
   }
 
   /* Test check the Insert operation with updating destination table schema.
@@ -895,7 +879,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"id":null,"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"id":null,"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
+  private void testInsertOperationWithSchemaUpdate(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -923,8 +907,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-insertWithSchemaUpdate" +
-        (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-insertWithSchemaUpdate" +
+        (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -990,18 +974,14 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testUpdateOperationWithSchemaUpdate() throws Exception {
-    testUpdateOperationWithSchemaUpdate(Engine.MAPREDUCE, false);
-    testUpdateOperationWithSchemaUpdate(Engine.SPARK, false);
-    testUpdateOperationWithSchemaUpdate(Engine.MAPREDUCE, true);
-    testUpdateOperationWithSchemaUpdate(Engine.SPARK, true);
+    testUpdateOperationWithSchemaUpdate(false);
+    testUpdateOperationWithSchemaUpdate(true);
   }
 
   @Test
   public void testInsertOperationWithIntegerPartition() throws Exception {
-    testInsertOperationWithIntegerPartition(Engine.MAPREDUCE, false);
-    testInsertOperationWithIntegerPartition(Engine.SPARK, false);
-    testInsertOperationWithIntegerPartition(Engine.MAPREDUCE, true);
-    testInsertOperationWithIntegerPartition(Engine.SPARK, true);
+    testInsertOperationWithIntegerPartition(false);
+    testInsertOperationWithIntegerPartition(true);
   }
 
   /* Test check the Insert operation with partition type Integer.
@@ -1018,7 +998,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithIntegerPartition(Engine engine, boolean useConnection) throws Exception {
+  private void testInsertOperationWithIntegerPartition(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1047,8 +1027,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-insertWithPartitionInteger" +
-        (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-insertWithPartitionInteger" +
+        (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -1099,10 +1079,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testInsertOperationWithIntegerPartitionInExistingTable() throws Exception {
-    testInsertOperationWithIntegerPartitionInExistingTable(Engine.MAPREDUCE, false);
-    testInsertOperationWithIntegerPartitionInExistingTable(Engine.SPARK, false);
-    testInsertOperationWithIntegerPartitionInExistingTable(Engine.MAPREDUCE, true);
-    testInsertOperationWithIntegerPartitionInExistingTable(Engine.SPARK, true);
+    testInsertOperationWithIntegerPartitionInExistingTable(false);
+    testInsertOperationWithIntegerPartitionInExistingTable(true);
   }
 
   /* Test check the Insert operation with partition type Integer and destination table exist.
@@ -1126,8 +1104,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithIntegerPartitionInExistingTable(Engine engine,
-                                                                      boolean useConnection) throws Exception {
+  private void testInsertOperationWithIntegerPartitionInExistingTable(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1177,8 +1154,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-insertInExistingTableWithPartitionInteger" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-insertInExistingTableWithPartitionInteger" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -1251,10 +1228,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testInsertOperationWithIngestionTimePartition() throws Exception {
-    testInsertOperationWithIngestionTimePartition(Engine.MAPREDUCE, false);
-    testInsertOperationWithIngestionTimePartition(Engine.SPARK, false);
-    testInsertOperationWithIngestionTimePartition(Engine.MAPREDUCE, true);
-    testInsertOperationWithIngestionTimePartition(Engine.SPARK, true);
+    testInsertOperationWithIngestionTimePartition(false);
+    testInsertOperationWithIngestionTimePartition(true);
   }
 
   /* Test check the Insert operation with partition type Time (Ingestion Time).
@@ -1272,7 +1247,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testInsertOperationWithIngestionTimePartition(Engine engine, boolean useConnection) throws Exception {
+  private void testInsertOperationWithIngestionTimePartition(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1297,8 +1272,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-insertWithIngestionTimePartition" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-insertWithIngestionTimePartition" + (useConnection ? "WithConnection" : ""));
 
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
@@ -1347,10 +1322,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testInsertOperationWithTimeColumnPartition() throws Exception {
-    testInsertOperationWithTimeColumnPartition(Engine.MAPREDUCE, false);
-    testInsertOperationWithTimeColumnPartition(Engine.SPARK, false);
-    testInsertOperationWithTimeColumnPartition(Engine.MAPREDUCE, true);
-    testInsertOperationWithTimeColumnPartition(Engine.SPARK, true);
+    testInsertOperationWithTimeColumnPartition(false);
+    testInsertOperationWithTimeColumnPartition(true);
   }
 
   /* Test check the Insert operation with partition type Time (Date/timestamp/datetime).
@@ -1368,7 +1341,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_2","int_value":2,"float_value":0.2,"date_value":"2000-01-20"}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"date_value":"2000-01-21"}
    */
-  private void testInsertOperationWithTimeColumnPartition(Engine engine, boolean useConnection) throws Exception {
+  private void testInsertOperationWithTimeColumnPartition(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = String.format("%s%s", SOURCE_TABLE_NAME_TEMPLATE, testId);
@@ -1394,8 +1367,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-insertWithTimeColumnPartition" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-insertWithTimeColumnPartition" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -1458,7 +1431,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"id":100,"string_value":"string_0","int_value":null,"float_value":null,"boolean_value":true}
    *  {"id":101,"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    */
-  private void testUpdateOperationWithSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
+  private void testUpdateOperationWithSchemaUpdate(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1487,8 +1460,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-updateWithSchemaUpdate" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-updateWithSchemaUpdate" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -1531,10 +1504,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testUpsertOperationWithSchemaUpdate() throws Exception {
-    testUpsertOperationWithSchemaUpdate(Engine.MAPREDUCE, false);
-    testUpsertOperationWithSchemaUpdate(Engine.SPARK, false);
-    testUpsertOperationWithSchemaUpdate(Engine.MAPREDUCE, true);
-    testUpsertOperationWithSchemaUpdate(Engine.SPARK, true);
+    testUpsertOperationWithSchemaUpdate(false);
+    testUpsertOperationWithSchemaUpdate(true);
   }
 
   /* Test check the Upsert operation with updating destination table schema.
@@ -1555,7 +1526,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"id":null,"string_value":"string_2","int_value":2,"float_value":0.2,"boolean_value":false}
    *  {"id":null,"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testUpsertOperationWithSchemaUpdate(Engine engine, boolean useConnection) throws Exception {
+  private void testUpsertOperationWithSchemaUpdate(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1584,8 +1555,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 3;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-upsertWithSchemaUpdate" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-upsertWithSchemaUpdate" + (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -1644,10 +1615,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testUpdateOperationWithDedupeSourceData() throws Exception {
-    testUpdateOperationWithDedupeSourceData(Engine.MAPREDUCE, false);
-    testUpdateOperationWithDedupeSourceData(Engine.SPARK, false);
-    testUpdateOperationWithDedupeSourceData(Engine.MAPREDUCE, true);
-    testUpdateOperationWithDedupeSourceData(Engine.SPARK, true);
+    testUpdateOperationWithDedupeSourceData(false);
+    testUpdateOperationWithDedupeSourceData(true);
   }
 
   /* Test check the Update operation with dedupe source data.
@@ -1664,7 +1633,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_0","int_value":0,"float_value":0,"boolean_value":true}
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    */
-  private void testUpdateOperationWithDedupeSourceData(Engine engine, boolean useConnection) throws Exception {
+  private void testUpdateOperationWithDedupeSourceData(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1703,8 +1672,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     runtimeArgs.put("dstTable", destinationTableName);
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-updateWithDedupeSourceData" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-updateWithDedupeSourceData" + (useConnection ? "WithConnection" : ""));
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
@@ -1737,10 +1706,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testUpsertOperationWithDedupeSourceData() throws Exception {
-    testUpsertOperationWithDedupeSourceData(Engine.MAPREDUCE, false);
-    testUpsertOperationWithDedupeSourceData(Engine.SPARK, false);
-    testUpsertOperationWithDedupeSourceData(Engine.MAPREDUCE, true);
-    testUpsertOperationWithDedupeSourceData(Engine.SPARK, true);
+    testUpsertOperationWithDedupeSourceData(false);
+    testUpsertOperationWithDedupeSourceData(true);
   }
 
   /* Test check the Upsert operation without updating destination table schema.
@@ -1760,7 +1727,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    *  {"string_value":"string_1","int_value":1,"float_value":0.1,"boolean_value":true}
    *  {"string_value":"string_3","int_value":3,"float_value":0.3,"boolean_value":false}
    */
-  private void testUpsertOperationWithDedupeSourceData(Engine engine, boolean useConnection) throws Exception {
+  private void testUpsertOperationWithDedupeSourceData(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1798,8 +1765,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     runtimeArgs.put("dstTable", destinationTableName);
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine +
-        "-upsertWithDedupeSourceData" + (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME +
+        "-upsertWithDedupeSourceData" + (useConnection ? "WithConnection" : ""));
     startWorkFlow(deploymentDetails.getAppManager(), ProgramRunStatus.COMPLETED, runtimeArgs);
 
     ApplicationId appId = deploymentDetails.getAppId();
@@ -1856,13 +1823,11 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
    */
   @Test
   public void testBigQueryNullMode() throws Exception {
-    testBigQueryNullMode(Engine.MAPREDUCE, false);
-    testBigQueryNullMode(Engine.SPARK, false);
-    testBigQueryNullMode(Engine.MAPREDUCE, true);
-    testBigQueryNullMode(Engine.SPARK, true);
+    testBigQueryNullMode(false);
+    testBigQueryNullMode(true);
   }
 
-  private void testBigQueryNullMode(Engine engine, boolean useConnection) throws Exception {
+  private void testBigQueryNullMode(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableName = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1891,8 +1856,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
     int expectedCount = 1;
 
     GoogleBigQueryTest.DeploymentDetails deploymentDetails =
-      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + engine + "-storeInExistingTable" +
-        (useConnection ? "WithConnection" : ""), engine);
+      deployApplication(sourceProps, sinkProps, BIG_QUERY_PLUGIN_NAME + "-storeInExistingTable" +
+        (useConnection ? "WithConnection" : ""));
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
       args.put("project", getProjectId());
@@ -1917,13 +1882,11 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   @Test
   public void testBigQueryWithDifferentSchemaRecordName() throws Exception {
-    testBigQueryWithDifferentSchemaRecordName(Engine.MAPREDUCE, false);
-    testBigQueryWithDifferentSchemaRecordName(Engine.SPARK, false);
-    testBigQueryWithDifferentSchemaRecordName(Engine.MAPREDUCE, true);
-    testBigQueryWithDifferentSchemaRecordName(Engine.SPARK, true);
+    testBigQueryWithDifferentSchemaRecordName(false);
+    testBigQueryWithDifferentSchemaRecordName(true);
   }
 
-  private void testBigQueryWithDifferentSchemaRecordName(Engine engine, boolean useConnection) throws Exception {
+  private void testBigQueryWithDifferentSchemaRecordName(boolean useConnection) throws Exception {
     String testId = GoogleBigQueryUtils.getUUID();
 
     String sourceTableNameOne = SOURCE_TABLE_NAME_TEMPLATE + testId;
@@ -1968,8 +1931,8 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
     DeploymentDetails deploymentDetails =
       deployApplicationWithTwoSources(sourceOneProps, sourceTwoProps, wranglerProperties, sinkProps,
-                                      "BigQuery-" + engine + "-schemaWithTwoDifferentRecordName" +
-                                        (useConnection ? "WithConnection" : ""), engine);
+                                      "BigQuery-schemaWithTwoDifferentRecordName" +
+                                        (useConnection ? "WithConnection" : ""));
 
     Map<String, String> args = new HashMap<>();
     if (!useConnection) {
@@ -2144,8 +2107,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
 
   private GoogleBigQueryTest.DeploymentDetails deployApplication(Map<String, String> sourceProperties,
                                                                  Map<String, String> sinkProperties,
-                                                                 String applicationName,
-                                                                 Engine engine) throws Exception {
+                                                                 String applicationName) throws Exception {
 
     ETLStage source = new ETLStage("BigQuerySourceStage",
                                    new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceProperties,
@@ -2158,7 +2120,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       .addStage(source)
       .addStage(sink)
       .addConnection(source.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);
@@ -2171,8 +2133,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
                                                             Map<String, String> sourceTwoProperties,
                                                             Map<String, String> wranglerProperties,
                                                             Map<String, String> sinkProperties,
-                                                            String applicationName,
-                                                            Engine engine) throws Exception {
+                                                            String applicationName) throws Exception {
 
     ETLStage sourceOne = new ETLStage("BigQuerySourceOneStage",
                                    new ETLPlugin(BIG_QUERY_PLUGIN_NAME, BatchSource.PLUGIN_TYPE, sourceOneProperties,
@@ -2196,7 +2157,7 @@ public class GoogleBigQueryTest extends DataprocETLTestBase {
       .addConnection(sourceOne.getName(), wranglerTransformStage.getName())
       .addConnection(wranglerTransformStage.getName(), sink.getName())
       .addConnection(sourceTwo.getName(), sink.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .build();
 
     AppRequest<ETLBatchConfig> appRequest = getBatchAppRequestV2(etlConfig);

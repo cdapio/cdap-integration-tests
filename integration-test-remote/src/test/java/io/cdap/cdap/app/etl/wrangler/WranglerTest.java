@@ -85,7 +85,7 @@ public class WranglerTest extends ETLTestBase {
   @Test
   public void testWranglerSpark() throws Exception {
     LOG.info("Starting testWranglerSpark");
-    testWrangler(Engine.SPARK, false);
+    testWrangler(false);
     LOG.info("Ending testWranglerSpark");
   }
 
@@ -95,7 +95,7 @@ public class WranglerTest extends ETLTestBase {
   @Test
   public void testWranglerSparkSQL() throws Exception {
     LOG.info("Starting testWranglerSparkSQL");
-    testWrangler(Engine.SPARK, true);
+    testWrangler(true);
     LOG.info("Ending testWranglerSparkSQL");
   }
 
@@ -109,7 +109,7 @@ public class WranglerTest extends ETLTestBase {
     LOG.info("Exiting WranglerTest..");
   }
 
-  private void testWrangler(Engine engine, boolean isConditionSQL) throws Exception {
+  private void testWrangler(boolean isConditionSQL) throws Exception {
     String datasetName = "personal_info";
     ingestDataForWrangler(datasetName);
     Schema datasetSchema = Schema.recordOf("etlSchemaBody",
@@ -192,7 +192,7 @@ public class WranglerTest extends ETLTestBase {
       .addConnection(wranglerTransformStage.getName(), wranglerFilterStage.getName())
       .addConnection(wranglerFilterStage.getName(), groupStage.getName())
       .addConnection(groupStage.getName(), sinkStage.getName())
-      .setEngine(engine)
+      .setEngine(Engine.SPARK)
       .setDriverResources(new Resources(1024))
       .setResources(new Resources(1024))
       .build();
