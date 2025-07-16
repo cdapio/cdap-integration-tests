@@ -115,8 +115,8 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   //give exact version according to CDAP version : required for Hub install
   static final Map<String, String> CDAP_WINDOW_AGG_VERSION_MAP = ImmutableMap.of(
     "6.9.0-SNAPSHOT", "1.1.0",
-    "6.9.0", "1.1.0"
-//    "6.10.0", "1.1.1-SNAPSHOT"
+    "6.9.0", "1.1.0",
+    "6.10.1", "1.1.1"
   );
 
   private static BigQuery bq;
