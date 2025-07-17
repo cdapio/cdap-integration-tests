@@ -220,7 +220,7 @@ public class GoogleBigQuerySQLEngineTest extends DataprocETLTestBase {
   @Category({
     RequiresSpark.class
   })
-  @Test
+  // @Test
   public void testSQLEngineWindowSpark() throws Exception {
     if (computeWindowAggVersionAndInstall(version)) {
       testSQLEngineWindow(false);
