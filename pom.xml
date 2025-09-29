@@ -46,7 +46,7 @@
     <gson.version>2.3.1</gson.version>
     <junit.version>4.12</junit.version>
     <kafka.version>0.8.2.2</kafka.version>
-    <snappy.version>1.1.1.7</snappy.version>
+    <snappy.version>1.1.10.4</snappy.version>
     <chaosmonkey.version>0.1.0-SNAPSHOT</chaosmonkey.version>
 
     <!-- Skip all test cases by default. The different test cases are enabled in the profiles defined below -->
