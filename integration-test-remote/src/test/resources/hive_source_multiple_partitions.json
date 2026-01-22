@@ -1,0 +1,1 @@
+{"string_value":"Zoe","int_value":869874622,"float_value":82.0225,"double_value":7763.959904,"decimal_value":[0, 0, 0, 6, 53, -43, -6, -105, 82],"struct_value":{"id":1,"name":"Zoe"},"map_value":{"name":"Zoe"},"array_value":[1,2,3],"timestamp_millis_value":1622462255628,"boolean_value":false,"partition_column":"NY","partition_column2":"US"}
